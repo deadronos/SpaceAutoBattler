@@ -26,11 +26,11 @@ Fix `npm test` failures affecting the AI scenario harness fixtures.
 
 ### Subtasks
 
-| ID | Description | Status | Updated | Notes |
-| --- | --- | --- | --- | --- |
-| 1.1 | Regenerate scenario fixtures via `tmp/refresh-ai-fixtures.ts` | Complete | 2025-09-28 | Generated normalized logs and wrote fixture files via script |
-| 1.2 | Verify diffs and update `test/vitest/fixtures/*.json` | Complete | 2025-09-28 | Reviewed metrics deltas (first-shot timing, histogram counts) |
-| 1.3 | Run regression gates (`npm test`, `npm run typecheck`) | Complete | 2025-09-28 | All suites green post-refresh |
+| ID  | Description                                                   | Status   | Updated    | Notes                                                         |
+| --- | ------------------------------------------------------------- | -------- | ---------- | ------------------------------------------------------------- |
+| 1.1 | Regenerate scenario fixtures via `tmp/refresh-ai-fixtures.ts` | Complete | 2025-09-28 | Generated normalized logs and wrote fixture files via script  |
+| 1.2 | Verify diffs and update `test/vitest/fixtures/*.json`         | Complete | 2025-09-28 | Reviewed metrics deltas (first-shot timing, histogram counts) |
+| 1.3 | Run regression gates (`npm test`, `npm run typecheck`)        | Complete | 2025-09-28 | All suites green post-refresh                                 |
 
 ## Progress Log
 

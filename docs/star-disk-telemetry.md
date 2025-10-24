@@ -9,7 +9,7 @@ The StarDisk component now exposes detailed telemetry about its shader uniform p
 When the Copilot debug flag is enabled (`?copilot_debug=1` in the URL or `window.__copilotDebugForce = true`), the component publishes telemetry to:
 
 ```javascript
-window.__copilot_starDiskTelemetry
+window.__copilot_starDiskTelemetry;
 ```
 
 ## Telemetry Structure
@@ -18,34 +18,34 @@ window.__copilot_starDiskTelemetry
 interface StarDiskTelemetry {
   /** Current shader uniform time value (seconds) */
   iTime: number;
-  
+
   /** Time delta since previous frame (seconds) */
   deltaTime: number;
-  
+
   /** Whether iTime is progressing (deltaTime > 0) */
   isProgressing: boolean;
-  
+
   /** Wall-clock timestamp when telemetry was recorded (ms) */
   timestamp: number;
-  
+
   /** Cumulative frame count since component mount */
   frameCount: number;
-  
+
   /** Simulation time from GameState (when available) */
   simTime?: number;
-  
+
   /** Render clock time from R3F (when available) */
   renderTime?: number;
-  
+
   /** Whether fallback time calculation was used */
   usedFallback: boolean;
-  
+
   /** Total Rapier step panics observed since startup */
   rapierPanicCount?: number;
-  
+
   /** Most recent tick index when a Rapier panic occurred */
   lastRapierPanicTick?: number;
-  
+
   /** Number of simulation ticks since last Rapier panic */
   ticksSinceLastPanic?: number;
 }
@@ -60,13 +60,15 @@ interface StarDiskTelemetry {
 window.__copilotDebugForce = true;
 
 // Check current telemetry
-window.__copilot_starDiskTelemetry
+window.__copilot_starDiskTelemetry;
 // => { iTime: 15.234, deltaTime: 0.016, isProgressing: true, ... }
 
 // Monitor progression over time
 setInterval(() => {
   const t = window.__copilot_starDiskTelemetry;
-  console.log(`iTime: ${t.iTime.toFixed(3)}s, delta: ${t.deltaTime.toFixed(6)}s, progressing: ${t.isProgressing}`);
+  console.log(
+    `iTime: ${t.iTime.toFixed(3)}s, delta: ${t.deltaTime.toFixed(6)}s, progressing: ${t.isProgressing}`,
+  );
 }, 1000);
 ```
 
@@ -78,24 +80,20 @@ test('verify StarDisk animation resumes after physics recovery', async ({ page }
   await page.evaluate(() => {
     (window as any).__copilotDebugForce = true;
   });
-  
+
   // Navigate and wait for initial render
   await page.goto('http://localhost:8080');
   await page.waitForTimeout(1000);
-  
+
   // Sample initial telemetry
-  const initial = await page.evaluate(() => 
-    (window as any).__copilot_starDiskTelemetry
-  );
-  
+  const initial = await page.evaluate(() => (window as any).__copilot_starDiskTelemetry);
+
   // Wait for progression
   await page.waitForTimeout(2000);
-  
+
   // Verify iTime is increasing
-  const current = await page.evaluate(() => 
-    (window as any).__copilot_starDiskTelemetry
-  );
-  
+  const current = await page.evaluate(() => (window as any).__copilot_starDiskTelemetry);
+
   expect(current.iTime).toBeGreaterThan(initial.iTime);
   expect(current.isProgressing).toBe(true);
 });
@@ -123,12 +121,12 @@ if (!telemetry.isProgressing && telemetry.rapierPanicCount > 0) {
 async function checkStarDiskHealth(page: Page): Promise<boolean> {
   return await page.evaluate(() => {
     const telemetry = (window as any).__copilot_starDiskTelemetry;
-    
+
     if (!telemetry) {
       console.warn('StarDisk telemetry not available (debug mode disabled)');
       return false;
     }
-    
+
     // Check if time is progressing
     if (!telemetry.isProgressing) {
       console.error('StarDisk animation frozen:', {
@@ -138,7 +136,7 @@ async function checkStarDiskHealth(page: Page): Promise<boolean> {
       });
       return false;
     }
-    
+
     // Check if fallback is being used (indicates simulation issues)
     if (telemetry.usedFallback) {
       console.warn('StarDisk using fallback time calculation:', {
@@ -146,7 +144,7 @@ async function checkStarDiskHealth(page: Page): Promise<boolean> {
         renderTime: telemetry.renderTime,
       });
     }
-    
+
     // Check for recent Rapier panics
     if (telemetry.rapierPanicCount > 0 && telemetry.ticksSinceLastPanic < 10) {
       console.warn('Recent Rapier panic detected:', {
@@ -154,7 +152,7 @@ async function checkStarDiskHealth(page: Page): Promise<boolean> {
         ticksSince: telemetry.ticksSinceLastPanic,
       });
     }
-    
+
     return true;
   });
 }
@@ -165,11 +163,13 @@ async function checkStarDiskHealth(page: Page): Promise<boolean> {
 ### Scenario 1: StarDisk Frozen After WASM Panic
 
 **Symptoms:**
+
 - `isProgressing === false`
 - `rapierPanicCount > 0`
 - `ticksSinceLastPanic` is low
 
 **Analysis:**
+
 ```javascript
 const t = window.__copilot_starDiskTelemetry;
 const panics = window.__copilot_rapierPanics;
@@ -188,10 +188,12 @@ Once the Rapier WASM fault is identified and fixed, `iTime` should resume increa
 ### Scenario 2: Fallback Time in Use
 
 **Symptoms:**
+
 - `usedFallback === true`
 - `simTime` or `renderTime` are undefined
 
 **Analysis:**
+
 ```javascript
 const t = window.__copilot_starDiskTelemetry;
 
@@ -205,6 +207,7 @@ console.log('Time Source Analysis:', {
 
 **Implications:**
 The component is maintaining animation through fallback calculations rather than actual simulation/render time. This can happen when:
+
 - Simulation is paused
 - Render loop is blocked
 - Initial frames before clocks are initialized
@@ -212,6 +215,7 @@ The component is maintaining animation through fallback calculations rather than
 ### Scenario 3: Normal Operation
 
 **Expected Values:**
+
 ```javascript
 {
   iTime: 45.678,          // Steadily increasing
@@ -275,6 +279,7 @@ Comprehensive test coverage is provided in `test/vitest/star-disk-telemetry.spec
 - Time source exposure
 
 Run tests with:
+
 ```bash
 npm test -- star-disk-telemetry
 ```

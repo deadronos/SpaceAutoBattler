@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { computeAtlasUvTransform, normaliseAtlasMetadata } from '../../src/renderer/textureAtlas.js';
+import {
+  computeAtlasUvTransform,
+  normaliseAtlasMetadata,
+} from '../../src/renderer/textureAtlas.js';
 
 describe('textureAtlas utilities', () => {
   it('computes UV transform for a region', () => {
@@ -29,4 +32,3 @@ describe('textureAtlas utilities', () => {
     expect(() => normaliseAtlasMetadata({ width: NaN, height: 10, regions: {} } as any)).toThrow();
   });
 });
-

@@ -1,7 +1,15 @@
 import { describe, it, expect } from 'vitest';
 import { createTestGameState } from './helpers/fixtures.js';
-import { deferSetNextKinematicTranslation, postSetNextKinematicTranslation, deferSetNextKinematicRotation, postSetNextKinematicRotation } from '../../src/game/physics/safeKinematics.js';
-import { flushDeferredMutations, flushPostPhysicsMutations } from '../../src/game/simulationQueue.js';
+import {
+  deferSetNextKinematicTranslation,
+  postSetNextKinematicTranslation,
+  deferSetNextKinematicRotation,
+  postSetNextKinematicRotation,
+} from '../../src/game/physics/safeKinematics.js';
+import {
+  flushDeferredMutations,
+  flushPostPhysicsMutations,
+} from '../../src/game/simulationQueue.js';
 
 describe('Deferred mutation execution phases', () => {
   it('executes pre-step deferred mutations on flushDeferredMutations and post-step mutations on flushPostPhysicsMutations', () => {
@@ -12,12 +20,14 @@ describe('Deferred mutation execution phases', () => {
 
     const preBody = {
       setNextKinematicTranslation: ({ x, y, z }: any) => preCalls.push(`translate:${x},${y},${z}`),
-      setNextKinematicRotation: ({ x, y, z, w }: any) => preCalls.push(`rotate:${x},${y},${z},${w}`),
+      setNextKinematicRotation: ({ x, y, z, w }: any) =>
+        preCalls.push(`rotate:${x},${y},${z},${w}`),
     } as any;
 
     const postBody = {
       setNextKinematicTranslation: ({ x, y, z }: any) => postCalls.push(`translate:${x},${y},${z}`),
-      setNextKinematicRotation: ({ x, y, z, w }: any) => postCalls.push(`rotate:${x},${y},${z},${w}`),
+      setNextKinematicRotation: ({ x, y, z, w }: any) =>
+        postCalls.push(`rotate:${x},${y},${z},${w}`),
     } as any;
 
     // Enqueue both pre and post mutations

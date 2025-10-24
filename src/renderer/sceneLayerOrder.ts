@@ -1,11 +1,11 @@
 /**
  * Centralized scene layer ordering constants for deterministic rendering.
- * 
+ *
  * Rendering order (back-to-front for transparency):
  * 1. OPAQUE_CORE: Depth-writing opaque geometry (star cores)
  * 2. OPAQUE_GEOMETRY (default 0): Standard opaque meshes (planets, ships, etc.)
  * 3. TRANSLUCENT_ADDITIVE: Additive transparent effects (halos, rings, glows)
- * 
+ *
  * All additive layers use depthTest=true to respect occlusion while avoiding
  * darkening artifacts from normal blending.
  */
@@ -32,10 +32,7 @@ export const RENDER_ORDER_TRANSLUCENT_ADDITIVE = 10;
  * Helper to validate renderOrder assignments during development.
  * Logs warning if a component uses non-standard renderOrder value.
  */
-export function validateRenderOrder(
-  componentName: string,
-  renderOrder: number
-): void {
+export function validateRenderOrder(componentName: string, renderOrder: number): void {
   const validOrders = [
     RENDER_ORDER_OPAQUE_CORE,
     RENDER_ORDER_OPAQUE_GEOMETRY,
@@ -45,9 +42,9 @@ export function validateRenderOrder(
   if (!validOrders.includes(renderOrder)) {
     console.warn(
       `[SceneLayerOrder] ${componentName} uses non-standard renderOrder ${renderOrder}. ` +
-      `Consider using: OPAQUE_CORE (${RENDER_ORDER_OPAQUE_CORE}), ` +
-      `OPAQUE_GEOMETRY (${RENDER_ORDER_OPAQUE_GEOMETRY}), or ` +
-      `TRANSLUCENT_ADDITIVE (${RENDER_ORDER_TRANSLUCENT_ADDITIVE})`
+        `Consider using: OPAQUE_CORE (${RENDER_ORDER_OPAQUE_CORE}), ` +
+        `OPAQUE_GEOMETRY (${RENDER_ORDER_OPAQUE_GEOMETRY}), or ` +
+        `TRANSLUCENT_ADDITIVE (${RENDER_ORDER_TRANSLUCENT_ADDITIVE})`,
     );
   }
 }

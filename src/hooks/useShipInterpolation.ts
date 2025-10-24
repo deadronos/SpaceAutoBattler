@@ -87,41 +87,48 @@ export function useShipInterpolation(
   const bankVelocityRef = useRef(0);
   const lastTickIndexRef = useRef(-1);
 
-  const interpolationState = useMemo((): InterpolationState => ({
-    prevSimPosition,
-    prevSimRotation,
-    currSimPosition,
-    currSimRotation,
-    visualPosition,
-    visualRotation,
-    targetVisualPosition,
-    visualLocalOffset,
-    visualOffset,
-    interpPosition,
-    interpRotation,
-    inverseInterpRotation,
-    bankQuaternion,
-    forwardAxis,
-    finalRotation,
-    get bankValue() { return bankValueRef.current; },
-    get lastTickIndex() { return lastTickIndexRef.current; },
-  }), [
-    prevSimPosition,
-    prevSimRotation,
-    currSimPosition,
-    currSimRotation,
-    visualPosition,
-    visualRotation,
-    targetVisualPosition,
-    visualLocalOffset,
-    visualOffset,
-    interpPosition,
-    interpRotation,
-    inverseInterpRotation,
-    bankQuaternion,
-    forwardAxis,
-    finalRotation,
-  ]);
+  const interpolationState = useMemo(
+    (): InterpolationState => ({
+      prevSimPosition,
+      prevSimRotation,
+      currSimPosition,
+      currSimRotation,
+      visualPosition,
+      visualRotation,
+      targetVisualPosition,
+      visualLocalOffset,
+      visualOffset,
+      interpPosition,
+      interpRotation,
+      inverseInterpRotation,
+      bankQuaternion,
+      forwardAxis,
+      finalRotation,
+      get bankValue() {
+        return bankValueRef.current;
+      },
+      get lastTickIndex() {
+        return lastTickIndexRef.current;
+      },
+    }),
+    [
+      prevSimPosition,
+      prevSimRotation,
+      currSimPosition,
+      currSimRotation,
+      visualPosition,
+      visualRotation,
+      targetVisualPosition,
+      visualLocalOffset,
+      visualOffset,
+      interpPosition,
+      interpRotation,
+      inverseInterpRotation,
+      bankQuaternion,
+      forwardAxis,
+      finalRotation,
+    ],
+  );
 
   useLayoutEffect(() => {
     prevSimPosition.copy(entity.transform.position);
@@ -343,7 +350,11 @@ export function updateInterpolation(
       } else if (bankAlpha >= 1) {
         bankValueRef.current = targetBankRad;
       } else {
-        bankValueRef.current = MathUtils.lerp(bankValueRef.current, targetBankRad, MathUtils.clamp(bankAlpha, 0, 1));
+        bankValueRef.current = MathUtils.lerp(
+          bankValueRef.current,
+          targetBankRad,
+          MathUtils.clamp(bankAlpha, 0, 1),
+        );
       }
       bankVelocityRef.current = 0;
     }
@@ -363,4 +374,3 @@ export function updateInterpolation(
     }
   }
 }
-

@@ -61,4 +61,3 @@ These changes are in `src/config/environment.ts`. Follow-up: create a small Play
 - `bloomOnly` appears in the schema and presets.
 - Memory bank includes TASK240 and `_index.md` references.
 - Follow-up implementation tasks created for wiring and tests.
-

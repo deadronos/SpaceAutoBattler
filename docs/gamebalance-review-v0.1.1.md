@@ -6,13 +6,13 @@ The report's analysis of ship stats and AI behaviors is largely accurate based o
 
 The report's table matches code definitions closely, with DPS derived as `damage / fireRate`. Key extractions:
 
-| Hull     | Max HP | Max Shield | Shield Regen (HP/s) | Primary DPS | Turret DPS | Total DPS (excl. fighters) | Speed (u/s) | Turn Rate (°/s) | Range (u) | Bullet Type |
-|----------|--------|------------|---------------------|-------------|------------|----------------------------|-------------|-----------------|-----------|-------------|
-| Fighter | 40    | 24        | 4.0                | 8.89       | 0         | 8.89                      | 40         | 270            | 220      | laser      |
-| Corvette| 75    | 45        | 5.0                | 10.00      | 12.00     | 22.00                     | 15         | 216            | 220      | plasma     |
-| Frigate | 120   | 72        | 7.0                | 10.67      | ~20.00    | ~30.67                    | 12         | 162            | 260      | plasma     |
-| Destroyer| 200  | 120       | 8.0                | 12.22      | ~26.78    | ~39.00                    | 10         | 108            | 400      | heavy      |
-| Carrier | 320   | 200       | 10.0               | 12.73      | ~25.84    | ~38.57 (+53.34 from 6 fighters = ~91.91) | 7 | 72             | 400      | ion        |
+| Hull      | Max HP | Max Shield | Shield Regen (HP/s) | Primary DPS | Turret DPS | Total DPS (excl. fighters)               | Speed (u/s) | Turn Rate (°/s) | Range (u) | Bullet Type |
+| --------- | ------ | ---------- | ------------------- | ----------- | ---------- | ---------------------------------------- | ----------- | --------------- | --------- | ----------- |
+| Fighter   | 40     | 24         | 4.0                 | 8.89        | 0          | 8.89                                     | 40          | 270             | 220       | laser       |
+| Corvette  | 75     | 45         | 5.0                 | 10.00       | 12.00      | 22.00                                    | 15          | 216             | 220       | plasma      |
+| Frigate   | 120    | 72         | 7.0                 | 10.67       | ~20.00     | ~30.67                                   | 12          | 162             | 260       | plasma      |
+| Destroyer | 200    | 120        | 8.0                 | 12.22       | ~26.78     | ~39.00                                   | 10          | 108             | 400       | heavy       |
+| Carrier   | 320    | 200        | 10.0                | 12.73       | ~25.84     | ~38.57 (+53.34 from 6 fighters = ~91.91) | 7           | 72              | 400       | ion         |
 
 - **Alignments**: HP/shield/speed/turn/range match exactly. Primary DPS calculations correct. Carrier fighter contribution verified (`src/config/carriers.ts`: maxActive=6, cooldown=1.5s; fighters add 6×8.89 DPS).
 - **Discrepancies**:
@@ -25,12 +25,12 @@ The report's table matches code definitions closely, with DPS derived as `damage
 
 Profiles and hull mappings match report exactly:
 
-| Profile   | Assigned Hulls     | Desired Range (u) | Aggression | Patience | Dodge Freq | Style    |
-|-----------|--------------------|-------------------|------------|----------|------------|----------|
-| Escort   | Fighter           | [70, 180]        | 0.8       | 0.5     | 0.3       | Escort  |
-| Brawler  | Corvette, Frigate | [120, 220]       | 0.9       | 0.3     | 0.2       | Brawler |
-| Artillery| Destroyer, Carrier| [260, 400]       | 0.6       | 0.7     | 0.1       | Artillery |
-| Kiter    | (Unused)          | [240, 360]       | 0.5       | 0.7     | 0.6       | Kiter   |
+| Profile   | Assigned Hulls     | Desired Range (u) | Aggression | Patience | Dodge Freq | Style     |
+| --------- | ------------------ | ----------------- | ---------- | -------- | ---------- | --------- |
+| Escort    | Fighter            | [70, 180]         | 0.8        | 0.5      | 0.3        | Escort    |
+| Brawler   | Corvette, Frigate  | [120, 220]        | 0.9        | 0.3      | 0.2        | Brawler   |
+| Artillery | Destroyer, Carrier | [260, 400]        | 0.6        | 0.7      | 0.1        | Artillery |
+| Kiter     | (Unused)           | [240, 360]        | 0.5        | 0.7      | 0.6        | Kiter     |
 
 - **Decision System**: Runs at 10Hz (`src/game/config.ts`: `tickRateHz:10`)—confirms report's "slow reactivity." Evaluates intents (Attack, Kite, Escort, Intercept, Reposition, Regroup, Flee) via scores factoring distance to range band, HP ratio, team posture (aggressive/hold/retreat from strength ratio), traits (seeded variations), and biases (e.g., +25 for artillery vs. carrier).
   - **Attack**: High if in band; thrusts to maintain (full towards if >max, 0.6 away if <min, 0.35 orbit if in); fires if ≤range.

@@ -32,7 +32,10 @@ interface ProgressionOptions {
   maxHpOverride?: number;
 }
 
-function applyProgressionDefaults<T extends ShipComponent>(ship: T, options?: ProgressionOptions): T;
+function applyProgressionDefaults<T extends ShipComponent>(
+  ship: T,
+  options?: ProgressionOptions,
+): T;
 ```
 
 - Returns the same instance for chaining; mutates in-place to avoid extra allocations in tight loops.
@@ -49,12 +52,12 @@ function applyProgressionDefaults<T extends ShipComponent>(ship: T, options?: Pr
 
 ## Error Handling
 
-| Scenario | Detection | Response |
-| --- | --- | --- |
-| Helper receives ship without `hull` defined | TypeScript typing + runtime fallback to `'fighter'` if absent | Default to `'fighter'` mapping and log via `console.warn` in helper (only during tests) |
-| Production config missing hull key | `createProgressionDefaults` throws or returns `undefined` entries | Fail fast with descriptive `Error` so tests surface missing config immediately |
-| Negative/zero `maxHp` passed to helper | Guard and default to `100` test HP, warn once | Prevents division-by-zero in subsystem calculations |
-| Tests mutate subsystem record to delete keys | Not prevented by helper | Add assertion helper `assertSubsystemKeys` in tests that rely on keys; document expectation in README |
+| Scenario                                     | Detection                                                         | Response                                                                                              |
+| -------------------------------------------- | ----------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Helper receives ship without `hull` defined  | TypeScript typing + runtime fallback to `'fighter'` if absent     | Default to `'fighter'` mapping and log via `console.warn` in helper (only during tests)               |
+| Production config missing hull key           | `createProgressionDefaults` throws or returns `undefined` entries | Fail fast with descriptive `Error` so tests surface missing config immediately                        |
+| Negative/zero `maxHp` passed to helper       | Guard and default to `100` test HP, warn once                     | Prevents division-by-zero in subsystem calculations                                                   |
+| Tests mutate subsystem record to delete keys | Not prevented by helper                                           | Add assertion helper `assertSubsystemKeys` in tests that rely on keys; document expectation in README |
 
 ## Unit Testing Strategy
 

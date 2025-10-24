@@ -13,7 +13,7 @@ This document reviews the live code and configuration (v0.1.3c audit) and provid
 - Carrier fighter-swarm remains the single largest imbalance risk: carriers can host up to 6 active fighters (configurable in `src/config/carriers.ts`) with a launch cooldown of 1.5s. When combined with the carrier's own weapon suite this produces a dramatic DPS spike compared to other hulls.
 - Speed-tier gap between `fighter` (40) and `corvette` (15) is large (≈2.67×), creating hard-interception issues that limit counterplay.
 - AI vertical movement is enabled by default and non-zero (contrary to older snapshots): `AI_CONFIG.verticalEnabled` is true and vertical maneuvers are applied with a configurable clamp (`headingYClamp`, `verticalClamp`). The AI tick rate is effectively 15 Hz by default (experimental path enabled), improving responsiveness relative to older 10 Hz assumptions.
-- Spawn/separation settings place fleets at distances tuned from ship ranges (separation = maxRange * SPAWN_CONFIG.initialSeparationFactor), producing initial engagement separations of ~600 units for the default hull set (carrier range = 400).
+- Spawn/separation settings place fleets at distances tuned from ship ranges (separation = maxRange \* SPAWN_CONFIG.initialSeparationFactor), producing initial engagement separations of ~600 units for the default hull set (carrier range = 400).
 - Shield regeneration is absolute (numeric shield points per second) and therefore scales differently vs. hull HP; small hulls regain a large fraction of their shield per second.
 
 ## Methodology & references
@@ -98,7 +98,7 @@ Computed per-source data (rounded to 2 decimals):
 
 ## Concrete prioritized recommendations (actionable)
 
-1) Immediate (low-risk, quick to test)
+1. Immediate (low-risk, quick to test)
 
 - Reduce carrier active fighter cap or raise cooldown
   - Example: `CARRIER_LAUNCH_CONFIG.maxActive: 6 -> 4` and/or `cooldownSeconds: 1.5 -> 2.0` (`src/config/carriers.ts`). Expected effect: reduces sustained swarm DPS by ~33%-50%.
@@ -167,12 +167,10 @@ Carrier swarms remain the top balance risk in v0.1.3c; targetted, low-risk tunin
 
 ## Appendix: computed DPS table (code-derived)
 
-| Hull | Primary DPS | Turret DPS | Total DPS | Max Active Fighters |
-|------:|------------:|-----------:|----------:|--------------------:|
-| Fighter | 8.89 | 0.00 | 8.89 | N/A |
-| Corvette | 10.00 | 12.00 | 22.00 | N/A |
-| Frigate | 10.67 | 20.00 | 30.67 | N/A |
-| Destroyer | 12.22 | 26.79 | 39.01 | N/A |
-| Carrier | 12.73 | 25.85 | 38.58 | 6 (default in config) |
-
-
+|      Hull | Primary DPS | Turret DPS | Total DPS |   Max Active Fighters |
+| --------: | ----------: | ---------: | --------: | --------------------: |
+|   Fighter |        8.89 |       0.00 |      8.89 |                   N/A |
+|  Corvette |       10.00 |      12.00 |     22.00 |                   N/A |
+|   Frigate |       10.67 |      20.00 |     30.67 |                   N/A |
+| Destroyer |       12.22 |      26.79 |     39.01 |                   N/A |
+|   Carrier |       12.73 |      25.85 |     38.58 | 6 (default in config) |

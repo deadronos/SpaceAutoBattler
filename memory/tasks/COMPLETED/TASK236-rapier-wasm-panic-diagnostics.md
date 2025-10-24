@@ -37,13 +37,13 @@ Instrument Rapier step execution so physics panics record structured diagnostics
 
 ### Subtasks
 
-| ID | Description | Status | Updated | Notes |
-| --- | --- | --- | --- | --- |
-| 1.1 | Extend simulation diagnostics types and state initialisers with panic fields | Complete | 2025-10-02 | Wired defaults in `createGameState` and fixtures. |
-| 1.2 | Implement `recordRapierStepPanic` with per-tick de-duplication and tests | Complete | 2025-10-02 | Added helper plus snapshot publisher guarded by debug flag. |
-| 1.3 | Wrap `physicsWorld.step` and expose debug snapshot buffer | Complete | 2025-10-02 | `updateGame` now records panics and rethrows. |
-| 1.4 | Add Vitest coverage for diagnostics and update loop behaviour | Complete | 2025-10-02 | New `rapier-diagnostics` and `update-game-panic` specs pass. |
-| 1.5 | Document validation results and update Memory Bank | Complete | 2025-10-02 | Progress log + active context refreshed with diagnostics notes. |
+| ID  | Description                                                                  | Status   | Updated    | Notes                                                           |
+| --- | ---------------------------------------------------------------------------- | -------- | ---------- | --------------------------------------------------------------- |
+| 1.1 | Extend simulation diagnostics types and state initialisers with panic fields | Complete | 2025-10-02 | Wired defaults in `createGameState` and fixtures.               |
+| 1.2 | Implement `recordRapierStepPanic` with per-tick de-duplication and tests     | Complete | 2025-10-02 | Added helper plus snapshot publisher guarded by debug flag.     |
+| 1.3 | Wrap `physicsWorld.step` and expose debug snapshot buffer                    | Complete | 2025-10-02 | `updateGame` now records panics and rethrows.                   |
+| 1.4 | Add Vitest coverage for diagnostics and update loop behaviour                | Complete | 2025-10-02 | New `rapier-diagnostics` and `update-game-panic` specs pass.    |
+| 1.5 | Document validation results and update Memory Bank                           | Complete | 2025-10-02 | Progress log + active context refreshed with diagnostics notes. |
 
 ## Progress Tracking
 

@@ -217,7 +217,10 @@ describe('writeCommand executors', () => {
     writeCommand(state, ship, ship.ai!, profile, movingTarget, null, null);
 
     expect(ship.ai!.command.thrust).toBeCloseTo(1, 2);
-  const direct = new Vector3().copy(movingTarget.transform.position).sub(ship.transform.position).normalize();
+    const direct = new Vector3()
+      .copy(movingTarget.transform.position)
+      .sub(ship.transform.position)
+      .normalize();
     expect(ship.ai!.command.heading.distanceTo(direct)).toBeGreaterThan(0.01);
     expect(ship.ai!.command.heading.z).toBeLessThan(direct.z);
     expect(ship.ai!.command.firePrimary).toBe(true);
@@ -272,7 +275,7 @@ describe('writeCommand executors', () => {
   it('applies role-specific vertical perturbation amplitudes', () => {
     const state = createState();
     state.ai.tickIndex = 10;
-    
+
     // Test different profiles to ensure role-specific amplitudes
     const testCases = [
       { profileId: 'escort', expectedMin: 0.45, description: 'fighters (escort profile)' },
@@ -280,7 +283,10 @@ describe('writeCommand executors', () => {
       { profileId: 'artillery', expectedMin: 0.01, description: 'artillery (destroyer/carrier)' },
     ];
 
-    for (const [testCaseIndex, { profileId, expectedMin, description: _description }] of testCases.entries()) {
+    for (const [
+      testCaseIndex,
+      { profileId, expectedMin, description: _description },
+    ] of testCases.entries()) {
       const ship = createShip(20 + testCaseIndex, 'blue', new Vector3(0, 0, 0));
       ship.ai!.profileId = profileId;
       ship.ai!.intent = 'Attack';
@@ -316,7 +322,7 @@ describe('writeCommand executors', () => {
 
     try {
       writeCommand(state, fighter, fighter.ai!, profile, target, null, null);
-      
+
       // When disabled, heading.y should be close to 0 (no vertical perturbation)
       expect(Math.abs(fighter.ai!.command.heading.y)).toBeLessThan(0.001);
     } finally {
@@ -344,7 +350,7 @@ describe('writeCommand executors', () => {
   it('collects vertical dispersion statistics for validation', () => {
     const state = createState();
     state.ai.tickIndex = 15;
-    
+
     // Create multiple ships with different profiles
     const ships = [
       { id: 101, profileId: 'escort', position: new Vector3(0, 0, 0) },
@@ -353,7 +359,7 @@ describe('writeCommand executors', () => {
       { id: 104, profileId: 'escort', position: new Vector3(150, 8, 0) },
     ];
 
-    const entities = ships.map(config => {
+    const entities = ships.map((config) => {
       const ship = createShip(config.id, 'blue', config.position);
       ship.ai!.profileId = config.profileId;
       ship.ai!.intent = 'Attack';
@@ -380,12 +386,11 @@ describe('writeCommand executors', () => {
 
     // Verify some vertical diversity (not all zeros)
     const headingYSamples = state.blackboard.verticalDispersion!.headingYSamples;
-    const nonZeroSamples = headingYSamples.filter(y => Math.abs(y) > 0.001);
+    const nonZeroSamples = headingYSamples.filter((y) => Math.abs(y) > 0.001);
     expect(nonZeroSamples.length).toBeGreaterThan(0); // Should have some non-zero vertical components
 
     // Check that heading Y values are clamped
-    const maxAbsY = Math.max(...headingYSamples.map(y => Math.abs(y)));
+    const maxAbsY = Math.max(...headingYSamples.map((y) => Math.abs(y)));
     expect(maxAbsY).toBeLessThanOrEqual(0.3); // Should respect headingYClamp
   });
 });
-

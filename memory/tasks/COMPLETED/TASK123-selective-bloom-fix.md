@@ -23,6 +23,7 @@ The existing implementation passes a plain `Set` into `SelectiveBloomEffect`, wh
 ## Progress Log
 
 ### 2025-02-14
+
 - Created task entry and outlined plan for selective bloom fix.
 - Replaced raw Set usage with `Selection` maps per bloom group and added configurable registration options.
 - Added per-group postprocessing configuration and wired ships, shields, projectiles, explosions, and muzzle flashes into explicit bloom groups.

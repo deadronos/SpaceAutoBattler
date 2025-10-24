@@ -103,12 +103,12 @@ export function safeSetNextKinematicTranslation(
 
 ## Error Handling Matrix
 
-| Failure Mode | Detection | Response | Recovery |
-|--------------|-----------|----------|----------|
-| Closure throws (e.g., spawn blueprint invalid) | `flushDeferredMutations` try/catch | Log `console.warn('[TASK230] deferred mutation failed', err)` | Continue with remaining closures; queue already cleared |
-| Queue grows unbounded | Development instrumentation (Vitest coverage + optional assertions) | Optional `if (queue.length > 1000) console.warn` | Future tuning; out of scope |
-| Turret rigid body disposed | Safe setter returns early | No further action | Next tick will remove turret via `unregisterTurret` |
-| Flush not invoked (bug) | Vitest regression asserts `deferredMutations.length === 0` post `updateGame` | Fail test | Fix implementation |
+| Failure Mode                                   | Detection                                                                    | Response                                                      | Recovery                                                |
+| ---------------------------------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------- | ------------------------------------------------------- |
+| Closure throws (e.g., spawn blueprint invalid) | `flushDeferredMutations` try/catch                                           | Log `console.warn('[TASK230] deferred mutation failed', err)` | Continue with remaining closures; queue already cleared |
+| Queue grows unbounded                          | Development instrumentation (Vitest coverage + optional assertions)          | Optional `if (queue.length > 1000) console.warn`              | Future tuning; out of scope                             |
+| Turret rigid body disposed                     | Safe setter returns early                                                    | No further action                                             | Next tick will remove turret via `unregisterTurret`     |
+| Flush not invoked (bug)                        | Vitest regression asserts `deferredMutations.length === 0` post `updateGame` | Fail test                                                     | Fix implementation                                      |
 
 ## Testing Strategy
 

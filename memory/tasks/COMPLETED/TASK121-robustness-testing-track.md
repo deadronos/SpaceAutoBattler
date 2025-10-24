@@ -7,16 +7,18 @@
 ## Original Request
 
 Track 2 (Robustness & Testing)
+
 - Add deterministic rotation unit test (given simTime → expected angle)
 - Add fallback test: simulate texture load failure (mock throw) -> material still instantiates
 - Add Playwright static screenshot baseline for visual diff (one with planets visible)
-Outcome: Hardens system before further polish
+  Outcome: Hardens system before further polish
 
 ## Thought Process
 
 This track focuses on improving the robustness and testability of the celestial system. The existing system already has deterministic rotation in PlanetBody.tsx using simulation time, but lacks comprehensive testing.
 
 Key areas to strengthen:
+
 1. Deterministic rotation testing to ensure reproducible planet orientations
 2. Fallback behavior when texture loading fails (already partially implemented)
 3. Visual regression testing with Playwright screenshots
@@ -38,13 +40,13 @@ The existing usePlanetTexture hook already handles texture loading failures with
 
 ### Subtasks
 
-| ID  | Description           | Status        | Updated    | Notes                |
-| --- | --------------------- | ------------- | ---------- | -------------------- |
+| ID  | Description                      | Status   | Updated    | Notes                                 |
+| --- | -------------------------------- | -------- | ---------- | ------------------------------------- |
 | 2.1 | Deterministic rotation unit test | Complete | 2025-01-23 | planet-deterministic-rotation.spec.ts |
-| 2.2 | Texture loading fallback test | Complete | 2025-01-23 | planet-texture-fallback.spec.ts |
-| 2.3 | Playwright screenshot baseline | Complete | 2025-01-23 | celestial-visual-baseline.spec.ts |
-| 2.4 | Visual diff setup | Complete | 2025-01-23 | Screenshot baselines created |
-| 2.5 | Test documentation | Complete | 2025-01-23 | All tests documented and passing |
+| 2.2 | Texture loading fallback test    | Complete | 2025-01-23 | planet-texture-fallback.spec.ts       |
+| 2.3 | Playwright screenshot baseline   | Complete | 2025-01-23 | celestial-visual-baseline.spec.ts     |
+| 2.4 | Visual diff setup                | Complete | 2025-01-23 | Screenshot baselines created          |
+| 2.5 | Test documentation               | Complete | 2025-01-23 | All tests documented and passing      |
 
 ## Progress Log
 

@@ -25,7 +25,14 @@ export default defineConfig({
   plugins: [glslLoaderPlugin()],
   assetsInclude: ['**/*.glb', '**/*.glsl'],
   test: {
-    include: ['test/vitest/*.spec.ts', 'test/vitest/*.test.ts', 'test/vitest/**/*.spec.ts', 'test/vitest/**/*.spec.tsx', 'test/components/**/*.spec.ts', 'test/components/**/*.spec.tsx'],
+    include: [
+      'test/vitest/*.spec.ts',
+      'test/vitest/*.test.ts',
+      'test/vitest/**/*.spec.ts',
+      'test/vitest/**/*.spec.tsx',
+      'test/components/**/*.spec.ts',
+      'test/components/**/*.spec.tsx',
+    ],
     exclude: ['test/playwright/**'],
     environment: 'happy-dom',
     setupFiles: path.resolve(rootDir, 'test/vitest/setupTests.ts'),

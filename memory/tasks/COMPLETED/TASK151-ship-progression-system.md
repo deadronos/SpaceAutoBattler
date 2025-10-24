@@ -22,30 +22,35 @@ All of this should be in-memory only for now, with no persistence. The design sh
 ## Implementation Plan
 
 ### Phase 1: Type Extensions and Core Systems
+
 - [ ] 1.1 Extend ShipComponent with XP, level, captain, and subsystem fields
 - [ ] 1.2 Create Captain, Subsystem, and DamageType type definitions
 - [ ] 1.3 Add damage type effectiveness matrix
 - [ ] 1.4 Create XP calculation and level-up logic
 
 ### Phase 2: Combat System Updates
+
 - [ ] 2.1 Update projectile resolution to use damage types and subsystem targeting
 - [ ] 2.2 Implement critical hit system for subsystem damage
 - [ ] 2.3 Add XP rewards for damage dealing and kills
 - [ ] 2.4 Implement repair system that runs per game tick
 
 ### Phase 3: Captain System
+
 - [ ] 3.1 Add captain assignment logic for large ships
 - [ ] 3.2 Implement captain traits (accuracy, repairSpeed, moraleAbility)
 - [ ] 3.3 Create morale ability system with cooldowns and AI intent modification
 - [ ] 3.4 Add captain scaling with ship XP/level
 
 ### Phase 4: Level-up and Stat Scaling
+
 - [ ] 4.1 Implement level-up stat bonuses with caps/diminishing returns
 - [ ] 4.2 Add subsystem status effects (damaged engine = reduced speed, etc.)
 - [ ] 4.3 Create repair prioritization system
 - [ ] 4.4 Balance XP curves and stat scaling
 
 ### Phase 5: Testing and Validation
+
 - [ ] 5.1 Create unit tests for XP gain, level-up mechanics
 - [ ] 5.2 Test damage type effectiveness calculations
 - [ ] 5.3 Test captain traits and morale abilities
@@ -58,29 +63,29 @@ All of this should be in-memory only for now, with no persistence. The design sh
 
 ### Subtasks
 
-| ID  | Description           | Status                                     | Updated    | Notes                |
-| --- | --------------------- | ------------------------------------------ | ---------- | -------------------- |
-| 1.1 | Extend ShipComponent types | Complete | 2025-01-27 | Added XP, level, captain, subsystems, armor fields |
-| 1.2 | Create new type definitions | Complete | 2025-01-27 | Captain, Subsystem, DamageType, etc. |
-| 1.3 | Add damage effectiveness matrix | Complete | 2025-01-27 | plasma vs armor, ion vs shields, etc. |
-| 1.4 | Create XP and level-up logic | Complete | 2025-01-27 | Level curves and stat scaling with caps |
-| 2.1 | Update projectile resolution | Complete | 2025-01-27 | Uses new damage type system |
-| 2.2 | Implement critical hit system | Complete | 2025-01-27 | 15% chance subsystem damage |
-| 2.3 | Add XP rewards | Complete | 2025-01-27 | XP per damage (0.1x) and kills (0.5x maxHP) |
-| 2.4 | Implement repair system | Complete | 2025-01-27 | Per-tick repairs in prepareShips |
-| 3.1 | Captain assignment logic | Complete | 2025-01-27 | 80% destroyer, 100% carrier |
-| 3.2 | Captain traits | Complete | 2025-01-27 | accuracy (0.85-1.15), repairSpeed (0.8-1.2) |
-| 3.3 | Morale ability system | Complete | 2025-01-27 | 3 types with cooldowns and duration |
-| 3.4 | Captain scaling | Complete | 2025-01-27 | Traits affect combat and repairs |
-| 4.1 | Level-up stat bonuses | Complete | 2025-01-27 | Hull, shield, damage, repair, shieldRegen bonuses |
-| 4.2 | Subsystem status effects | Complete | 2025-01-27 | Engine affects speed, weapons affect damage, etc. |
-| 4.3 | Repair prioritization | Complete | 2025-01-27 | Shields -> weapons -> engine order |
-| 4.4 | Balance XP and scaling | Complete | 2025-01-27 | Exponential XP curve, capped bonuses |
-| 5.1 | XP and level-up tests | Complete | 2025-01-27 | 17 comprehensive tests passing |
-| 5.2 | Damage type tests | Complete | 2025-01-27 | Effectiveness calculations verified |
-| 5.3 | Captain traits tests | Complete | 2025-01-27 | Traits and morale abilities tested |
-| 5.4 | Subsystem tests | Complete | 2025-01-27 | Damage, repair, status effects tested |
-| 5.5 | Performance testing | Completed | 2025-09-30 | Performance threshold (<=3.5 ms/tick) accepted; baseline measurement to be recorded and attached to this task. |
+| ID  | Description                     | Status    | Updated    | Notes                                                                                                          |
+| --- | ------------------------------- | --------- | ---------- | -------------------------------------------------------------------------------------------------------------- |
+| 1.1 | Extend ShipComponent types      | Complete  | 2025-01-27 | Added XP, level, captain, subsystems, armor fields                                                             |
+| 1.2 | Create new type definitions     | Complete  | 2025-01-27 | Captain, Subsystem, DamageType, etc.                                                                           |
+| 1.3 | Add damage effectiveness matrix | Complete  | 2025-01-27 | plasma vs armor, ion vs shields, etc.                                                                          |
+| 1.4 | Create XP and level-up logic    | Complete  | 2025-01-27 | Level curves and stat scaling with caps                                                                        |
+| 2.1 | Update projectile resolution    | Complete  | 2025-01-27 | Uses new damage type system                                                                                    |
+| 2.2 | Implement critical hit system   | Complete  | 2025-01-27 | 15% chance subsystem damage                                                                                    |
+| 2.3 | Add XP rewards                  | Complete  | 2025-01-27 | XP per damage (0.1x) and kills (0.5x maxHP)                                                                    |
+| 2.4 | Implement repair system         | Complete  | 2025-01-27 | Per-tick repairs in prepareShips                                                                               |
+| 3.1 | Captain assignment logic        | Complete  | 2025-01-27 | 80% destroyer, 100% carrier                                                                                    |
+| 3.2 | Captain traits                  | Complete  | 2025-01-27 | accuracy (0.85-1.15), repairSpeed (0.8-1.2)                                                                    |
+| 3.3 | Morale ability system           | Complete  | 2025-01-27 | 3 types with cooldowns and duration                                                                            |
+| 3.4 | Captain scaling                 | Complete  | 2025-01-27 | Traits affect combat and repairs                                                                               |
+| 4.1 | Level-up stat bonuses           | Complete  | 2025-01-27 | Hull, shield, damage, repair, shieldRegen bonuses                                                              |
+| 4.2 | Subsystem status effects        | Complete  | 2025-01-27 | Engine affects speed, weapons affect damage, etc.                                                              |
+| 4.3 | Repair prioritization           | Complete  | 2025-01-27 | Shields -> weapons -> engine order                                                                             |
+| 4.4 | Balance XP and scaling          | Complete  | 2025-01-27 | Exponential XP curve, capped bonuses                                                                           |
+| 5.1 | XP and level-up tests           | Complete  | 2025-01-27 | 17 comprehensive tests passing                                                                                 |
+| 5.2 | Damage type tests               | Complete  | 2025-01-27 | Effectiveness calculations verified                                                                            |
+| 5.3 | Captain traits tests            | Complete  | 2025-01-27 | Traits and morale abilities tested                                                                             |
+| 5.4 | Subsystem tests                 | Complete  | 2025-01-27 | Damage, repair, status effects tested                                                                          |
+| 5.5 | Performance testing             | Completed | 2025-09-30 | Performance threshold (<=3.5 ms/tick) accepted; baseline measurement to be recorded and attached to this task. |
 
 ## Progress Log
 

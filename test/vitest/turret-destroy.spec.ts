@@ -212,4 +212,3 @@ describe('Turret destruction', () => {
     expect(state.colliderLookup.has((turret.collider as any).handle)).toBe(false);
   });
 });
-

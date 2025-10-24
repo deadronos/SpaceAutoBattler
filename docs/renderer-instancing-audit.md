@@ -74,6 +74,7 @@ Files and subsystems reviewed (non-exhaustive):
 ---
 
 Task mapping (local todo list):
+
 - `Convert projectiles to instanced rendering` (high priority)
 - `Batch turret muzzle flashes` (medium priority)
 - `Review shields and ships for instancing` (deferred, needs design)

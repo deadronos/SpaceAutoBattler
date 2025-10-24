@@ -33,12 +33,12 @@ useFrame(delta)
 
 ## Error Handling Matrix
 
-| Scenario | Detection | Response |
-| --- | --- | --- |
-| Simulation time non-finite | `Number.isFinite(simTime)` fails | Skip to fallback accumulator |
-| Simulation time stalls | `simTime <= lastUniformTimeRef` | Advance fallback using frame delta (or 1/60s minimum) |
-| Zero/negative frame delta | `delta <= 0` | Use previous delta or 1/60s safeguard |
-| Simulation resumes with jump | `simTime > lastUniformTimeRef` | Realign to simulation value and sync fallback ref |
+| Scenario                     | Detection                        | Response                                              |
+| ---------------------------- | -------------------------------- | ----------------------------------------------------- |
+| Simulation time non-finite   | `Number.isFinite(simTime)` fails | Skip to fallback accumulator                          |
+| Simulation time stalls       | `simTime <= lastUniformTimeRef`  | Advance fallback using frame delta (or 1/60s minimum) |
+| Zero/negative frame delta    | `delta <= 0`                     | Use previous delta or 1/60s safeguard                 |
+| Simulation resumes with jump | `simTime > lastUniformTimeRef`   | Realign to simulation value and sync fallback ref     |
 
 ## Testing Strategy
 

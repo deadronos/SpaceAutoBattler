@@ -14,11 +14,11 @@ Branch target: selectivebloomdebug
 
 ## Requirements (EARS)
 
-1. **WHEN** the star disk renders in the default scene, **THE SYSTEM SHALL** produce a luminance drop of at least 70% between radii 0.2 and 0.6 to emphasise the white-hot core and darker mid band. *(Acceptance: Playwright pixel probe comparing centre vs mid radius.)*
-2. **WHEN** the shader animates, **THE SYSTEM SHALL** maintain mid-band filament variance with a standard deviation ≥ 0.08 across 32 samples at radius 0.45. *(Acceptance: Playwright variance assertion.)*
-3. **WHEN** bloom is active, **THE SYSTEM SHALL** extend halo brightness beyond 1.15× geometry radius while keeping edge brightness ≤ 35% of core intensity. *(Acceptance: Playwright radial profile check.)*
-4. **WHEN** shader initialization or texture loading fails, **THE SYSTEM SHALL** fall back to the current stable material without WebGL errors. *(Acceptance: Vitest forcing material factory failure + fallback assert.)*
-5. **WHEN** debug overrides adjust shader parameters, **THE SYSTEM SHALL** clamp values within documented ranges to prevent NaN artefacts. *(Acceptance: Vitest covering new uniform clamp ranges.)*
+1. **WHEN** the star disk renders in the default scene, **THE SYSTEM SHALL** produce a luminance drop of at least 70% between radii 0.2 and 0.6 to emphasise the white-hot core and darker mid band. _(Acceptance: Playwright pixel probe comparing centre vs mid radius.)_
+2. **WHEN** the shader animates, **THE SYSTEM SHALL** maintain mid-band filament variance with a standard deviation ≥ 0.08 across 32 samples at radius 0.45. _(Acceptance: Playwright variance assertion.)_
+3. **WHEN** bloom is active, **THE SYSTEM SHALL** extend halo brightness beyond 1.15× geometry radius while keeping edge brightness ≤ 35% of core intensity. _(Acceptance: Playwright radial profile check.)_
+4. **WHEN** shader initialization or texture loading fails, **THE SYSTEM SHALL** fall back to the current stable material without WebGL errors. _(Acceptance: Vitest forcing material factory failure + fallback assert.)_
+5. **WHEN** debug overrides adjust shader parameters, **THE SYSTEM SHALL** clamp values within documented ranges to prevent NaN artefacts. _(Acceptance: Vitest covering new uniform clamp ranges.)_
 
 ## High-Level Design
 

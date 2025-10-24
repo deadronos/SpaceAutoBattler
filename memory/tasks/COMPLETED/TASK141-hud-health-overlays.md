@@ -29,11 +29,11 @@ Implement `/memory/designs_completed/design-hud-health-overlays.md` fully, addin
 
 ### Subtasks
 
-| ID  | Description | Status | Updated | Notes |
-| --- | ----------- | ------ | ------- | ----- |
-| 1.1 | Extend store/GameState with HUD toggle and mirroring | Complete | 2025-03-29 | Mirrored toggle to GameState via GameProvider. |
-| 1.2 | Implement overlay projection, components, and layout manager | Complete | 2025-03-29 | Added collector, layer, and occlusion rules. |
-| 1.3 | Add styles, tests, and documentation updates | Complete | 2025-03-29 | Shipped CSS updates and Vitest coverage suite. |
+| ID  | Description                                                  | Status   | Updated    | Notes                                          |
+| --- | ------------------------------------------------------------ | -------- | ---------- | ---------------------------------------------- |
+| 1.1 | Extend store/GameState with HUD toggle and mirroring         | Complete | 2025-03-29 | Mirrored toggle to GameState via GameProvider. |
+| 1.2 | Implement overlay projection, components, and layout manager | Complete | 2025-03-29 | Added collector, layer, and occlusion rules.   |
+| 1.3 | Add styles, tests, and documentation updates                 | Complete | 2025-03-29 | Shipped CSS updates and Vitest coverage suite. |
 
 ## Progress Log
 

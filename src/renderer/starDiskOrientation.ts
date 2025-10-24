@@ -22,7 +22,12 @@ export interface ViewAlignmentScratch {
 
 export function computeStarDiskQuaternion(direction: Vector3Like): Quaternion {
   const vector = new Vector3(direction.x, direction.y, direction.z);
-  if (!Number.isFinite(vector.x) || !Number.isFinite(vector.y) || !Number.isFinite(vector.z) || vector.lengthSq() === 0) {
+  if (
+    !Number.isFinite(vector.x) ||
+    !Number.isFinite(vector.y) ||
+    !Number.isFinite(vector.z) ||
+    vector.lengthSq() === 0
+  ) {
     return new Quaternion();
   }
   vector.normalize();

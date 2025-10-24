@@ -7,19 +7,22 @@
 ## Original Request
 
 Track 1 (Visual Polish – Low Risk)
+
 - Add subtle star disk (billboard) referencing starDirection
 - Introduce optional rim glow (fresnel) flag per planet
 - Tune directional + ambient balance (ensure UI & ships retain contrast)
-Outcome: Improves depth without structural changes
+  Outcome: Improves depth without structural changes
 
 ## Thought Process
 
 This track focuses on visual enhancements to the existing celestial system without major structural changes. The existing system already has:
+
 - StarLight component with directional lighting
 - PlanetBody component with configurable rim strength
 - CELESTIAL_ENVIRONMENT config with star direction
 
 Key improvements needed:
+
 1. Star disk billboard that follows the star direction for visual interest
 2. Enhanced rim glow shader for planets using fresnel calculations
 3. Lighting balance adjustments to maintain UI/ship contrast
@@ -39,13 +42,13 @@ Key improvements needed:
 
 ### Subtasks
 
-| ID  | Description           | Status        | Updated    | Notes                |
-| --- | --------------------- | ------------- | ---------- | -------------------- |
-| 1.1 | Create star disk billboard component | Complete | 2025-01-23 | StarDisk component with billboard behavior |
+| ID  | Description                           | Status   | Updated    | Notes                                       |
+| --- | ------------------------------------- | -------- | ---------- | ------------------------------------------- |
+| 1.1 | Create star disk billboard component  | Complete | 2025-01-23 | StarDisk component with billboard behavior  |
 | 1.2 | Add fresnel rim glow to planet shader | Complete | 2025-01-23 | PlanetRimMaterial with fresnel calculations |
-| 1.3 | Tune lighting balance | Complete | 2025-01-23 | Enhanced star light configuration |
-| 1.4 | Add config toggles | Complete | 2025-01-23 | Feature flags in CELESTIAL_ENVIRONMENT |
-| 1.5 | Visual testing | Complete | 2025-01-23 | All visual improvements verified working |
+| 1.3 | Tune lighting balance                 | Complete | 2025-01-23 | Enhanced star light configuration           |
+| 1.4 | Add config toggles                    | Complete | 2025-01-23 | Feature flags in CELESTIAL_ENVIRONMENT      |
+| 1.5 | Visual testing                        | Complete | 2025-01-23 | All visual improvements verified working    |
 
 ## Progress Log
 

@@ -17,7 +17,7 @@ export interface ProcessedRipple {
 
 export function scaleRippleAmplitudes(
   ripples: readonly ShieldRipple[],
-  ampScale: number
+  ampScale: number,
 ): ScaledRipple[] {
   return ripples.map((r) => ({
     dir: r.dir,
@@ -29,14 +29,14 @@ export function scaleRippleAmplitudes(
 
 export function filterSignificantRipples(
   ripples: readonly ScaledRipple[],
-  minAmp: number
+  minAmp: number,
 ): ScaledRipple[] {
   return ripples.filter((r) => r.scaledAmp >= minAmp);
 }
 
 export function coalesceRipples(
   ripples: readonly ScaledRipple[],
-  windowSec: number
+  windowSec: number,
 ): ScaledRipple[] {
   const coalesced: ScaledRipple[] = [];
 
@@ -62,7 +62,7 @@ export function coalesceRipples(
 
 export function sliceToMaxRipples(
   ripples: readonly ScaledRipple[],
-  maxRipples: number
+  maxRipples: number,
 ): ScaledRipple[] {
   if (ripples.length <= maxRipples) {
     return [...ripples];
@@ -72,7 +72,7 @@ export function sliceToMaxRipples(
 
 export function processRipplesForRendering(
   ripples: readonly ShieldRipple[],
-  tuning: ShieldRippleTuning
+  tuning: ShieldRippleTuning,
 ): ProcessedRipple[] {
   const ampScale = tuning.ampScale ?? 1.9;
   const minAmp = tuning.minRenderAmp ?? 0.02;

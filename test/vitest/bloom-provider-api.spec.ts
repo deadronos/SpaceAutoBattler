@@ -25,17 +25,16 @@ function TestConsumer() {
 
 describe('BloomProvider API', () => {
   it('computes a non-zero selection layer mask and can enable camera layers', () => {
-    const Tree = () => (
+    const Tree = () =>
       React.createElement(
         BloomProvider,
         { enabled: true },
         React.createElement(
           Canvas,
           { style: { width: '200px', height: '200px' } },
-          React.createElement(TestConsumer)
-        )
-      )
-    );
+          React.createElement(TestConsumer),
+        ),
+      );
 
     const { container } = render(React.createElement(Tree));
     expect(container).toBeTruthy();
@@ -60,17 +59,16 @@ describe('BloomProvider API', () => {
       return null;
     }
 
-    const Tree = () => (
+    const Tree = () =>
       React.createElement(
         BloomProvider,
         { enabled: true },
         React.createElement(
           Canvas,
           { style: { width: '200px', height: '200px' } },
-          React.createElement(RegisterAndReadMask)
-        )
-      )
-    );
+          React.createElement(RegisterAndReadMask),
+        ),
+      );
 
     const { container } = render(React.createElement(Tree));
     expect(container).toBeTruthy();

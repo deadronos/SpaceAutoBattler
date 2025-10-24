@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { WORLD_SIZE, WORLD_HALF, WORLD_BOUNDS_MARGIN, clampToWorld } from '../../src/game/config.js';
+import {
+  WORLD_SIZE,
+  WORLD_HALF,
+  WORLD_BOUNDS_MARGIN,
+  clampToWorld,
+} from '../../src/game/config.js';
 
 describe('world config and clamping', () => {
   it('has consistent halves and margins', () => {

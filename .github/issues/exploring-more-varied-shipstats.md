@@ -60,16 +60,19 @@ Add richer ship progression and damage systems to make battles deeper and more d
   - Consider repair queues or prioritization (repair hull before subsystem) as a follow-up.
 
 ## Files to inspect
+
 - `src/types/index.ts` (canonical `GameState`, ship types)
 - `src/utils/rng.ts` (seeded RNG for determinism)
 - `src/systems/` (combat logic, damage resolution, and any progression subsystems)
 - `src/entities/` or `src/components/` (ship definitions and subsystems) — if present
 
 ## Testing notes
+
 - Add Vitest unit tests for XP gain, leveling, captain modifiers, damage-type resolution, critical-subsystem behavior, and repairs.
 - Keep tests deterministic (seed RNG and fixed state inputs).
 
 ## Small task checklist
+
 - [ ] Audit `src/` to gather exact type names and current combat/progression flow (start with `src/types/index.ts`).
 - [ ] Draft `memory/design.md` with concrete type diffs and EARS requirements.
 - [ ] Implement types and unit tests for damage splitting and captain traits.
@@ -78,6 +81,7 @@ Add richer ship progression and damage systems to make battles deeper and more d
 - [ ] Validate with `npx tsc --noEmit` and `npm test`.
 
 ## Labels (suggested)
+
 - enhancement
 - design
 - needs-investigation
@@ -85,7 +89,7 @@ Add richer ship progression and damage systems to make battles deeper and more d
 
 ---
 
-*Notes:* This is intentionally non-persistent (ephemeral) for now — progression and captain upgrades are kept in-memory to keep the game lightweight. These are design ideas and require iteration and balancing.
+_Notes:_ This is intentionally non-persistent (ephemeral) for now — progression and captain upgrades are kept in-memory to keep the game lightweight. These are design ideas and require iteration and balancing.
 
 ## How to open on GitHub (local gh CLI)
 

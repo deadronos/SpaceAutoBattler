@@ -28,14 +28,14 @@ The top control bar currently exposes numerous toggles, squeezing critical contr
 
 ### Subtasks
 
-| ID  | Description                                             | Status        | Updated     | Notes |
-| --- | ------------------------------------------------------- | ------------- | ----------- | ----- |
-| 1.1 | Adjust `useUiStore` defaults and ensure config parity   | Complete      | 2025-09-28  | Enabled default postprocessing + AI V2 while preserving env overrides. |
-| 1.2 | Implement toggle configuration registries               | Complete      | 2025-09-28  | Added `hudToggleConfig.ts` with deterministic handlers. |
-| 1.3 | Build `HudToggleDrawer` + Settings/Debug drawers        | Complete      | 2025-09-28  | Created reusable drawer with SVG icons and accessibility affordances. |
-| 1.4 | Update controls/HUD layout and styling                  | Complete      | 2025-09-28  | Removed legacy toggles from controls; styled HUD drawers. |
-| 1.5 | Add Vitest coverage for defaults and drawers            | Complete      | 2025-09-28  | Authored `ui-store-defaults`, `ui-settings-panels`, `ui-debug-panels` specs. |
-| 1.6 | Perform validation (typecheck/tests/manual smoke)       | Complete      | 2025-09-28  | Ran `npm run typecheck` + `npm test`; manual HUD toggle smoke OK. |
+| ID  | Description                                           | Status   | Updated    | Notes                                                                        |
+| --- | ----------------------------------------------------- | -------- | ---------- | ---------------------------------------------------------------------------- |
+| 1.1 | Adjust `useUiStore` defaults and ensure config parity | Complete | 2025-09-28 | Enabled default postprocessing + AI V2 while preserving env overrides.       |
+| 1.2 | Implement toggle configuration registries             | Complete | 2025-09-28 | Added `hudToggleConfig.ts` with deterministic handlers.                      |
+| 1.3 | Build `HudToggleDrawer` + Settings/Debug drawers      | Complete | 2025-09-28 | Created reusable drawer with SVG icons and accessibility affordances.        |
+| 1.4 | Update controls/HUD layout and styling                | Complete | 2025-09-28 | Removed legacy toggles from controls; styled HUD drawers.                    |
+| 1.5 | Add Vitest coverage for defaults and drawers          | Complete | 2025-09-28 | Authored `ui-store-defaults`, `ui-settings-panels`, `ui-debug-panels` specs. |
+| 1.6 | Perform validation (typecheck/tests/manual smoke)     | Complete | 2025-09-28 | Ran `npm run typecheck` + `npm test`; manual HUD toggle smoke OK.            |
 
 ## Progress Log
 

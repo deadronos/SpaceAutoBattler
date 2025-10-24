@@ -35,14 +35,14 @@ Plan: reproduce issue via unit/integration tests or inspect game loop to confirm
 
 ### Subtasks
 
-| ID  | Description                                       | Status      | Updated    | Notes |
-| --- | ------------------------------------------------- | ----------- | ---------- | ----- |
-| 1.1 | Create task file and update tasks index           | Complete    | 2025-02-14 |       |
-| 1.2 | Investigate renderer shield visibility conditions | Complete    | 2025-02-14 | Identified stale fraction state issue |
-| 1.3 | Implement fix ensuring shields render             | Complete    | 2025-02-14 | Added reactive shield fraction tracking |
-| 1.4 | Add regression tests for shield visibility        | Complete    | 2025-02-14 | Updated heuristics to cover state sync |
-| 1.5 | Run full test suite                               | Complete    | 2025-02-14 | `npx tsc --noEmit`, `npm test`        |
-| 1.6 | Update task progress summary                      | Complete    | 2025-02-14 | Documented resolution                 |
+| ID  | Description                                       | Status   | Updated    | Notes                                   |
+| --- | ------------------------------------------------- | -------- | ---------- | --------------------------------------- |
+| 1.1 | Create task file and update tasks index           | Complete | 2025-02-14 |                                         |
+| 1.2 | Investigate renderer shield visibility conditions | Complete | 2025-02-14 | Identified stale fraction state issue   |
+| 1.3 | Implement fix ensuring shields render             | Complete | 2025-02-14 | Added reactive shield fraction tracking |
+| 1.4 | Add regression tests for shield visibility        | Complete | 2025-02-14 | Updated heuristics to cover state sync  |
+| 1.5 | Run full test suite                               | Complete | 2025-02-14 | `npx tsc --noEmit`, `npm test`          |
+| 1.6 | Update task progress summary                      | Complete | 2025-02-14 | Documented resolution                   |
 
 ## Progress Log
 
@@ -57,4 +57,3 @@ Plan: reproduce issue via unit/integration tests or inspect game loop to confirm
 - Added reactive shield fraction state with frame-level polling to detect visibility transitions and update material opacity.
 - Updated static analysis specs to assert new state-based logic and guard against regressions.
 - Ran `npx tsc --noEmit` and `npm test` — all 303 tests pass.
-

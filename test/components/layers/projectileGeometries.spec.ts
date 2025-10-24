@@ -1,6 +1,9 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { SphereGeometry } from 'three';
-import { getProjectileGeometry, clearProjectileGeometryCache } from '../../../src/utils/projectileGeometries.js';
+import {
+  getProjectileGeometry,
+  clearProjectileGeometryCache,
+} from '../../../src/utils/projectileGeometries.js';
 import { getProjectileBaseRadius } from '../../../src/config/projectiles.js';
 
 describe('projectile geometry cache', () => {

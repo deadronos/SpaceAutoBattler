@@ -9,20 +9,26 @@ The explosion renderer system has been refactored into a modular architecture fo
 ### Core Components
 
 #### `ExplosionRendererCore.tsx`
+
 Top-level React component that:
+
 - Manages refs to all instanced meshes
 - Orchestrates the frame loop via `useFrame`
 - Delegates per-effect updates to specialized updater functions
 - Finalizes mesh state each frame
 
 #### `instancedManager.ts`
+
 Utility module providing helper functions for:
+
 - Setting instance counts
 - Marking matrices and colors as dirty
 - Batch finalizing all meshes
 
 #### `effectUpdaters/`
+
 Individual modules for each effect type:
+
 - **flashUpdater.ts** - Bright camera-facing spheres that quickly fade
 - **shockwaveUpdater.ts** - Expanding ring billboards
 - **fireballUpdater.ts** - Transitioning spheres (hot to cool colors)
@@ -32,8 +38,9 @@ Individual modules for each effect type:
 - **smokeUpdater.ts** - Drifting camera-facing wisps
 
 Each updater exports a pure function with signature:
+
 ```typescript
-(ctx: EffectUpdateContext, mesh: InstancedMesh, startIndex: number, capacity: number) => number
+(ctx: EffectUpdateContext, mesh: InstancedMesh, startIndex: number, capacity: number) => number;
 ```
 
 Returns the number of instances used.
@@ -41,20 +48,26 @@ Returns the number of instances used.
 ### Supporting Modules
 
 #### `derived.ts`
+
 Pure helper module providing:
+
 - `getDerived()` - Cached deterministic particle generation using seeded RNG
 - `getCachedColor()` - Color instance caching
 - `randomUnitVector()` - Unit vector generation
 - `easeOutQuad()`, `clamp01()` - Math utilities
 
 #### `materials.ts`
+
 Resource management hook `useExplosionResources()` that creates and manages:
+
 - Geometries (spheres, rings, planes, tetrahedrons)
 - Materials (basic, standard, with appropriate blending modes)
 - Cleanup on unmount
 
 #### `constants.ts`
+
 Configuration constants for:
+
 - Capacities per effect type
 - Timing delays and durations
 - Particle count limits
@@ -81,21 +94,26 @@ ExplosionRendererCore
 ## Testing
 
 ### Unit Tests
+
 Located in `test/components/explosions/`:
+
 - **derived.spec.ts** - Tests for helper functions and caching
 - **instancedManager.spec.ts** - Tests for mesh management utilities
-- **effectUpdaters/*.spec.ts** - Tests for each effect updater
+- **effectUpdaters/\*.spec.ts** - Tests for each effect updater
 
 All updaters are tested for:
+
 - Correct instance count based on timing
 - Deterministic behavior with seeded RNG
 - Proper matrix and color updates
 - Edge cases (before delay, after duration, capacity limits)
 
 ### Test Coverage
+
 Current coverage: >80% for new explosion modules
 
 ### Running Tests
+
 ```bash
 npm test -- test/components/explosions
 ```
@@ -112,9 +130,9 @@ npm test -- test/components/explosions
 The original `ExplosionRenderer.tsx` now re-exports from `ExplosionRendererCore.tsx`:
 
 ```typescript
-export { 
-  ExplosionRendererCore as ExplosionRenderer, 
-  ExplosionsLayer 
+export {
+  ExplosionRendererCore as ExplosionRenderer,
+  ExplosionsLayer,
 } from './explosions/ExplosionRendererCore.js';
 ```
 
@@ -135,6 +153,7 @@ import { ExplosionsLayer } from './explosions/ExplosionRendererCore.js';
 ## Future Enhancements
 
 Potential areas for extension:
+
 - Additional effect types (electrical arcs, emp pulses)
 - Per-faction visual variations
 - Performance profiling and optimization

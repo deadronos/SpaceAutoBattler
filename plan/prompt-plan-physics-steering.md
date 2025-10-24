@@ -8,17 +8,18 @@ can we use generated animation like lerping to interpolate/smooth movement/steer
 
 dont code yet
 
-GitHub Copilot: I'll create a short todo list for this planning work and mark the first item (drafting the proposal) as in-progress so we have structured progress tracking. Then I'll lay out concrete options, recommended approach, parameters, tradeoffs, and testing/tuning guidance (no code). 
+GitHub Copilot: I'll create a short todo list for this planning work and mark the first item (drafting the proposal) as in-progress so we have structured progress tracking. Then I'll lay out concrete options, recommended approach, parameters, tradeoffs, and testing/tuning guidance (no code).
 
 Created 6 todos
 
-I'll mark the "Draft turn-smoothing proposal" todo as completed. Then I'll present the proposal with options, recommended approach, parameters, tradeoffs, and tests — no code. 
+I'll mark the "Draft turn-smoothing proposal" todo as completed. Then I'll present the proposal with options, recommended approach, parameters, tradeoffs, and tests — no code.
 
-Completed (1/6) *Draft turn-smoothing proposal*
+Completed (1/6) _Draft turn-smoothing proposal_
 
 I'll propose a non-code plan to reduce the "jumpy" look of ships that instantaneously change heading with AI v2. Below are options, a recommended approach (mix of deterministic physics and renderer smoothing), key parameters, tradeoffs, and a short test/tuning plan you can use before implementing.
 
 ## Summary (what I'll cover)
+
 - Why jumpiness happens
 - High-level options (physics, steering controllers, renderer smoothing, animation/VFX)
 - Recommended approach (combined)
@@ -29,28 +30,29 @@ I'll propose a non-code plan to reduce the "jumpy" look of ships that instantane
 - Acceptance criteria and tests for tuning
 
 ## Why ships look jumpy
+
 - AI chooses a new target heading and code instantly sets orientation or velocity direction.
 - The visual renderer immediately displays that change (or only waits a single tick), producing discontinuous rotation or velocity that looks unnatural.
 - Low simulation tick-rate or discrete steering updates amplify perceived snapping.
 
 ## High-level options (pros/cons)
 
-1) Physics-based movement (forces/torques, inertia)
+1. Physics-based movement (forces/torques, inertia)
    - Pros: Natural, predictable motion; single canonical source of truth (GameState); matches player expectations.
    - Cons: More parameters to tune; needs deterministic integration (use existing seeded RNG and GameState); slightly higher CPU.
    - Good for: simulation-first approach, accurate collisions.
 
-2) Steering controllers (PID/steering behaviors)
+2. Steering controllers (PID/steering behaviors)
    - Pros: Simple to add; directly control angular acceleration/turn smoothing; deterministic if implemented on GameState.
    - Cons: Requires tuning per ship class; can feel "floaty" if over-smoothed.
    - Good for: keeping simulation logic deterministic while avoiding heavy physics.
 
-3) Renderer-side smoothing / interpolation (visual-only)
+3. Renderer-side smoothing / interpolation (visual-only)
    - Pros: No simulation changes required; cheap and fast; allows changing visuals independent of sim.
    - Cons: Can hide simulation discrepancies; must be carefully implemented to avoid diverging visuals from sim state (especially in authoritative/netplay scenarios).
    - Good for: quick wins, improving visuals when sim is already "good enough".
 
-4) Generated animation / procedural bank & roll + particle VFX
+4. Generated animation / procedural bank & roll + particle VFX
    - Pros: Excellent for perceived smoothness; communicates forces; cheap to compute.
    - Cons: Cosmetic only; must be sync’d with sim to avoid mismatch.
 
@@ -89,6 +91,7 @@ Recommended: combine (1 or 2) + (3 + 4). Use deterministic steering (PID or torq
    - Playtest with reduced and increased tick rates to validate renderer smoothing blends well.
 
 ## Concrete ship stats to add (schema-like, no code)
+
 - mass: number (kg or unitless) — inertia baseline
 - collisionShape: enum | params (sphere radius / box dims / convex) — for physics/rapier
 - maxSpeed: number (units/sec)
@@ -109,6 +112,7 @@ Recommended: combine (1 or 2) + (3 + 4). Use deterministic steering (PID or torq
   - springStiffness, springDamping — if using spring smoothing
 
 Default example values (starting point; tune later):
+
 - mass: 1
 - maxSpeed: 30
 - linearAcceleration: 40
@@ -129,14 +133,14 @@ These are ballpark numbers — test and tune per ship size/class.
 
 - Torque-based (simulate angular inertia):
   - Compute angleError = shortestAngle(desiredHeading, currentHeading)
-  - DesiredAngularAccel = clamp(kp * angleError - kd * angularVelocity, -angularAcceleration, +angularAcceleration)
-  - angularVelocity += DesiredAngularAccel * dt
-  - rotate by angularVelocity * dt
+  - DesiredAngularAccel = clamp(kp _ angleError - kd _ angularVelocity, -angularAcceleration, +angularAcceleration)
+  - angularVelocity += DesiredAngularAccel \* dt
+  - rotate by angularVelocity \* dt
   - Pros: physically plausible, smooth. Cons: may overshoot; tuning needed.
 
 - PD (kinematic) controller that sets target angular velocity:
-  - targetAngularVel = clamp(kp * angleError, -maxTurnRate, +maxTurnRate)
-  - angularVelocity += clamp((targetAngularVel - angularVelocity) * responseFactor, -angularAcceleration * dt, +angularAcceleration * dt)
+  - targetAngularVel = clamp(kp \* angleError, -maxTurnRate, +maxTurnRate)
+  - angularVelocity += clamp((targetAngularVel - angularVelocity) _ responseFactor, -angularAcceleration _ dt, +angularAcceleration \* dt)
   - Pros: better control, less overshoot; deterministic.
 
 - Direct interpolation with smoothing (simpler, possibly acceptable):
@@ -146,29 +150,33 @@ These are ballpark numbers — test and tune per ship size/class.
 Pick PD/Torque for best tradeoff; ensure integrator and math are deterministic.
 
 ## Renderer smoothing algorithms (visual-only)
+
 - Simple lerp/slerp:
   - Each render frame compute alpha = fraction of time since last sim tick (frameTime / simDelta)
   - pos = lerp(prevSimPos, currSimPos, alpha)
   - rot = slerp(prevSimQuat, currSimQuat, alpha)
 
 - Exponential smoothing (per-frame low-pass):
-  - visual = visual * (1 - a) + sim * a, where a = 1 - exp(-k * dt)
+  - visual = visual _ (1 - a) + sim _ a, where a = 1 - exp(-k \* dt)
   - For rotations, convert to axis-angle or use squad/slerp with small alpha.
 
 - Critically-damped spring:
   - More advanced; maintains velocity and acceleration state, yields smooth, non-overshooting following. Use for camera-like smoothing or ship visual follow when you need both responsiveness and no overshoot.
 
 Notes:
+
 - If simulation rate varies or is lower than render FPS, prefer interpolation (lerp/slerp) between sim ticks to avoid temporal aliasing.
 - For authoritative sim, keep visual interpolation read-only and do not mutate GameState.
 
 ## Visual banking/animation
+
 - Compute lateral acceleration (accelLocal = transformWorldToLocal( (velocity - prevVelocity) / dt ) ) or compute turn rate.
-- Derive bank angle = clamp(-accelLocal.x * visualBankFactor, -maxBankDeg, +maxBankDeg); apply as roll to visual transform (multiply to sim rotation).
+- Derive bank angle = clamp(-accelLocal.x \* visualBankFactor, -maxBankDeg, +maxBankDeg); apply as roll to visual transform (multiply to sim rotation).
 - Blend bank via a smoothing filter (to avoid jitter due to small acceleration noise).
 - Add thruster particle intensity proportional to throttle and lateral thruster usage.
 
 ## Handling sudden direction changes due to AI target swapping
+
 - Add short hysteresis or responseDelay to heading updates:
   - If desired heading toggles between directions in <X ms, optionally ignore small reversals or low-confidence updates.
 - Optionally, use "planning heading" vs "immediate heading":
@@ -176,17 +184,20 @@ Notes:
 - Stabilize target selection: require sustained higher confidence before big heading shifts.
 
 ## Determinism & networking considerations
+
 - All simulation logic must belong to GameState and be deterministic (per repo instructions).
 - Renderer smoothing and visual-only animation may diverge visually but are acceptable if server-authoritative sim remains canonical.
 - If the project uses replay/deterministic simulation tests, ensure unit tests validate numerical integration and steering deterministic behavior.
 
 ## Performance considerations
+
 - Steering controllers are cheap (per-ship math). Torque-based physics slightly more expensive but still minimal for small fleets.
 - Renderer interpolation per frame per ship is cheap (few lerps and slerps).
 - Critically-damped spring or quaternion math is slightly more expensive but acceptable.
 - For many ships, avoid per-frame allocations; reuse vectors/quaternions.
 
 ## Acceptance criteria (measurable)
+
 - Ships no longer visually "snap" to new headings: turning should be continuous with max angular jerk limited by angularAcceleration.
 - Turn latency: time to rotate 180° should be consistent with ship stats (within +/-10%).
 - No perceptible stutter at both high and low simulation tick rates (test with dt=1/60 and dt=1/20).
@@ -194,6 +205,7 @@ Notes:
 - Deterministic unit tests for steering math pass under n=3 different dt values.
 
 ## Tests & tuning checklist
+
 - Unit tests:
   - Given initial heading, apply a target heading and verify angle over N ticks matches expected within tolerance.
   - Verify angular damping causes decay of angular velocity.
@@ -202,10 +214,11 @@ Notes:
   - Test with many ships turning in formation; look for unnatural separation or collisions (if physics used).
   - Run with low sim tick rate (e.g., 20Hz) and verify renderer interpolation hides aliasing.
 - Metrics:
-  - Log max instantaneous angular change between ticks (should be << maxTurnRate * dt).
+  - Log max instantaneous angular change between ticks (should be << maxTurnRate \* dt).
   - Measure overshoot ratio for PD controller.
 
 ## Implementation roadmap (next steps once you want code)
+
 - Add types/defaults to ship config and index.ts.
 - Implement controller in simulation update path (GameState systems).
 - Add renderer-side visual smoothing and banking transform in `Ship.tsx` or renderer system.
@@ -213,6 +226,7 @@ Notes:
 - Add unit tests in vitest for motion math.
 
 ## Small example tuning scenarios (guide)
+
 - Fighter (agile):
   - mass: 0.7, maxSpeed: 45, linearAccel: 90, maxTurnRate: 270°/s, angularAccel: 720°/s^2, visualBankFactor: 14°
 - Corvette (balanced):
@@ -223,17 +237,15 @@ Notes:
 Tune damping to remove oscillation: set angularDamping to ~0.1–0.5 depending on inertia.
 
 ## Final notes and recommendations
+
 - If you want a minimal, low-risk first step: implement renderer-side lerp/slerp and visual banking. This gives a large visual improvement with minimal simulation changes.
 - If you want consistent physics and future-proofing (collisions, formation behavior), implement steering controller on GameState next.
 - Keep tests deterministic and add "feel" playtests for designer tuning—numbers above are initial heuristics.
 
 If you want, I can now:
+
 - Draft the concrete TypeScript types and default values to add to index.ts and ships.ts, or
 - Implement renderer-side interpolation and banking in Ship.tsx first (quick visual win), or
 - Implement the deterministic PD/two-state steering controller in systems.ts (simulation change).
 
 Which next step should I take?
-
-
-
-

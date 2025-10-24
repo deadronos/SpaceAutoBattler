@@ -95,12 +95,12 @@ Consumers (`createGameState`, `runAIScenario`) read `AI_CONFIG.tickRateHz` and `
 
 ## Error Handling Matrix
 
-| Scenario | Detection | Response | Notes |
-| --- | --- | --- | --- |
-| Environment variable contains invalid boolean (e.g., `maybe`) | `readBooleanEnv` defaults to `false` | Treat as unset; experiment remains enabled by default | Avoid throwing so CI without env stays stable |
-| Spawn spread pushes ships outside world bounds | Post-compute `Vector3` clamped via `clampToWorld` | Positions clamped to safe bounds; log not required | Existing clamp handles this |
-| Harness run without first-shot events | `metrics.firstShotTimes` empty | KPI p-values become `null`; tests assert guard branch | Ensures baseline comparison test accounts for no shots |
-| Experiment flag toggled mid-run | Scheduler reads flag only at initialization | Documented limitation; per-frame toggling is out of scope | Future work: runtime toggle, not needed for Stage 1 |
+| Scenario                                                      | Detection                                         | Response                                                  | Notes                                                  |
+| ------------------------------------------------------------- | ------------------------------------------------- | --------------------------------------------------------- | ------------------------------------------------------ |
+| Environment variable contains invalid boolean (e.g., `maybe`) | `readBooleanEnv` defaults to `false`              | Treat as unset; experiment remains enabled by default     | Avoid throwing so CI without env stays stable          |
+| Spawn spread pushes ships outside world bounds                | Post-compute `Vector3` clamped via `clampToWorld` | Positions clamped to safe bounds; log not required        | Existing clamp handles this                            |
+| Harness run without first-shot events                         | `metrics.firstShotTimes` empty                    | KPI p-values become `null`; tests assert guard branch     | Ensures baseline comparison test accounts for no shots |
+| Experiment flag toggled mid-run                               | Scheduler reads flag only at initialization       | Documented limitation; per-frame toggling is out of scope | Future work: runtime toggle, not needed for Stage 1    |
 
 ## Unit Testing Strategy
 

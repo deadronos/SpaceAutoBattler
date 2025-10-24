@@ -116,7 +116,9 @@ export function runAIScenario(config: AIScenarioConfig): AIScenarioLog {
             if (!ship.ai) continue;
             const profileId = ship.ai.profileId;
             const profile = resolveBehaviorProfile(profileId);
-            lines.push(`shipdiag: id=${ship.id} profile=${profileId} traitSeed=${ship.ai.traitSeed} traits=${JSON.stringify(ship.ai.traits)} verticalManeuver=${profile.verticalManeuver}`);
+            lines.push(
+              `shipdiag: id=${ship.id} profile=${profileId} traitSeed=${ship.ai.traitSeed} traits=${JSON.stringify(ship.ai.traits)} verticalManeuver=${profile.verticalManeuver}`,
+            );
           }
         }
 
@@ -130,11 +132,11 @@ export function runAIScenario(config: AIScenarioConfig): AIScenarioLog {
             const nearest = state.blackboard.nearestEnemy.get(ship.id);
             const primaryTarget =
               nearest != null
-                ? shipsList.find((candidate) => candidate.id === nearest) ?? null
+                ? (shipsList.find((candidate) => candidate.id === nearest) ?? null)
                 : null;
             const escortAssignment = state.ai?.assignments?.escorts?.get?.(ship.id) ?? null;
             const escortTarget = escortAssignment
-              ? shipsList.find((candidate) => candidate.id === escortAssignment.vipId) ?? null
+              ? (shipsList.find((candidate) => candidate.id === escortAssignment.vipId) ?? null)
               : null;
             const typedState = state as unknown as GameState;
             const typedShip = ship as unknown as ShipEntity;
@@ -313,6 +315,3 @@ export type {
 } from './aiScenarioHarness/types.js';
 
 export type { AIScenarioTestMetrics } from './aiScenarioHarness/metricsSummary.js';
-
-
-

@@ -35,11 +35,11 @@ graph TD
 
 ## Error Handling Matrix
 
-| Failure Mode | Detection Mechanism | Procedure | Expected Response |
-| --- | --- | --- | --- |
-| Fixture regeneration script fails (TypeScript error or runtime exception) | `npx tsx tmp/refresh-ai-fixtures.ts` exits non-zero | Inspect stack trace, resolve harness/runtime issue, rerun script | Script completes successfully and fixtures update |
-| Fixture drift detected by Vitest after harness changes | `test/vitest/ai-scenario-harness.spec.ts` equality assertion fails | Run refresh script, review git diff for plausibility, rerun tests | Tests pass with updated fixtures |
-| Non-deterministic harness output (e.g., RNG misuse) | Fixture diffs vary between consecutive regeneration attempts | Investigate harness code for unseeded randomness; add deterministic seed usage; regenerate fixtures | Regenerated fixtures remain stable across runs |
+| Failure Mode                                                              | Detection Mechanism                                                | Procedure                                                                                           | Expected Response                                 |
+| ------------------------------------------------------------------------- | ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| Fixture regeneration script fails (TypeScript error or runtime exception) | `npx tsx tmp/refresh-ai-fixtures.ts` exits non-zero                | Inspect stack trace, resolve harness/runtime issue, rerun script                                    | Script completes successfully and fixtures update |
+| Fixture drift detected by Vitest after harness changes                    | `test/vitest/ai-scenario-harness.spec.ts` equality assertion fails | Run refresh script, review git diff for plausibility, rerun tests                                   | Tests pass with updated fixtures                  |
+| Non-deterministic harness output (e.g., RNG misuse)                       | Fixture diffs vary between consecutive regeneration attempts       | Investigate harness code for unseeded randomness; add deterministic seed usage; regenerate fixtures | Regenerated fixtures remain stable across runs    |
 
 ## Unit Testing Strategy
 

@@ -26,11 +26,11 @@ User observed that the star shader stopped animating and asked whether the time 
 
 **Overall Status:** Completed - 100%
 
-| ID  | Description                                                   | Status       | Updated    | Notes |
-| --- | ------------------------------------------------------------- | ------------ | ---------- | ----- |
-| 1.1 | Detach forced basic material rendering from debug flag        | Completed    | 2025-10-03 | Shader always attached; helpers remain gated by debug flag. |
-| 1.2 | Add Vitest coverage for shader retention & time advancement   | Completed    | 2025-10-03 | Extended `star-disk-debug-lockdown` spec with new cases. |
-| 1.3 | Run targeted tests and refresh memory documentation           | Completed    | 2025-10-03 | Ran `npx vitest test/vitest/star-disk-debug-lockdown.spec.tsx` and `npm run typecheck`. |
+| ID  | Description                                                 | Status    | Updated    | Notes                                                                                   |
+| --- | ----------------------------------------------------------- | --------- | ---------- | --------------------------------------------------------------------------------------- |
+| 1.1 | Detach forced basic material rendering from debug flag      | Completed | 2025-10-03 | Shader always attached; helpers remain gated by debug flag.                             |
+| 1.2 | Add Vitest coverage for shader retention & time advancement | Completed | 2025-10-03 | Extended `star-disk-debug-lockdown` spec with new cases.                                |
+| 1.3 | Run targeted tests and refresh memory documentation         | Completed | 2025-10-03 | Ran `npx vitest test/vitest/star-disk-debug-lockdown.spec.tsx` and `npm run typecheck`. |
 
 ## Progress Log
 

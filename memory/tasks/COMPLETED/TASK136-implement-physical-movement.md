@@ -37,33 +37,33 @@ This aligns with the project constraints: all state on GameState, deterministic 
 
 ### Subtasks
 
-| ID  | Description                                    | Status      | Updated    | Notes |
-|-----|-----------------------------------------------|-------------|------------|----------------------------------------------|
-| 1.1 | Add MotionStats interface to types             | Complete    | 2025-09-22 | Phase 1: Foundation types                    |
-| 1.2 | Update ship stats with motion defaults         | Complete    | 2025-09-22 | Per-class tuning values                      |
-| 1.3 | Add renderer smoothing config                  | Complete    | 2025-09-23 | Global defaults for interpolation/banking    |
-| 1.4 | Add validation helpers                         | Complete    | 2025-09-23 | Motion stats range guard                     |
-| 2.1 | Create motion system module                    | Complete    | 2025-09-22 | Phase 2: Core physics implementation         |
-| 2.2 | Implement angular PD control                   | Complete    | 2025-09-22 | Shortest arc, rate limits                    |
-| 2.3 | Add continuous angular damping                 | Complete    | 2025-09-22 | 1 - exp(-damping * dt)                       |
-| 2.4 | Implement linear acceleration                  | Complete    | 2025-09-22 | Forward thrust with speed caps               |
-| 2.5 | Add lateral acceleration support               | Complete    | 2025-09-23 | Command-driven strafe & telemetry            |
-| 2.6 | Optimize allocation-free hot paths             | Complete    | 2025-09-22 | Reuse temp vectors/quaternions               |
-| 2.7 | Wire into main simulation loop                 | Complete    | 2025-09-22 | Call order after AI, before collision        |
-| 3.1 | Track transform history in Ship.tsx            | Complete    | 2025-09-23 | Cached prev/curr transforms for lerp         |
-| 3.2 | Apply lerp/slerp interpolation                 | Complete    | 2025-09-23 | Visual smoothing via fixed-step alpha        |
-| 3.3 | Guard teleport/spawn edge cases                | Complete    | 2025-09-23 | Teleport threshold resets interpolation      |
-| 4.1 | Compute banking from yaw rate                  | Complete    | 2025-09-23 | Uses angular velocity & lateral ratio        |
-| 4.2 | Add smooth banking filter                      | Complete    | 2025-09-23 | Low-pass filtered roll clamp                 |
-| 4.3 | Hook thruster VFX to throttle                  | Complete    | 2025-09-23 | Emissive intensity scales with thrust |
-| 5.1 | Add motion math unit tests                   | Complete    | 2025-09-22 | Covered wrap/damping/accel clamp cases |
-| 5.2 | Add motion system integration scenarios        | Complete    | 2025-09-22 | Forward accel & turn validations        |
-| 5.3 | Add determinism regression coverage            | Complete    | 2025-09-22 | Replayed seeds across multiple ticks    |
-| 6.1 | Author Playwright movement smoke                | Complete    | 2025-09-24 | Samples ship transforms via __SAB API   |
-| 6.2 | Enforce heuristics + role-based locators        | Complete    | 2025-09-24 | Monitors displacement & rotation bounds |
-| 7.1 | Link movement spec from README                  | Complete    | 2025-09-24 | Added dedicated doc section             |
-| 7.2 | Document MotionStats tuning notes               | Complete    | 2025-09-22 | Inline comments on per-hull defaults    |
-| 7.3 | Add troubleshooting notes to docs               | Complete    | 2025-09-24 | Diagnosed dt spikes & teleports         |
+| ID  | Description                              | Status   | Updated    | Notes                                     |
+| --- | ---------------------------------------- | -------- | ---------- | ----------------------------------------- |
+| 1.1 | Add MotionStats interface to types       | Complete | 2025-09-22 | Phase 1: Foundation types                 |
+| 1.2 | Update ship stats with motion defaults   | Complete | 2025-09-22 | Per-class tuning values                   |
+| 1.3 | Add renderer smoothing config            | Complete | 2025-09-23 | Global defaults for interpolation/banking |
+| 1.4 | Add validation helpers                   | Complete | 2025-09-23 | Motion stats range guard                  |
+| 2.1 | Create motion system module              | Complete | 2025-09-22 | Phase 2: Core physics implementation      |
+| 2.2 | Implement angular PD control             | Complete | 2025-09-22 | Shortest arc, rate limits                 |
+| 2.3 | Add continuous angular damping           | Complete | 2025-09-22 | 1 - exp(-damping \* dt)                   |
+| 2.4 | Implement linear acceleration            | Complete | 2025-09-22 | Forward thrust with speed caps            |
+| 2.5 | Add lateral acceleration support         | Complete | 2025-09-23 | Command-driven strafe & telemetry         |
+| 2.6 | Optimize allocation-free hot paths       | Complete | 2025-09-22 | Reuse temp vectors/quaternions            |
+| 2.7 | Wire into main simulation loop           | Complete | 2025-09-22 | Call order after AI, before collision     |
+| 3.1 | Track transform history in Ship.tsx      | Complete | 2025-09-23 | Cached prev/curr transforms for lerp      |
+| 3.2 | Apply lerp/slerp interpolation           | Complete | 2025-09-23 | Visual smoothing via fixed-step alpha     |
+| 3.3 | Guard teleport/spawn edge cases          | Complete | 2025-09-23 | Teleport threshold resets interpolation   |
+| 4.1 | Compute banking from yaw rate            | Complete | 2025-09-23 | Uses angular velocity & lateral ratio     |
+| 4.2 | Add smooth banking filter                | Complete | 2025-09-23 | Low-pass filtered roll clamp              |
+| 4.3 | Hook thruster VFX to throttle            | Complete | 2025-09-23 | Emissive intensity scales with thrust     |
+| 5.1 | Add motion math unit tests               | Complete | 2025-09-22 | Covered wrap/damping/accel clamp cases    |
+| 5.2 | Add motion system integration scenarios  | Complete | 2025-09-22 | Forward accel & turn validations          |
+| 5.3 | Add determinism regression coverage      | Complete | 2025-09-22 | Replayed seeds across multiple ticks      |
+| 6.1 | Author Playwright movement smoke         | Complete | 2025-09-24 | Samples ship transforms via \_\_SAB API   |
+| 6.2 | Enforce heuristics + role-based locators | Complete | 2025-09-24 | Monitors displacement & rotation bounds   |
+| 7.1 | Link movement spec from README           | Complete | 2025-09-24 | Added dedicated doc section               |
+| 7.2 | Document MotionStats tuning notes        | Complete | 2025-09-22 | Inline comments on per-hull defaults      |
+| 7.3 | Add troubleshooting notes to docs        | Complete | 2025-09-24 | Diagnosed dt spikes & teleports           |
 
 ## Progress Log
 
@@ -82,7 +82,7 @@ This aligns with the project constraints: all state on GameState, deterministic 
 - Ready to start Phase 2: Deterministic Motion System
 - **PHASE 2 COMPLETE**: Created comprehensive motion system with PD angular control and linear acceleration
 - Implemented updateMotionSystem with shortest-arc error calculation for smooth turning
-- Added continuous damping using exponential decay formulas: exp(-damping * dt)
+- Added continuous damping using exponential decay formulas: exp(-damping \* dt)
 - Integrated forward acceleration with speed caps and world bounds clamping
 - Created motion math utilities (shortestAngle, dampingFactor) with 9 unit tests
 - Added motion system behavior tests with 6 integration scenarios

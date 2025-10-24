@@ -19,11 +19,13 @@ Move thruster trail rendering from a CPU-managed particle pool to GPU-driven ins
 ## Scope
 
 In scope:
+
 - `src/components/ParticleTrails.tsx` (rewrite to GPU buffers, optional test hooks, disposal logic).
 - New Vitest coverage under `test/vitest/particle-trails-gpu.spec.tsx`.
 - Memory bank updates (requirements, task file, index) and documentation for design/plan.
 
 Out of scope:
+
 - Changing renderer config defaults (color, spawn rate, lifetime).
 - Overhauling bloom registration or integrating additional post-processing.
 - Compute shader / transform feedback implementation (instanced attributes with custom shader only).
@@ -99,21 +101,25 @@ export interface ParticleTrailResources {
 
 export function createParticleTrailResources(
   maxParticles: number,
-  config: Pick<ParticleTrailsConfig, 'size' | 'color' | 'opacity' | 'additiveBlending' | 'depthTest' | 'depthWrite'>,
+  config: Pick<
+    ParticleTrailsConfig,
+    'size' | 'color' | 'opacity' | 'additiveBlending' | 'depthTest' | 'depthWrite'
+  >,
 ): ParticleTrailResources;
 ```
 
 Component contract adjustments:
+
 - `ParticleTrails` accepts optional `resources?: ParticleTrailResources` (primarily for tests) and still renders nothing when `PARTICLE_TRAILS_CONFIG.enabled` is false.
 
 ## Error Handling Matrix
 
-| Scenario | Detection | Response | Notes |
-| --- | --- | --- | --- |
-| GLTF scene missing or bounds zero | `makeAnchors` receives `null` | Return empty anchors; fallback heuristic populates cache lazily | Matches current behavior, avoids crashes |
-| Geometry allocation failure | Factory throws | Propagate error (surface during development); component unmounts cleanly | Low risk, but documented |
-| Spawn ring saturation | `filledCount` reaches `maxParticles` | Continue overwriting oldest particles (ring buffer) while keeping `instanceCount = maxParticles` | Matches previous pool semantics |
-| Negative throttle or invalid config | Throttle check + clamps | Skip spawning, leave existing particles unaffected | Prevents NaN velocities |
+| Scenario                            | Detection                            | Response                                                                                         | Notes                                    |
+| ----------------------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------ | ---------------------------------------- |
+| GLTF scene missing or bounds zero   | `makeAnchors` receives `null`        | Return empty anchors; fallback heuristic populates cache lazily                                  | Matches current behavior, avoids crashes |
+| Geometry allocation failure         | Factory throws                       | Propagate error (surface during development); component unmounts cleanly                         | Low risk, but documented                 |
+| Spawn ring saturation               | `filledCount` reaches `maxParticles` | Continue overwriting oldest particles (ring buffer) while keeping `instanceCount = maxParticles` | Matches previous pool semantics          |
+| Negative throttle or invalid config | Throttle check + clamps              | Skip spawning, leave existing particles unaffected                                               | Prevents NaN velocities                  |
 
 ## Testing Strategy
 
@@ -134,9 +140,9 @@ Component contract adjustments:
 
 ## Risks & Mitigations
 
-- **Risk:** Shader mistakes could yield invisible particles. *Mitigation:* Keep shader minimal, verify alpha fade logic in tests, and expose color/opacity uniforms for debugging.*
-- **Risk:** Remainder map growth if ships churn rapidly. *Mitigation:* Clean stale map entries when ships array omits prior keys (e.g., prune each frame for absent ships).
-- **Risk:** Tests might fail due to actual Three.js constructors executing. *Mitigation:* Use real classes but inject resources, mocking only `useFrame`/`useGLTF` similar to existing component tests.
+- **Risk:** Shader mistakes could yield invisible particles. _Mitigation:_ Keep shader minimal, verify alpha fade logic in tests, and expose color/opacity uniforms for debugging.\*
+- **Risk:** Remainder map growth if ships churn rapidly. _Mitigation:_ Clean stale map entries when ships array omits prior keys (e.g., prune each frame for absent ships).
+- **Risk:** Tests might fail due to actual Three.js constructors executing. _Mitigation:_ Use real classes but inject resources, mocking only `useFrame`/`useGLTF` similar to existing component tests.
 
 ## Open Questions
 

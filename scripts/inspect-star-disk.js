@@ -9,9 +9,15 @@ const { chromium } = require('playwright');
   const page = await context.newPage();
 
   const consoleMessages = [];
-  page.on('console', msg => {
+  page.on('console', (msg) => {
     try {
-      const args = msg.args().map(a => a._remoteObject && a._remoteObject.value !== undefined ? a._remoteObject.value : String(a));
+      const args = msg
+        .args()
+        .map((a) =>
+          a._remoteObject && a._remoteObject.value !== undefined
+            ? a._remoteObject.value
+            : String(a),
+        );
       consoleMessages.push({ type: msg.type(), text: msg.text(), args });
     } catch (e) {
       consoleMessages.push({ type: msg.type(), text: msg.text() });
@@ -51,7 +57,7 @@ const { chromium } = require('playwright');
     '__copilot_glLogs',
     '__copilot_forceStarOpaque',
     '__copilot_star_forceOnTop',
-    '__copilot_star_forcedOpaque'
+    '__copilot_star_forcedOpaque',
   ];
 
   for (const k of keys) {
@@ -67,7 +73,11 @@ const { chromium } = require('playwright');
     results._localStorage = await page.evaluate(() => {
       try {
         return {
-          copilot_star_compiled: (localStorage && localStorage.getItem && localStorage.getItem('copilot_star_compiled')) || null
+          copilot_star_compiled:
+            (localStorage &&
+              localStorage.getItem &&
+              localStorage.getItem('copilot_star_compiled')) ||
+            null,
         };
       } catch (e) {
         return { error: String(e) };
@@ -84,7 +94,9 @@ const { chromium } = require('playwright');
 
   const out = { url, results, consoleMessages };
   const outPath = path.resolve(process.cwd(), 'test-output', 'star-disk-inspect.json');
-  try { fs.mkdirSync(path.dirname(outPath), { recursive: true }); } catch (e) { }
+  try {
+    fs.mkdirSync(path.dirname(outPath), { recursive: true });
+  } catch (e) {}
   fs.writeFileSync(outPath, JSON.stringify(out, null, 2), 'utf8');
   console.log('INSPECT_OK', outPath);
 })();

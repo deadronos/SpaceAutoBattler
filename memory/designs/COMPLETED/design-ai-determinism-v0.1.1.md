@@ -79,10 +79,10 @@ digraph G {
 // src/game/systems.ts
 interface IntentScore {
   intent: AIIntent;
-  score: number;        // floating value, quantised to 0.1 increments
-  priority: number;     // derived from intent order map
+  score: number; // floating value, quantised to 0.1 increments
+  priority: number; // derived from intent order map
   targetId?: number;
-  threatRank?: number;  // lower is more threatening
+  threatRank?: number; // lower is more threatening
   distance?: number;
 }
 
@@ -114,7 +114,7 @@ interface DecisionDiagnostics {
 export const AI_CONFIG = {
   // ...existing
   scorePrecision: 0.1,
-  intentPriority: ['Attack','Intercept','Escort','Kite','Reposition','Regroup','Flee'],
+  intentPriority: ['Attack', 'Intercept', 'Escort', 'Kite', 'Reposition', 'Regroup', 'Flee'],
   threatWeights: {
     hull: { carrier: 6, destroyer: 5, frigate: 4, corvette: 3, fighter: 2 },
     hpScalar: 0.0025,

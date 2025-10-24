@@ -3,7 +3,10 @@ import { Vector3 } from 'three';
 import { createTestGameState, createTestShip } from './helpers/fixtures.js';
 import { fireProjectile } from '../../src/game/systems/projectiles.js';
 import { flushPostPhysicsMutations } from '../../src/game/simulationQueue.js';
-import { createRapierShim, createPhysicsWorldShim } from '../../src/game/aiScenarioHarness/rapierShim.js';
+import {
+  createRapierShim,
+  createPhysicsWorldShim,
+} from '../../src/game/aiScenarioHarness/rapierShim.js';
 
 describe('fireProjectile bulletType propagation', () => {
   it('attaches bulletType from fighter to projectile', () => {

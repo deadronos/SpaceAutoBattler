@@ -15,6 +15,7 @@ The AI system supports several experimental features that can be controlled via 
 **Default**: `true`
 
 **Configuration**:
+
 - Environment: `AI_VERTICAL_EXPERIMENT_ON=true/false`, `AI_VERTICAL_EXPERIMENT_OFF=true/false`
 - URL Query: `?ai_vertical=true/false`
 - Runtime: Available in developer HUD toggles
@@ -28,6 +29,7 @@ The AI system supports several experimental features that can be controlled via 
 **Default**: `true`
 
 **Configuration**:
+
 - Environment: `AI_ENGAGEMENT_BOOST_ON=true/false`, `AI_ENGAGEMENT_BOOST_OFF=true/false`
 - URL Query: `?ai_engagement=true/false`
 - Runtime: Available in developer HUD toggles
@@ -41,6 +43,7 @@ The AI system supports several experimental features that can be controlled via 
 **Default**: `true`
 
 **Configuration**:
+
 - Environment: `AI_TICKRATE_EXPERIMENT_ON=true/false`, `AI_TICKRATE_EXPERIMENT_OFF=true/false`
 - URL Query: `?ai_tick_experiment=true/false` or `?ai_tick_rate=experimental/15`
 - Runtime: Available in developer HUD toggles
@@ -54,10 +57,12 @@ The AI system supports several experimental features that can be controlled via 
 **Default**: `'v0.1.1-exp'`
 
 **Options**:
+
 - `'v0.1.1-exp'`: Experimental range policy with ±5% variance
 - Any other value: Stable range policy without variance
 
 **Configuration**:
+
 - Environment: `AI_RANGE_POLICY=v0.1.1-exp` or `AI_RANGE_POLICY=stable`
 - URL Query: `?ai_range_policy=v0.1.1-exp` or `?ai_range_policy=stable`
 - Runtime: Available in developer HUD toggles

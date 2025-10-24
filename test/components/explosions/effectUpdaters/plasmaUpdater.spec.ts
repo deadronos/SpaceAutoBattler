@@ -1,5 +1,14 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { Camera, Color, InstancedMesh, Object3D, Quaternion, Vector3, SphereGeometry, MeshBasicMaterial } from 'three';
+import {
+  Camera,
+  Color,
+  InstancedMesh,
+  Object3D,
+  Quaternion,
+  Vector3,
+  SphereGeometry,
+  MeshBasicMaterial,
+} from 'three';
 import { updatePlasma } from '../../../../src/components/explosions/effectUpdaters/plasmaUpdater.js';
 import type { EffectUpdateContext } from '../../../../src/components/explosions/effectUpdaters/types.js';
 import type { ExplosionEvent } from '../../../../src/types/index.js';

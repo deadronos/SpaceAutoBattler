@@ -33,10 +33,7 @@ export function useArchetypeEntities<T extends GameEntity>(
     let cleanupAdded: (() => void) | null = null;
     let cleanupRemoved: (() => void) | null = null;
 
-    const tryRegister = (
-      eventObj: any,
-      cb: () => void,
-    ): (() => void) | null => {
+    const tryRegister = (eventObj: any, cb: () => void): (() => void) | null => {
       if (!eventObj) return null;
 
       // Legacy add/remove pair

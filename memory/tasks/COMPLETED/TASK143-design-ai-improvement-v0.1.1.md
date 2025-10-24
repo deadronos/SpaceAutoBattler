@@ -29,14 +29,14 @@ The design targets AI vertical maneuvering, spawn geometry adjustments, engageme
 
 ### Subtasks
 
-| ID  | Description                                                  | Status        | Updated     | Notes |
-| --- | ------------------------------------------------------------ | ------------- | ----------- | ----- |
-| 1.1 | Update configuration/types for new toggles and parameters    | Completed     | 2025-09-27  | Added AI & spawn config fields, behavior profile typings. |
-| 1.2 | Revise spawn initialization per design geometry              | Completed     | 2025-09-27  | New separation, anchor Y randomization, vertical spread. |
-| 1.3 | Implement AI vertical perturbations and escort shell logic   | Completed     | 2025-09-27  | Added vertical perturb helper and spherical escort offsets. |
-| 1.4 | Introduce engagement boost, band stickiness, range policies  | Completed     | 2025-09-27  | Engagement boost, stickiness timers, range policy adjustments. |
-| 1.5 | Update projectile adjustments per range policy               | Completed     | 2025-09-27  | Projectile speed variance tied to range policy toggle. |
-| 1.6 | Add/update automated tests                                   | Completed     | 2025-09-27  | Added spawn geometry + executor coverage updates. |
+| ID  | Description                                                 | Status    | Updated    | Notes                                                          |
+| --- | ----------------------------------------------------------- | --------- | ---------- | -------------------------------------------------------------- |
+| 1.1 | Update configuration/types for new toggles and parameters   | Completed | 2025-09-27 | Added AI & spawn config fields, behavior profile typings.      |
+| 1.2 | Revise spawn initialization per design geometry             | Completed | 2025-09-27 | New separation, anchor Y randomization, vertical spread.       |
+| 1.3 | Implement AI vertical perturbations and escort shell logic  | Completed | 2025-09-27 | Added vertical perturb helper and spherical escort offsets.    |
+| 1.4 | Introduce engagement boost, band stickiness, range policies | Completed | 2025-09-27 | Engagement boost, stickiness timers, range policy adjustments. |
+| 1.5 | Update projectile adjustments per range policy              | Completed | 2025-09-27 | Projectile speed variance tied to range policy toggle.         |
+| 1.6 | Add/update automated tests                                  | Completed | 2025-09-27 | Added spawn geometry + executor coverage updates.              |
 
 ## Progress Log
 

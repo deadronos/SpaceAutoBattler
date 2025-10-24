@@ -60,11 +60,7 @@ export function randomUnitVector(rng: SeededRng): Vector3 {
   const theta = 2 * Math.PI * u;
   const phi = Math.acos(2 * v - 1);
   const sinPhi = Math.sin(phi);
-  return new Vector3(
-    Math.cos(theta) * sinPhi,
-    Math.sin(theta) * sinPhi,
-    Math.cos(phi),
-  );
+  return new Vector3(Math.cos(theta) * sinPhi, Math.sin(theta) * sinPhi, Math.cos(phi));
 }
 
 function createDerived(event: ExplosionEvent): DerivedExplosionData {
@@ -127,7 +123,12 @@ function createDerived(event: ExplosionEvent): DerivedExplosionData {
 
 export function getDerived(event: ExplosionEvent): DerivedExplosionData {
   const cached = derivedCache.get(event);
-  if (cached && cached.seed === event.seed && cached.radius === event.radius && cached.hull === event.hull) {
+  if (
+    cached &&
+    cached.seed === event.seed &&
+    cached.radius === event.radius &&
+    cached.hull === event.hull
+  ) {
     return cached.data;
   }
   const data = createDerived(event);

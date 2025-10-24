@@ -19,7 +19,8 @@ describe('No pre-step physics world mutation rule', () => {
     const src = join(process.cwd(), 'src');
     const files = listFiles(src);
     const violations: { file: string; snippet: string }[] = [];
-    const pattern = /enqueueDeferredMutation\s*\([\s\S]*?\)\s*=>\s*{[\s\S]*?(createRigidBody|createCollider|removeRigidBody|removeCollider)/g;
+    const pattern =
+      /enqueueDeferredMutation\s*\([\s\S]*?\)\s*=>\s*{[\s\S]*?(createRigidBody|createCollider|removeRigidBody|removeCollider)/g;
 
     for (const file of files) {
       const content = readFileSync(file, 'utf8');

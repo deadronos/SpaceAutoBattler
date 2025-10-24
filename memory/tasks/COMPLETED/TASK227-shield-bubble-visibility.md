@@ -18,10 +18,10 @@ User report: "shield bubbles are missing, examine /src" (2025-09-29).
 
 ## Implementation Plan
 
-1. Introduce a named render-order constant for shields and apply it in `ShieldBubble`, ensuring the mesh draws after hulls. *(Owner: Copilot, Dep: none)*
-2. Update `ShieldHexMaterial` (and fallback material path) to disable depth testing while keeping depth writes disabled, preventing hull occlusion. *(Owner: Copilot, Dep: Step 1)*
-3. Add Vitest regression covering render order, `depthTest`, and bloom registration to lock behavior. *(Owner: Copilot, Dep: Steps 1-2)*
-4. Run `npm run typecheck` and `npm test`; capture manual screenshot confirmation if possible. *(Owner: Copilot, Dep: Step 3)*
+1. Introduce a named render-order constant for shields and apply it in `ShieldBubble`, ensuring the mesh draws after hulls. _(Owner: Copilot, Dep: none)_
+2. Update `ShieldHexMaterial` (and fallback material path) to disable depth testing while keeping depth writes disabled, preventing hull occlusion. _(Owner: Copilot, Dep: Step 1)_
+3. Add Vitest regression covering render order, `depthTest`, and bloom registration to lock behavior. _(Owner: Copilot, Dep: Steps 1-2)_
+4. Run `npm run typecheck` and `npm test`; capture manual screenshot confirmation if possible. _(Owner: Copilot, Dep: Step 3)_
 
 ## Progress Tracking
 
@@ -29,13 +29,13 @@ User report: "shield bubbles are missing, examine /src" (2025-09-29).
 
 ### Subtasks
 
-| ID  | Description                                                             | Status        | Updated    | Notes |
-| --- | ----------------------------------------------------------------------- | ------------- | ---------- | ----- |
-| 1.1 | Document requirements and design in memory bank                         | Complete      | 2025-09-29 | Requirements + design committed. |
-| 1.2 | Adjust shield render order and depth testing behavior                   | Complete      | 2025-09-29 | Render order constant added; material disables depth test. |
-| 1.3 | Add regression tests for shield render order and bloom registration     | Complete      | 2025-09-29 | Vitest coverage asserts constant usage and material flags. |
-| 1.4 | Brighten shield tuning (alpha floors, margins) and add config regression| Complete      | 2025-09-29 | Increased visibility via config updates and static tests. |
-| 1.5 | Run validation suite and capture visual confirmation                    | Complete      | 2025-09-29 | `npm run typecheck`, `npm test`; awaiting manual screenshot confirmation. |
+| ID  | Description                                                              | Status   | Updated    | Notes                                                                     |
+| --- | ------------------------------------------------------------------------ | -------- | ---------- | ------------------------------------------------------------------------- |
+| 1.1 | Document requirements and design in memory bank                          | Complete | 2025-09-29 | Requirements + design committed.                                          |
+| 1.2 | Adjust shield render order and depth testing behavior                    | Complete | 2025-09-29 | Render order constant added; material disables depth test.                |
+| 1.3 | Add regression tests for shield render order and bloom registration      | Complete | 2025-09-29 | Vitest coverage asserts constant usage and material flags.                |
+| 1.4 | Brighten shield tuning (alpha floors, margins) and add config regression | Complete | 2025-09-29 | Increased visibility via config updates and static tests.                 |
+| 1.5 | Run validation suite and capture visual confirmation                     | Complete | 2025-09-29 | `npm run typecheck`, `npm test`; awaiting manual screenshot confirmation. |
 
 ## Progress Log
 

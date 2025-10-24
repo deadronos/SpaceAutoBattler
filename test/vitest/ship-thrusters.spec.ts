@@ -1,7 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { Color } from 'three';
 import type { MeshStandardMaterial } from 'three';
-import { updateThrusterIntensity, type ThrusterMaterialEntry } from '../../src/hooks/useShipThrusters.js';
+import {
+  updateThrusterIntensity,
+  type ThrusterMaterialEntry,
+} from '../../src/hooks/useShipThrusters.js';
 
 describe('Ship Thrusters', () => {
   let mockThrusters: ThrusterMaterialEntry[];
@@ -16,7 +19,7 @@ describe('Ship Thrusters', () => {
         material: {
           emissiveIntensity: 0.5,
           emissive: {
-            copy: function(color: Color) {
+            copy: function (color: Color) {
               this.r = color.r;
               this.g = color.g;
               this.b = color.b;
@@ -33,7 +36,7 @@ describe('Ship Thrusters', () => {
         material: {
           emissiveIntensity: 1.0,
           emissive: {
-            copy: function(color: Color) {
+            copy: function (color: Color) {
               this.r = color.r;
               this.g = color.g;
               this.b = color.b;
@@ -59,7 +62,7 @@ describe('Ship Thrusters', () => {
 
       // First thruster: baseIntensity (0.8) + range (0.4) * throttle (0.5) = 1.0
       expect(mockThrusters[0].material!.emissiveIntensity).toBeCloseTo(1.0);
-      
+
       // Second thruster: baseIntensity (1.0) + range (0.4) * throttle (0.5) = 1.2
       expect(mockThrusters[1].material!.emissiveIntensity).toBeCloseTo(1.2);
     });
@@ -78,7 +81,7 @@ describe('Ship Thrusters', () => {
       const firstExpectedR = 0.2 * expectedMultiplier;
       const firstExpectedG = 0.4 * expectedMultiplier;
       const firstExpectedB = 1.0 * expectedMultiplier;
-      
+
       expect(mockThrusters[0].material!.emissive.r).toBeCloseTo(firstExpectedR, 3);
       expect(mockThrusters[0].material!.emissive.g).toBeCloseTo(firstExpectedG, 3);
       expect(mockThrusters[0].material!.emissive.b).toBeCloseTo(firstExpectedB, 3);
@@ -124,7 +127,7 @@ describe('Ship Thrusters', () => {
         material: {
           emissiveIntensity: 0.5,
           emissive: {
-            copy: function(color: Color) {
+            copy: function (color: Color) {
               this.r = color.r;
               this.g = color.g;
               this.b = color.b;
@@ -142,7 +145,13 @@ describe('Ship Thrusters', () => {
       const baseIntensity = 0.7;
       const range = 0.2;
 
-      updateThrusterIntensity([thrusterWithoutBase], throttle, baseIntensity, range, thrusterColorRef);
+      updateThrusterIntensity(
+        [thrusterWithoutBase],
+        throttle,
+        baseIntensity,
+        range,
+        thrusterColorRef,
+      );
 
       // Should use global baseIntensity: 0.7 + 0.2 * 0.5 = 0.8
       expect(thrusterWithoutBase.material!.emissiveIntensity).toBeCloseTo(0.8);
@@ -161,7 +170,13 @@ describe('Ship Thrusters', () => {
 
       // Should not throw error
       expect(() => {
-        updateThrusterIntensity([thrusterWithNullMaterial], throttle, baseIntensity, range, thrusterColorRef);
+        updateThrusterIntensity(
+          [thrusterWithNullMaterial],
+          throttle,
+          baseIntensity,
+          range,
+          thrusterColorRef,
+        );
       }).not.toThrow();
     });
 
@@ -181,7 +196,13 @@ describe('Ship Thrusters', () => {
 
       // Should not throw error and should still update intensity
       expect(() => {
-        updateThrusterIntensity([thrusterWithoutEmissive], throttle, baseIntensity, range, thrusterColorRef);
+        updateThrusterIntensity(
+          [thrusterWithoutEmissive],
+          throttle,
+          baseIntensity,
+          range,
+          thrusterColorRef,
+        );
       }).not.toThrow();
 
       expect(thrusterWithoutEmissive.material!.emissiveIntensity).toBeCloseTo(1.15); // 1.0 (thruster base) + 0.3 * 0.5

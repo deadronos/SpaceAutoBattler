@@ -24,7 +24,9 @@ export function colorFromConfig(
 
   if (!input) {
     // fallback may be a Color or a hex string
-    return typeof fallback === 'string' ? new Color(fallback).convertSRGBToLinear() : toLinear(fallback);
+    return typeof fallback === 'string'
+      ? new Color(fallback).convertSRGBToLinear()
+      : toLinear(fallback);
   }
 
   try {
@@ -33,6 +35,8 @@ export function colorFromConfig(
     }
     return toLinear(input);
   } catch {
-    return typeof fallback === 'string' ? new Color(fallback).convertSRGBToLinear() : toLinear(fallback);
+    return typeof fallback === 'string'
+      ? new Color(fallback).convertSRGBToLinear()
+      : toLinear(fallback);
   }
 }

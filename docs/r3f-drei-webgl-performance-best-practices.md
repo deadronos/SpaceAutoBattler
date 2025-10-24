@@ -11,9 +11,9 @@ WebGL games built with React-Three-Fiber (R3F) can achieve high performance if y
 - **Batch/instance aggressively.** Each mesh = ≥1 draw call. Combine static meshes (e.g., `BufferGeometryUtils.mergeBufferGeometries`) and use instancing for repeated objects (`<instancedMesh>` or Drei `<Instances>/<Instance>`). Target only a few hundred draw calls total.
 - **Share & reuse objects.** Memoize and reuse geometries/materials/textures. Avoid re-creating Three objects per frame.
   ```tsx
-  const geom = useMemo(() => new THREE.BoxGeometry(), [])
-  const mat  = useMemo(() => new THREE.MeshStandardMaterial({ color: 'red' }), [])
-  return <mesh geometry={geom} material={mat} />
+  const geom = useMemo(() => new THREE.BoxGeometry(), []);
+  const mat = useMemo(() => new THREE.MeshStandardMaterial({ color: 'red' }), []);
+  return <mesh geometry={geom} material={mat} />;
   ```
 - **Avoid frequent mount/unmount churn.** Toggle `visible` on groups instead of destroying/creating large branches. Keep scenes “warm” and switch visibility, not components.
 - **Cull smartly.** Flatten deep hierarchies when possible. Group by regions so whole branches can be toggled/cull-tested cheaply.
@@ -26,11 +26,7 @@ WebGL games built with React-Three-Fiber (R3F) can achieve high performance if y
 - **Level of Detail (`<Detailed>`).** Provide hi/med/low variants and distance thresholds. Use impostors/billboards for distant detail.
 - **Adaptive quality (`<PerformanceMonitor>`).** Drop `dpr`, disable heavy post-effects or shadows when FPS declines; restore when FPS recovers.
   ```jsx
-  <PerformanceMonitor
-    bounds={[30, 60]}
-    onDecline={() => setDpr(1)}
-    onIncline={() => setDpr(2)}
-  />
+  <PerformanceMonitor bounds={[30, 60]} onDecline={() => setDpr(1)} onIncline={() => setDpr(2)} />
   ```
 - **Pause when tab is hidden.** Tie `frameloop` to `document.visibilityState` to stop rendering offscreen.
 - **Use helpers prudently.**
@@ -59,10 +55,10 @@ WebGL games built with React-Three-Fiber (R3F) can achieve high performance if y
 - **Reuse geometry/materials/textures.** Loader hooks (`useLoader`, `useGLTF`) cache by URL. Share instances across meshes.
 - **Kill GC churn.** Reuse math objects; don’t allocate in tight loops:
   ```tsx
-  const tmp = new THREE.Vector3()
+  const tmp = new THREE.Vector3();
   useFrame(() => {
-    ref.current.position.lerp(tmp.set(tx, ty, tz), 0.1)
-  })
+    ref.current.position.lerp(tmp.set(tx, ty, tz), 0.1);
+  });
   ```
 - **Dispose what you truly discard.** R3F disposes on unmount by default. If you replace textures/models manually, dispose old ones explicitly.
 - **Dynamic buffers.** Mark frequently updated attributes as `DynamicDrawUsage`. For instancing, batch matrix updates then set `instanceMatrix.needsUpdate = true` once.
@@ -79,7 +75,9 @@ WebGL games built with React-Three-Fiber (R3F) can achieve high performance if y
 
 - **Animate imperatively; avoid React setState per frame.**
   ```tsx
-  useFrame((_, dt) => { ref.current.position.x += speed * dt })
+  useFrame((_, dt) => {
+    ref.current.position.x += speed * dt;
+  });
   ```
 - **Use `delta` for frame-rate independent motion.** No fixed per-frame steps.
 - **Consolidate loops.** Thousands of `useFrame` hooks are okay but centralizing heavy loops can help organization and micro-overhead.
@@ -140,34 +138,36 @@ WebGL games built with React-Three-Fiber (R3F) can achieve high performance if y
 ### Starter Snippets
 
 **Instanced mesh for thousands of items:**
+
 ```tsx
 function Boxes({ count = 10000 }) {
-  const ref = useRef<THREE.InstancedMesh>(null!)
-  const mat = useMemo(() => new THREE.Matrix4(), [])
+  const ref = useRef<THREE.InstancedMesh>(null!);
+  const mat = useMemo(() => new THREE.Matrix4(), []);
   useEffect(() => {
     for (let i = 0; i < count; i++) {
       mat.setPosition(
         (Math.random() - 0.5) * 100,
         (Math.random() - 0.5) * 10,
-        (Math.random() - 0.5) * 100
-      )
-      ref.current.setMatrixAt(i, mat)
+        (Math.random() - 0.5) * 100,
+      );
+      ref.current.setMatrixAt(i, mat);
     }
-    ref.current.instanceMatrix.needsUpdate = true
-  }, [count, mat])
+    ref.current.instanceMatrix.needsUpdate = true;
+  }, [count, mat]);
   return (
     <instancedMesh ref={ref} args={[undefined as any, undefined as any, count]}>
       <boxGeometry args={[1, 1, 1]} />
       <meshStandardMaterial />
     </instancedMesh>
-  )
+  );
 }
 ```
 
 **Adaptive DPR with PerformanceMonitor:**
+
 ```tsx
 function AdaptiveCanvas() {
-  const [dpr, setDpr] = useState(2)
+  const [dpr, setDpr] = useState(2);
   return (
     <Canvas dpr={dpr}>
       <PerformanceMonitor
@@ -177,37 +177,44 @@ function AdaptiveCanvas() {
       />
       {/* ... */}
     </Canvas>
-  )
+  );
 }
 ```
 
 **Zustand + useFrame (no per-frame setState):**
+
 ```tsx
 const useStore = create<{ target: THREE.Vector3 }>(() => ({
-  target: new THREE.Vector3()
-}))
+  target: new THREE.Vector3(),
+}));
 
 function Follower() {
-  const ref = useRef<THREE.Mesh>(null!)
-  const get = useStore.getState
-  const tmp = useMemo(() => new THREE.Vector3(), [])
+  const ref = useRef<THREE.Mesh>(null!);
+  const get = useStore.getState;
+  const tmp = useMemo(() => new THREE.Vector3(), []);
   useFrame((_, dt) => {
-    ref.current.position.lerp(tmp.copy(get().target), 1 - Math.pow(0.9, dt * 60))
-  })
-  return <mesh ref={ref}><boxGeometry /><meshStandardMaterial /></mesh>
+    ref.current.position.lerp(tmp.copy(get().target), 1 - Math.pow(0.9, dt * 60));
+  });
+  return (
+    <mesh ref={ref}>
+      <boxGeometry />
+      <meshStandardMaterial />
+    </mesh>
+  );
 }
 ```
 
 **Visibility toggle instead of mount/unmount:**
+
 ```tsx
 function Scenes() {
-  const [mode, setMode] = useState<'menu' | 'game'>('menu')
+  const [mode, setMode] = useState<'menu' | 'game'>('menu');
   return (
     <>
       <group visible={mode === 'menu'}>{/* menu scene */}</group>
       <group visible={mode === 'game'}>{/* game scene */}</group>
     </>
-  )
+  );
 }
 ```
 
@@ -216,4 +223,3 @@ function Scenes() {
 **Recommended Tools:** r3f-perf (stats overlay), Spector.js (WebGL inspector), Chrome Performance/Memory profiler, gltfjsx CLI, KTX2/Draco encoders, react-three-rapier (physics with workers).
 
 **Stack Targets:** TypeScript + R3F + Drei + Zustand/Miniplex on Next.js/Vite.
-

@@ -63,17 +63,17 @@ describe('AI metrics aggregation', () => {
     recordIntentMetrics(metrics, 1, 6, 'Regroup', true);
     recordIntentMetrics(metrics, 1, 8, 'Kite', false);
 
-  metrics.focusFireSamples = 2;
-  metrics.focusFireRatioSum = 1.2;
-  metrics.focusFireRatioMax = 0.75;
-  metrics.headingAmplitudeSamples = 3;
-  metrics.headingAmplitudeSum = 0.9;
-  metrics.headingAmplitudeMin = 0.1;
-  metrics.headingAmplitudeMax = 0.5;
-  metrics.decisionLatencyBuckets = [3, 2, 1, 0];
-  metrics.tieDecisions = 4;
-  metrics.tieFallbacks = 1;
-  metrics.totalDecisions = 20;
+    metrics.focusFireSamples = 2;
+    metrics.focusFireRatioSum = 1.2;
+    metrics.focusFireRatioMax = 0.75;
+    metrics.headingAmplitudeSamples = 3;
+    metrics.headingAmplitudeSum = 0.9;
+    metrics.headingAmplitudeMin = 0.1;
+    metrics.headingAmplitudeMax = 0.5;
+    metrics.decisionLatencyBuckets = [3, 2, 1, 0];
+    metrics.tieDecisions = 4;
+    metrics.tieFallbacks = 1;
+    metrics.totalDecisions = 20;
 
     aggregateKpis(metrics, 60);
 
@@ -96,18 +96,18 @@ describe('AI metrics aggregation', () => {
     expect(kpis.vertical.aboveThreshold).toBe(2);
     expect(kpis.vertical.ratio).toBeCloseTo(0.5, 5);
 
-  expect(kpis.decisionLatency.buckets).toEqual([3, 2, 1, 0]);
-  expect(kpis.decisionLatency.total).toBe(6);
-  expect(kpis.focusFire.samples).toBe(2);
-  expect(kpis.focusFire.ratioAvg).toBeCloseTo(0.6, 5);
-  expect(kpis.focusFire.ratioMax).toBeCloseTo(0.75, 5);
-  expect(kpis.headingAmplitude.samples).toBe(3);
-  expect(kpis.headingAmplitude.avg).toBeCloseTo(0.3, 5);
-  expect(kpis.headingAmplitude.min).toBeCloseTo(0.1, 5);
-  expect(kpis.headingAmplitude.max).toBeCloseTo(0.5, 5);
-  expect(kpis.ties.decisions).toBe(4);
-  expect(kpis.ties.fallbacks).toBe(1);
-  expect(kpis.ties.ratio).toBeCloseTo(0.2, 5);
+    expect(kpis.decisionLatency.buckets).toEqual([3, 2, 1, 0]);
+    expect(kpis.decisionLatency.total).toBe(6);
+    expect(kpis.focusFire.samples).toBe(2);
+    expect(kpis.focusFire.ratioAvg).toBeCloseTo(0.6, 5);
+    expect(kpis.focusFire.ratioMax).toBeCloseTo(0.75, 5);
+    expect(kpis.headingAmplitude.samples).toBe(3);
+    expect(kpis.headingAmplitude.avg).toBeCloseTo(0.3, 5);
+    expect(kpis.headingAmplitude.min).toBeCloseTo(0.1, 5);
+    expect(kpis.headingAmplitude.max).toBeCloseTo(0.5, 5);
+    expect(kpis.ties.decisions).toBe(4);
+    expect(kpis.ties.fallbacks).toBe(1);
+    expect(kpis.ties.ratio).toBeCloseTo(0.2, 5);
 
     resetMetrics(metrics);
     expect(metrics.firstShotTimes).toHaveLength(0);
@@ -225,7 +225,7 @@ describe('AI metrics harness scenarios', () => {
     // Ensure metrics collection is working properly
     expect(log.metrics.kpis.firstShot.samples).toBeGreaterThan(0);
     expect(log.metrics.firstShotTimes.length).toBeGreaterThan(0);
-    
+
     // Verify scenario ran for expected duration
     expect(log.entries.length).toBe(SCENARIO_15V15.ticks);
     expect(log.seed).toBe(1337);
@@ -307,7 +307,10 @@ function createStubState(): GameState {
   };
 
   const physicsWorldStub = {
-    createRigidBody: (desc: { translation: { x: number; y: number; z: number }; rotation: { x: number; y: number; z: number; w: number } }) => ({
+    createRigidBody: (desc: {
+      translation: { x: number; y: number; z: number };
+      rotation: { x: number; y: number; z: number; w: number };
+    }) => ({
       translation: () => ({ ...desc.translation }),
       rotation: () => ({ ...desc.rotation }),
       setNextKinematicTranslation: () => undefined,
@@ -475,7 +478,7 @@ const SCENARIO_8V8: AIScenarioConfig = {
     { team: 'blue', hull: 'corvette', position: [-180, -30, 20] },
     { team: 'blue', hull: 'frigate', position: [-220, 0, -15] },
     { team: 'blue', hull: 'destroyer', position: [-250, 20, 10] },
-    
+
     // Red team (4 ships)
     { team: 'red', hull: 'fighter', position: [200, -40, 0] },
     { team: 'red', hull: 'corvette', position: [180, 25, -20] },
@@ -496,7 +499,7 @@ const SCENARIO_12V12: AIScenarioConfig = {
     { team: 'blue', hull: 'frigate', position: [-220, 10, -25] },
     { team: 'blue', hull: 'destroyer', position: [-250, 30, 15] },
     { team: 'blue', hull: 'carrier', position: [-280, 0, 0] },
-    
+
     // Red team (6 ships)
     { team: 'red', hull: 'fighter', position: [200, -50, 0] },
     { team: 'red', hull: 'fighter', position: [180, -30, -30] },
@@ -521,7 +524,7 @@ const SCENARIO_15V15: AIScenarioConfig = {
     { team: 'blue', hull: 'frigate', position: [-240, 20, -30] },
     { team: 'blue', hull: 'destroyer', position: [-260, 40, 20] },
     { team: 'blue', hull: 'carrier', position: [-300, 0, 0] },
-    
+
     // Red team (7 ships)
     { team: 'red', hull: 'fighter', position: [200, -60, 0] },
     { team: 'red', hull: 'fighter', position: [180, -40, -40] },

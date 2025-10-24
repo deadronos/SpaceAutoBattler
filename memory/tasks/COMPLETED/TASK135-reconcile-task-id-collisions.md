@@ -27,13 +27,13 @@ This task creates a plan to reassign IDs, update filenames, and update any refer
 
 ### Subtasks
 
-| ID  | Description                          | Status    | Updated    | Notes                              |
-| --- | ------------------------------------ | --------- | ---------- | ---------------------------------- |
-| 1.1 | Inventory duplicate IDs              | Complete  | 2025-09-26 | Duplicates found: TASK102, TASK110 |
-| 1.2 | Propose new IDs and mapping          | Complete | 2025-09-27 | Mapping chosen: TASK102→TASK136 (Physical Movement), TASK110→TASK137 (Skysphere) |
-| 1.3 | Apply renames and update index       | Complete | 2025-09-27 | New files created; old files archived; index updated to reference new IDs |
-| 1.4 | Update cross-references              | Complete | 2025-09-27 | Search-and-replace executed; no remaining non-memory references found |
-| 1.5 | Final validation and close task      | Complete | 2025-09-27 | Link/lint sweep completed; archived originals and updated index |
+| ID  | Description                     | Status   | Updated    | Notes                                                                            |
+| --- | ------------------------------- | -------- | ---------- | -------------------------------------------------------------------------------- |
+| 1.1 | Inventory duplicate IDs         | Complete | 2025-09-26 | Duplicates found: TASK102, TASK110                                               |
+| 1.2 | Propose new IDs and mapping     | Complete | 2025-09-27 | Mapping chosen: TASK102→TASK136 (Physical Movement), TASK110→TASK137 (Skysphere) |
+| 1.3 | Apply renames and update index  | Complete | 2025-09-27 | New files created; old files archived; index updated to reference new IDs        |
+| 1.4 | Update cross-references         | Complete | 2025-09-27 | Search-and-replace executed; no remaining non-memory references found            |
+| 1.5 | Final validation and close task | Complete | 2025-09-27 | Link/lint sweep completed; archived originals and updated index                  |
 
 ## Progress Log
 
@@ -43,4 +43,3 @@ This task creates a plan to reassign IDs, update filenames, and update any refer
 - Completed archival: moved original task bodies into `memory/ARCHIVE/`, replaced originals with redirect notes, created canonical TASK136/TASK137 files, and updated `memory/tasks/_index.md`.
 - Ran markdown/link lint checks on edited memory files and fixed formatting issues (tables, trailing spaces, EOF newline where applicable).
 - Task complete: all memory cross-references updated and validated. No further action required unless maintainers prefer hard deletes instead of archival.
-

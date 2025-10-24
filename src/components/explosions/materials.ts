@@ -47,7 +47,7 @@ export function useExplosionResources(): ExplosionResources {
       plasma: new PlaneGeometry(1, 1),
       smoke: new PlaneGeometry(1, 1),
     }),
-    []
+    [],
   );
 
   const materials = useMemo(() => {
@@ -137,7 +137,7 @@ export function useExplosionResources(): ExplosionResources {
       materials.plasma.dispose();
       materials.smoke.dispose();
     },
-    [geometries, materials]
+    [geometries, materials],
   );
 
   return { geometries, materials };

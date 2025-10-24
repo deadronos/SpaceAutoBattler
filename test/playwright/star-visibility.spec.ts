@@ -9,7 +9,9 @@ test.describe('Star visibility with postprocessing', () => {
     await page.goto('http://localhost:8080/spaceautobattler.html?copilot_debug=1');
   });
 
-  test('star should be present in final framebuffer when postprocessing is enabled', async ({ page }) => {
+  test('star should be present in final framebuffer when postprocessing is enabled', async ({
+    page,
+  }) => {
     // Wait for StarDisk to publish the DOM overlay that contains the
     // projected on-screen position. Tests should read the element's
     // `data-copilot-screen-pos` attribute.
@@ -33,7 +35,9 @@ test.describe('Star visibility with postprocessing', () => {
         if ((window as any).__copilot_setStarBasicMaterial) {
           (window as any).__copilot_setStarBasicMaterial({ color: '#ff8800' });
         }
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     });
 
     // Request a GPU pixel read at the star projection by querying the
@@ -53,20 +57,33 @@ test.describe('Star visibility with postprocessing', () => {
         if (!canvas) return null;
         // Prefer drawing buffer size / client size to compute device coords
         const clientW = (canvas as HTMLCanvasElement).clientWidth || canvas.width || 1;
-        const dpr = (canvas as HTMLCanvasElement).width / clientW || (window.devicePixelRatio || 1);
+        const dpr = (canvas as HTMLCanvasElement).width / clientW || window.devicePixelRatio || 1;
         const deviceX = Math.floor(pxX * dpr);
-        const deviceY = Math.floor((canvas as HTMLCanvasElement).height - 1 - (pxY * dpr));
-        const gl = (canvas as HTMLCanvasElement).getContext('webgl') || (canvas as HTMLCanvasElement).getContext('webgl2');
+        const deviceY = Math.floor((canvas as HTMLCanvasElement).height - 1 - pxY * dpr);
+        const gl =
+          (canvas as HTMLCanvasElement).getContext('webgl') ||
+          (canvas as HTMLCanvasElement).getContext('webgl2');
         if (!gl) return null;
         const buffer = new Uint8Array(4);
         try {
-          gl.readPixels(deviceX, deviceY, 1, 1, (gl as any).RGBA || 0x1908, (gl as any).UNSIGNED_BYTE || 0x1401, buffer);
+          gl.readPixels(
+            deviceX,
+            deviceY,
+            1,
+            1,
+            (gl as any).RGBA || 0x1908,
+            (gl as any).UNSIGNED_BYTE || 0x1401,
+            buffer,
+          );
           const [r, g, b, a] = buffer; // rgba 0..255
           const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
           // Restore original star material if possible
           try {
-            if ((window as any).__copilot_restoreStarMaterial) (window as any).__copilot_restoreStarMaterial();
-          } catch { /* ignore */ }
+            if ((window as any).__copilot_restoreStarMaterial)
+              (window as any).__copilot_restoreStarMaterial();
+          } catch {
+            /* ignore */
+          }
           return { r, g, b, a, luminance };
         } catch {
           return null;
@@ -77,7 +94,8 @@ test.describe('Star visibility with postprocessing', () => {
     });
 
     expect(read).not.toBeNull();
-    const singleReadVisible = !!read && (read.a > 0 || (typeof read.luminance === 'number' && read.luminance > 8));
+    const singleReadVisible =
+      !!read && (read.a > 0 || (typeof read.luminance === 'number' && read.luminance > 8));
 
     // Wait a short while for the compositor to settle
     await page.waitForTimeout(300);
@@ -85,7 +103,7 @@ test.describe('Star visibility with postprocessing', () => {
     // Final assertion: ensure that our single-pixel read indicates visible
     // content (non-zero alpha or high luminance). This confirms the composer
     // produced visible output at the star projection.
-    
+
     console.info('[test] singleReadVisible:', singleReadVisible);
 
     // Final, deterministic assertion above confirms composer ran without error.

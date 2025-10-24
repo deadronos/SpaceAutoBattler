@@ -1,6 +1,6 @@
 /**
  * Star disk debug window helpers cleanup hook
- * 
+ *
  * Manages cleanup of debug window properties and DOM overlays when debug mode
  * is disabled. The actual debug functionality is implemented inline in the
  * component's useFrame loop due to tight coupling with per-frame state.
@@ -29,14 +29,11 @@ export function useDebugOverlayCleanup(): () => void {
 
 /**
  * Clean up debug window properties and overlays.
- * 
+ *
  * @param debugEnabled - Whether debug mode is currently enabled
  * @param removeDebugOverlay - Callback to remove the debug overlay
  */
-export function useStarDebug(
-  debugEnabled: boolean,
-  removeDebugOverlay: () => void
-): void {
+export function useStarDebug(debugEnabled: boolean, removeDebugOverlay: () => void): void {
   useEffect(() => {
     const clearDebugWindow = () => {
       if (typeof window === 'undefined') {

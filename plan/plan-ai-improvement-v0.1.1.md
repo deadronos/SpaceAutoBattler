@@ -36,7 +36,7 @@ Confidence: High (85%) — 3D is already supported; this plan focuses on better 
   - `AI_CONFIG.rangePolicy = "v0.1.1-exp"`
   - `AI_CONFIG.tickRateHz = 15`
 - Spawn configuration (configurable):
-  - `spawn.verticalSpreadFactor = 0.2` (WORLD_HALF * factor)
+  - `spawn.verticalSpreadFactor = 0.2` (WORLD_HALF \* factor)
   - `spawn.anchorYRandomization = true`
   - `spawn.initialSeparationFactor = 1.5` (× max range)
 - Metrics/telemetry (toggleable HUD later):
@@ -79,7 +79,7 @@ flowchart TD
 
 1. Geometry & Cadence (low risk)
 
-- Increase vertical spread (WORLD_HALF * 0.2), randomize team anchor Y, target initial separation ~1.5× max range (configurable).
+- Increase vertical spread (WORLD_HALF \* 0.2), randomize team anchor Y, target initial separation ~1.5× max range (configurable).
 - Raise AI tick to 15 Hz behind `AI_CONFIG.tickRateHz` (on by default).
 
 1. 3D Execution Injection (medium risk)
@@ -131,13 +131,13 @@ All features are guarded by flags and defaults as listed; rollback is immediate 
 
 ## Configuration Summary (defaults)
 
-- verticalEnabled: true  
-- engagementBoostEnabled: true  
-- rangePolicy: "v0.1.1-exp"  
-- ai.tickRateHz: 15  
-- spawn.verticalSpreadFactor: 0.2  
-- spawn.anchorYRandomization: true  
-- spawn.initialSeparationFactor: 1.5  
+- verticalEnabled: true
+- engagementBoostEnabled: true
+- rangePolicy: "v0.1.1-exp"
+- ai.tickRateHz: 15
+- spawn.verticalSpreadFactor: 0.2
+- spawn.anchorYRandomization: true
+- spawn.initialSeparationFactor: 1.5
 - headingYClamp: ±0.3 (configurable)
 
 ## Follow-ups (tracked)

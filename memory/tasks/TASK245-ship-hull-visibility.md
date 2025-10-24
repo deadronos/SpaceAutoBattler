@@ -33,12 +33,12 @@ and fix fully, make reasonable assumptions
 
 ### Subtasks
 
-| ID  | Description                                                     | Status       | Updated     | Notes |
-| --- | --------------------------------------------------------------- | ------------ | ----------- | ----- |
-| 1.1 | Draft requirements/design and register task in memory bank      | Completed    | 2025-10-05  | Requirements added, DESIGN002 published |
-| 1.2 | Implement LOD partition refresh and impostor visibility fixes   | Completed    | 2025-10-05  | ShipLODManager per-frame partition + impostor helper merged |
-| 1.3 | Extend coverage & run validation suite                          | Completed    | 2025-10-05  | Added LOD/impostor specs; tsc + vitest pass |
-| 1.4 | Finalize documentation, reflections, and handoff notes          | Not Started  | 2025-10-05  | Pending testing |
+| ID  | Description                                                   | Status      | Updated    | Notes                                                       |
+| --- | ------------------------------------------------------------- | ----------- | ---------- | ----------------------------------------------------------- |
+| 1.1 | Draft requirements/design and register task in memory bank    | Completed   | 2025-10-05 | Requirements added, DESIGN002 published                     |
+| 1.2 | Implement LOD partition refresh and impostor visibility fixes | Completed   | 2025-10-05 | ShipLODManager per-frame partition + impostor helper merged |
+| 1.3 | Extend coverage & run validation suite                        | Completed   | 2025-10-05 | Added LOD/impostor specs; tsc + vitest pass                 |
+| 1.4 | Finalize documentation, reflections, and handoff notes        | Not Started | 2025-10-05 | Pending testing                                             |
 
 ## Progress Log
 

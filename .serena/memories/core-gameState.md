@@ -50,9 +50,11 @@ Runtime patterns and verification notes:
 - The `GameState` shape is defined in `src/types/simulation.ts` and re-exported by `src/types/index.ts` for convenience.
 
 References (checked on 2025-10-05):
+
 - `src/game/state.ts` (factory and lifecycle helpers)
 - `src/types/simulation.ts` (interface definition)
 - `src/utils/rng.ts` (SeededRng implementation)
 
 Notes:
+
 - Keep this memory as the authoritative summary for where to find the runtime factory and the canonical GameState type. Update this memory whenever the `GameState` interface or the location of the factory moves.

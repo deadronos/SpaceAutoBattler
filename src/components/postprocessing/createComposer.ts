@@ -25,7 +25,12 @@ export interface ComposerSetupResult {
   restoreRendererState: () => void;
 }
 
-export function createComposer({ renderer, scene, camera, effectPass }: CreateComposerOptions): ComposerSetupResult {
+export function createComposer({
+  renderer,
+  scene,
+  camera,
+  effectPass,
+}: CreateComposerOptions): ComposerSetupResult {
   const previousState = {
     autoClear: renderer.autoClear,
     toneMapping: renderer.toneMapping,

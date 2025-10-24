@@ -73,7 +73,12 @@ export function computeRepositionCommand(
     let desiredMax = profile.desiredRange[1];
     if (getEffectiveAIConfig().hysteresisEnabled && ship.ai) {
       const aiState = ship.ai;
-      [desiredMin, desiredMax] = computeEffectiveDesiredRange(aiState, profile, distanceToTarget, state.ai.tickIndex);
+      [desiredMin, desiredMax] = computeEffectiveDesiredRange(
+        aiState,
+        profile,
+        distanceToTarget,
+        state.ai.tickIndex,
+      );
     }
     // desiredMin/desiredMax are computed above using hysteresis when possible
     let shouldFire = distance <= ship.ship.range;
@@ -232,7 +237,12 @@ export function computeAttackCommand(
     let desiredMax = profile.desiredRange[1];
     if (getEffectiveAIConfig().hysteresisEnabled && ship.ai) {
       const aiState = ship.ai;
-      [desiredMin, desiredMax] = computeEffectiveDesiredRange(aiState, profile, dist, state.ai.tickIndex);
+      [desiredMin, desiredMax] = computeEffectiveDesiredRange(
+        aiState,
+        profile,
+        dist,
+        state.ai.tickIndex,
+      );
     }
     let thrust: number;
     if (dist > desiredMax) {

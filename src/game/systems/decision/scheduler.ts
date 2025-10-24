@@ -24,7 +24,10 @@ export interface SchedulerTickResult {
   };
 }
 
-export function computeSliceParameters(totalShips: number, maxPerTick: number): {
+export function computeSliceParameters(
+  totalShips: number,
+  maxPerTick: number,
+): {
   slices: number;
   sliceSize: number;
 } {
@@ -44,15 +47,15 @@ export function computeShipIndicesToProcess(
   if (totalShips === 0 || sliceSize === 0) {
     return [];
   }
-  
+
   const indices: number[] = [];
   const startIndex = cursor % totalShips;
-  
+
   for (let i = 0; i < sliceSize; i += 1) {
     const idx = (startIndex + i) % totalShips;
     indices.push(idx);
   }
-  
+
   return indices;
 }
 
@@ -113,7 +116,11 @@ export function processSchedulerTick(
 
   // Compute slice parameters
   const { slices, sliceSize } = computeSliceParameters(totalShips, config.maxPerTick);
-  const shipIndicesToProcess = computeShipIndicesToProcess(totalShips, updatedState.cursor, sliceSize);
+  const shipIndicesToProcess = computeShipIndicesToProcess(
+    totalShips,
+    updatedState.cursor,
+    sliceSize,
+  );
   updatedState.cursor = advanceCursor(updatedState.cursor, sliceSize, totalShips);
 
   const budgetHit = slices > 1;
@@ -126,7 +133,7 @@ export function processSchedulerTick(
       totalShips,
       sliceSize,
       decisions: 0, // Will be filled in by the evaluation process
-      skipped: 0,   // Will be filled in by the evaluation process
+      skipped: 0, // Will be filled in by the evaluation process
       budgetHit,
     },
   };
@@ -136,7 +143,7 @@ export function updateSchedulerMetrics(
   metrics: AIMetrics,
   schedulerMetrics: SchedulerTickResult['metrics'],
   decisions: number,
-  skipped: number
+  skipped: number,
 ): void {
   metrics.lastTotalShips = schedulerMetrics.totalShips;
   metrics.lastSliceSize = schedulerMetrics.sliceSize;
@@ -144,7 +151,7 @@ export function updateSchedulerMetrics(
   metrics.lastSkipped = skipped;
   metrics.totalDecisions += decisions;
   metrics.totalSkipped += skipped;
-  
+
   if (schedulerMetrics.budgetHit) {
     metrics.budgetHits += 1;
   }

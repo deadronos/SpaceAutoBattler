@@ -89,47 +89,60 @@ export const useUiStore = create<UiState>((set) => ({
   setProgressionPanelPosition: (position: { x: number; y: number }) =>
     set({ progressionPanelPosition: { x: position.x, y: position.y } }),
   progressionPanelEnabled: false,
-  toggleProgressionPanel: () => set((s) => ({ progressionPanelEnabled: !s.progressionPanelEnabled })),
+  toggleProgressionPanel: () =>
+    set((s) => ({ progressionPanelEnabled: !s.progressionPanelEnabled })),
   setProgressionPanelEnabled: (v: boolean) => set({ progressionPanelEnabled: v }),
   // AI Experiment flags (runtime overrides) - null means use config default
   aiVerticalEnabled: null,
-  toggleAiVertical: () => set((s) => ({ 
-    aiVerticalEnabled: s.aiVerticalEnabled === null 
-      ? !AI_CONFIG.verticalEnabled 
-      : !s.aiVerticalEnabled 
-  })),
+  toggleAiVertical: () =>
+    set((s) => ({
+      aiVerticalEnabled:
+        s.aiVerticalEnabled === null ? !AI_CONFIG.verticalEnabled : !s.aiVerticalEnabled,
+    })),
   setAiVerticalEnabled: (v: boolean | null) => set({ aiVerticalEnabled: v }),
   aiEngagementBoostEnabled: null,
-  toggleAiEngagementBoost: () => set((s) => ({ 
-    aiEngagementBoostEnabled: s.aiEngagementBoostEnabled === null 
-      ? !AI_CONFIG.engagementBoostEnabled 
-      : !s.aiEngagementBoostEnabled 
-  })),
+  toggleAiEngagementBoost: () =>
+    set((s) => ({
+      aiEngagementBoostEnabled:
+        s.aiEngagementBoostEnabled === null
+          ? !AI_CONFIG.engagementBoostEnabled
+          : !s.aiEngagementBoostEnabled,
+    })),
   setAiEngagementBoostEnabled: (v: boolean | null) => set({ aiEngagementBoostEnabled: v }),
   aiTickRateExperimentEnabled: null,
-  toggleAiTickRateExperiment: () => set((s) => ({ 
-    aiTickRateExperimentEnabled: s.aiTickRateExperimentEnabled === null 
-      ? !AI_CONFIG.tickRateHzExperiment 
-      : !s.aiTickRateExperimentEnabled 
-  })),
+  toggleAiTickRateExperiment: () =>
+    set((s) => ({
+      aiTickRateExperimentEnabled:
+        s.aiTickRateExperimentEnabled === null
+          ? !AI_CONFIG.tickRateHzExperiment
+          : !s.aiTickRateExperimentEnabled,
+    })),
   setAiTickRateExperimentEnabled: (v: boolean | null) => set({ aiTickRateExperimentEnabled: v }),
   aiRangePolicy: null,
   setAiRangePolicy: (v: string | null) => set({ aiRangePolicy: v }),
   // New AI behaviour overrides
   aiSmoothingEnabled: null,
-  toggleAiSmoothing: () => set((s) => ({
-    aiSmoothingEnabled: s.aiSmoothingEnabled === null ? !AI_CONFIG.smoothingEnabled : !s.aiSmoothingEnabled,
-  })),
+  toggleAiSmoothing: () =>
+    set((s) => ({
+      aiSmoothingEnabled:
+        s.aiSmoothingEnabled === null ? !AI_CONFIG.smoothingEnabled : !s.aiSmoothingEnabled,
+    })),
   setAiSmoothingEnabled: (v: boolean | null) => set({ aiSmoothingEnabled: v }),
   aiHysteresisEnabled: null,
-  toggleAiHysteresis: () => set((s) => ({
-    aiHysteresisEnabled: s.aiHysteresisEnabled === null ? !AI_CONFIG.hysteresisEnabled : !s.aiHysteresisEnabled,
-  })),
+  toggleAiHysteresis: () =>
+    set((s) => ({
+      aiHysteresisEnabled:
+        s.aiHysteresisEnabled === null ? !AI_CONFIG.hysteresisEnabled : !s.aiHysteresisEnabled,
+    })),
   setAiHysteresisEnabled: (v: boolean | null) => set({ aiHysteresisEnabled: v }),
   aiVerticalDampingEnabled: null,
-  toggleAiVerticalDamping: () => set((s) => ({
-    aiVerticalDampingEnabled: s.aiVerticalDampingEnabled === null ? !AI_CONFIG.verticalDampingEnabled : !s.aiVerticalDampingEnabled,
-  })),
+  toggleAiVerticalDamping: () =>
+    set((s) => ({
+      aiVerticalDampingEnabled:
+        s.aiVerticalDampingEnabled === null
+          ? !AI_CONFIG.verticalDampingEnabled
+          : !s.aiVerticalDampingEnabled,
+    })),
   setAiVerticalDampingEnabled: (v: boolean | null) => set({ aiVerticalDampingEnabled: v }),
 }));
 
@@ -146,4 +159,3 @@ export function mirrorHudHealthBarsFlag(state: GameState | null, enabled: boolea
   }
   state.uiFlags.hudHealthBars = enabled;
 }
-

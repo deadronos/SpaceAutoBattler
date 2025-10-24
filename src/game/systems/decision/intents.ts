@@ -32,7 +32,12 @@ import { smoothHeading, smoothThrust } from './smoothing.js';
 
 export type { IntentCandidate } from './intent-utils.js';
 export type { CommandResult } from './command-generators.js';
-export { quantizeScore, getIntentPriority, computeInterceptHeadingVector, tieBreak } from './intent-utils.js';
+export {
+  quantizeScore,
+  getIntentPriority,
+  computeInterceptHeadingVector,
+  tieBreak,
+} from './intent-utils.js';
 export { scoreAttackIntent, scoreKiteIntent, scoreFleeIntent } from './combat-intents.js';
 export { scoreInterceptIntent, scoreRepositionIntent } from './tactical-intents.js';
 export { scoreRegroupIntent, scoreEscortIntent } from './formation-intents.js';
@@ -68,7 +73,14 @@ export function selectIntent(
   candidates.push({ intent: 'Kite', score: kiteScore, target: primaryTarget });
 
   if (escortTarget) {
-    const escortScore = scoreEscortIntent(ship, profile, escortTarget, state, traits, escortAssignment);
+    const escortScore = scoreEscortIntent(
+      ship,
+      profile,
+      escortTarget,
+      state,
+      traits,
+      escortAssignment,
+    );
     candidates.push({ intent: 'Escort', score: escortScore, target: escortTarget });
   }
 
@@ -85,7 +97,14 @@ export function selectIntent(
     );
     candidates.push({ intent: 'Intercept', score: interceptScore, target: primaryTarget });
 
-    const repositionScore = scoreRepositionIntent(state, ship, profile, primaryTarget, traits, posture);
+    const repositionScore = scoreRepositionIntent(
+      state,
+      ship,
+      profile,
+      primaryTarget,
+      traits,
+      posture,
+    );
     candidates.push({ intent: 'Reposition', score: repositionScore, target: primaryTarget });
   } else {
     const repositionScore = scoreRepositionIntent(state, ship, profile, null, traits, posture);
@@ -120,7 +139,9 @@ export function selectIntent(
     candidate.distanceSq = targetEntity
       ? ship.transform.position.distanceToSquared(targetEntity.transform.position)
       : Number.POSITIVE_INFINITY;
-    const rank = targetEntity ? priorityLookup.get(targetEntity.id) ?? Number.POSITIVE_INFINITY : Number.POSITIVE_INFINITY;
+    const rank = targetEntity
+      ? (priorityLookup.get(targetEntity.id) ?? Number.POSITIVE_INFINITY)
+      : Number.POSITIVE_INFINITY;
     candidate.threatRank = rank;
     candidate.index = candidateIndex;
     candidateIndex += 1;
@@ -222,7 +243,14 @@ export function writeCommand(
       state.ai.tickIndex,
     );
     command.thrust = smoothedThrust;
-    smoothHeading(ai, heading, profile.patience, profile.aggression, ship.ship.hull, state.ai.tickIndex);
+    smoothHeading(
+      ai,
+      heading,
+      profile.patience,
+      profile.aggression,
+      ship.ship.hull,
+      state.ai.tickIndex,
+    );
   }
 
   if (target && result.distanceToTarget != null) {
@@ -237,10 +265,11 @@ export function writeCommand(
     heading.y = Math.max(-clamp, Math.min(clamp, heading.y));
   }
 
-  if (AI_CONFIG.verticalEnabled && Math.abs(heading.y) > 1e-6 && state.blackboard.verticalDispersion) {
+  if (
+    AI_CONFIG.verticalEnabled &&
+    Math.abs(heading.y) > 1e-6 &&
+    state.blackboard.verticalDispersion
+  ) {
     state.blackboard.verticalDispersion.headingYSamples.push(heading.y);
   }
 }
-
-
-

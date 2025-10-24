@@ -220,7 +220,10 @@ describe('AI scenario harness', () => {
     // eslint-disable-next-line no-console
     console.log('ARTILLERY ACTUAL ENTRIES:', JSON.stringify(normalized.entries, null, 2));
     // eslint-disable-next-line no-console
-    console.log('ARTILLERY EXPECTED ENTRIES:', JSON.stringify(artilleryRetreatScenario.entries, null, 2));
+    console.log(
+      'ARTILLERY EXPECTED ENTRIES:',
+      JSON.stringify(artilleryRetreatScenario.entries, null, 2),
+    );
     expectLogsApproximatelyEqual(normalized, artilleryRetreatScenario);
   });
 });
@@ -277,7 +280,9 @@ function expectLogsApproximatelyEqual(actual: any, expected: any): void {
       const ec = e.commands[j];
       expect(ac.id).toEqual(ec.id);
       if (ac.intent !== ec.intent) {
-        throw new Error(`intent mismatch tick=${a.tick} id=${ac.id} actual=${ac.intent} expected=${ec.intent}`);
+        throw new Error(
+          `intent mismatch tick=${a.tick} id=${ac.id} actual=${ac.intent} expected=${ec.intent}`,
+        );
       }
       expect(ac.lod).toEqual(ec.lod);
       // presence of targetId: ensure both have or both lack
@@ -288,18 +293,26 @@ function expectLogsApproximatelyEqual(actual: any, expected: any): void {
       } else {
         expect(aHasTarget).toBe(false);
       }
-      if (!ac.heading || !ec.heading) throw new Error(`missing heading at tick ${a.tick} cmd ${ac.id}`);
+      if (!ac.heading || !ec.heading)
+        throw new Error(`missing heading at tick ${a.tick} cmd ${ac.id}`);
       for (let k = 0; k < 3; k += 1) {
         const diff = Math.abs(ac.heading[k] - ec.heading[k]);
-        if (diff > HEADING_TOL) throw new Error(`heading mismatch tick=${a.tick} id=${ac.id} comp=${k} diff=${diff.toFixed(4)} > tol ${HEADING_TOL}`);
+        if (diff > HEADING_TOL)
+          throw new Error(
+            `heading mismatch tick=${a.tick} id=${ac.id} comp=${k} diff=${diff.toFixed(4)} > tol ${HEADING_TOL}`,
+          );
       }
       if (Math.abs((ac.thrust ?? 0) - (ec.thrust ?? 0)) > THRUST_TOL) {
-        throw new Error(`thrust mismatch tick=${a.tick} id=${ac.id} actual=${ac.thrust} expected=${ec.thrust}`);
+        throw new Error(
+          `thrust mismatch tick=${a.tick} id=${ac.id} actual=${ac.thrust} expected=${ec.thrust}`,
+        );
       }
       const expectedScore = ec.score ?? 0;
       const adaptiveScoreTol = Math.max(SCORE_TOL, Math.abs(expectedScore) * 0.2);
       if (Math.abs((ac.score ?? 0) - expectedScore) > adaptiveScoreTol) {
-        throw new Error(`score mismatch tick=${a.tick} id=${ac.id} actual=${ac.score} expected=${ec.score} tol=${adaptiveScoreTol}`);
+        throw new Error(
+          `score mismatch tick=${a.tick} id=${ac.id} actual=${ac.score} expected=${ec.score} tol=${adaptiveScoreTol}`,
+        );
       }
     }
 
@@ -311,26 +324,33 @@ function expectLogsApproximatelyEqual(actual: any, expected: any): void {
       expect(ap.id).toEqual(ep.id);
       for (let k = 0; k < 3; k += 1) {
         const diff = Math.abs(ap.position[k] - ep.position[k]);
-        if (diff > POSITION_TOL) throw new Error(`position mismatch tick=${a.tick} id=${ap.id} comp=${k} diff=${diff.toFixed(3)} > tol ${POSITION_TOL}`);
+        if (diff > POSITION_TOL)
+          throw new Error(
+            `position mismatch tick=${a.tick} id=${ap.id} comp=${k} diff=${diff.toFixed(3)} > tol ${POSITION_TOL}`,
+          );
       }
     }
   }
 
   // Metrics: compare only a few high-level KPIs
-  const aK = actual.metrics?.kpis ?? actual.metrics ?? {} as any;
-  const eK = expected.metrics?.kpis ?? expected.metrics ?? {} as any;
+  const aK = actual.metrics?.kpis ?? actual.metrics ?? ({} as any);
+  const eK = expected.metrics?.kpis ?? expected.metrics ?? ({} as any);
   if (eK.headingAmplitude && eK.headingAmplitude.avg != null) {
     const aAvg = aK.headingAmplitude?.avg ?? aK.headingAmplitude?.avg ?? 0;
     const eAvg = eK.headingAmplitude.avg;
     if (Math.abs(aAvg - eAvg) > HEADING_AMPLITUDE_TOL) {
-      throw new Error(`headingAmplitude.avg mismatch actual=${aAvg} expected=${eAvg} tol=${HEADING_AMPLITUDE_TOL}`);
+      throw new Error(
+        `headingAmplitude.avg mismatch actual=${aAvg} expected=${eAvg} tol=${HEADING_AMPLITUDE_TOL}`,
+      );
     }
   }
   if (eK.openingAggression && typeof eK.openingAggression.aggressive === 'number') {
     const aAgg = aK.openingAggression?.aggressive ?? 0;
     const eAgg = eK.openingAggression.aggressive;
     if (Math.abs(aAgg - eAgg) > OPENING_AGGRESSION_TOL) {
-      throw new Error(`openingAggression.aggressive mismatch actual=${aAgg} expected=${eAgg} tol=${OPENING_AGGRESSION_TOL}`);
+      throw new Error(
+        `openingAggression.aggressive mismatch actual=${aAgg} expected=${eAgg} tol=${OPENING_AGGRESSION_TOL}`,
+      );
     }
   }
 }

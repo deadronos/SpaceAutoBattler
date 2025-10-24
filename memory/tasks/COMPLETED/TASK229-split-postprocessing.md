@@ -6,7 +6,7 @@
 
 ## Original Request
 
-Refactor src/components/Postprocessing.tsx by extracting composer and effect creation helpers under src/components/postprocessing/, add unit tests under test/components/postprocessing/*.spec.ts, and document the work in the memory bank while keeping the public API stable.
+Refactor src/components/Postprocessing.tsx by extracting composer and effect creation helpers under src/components/postprocessing/, add unit tests under test/components/postprocessing/\*.spec.ts, and document the work in the memory bank while keeping the public API stable.
 
 ## Thought Process
 
@@ -27,11 +27,11 @@ Refactor src/components/Postprocessing.tsx by extracting composer and effect cre
 
 ### Subtasks
 
-| ID  | Description                                                        | Status     | Updated    | Notes |
-| --- | ------------------------------------------------------------------ | ---------- | ---------- | ----- |
-| 1.1 | Create helper modules for composer/effect setup                    | Completed  | 2025-09-30 | Added createComposer.ts and buildEffects.ts. |
-| 1.2 | Refactor Postprocessing.tsx to use helpers                         | Completed  | 2025-09-30 | Component now delegates lifecycle work to helpers. |
-| 1.3 | Add unit tests and update Vitest configuration for new test paths | Completed  | 2025-09-30 | Added helper/component specs and updated vitest.config.js. |
+| ID  | Description                                                       | Status    | Updated    | Notes                                                      |
+| --- | ----------------------------------------------------------------- | --------- | ---------- | ---------------------------------------------------------- |
+| 1.1 | Create helper modules for composer/effect setup                   | Completed | 2025-09-30 | Added createComposer.ts and buildEffects.ts.               |
+| 1.2 | Refactor Postprocessing.tsx to use helpers                        | Completed | 2025-09-30 | Component now delegates lifecycle work to helpers.         |
+| 1.3 | Add unit tests and update Vitest configuration for new test paths | Completed | 2025-09-30 | Added helper/component specs and updated vitest.config.js. |
 
 ## Progress Log
 

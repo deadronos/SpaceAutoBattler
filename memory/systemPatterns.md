@@ -10,7 +10,6 @@ Overview
 - Resource lifecycle: GLTFs loaded via Drei `useGLTF` (cached); dispose of Three.js resources created manually.
 - Hot-path allocation avoidance: Systems avoid per-frame allocations; use temp vectors and pooling where appropriate.
 
-
 Common patterns
 
 - createGameState()/disposeGameState() factory: `src/game/state.ts` provides lifecycle for Rapier world, Miniplex world, and seeded RNG. `createGameState()` calls `Rapier.init({})`, constructs `physicsWorld` and `eventQueue`, applies small Miniplex backwards-compatible shims (`createEntity`/`destroyEntity`/`archetype`), creates `state.turretsByShip` (Map) for efficient turret cascade removal, and initialises `state.rng = new SeededRng(1337)` and the `simulation` clock (`step = 1/20`, `maxSubSteps = 5`, `lastTickDuration = 1/20`).

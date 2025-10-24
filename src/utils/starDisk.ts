@@ -1,6 +1,6 @@
 /**
  * Star disk utility functions
- * 
+ *
  * Pure functions for time wrapping and debug detection used by the StarDisk component.
  */
 
@@ -9,7 +9,7 @@ export const STAR_TIME_WRAP_SECONDS = 8192;
 
 /**
  * Wrap elapsed time to prevent floating-point precision loss in shader uniforms.
- * 
+ *
  * @param time - Elapsed time in seconds
  * @returns Object with wrapped time and number of complete cycles
  */
@@ -31,7 +31,7 @@ export function wrapStarTime(time: number): { wrapped: number; cycles: number } 
 
 /**
  * Check if Copilot debug mode is enabled via query parameter or window flag.
- * 
+ *
  * @returns true if debug mode is active
  */
 export function isCopilotDebugEnabled(): boolean {

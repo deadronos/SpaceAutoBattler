@@ -6,21 +6,38 @@ import type { GameEntity, GameState, ShipEntity } from '../../src/types/index.js
 import { fireProjectile, updateGame } from '../../src/game/systems.js';
 import { flushPostPhysicsMutations } from '../../src/game/simulationQueue.js';
 
-function makeRigidBodyStub(init?: { pos?: { x: number; y: number; z: number }; rot?: { x: number; y: number; z: number; w: number } }) {
+function makeRigidBodyStub(init?: {
+  pos?: { x: number; y: number; z: number };
+  rot?: { x: number; y: number; z: number; w: number };
+}) {
   let pos = init?.pos ?? { x: 0, y: 0, z: 0 };
   let rot = init?.rot ?? { x: 0, y: 0, z: 0, w: 1 };
   return {
-    translation() { return pos; },
-    rotation() { return rot; },
-    setNextKinematicTranslation(p: { x: number; y: number; z: number }) { pos = { ...p }; },
-    setNextKinematicRotation(r: { x: number; y: number; z: number; w: number }) { rot = { ...r }; },
-    isValid() { return true; },
+    translation() {
+      return pos;
+    },
+    rotation() {
+      return rot;
+    },
+    setNextKinematicTranslation(p: { x: number; y: number; z: number }) {
+      pos = { ...p };
+    },
+    setNextKinematicRotation(r: { x: number; y: number; z: number; w: number }) {
+      rot = { ...r };
+    },
+    isValid() {
+      return true;
+    },
   } as any;
 }
 
 function makeStateStub(): GameState {
   const entities: GameEntity[] = [] as any;
-  const queries = { ships: { entities: [] as any[] }, projectiles: { entities: [] as any[] }, turrets: { entities: [] as any[] } } as any;
+  const queries = {
+    ships: { entities: [] as any[] },
+    projectiles: { entities: [] as any[] },
+    turrets: { entities: [] as any[] },
+  } as any;
   const world = {
     entities,
     createEntity(obj: any) {
@@ -49,19 +66,38 @@ function makeStateStub(): GameState {
   } as any;
 
   const rapierStub = {
-    RigidBodyDesc: { kinematicPositionBased: () => ({
-      _pos: { x: 0, y: 0, z: 0 }, _rot: { x: 0, y: 0, z: 0, w: 1 },
-      setTranslation(x: number, y: number, z: number) { this._pos = { x, y, z }; return this; },
-      setRotation(r: { x: number; y: number; z: number; w: number }) { this._rot = r; return this; },
-    }) },
-    ColliderDesc: { ball: () => ({ setActiveEvents() { return this; }, setActiveCollisionTypes() { return this; } }) },
+    RigidBodyDesc: {
+      kinematicPositionBased: () => ({
+        _pos: { x: 0, y: 0, z: 0 },
+        _rot: { x: 0, y: 0, z: 0, w: 1 },
+        setTranslation(x: number, y: number, z: number) {
+          this._pos = { x, y, z };
+          return this;
+        },
+        setRotation(r: { x: number; y: number; z: number; w: number }) {
+          this._rot = r;
+          return this;
+        },
+      }),
+    },
+    ColliderDesc: {
+      ball: () => ({
+        setActiveEvents() {
+          return this;
+        },
+        setActiveCollisionTypes() {
+          return this;
+        },
+      }),
+    },
     ActiveEvents: { COLLISION_EVENTS: 1 },
     ActiveCollisionTypes: { ALL: 1 },
   } as any;
 
   let nextHandle = 1;
   const physicsWorld = {
-    createRigidBody: (desc?: any) => makeRigidBodyStub(desc ? { pos: desc._pos, rot: desc._rot } : undefined),
+    createRigidBody: (desc?: any) =>
+      makeRigidBodyStub(desc ? { pos: desc._pos, rot: desc._rot } : undefined),
     createCollider: () => ({ handle: nextHandle++, isValid: () => true }) as any,
     removeCollider() {},
     removeRigidBody() {},
@@ -127,7 +163,13 @@ function makeStateStub(): GameState {
   } as GameState;
 }
 
-function makeShip(id: number, team: 'blue'|'red', position: Vector3, hp=10, shield=5): ShipEntity {
+function makeShip(
+  id: number,
+  team: 'blue' | 'red',
+  position: Vector3,
+  hp = 10,
+  shield = 5,
+): ShipEntity {
   const rb = makeRigidBodyStub({ pos: { x: position.x, y: position.y, z: position.z } });
   const shipEntity = {
     id,
@@ -164,20 +206,20 @@ function makeShip(id: number, team: 'blue'|'red', position: Vector3, hp=10, shie
 describe('projectile resolution', () => {
   it('applies shield then hull damage and emits ripple', () => {
     const state = makeStateStub();
-    const attacker = makeShip(1, 'blue', new Vector3(0,0,0));
-    const target = makeShip(2, 'red', new Vector3(0,0,0.5), 10, 4); // inside impact radius
+    const attacker = makeShip(1, 'blue', new Vector3(0, 0, 0));
+    const target = makeShip(2, 'red', new Vector3(0, 0, 0.5), 10, 4); // inside impact radius
     (state.queries.ships as any).entities = [attacker, target];
     // Prevent auto-fire from prepareShips for both sides
     attacker.ship.cooldown = 999;
     target.ship.cooldown = 999;
 
     // Fire a projectile that will immediately overlap target in resolve step
-    const dir = new Vector3(0,0,1);
+    const dir = new Vector3(0, 0, 1);
     const originNearTarget = target.transform.position.clone().addScaledVector(dir, -0.05);
-  fireProjectile(state, attacker, dir, { originPosition: originNearTarget });
-  expect(state.simulation.postStepMutations).toHaveLength(1);
-  flushPostPhysicsMutations(state);
-  expect((state.queries.projectiles as any).entities.length).toBe(1);
+    fireProjectile(state, attacker, dir, { originPosition: originNearTarget });
+    expect(state.simulation.postStepMutations).toHaveLength(1);
+    flushPostPhysicsMutations(state);
+    expect((state.queries.projectiles as any).entities.length).toBe(1);
 
     // Step small delta to resolve collision
     updateGame(state, 0.016);
@@ -193,20 +235,20 @@ describe('projectile resolution', () => {
 
   it('kills ship when hull <= 0 and removes entity', () => {
     const state = makeStateStub();
-    const attacker = makeShip(1, 'blue', new Vector3(0,0,0));
-    const target = makeShip(2, 'red', new Vector3(0,0,0.3), 2, 0);
+    const attacker = makeShip(1, 'blue', new Vector3(0, 0, 0));
+    const target = makeShip(2, 'red', new Vector3(0, 0, 0.3), 2, 0);
     (state.queries.ships as any).entities = [attacker, target];
     attacker.ship.cooldown = 999;
     target.ship.cooldown = 999;
 
     // Increase attacker damage to 5 to ensure kill
     attacker.ship.damage = 5;
-    const dir = new Vector3(0,0,1);
+    const dir = new Vector3(0, 0, 1);
     const originNearTarget = target.transform.position.clone().addScaledVector(dir, -0.05);
-  fireProjectile(state, attacker, dir, { originPosition: originNearTarget });
-  expect(state.simulation.postStepMutations).toHaveLength(1);
-  flushPostPhysicsMutations(state);
-  expect((state.queries.projectiles as any).entities.length).toBe(1);
+    fireProjectile(state, attacker, dir, { originPosition: originNearTarget });
+    expect(state.simulation.postStepMutations).toHaveLength(1);
+    flushPostPhysicsMutations(state);
+    expect((state.queries.projectiles as any).entities.length).toBe(1);
 
     updateGame(state, 0.016);
 
@@ -219,8 +261,8 @@ describe('projectile resolution', () => {
 
   it('removes projectile when ttl expires', () => {
     const state = makeStateStub();
-    const attacker = makeShip(1, 'blue', new Vector3(0,0,0));
-    const farEnemy = makeShip(2, 'red', new Vector3(1000,0,0));
+    const attacker = makeShip(1, 'blue', new Vector3(0, 0, 0));
+    const farEnemy = makeShip(2, 'red', new Vector3(1000, 0, 0));
     (state.queries.ships as any).entities = [attacker, farEnemy];
     attacker.ship.cooldown = 999;
     farEnemy.ship.cooldown = 999;
@@ -228,14 +270,13 @@ describe('projectile resolution', () => {
     // Make very slow projectile with very short range so ttl small
     attacker.ship.projectileSpeed = 1;
     attacker.ship.range = 1; // lifetime = 1/1 = 1s
-  fireProjectile(state, attacker, new Vector3(1,0,0));
-  expect(state.simulation.postStepMutations).toHaveLength(1);
-  flushPostPhysicsMutations(state);
-  expect((state.queries.projectiles as any).entities.length).toBe(1);
+    fireProjectile(state, attacker, new Vector3(1, 0, 0));
+    expect(state.simulation.postStepMutations).toHaveLength(1);
+    flushPostPhysicsMutations(state);
+    expect((state.queries.projectiles as any).entities.length).toBe(1);
 
     // Advance time beyond ttl
     updateGame(state, 1.2);
     expect((state.queries.projectiles as any).entities.length).toBe(0);
   });
 });
-

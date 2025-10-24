@@ -38,7 +38,7 @@ export interface MoraleAbility {
 }
 
 export interface Captain {
-  accuracy: number;        // Multiplier for hit chance (0.8 - 1.2)
-  repairSpeed: number;     // Multiplier for repair rate (0.8 - 1.2)
+  accuracy: number; // Multiplier for hit chance (0.8 - 1.2)
+  repairSpeed: number; // Multiplier for repair rate (0.8 - 1.2)
   moraleAbility?: MoraleAbility;
 }

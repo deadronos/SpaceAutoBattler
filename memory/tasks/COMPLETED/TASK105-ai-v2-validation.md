@@ -1,6 +1,7 @@
 # TASK105 — AI V2 Validation & Tooling
 
 ## Summary
+
 - Build the missing AI V2 validation harness promised in `plan/plan-ai-system.md`.
 - Cover deterministic command streams, utility scoring snapshots, and executor invariants with Vitest.
 - Reinstate a lightweight debug overlay for intent/band diagnostics when AI V2 is enabled.
@@ -8,10 +9,12 @@
 - Refresh docs/memory to mark phases 3–7 as complete and capture new tooling.
 
 ## Status
+
 - Owner: automated agent (2025-09-22)
 - State: Completed
 
 ## Subtasks
+
 - [x] Add Vitest determinism spec that compares command streams across seeded runs.
 - [x] Snapshot utility scores (attack/kite/escort/flee) under varying posture/traits.
 - [x] Verify executor commands (band keeping, escort radius, fire gating) via unit tests.
@@ -21,5 +24,6 @@
 - [x] Update docs/memory/plan to reflect completed validation work.
 
 ## Notes
+
 - Keep overlay behind opt-in toggle to avoid perf impact in production builds.
 - Perf assertion should be configurable via env vars (ship count, ticks, budget) for CI flexibility.

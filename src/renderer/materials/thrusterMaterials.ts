@@ -1,6 +1,8 @@
 import { AdditiveBlending, Color, MeshBasicMaterial, MeshBasicMaterialParameters } from 'three';
 
-export function createThrusterGlowMaterial(parameters: MeshBasicMaterialParameters = {}): MeshBasicMaterial {
+export function createThrusterGlowMaterial(
+  parameters: MeshBasicMaterialParameters = {},
+): MeshBasicMaterial {
   const material = new MeshBasicMaterial({
     color: new Color('#5fb6ff'),
     transparent: true,
@@ -14,7 +16,9 @@ export function createThrusterGlowMaterial(parameters: MeshBasicMaterialParamete
   return material;
 }
 
-export function createShipImpostorMaterial(parameters: MeshBasicMaterialParameters = {}): MeshBasicMaterial {
+export function createShipImpostorMaterial(
+  parameters: MeshBasicMaterialParameters = {},
+): MeshBasicMaterial {
   const material = new MeshBasicMaterial({
     color: new Color('#8fa2ff'),
     transparent: true,
@@ -27,4 +31,3 @@ export function createShipImpostorMaterial(parameters: MeshBasicMaterialParamete
   material.name = 'ship-impostor-instance';
   return material;
 }
-

@@ -1,6 +1,6 @@
 /**
  * Star disk texture loading and configuration hook
- * 
+ *
  * Handles loading textures from asset paths and configuring them with appropriate
  * filters, wrapping modes, anisotropy, and color spaces for star disk rendering.
  */
@@ -21,7 +21,7 @@ import { STAR_DISK_TEXTURE_PATHS, type StarDiskTextureKey } from '../assets/star
 
 /**
  * Load and configure star disk textures.
- * 
+ *
  * @returns Object containing organic and noise textures (may be undefined if not loaded)
  */
 export function useStarTextures(): {
@@ -29,13 +29,16 @@ export function useStarTextures(): {
   noise: Texture | undefined;
 } {
   const { gl } = useThree();
-  const starTextures = useTexture(STAR_DISK_TEXTURE_PATHS) as Record<StarDiskTextureKey, Texture | undefined>;
+  const starTextures = useTexture(STAR_DISK_TEXTURE_PATHS) as Record<
+    StarDiskTextureKey,
+    Texture | undefined
+  >;
   const organicTexture = starTextures.organic;
   const noiseTexture = starTextures.noiseRgba;
 
   useEffect(() => {
     const maxAniso = Math.min(8, gl.capabilities.getMaxAnisotropy());
-    
+
     if (organicTexture) {
       organicTexture.wrapS = RepeatWrapping;
       organicTexture.wrapT = ClampToEdgeWrapping;
@@ -45,7 +48,7 @@ export function useStarTextures(): {
       organicTexture.colorSpace = SRGBColorSpace;
       organicTexture.needsUpdate = true;
     }
-    
+
     if (noiseTexture) {
       noiseTexture.wrapS = RepeatWrapping;
       noiseTexture.wrapT = RepeatWrapping;

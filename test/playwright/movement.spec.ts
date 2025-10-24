@@ -65,7 +65,7 @@ test.describe('Ship motion heuristics', () => {
       if (!firstBlue) throw new Error('Unable to locate a blue ship');
       const targetId = firstBlue.id;
       const frames: Array<{ position: Vector3Like; rotation: QuaternionLike }> = [
-        { position: firstBlue.position, rotation: firstBlue.rotation }
+        { position: firstBlue.position, rotation: firstBlue.rotation },
       ];
 
       for (let i = 0; i < 32; i += 1) {

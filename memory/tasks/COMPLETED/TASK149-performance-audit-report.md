@@ -28,12 +28,12 @@ Generate a performance report that rates every source file under `src/` for pool
 
 ### Subtasks
 
-| ID  | Description | Status | Updated | Notes |
-| --- | ----------- | ------ | ------- | ----- |
-| 1.1 | Capture file inventory from `src/` | Complete | 2025-09-28 | PowerShell `Get-ChildItem` enumeration executed. |
-| 1.2 | Evaluate files and assign ratings | Complete | 2025-09-28 | Reviewed every `src/` module; findings recorded batch-by-batch. |
+| ID  | Description                                                | Status   | Updated    | Notes                                                                               |
+| --- | ---------------------------------------------------------- | -------- | ---------- | ----------------------------------------------------------------------------------- |
+| 1.1 | Capture file inventory from `src/`                         | Complete | 2025-09-28 | PowerShell `Get-ChildItem` enumeration executed.                                    |
+| 1.2 | Evaluate files and assign ratings                          | Complete | 2025-09-28 | Reviewed every `src/` module; findings recorded batch-by-batch.                     |
 | 1.3 | Draft performance report with findings and recommendations | Complete | 2025-09-28 | Authored `docs/performance-report-v0.1.1.md` with front matter and batch breakdown. |
-| 1.4 | Validate coverage and formatting | Complete | 2025-09-28 | Cross-checked inventory against report, ran markdown validation checklist. |
+| 1.4 | Validate coverage and formatting                           | Complete | 2025-09-28 | Cross-checked inventory against report, ran markdown validation checklist.          |
 
 ## Progress Log
 

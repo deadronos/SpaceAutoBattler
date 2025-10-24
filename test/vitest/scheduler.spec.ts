@@ -176,7 +176,7 @@ describe('Scheduler', () => {
         totalShips: 10,
         sliceSize: 6,
         decisions: 0, // Not used in this function
-        skipped: 0,   // Not used in this function
+        skipped: 0, // Not used in this function
         budgetHit: true,
       };
 

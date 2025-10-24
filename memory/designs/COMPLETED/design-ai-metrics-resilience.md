@@ -37,12 +37,12 @@ runAIScenario → aggregateKpis → snapshotMetrics → JSON fixtures
 
 ## Error Handling Matrix
 
-| Failure Mode | Detection | Response | Notes |
-| --- | --- | --- | --- |
-| Percentile helper receives empty array | `sortedValues.length === 0` | Return `0` (maintains historical guard) | Covered by existing reset tests |
-| Rapier shim invoked outside tests | `state.rapier` missing required builders | Throwing earlier than shim is acceptable; shim is scoped to tests | Documented in test helper |
-| `world.createEntity` shim invoked without projectile config | Fallback default config | Use existing `DEFAULT_PROJECTILE_CONFIG` to ensure deterministic scale/radius | Aligns with production defaults |
-| Scenario fixture mismatch | Vitest deep equality assertion | Update fixtures via normalized snapshot | `normalizeLog` helper retains rounding |
+| Failure Mode                                                | Detection                                | Response                                                                      | Notes                                  |
+| ----------------------------------------------------------- | ---------------------------------------- | ----------------------------------------------------------------------------- | -------------------------------------- |
+| Percentile helper receives empty array                      | `sortedValues.length === 0`              | Return `0` (maintains historical guard)                                       | Covered by existing reset tests        |
+| Rapier shim invoked outside tests                           | `state.rapier` missing required builders | Throwing earlier than shim is acceptable; shim is scoped to tests             | Documented in test helper              |
+| `world.createEntity` shim invoked without projectile config | Fallback default config                  | Use existing `DEFAULT_PROJECTILE_CONFIG` to ensure deterministic scale/radius | Aligns with production defaults        |
+| Scenario fixture mismatch                                   | Vitest deep equality assertion           | Update fixtures via normalized snapshot                                       | `normalizeLog` helper retains rounding |
 
 ## Unit Testing Strategy
 

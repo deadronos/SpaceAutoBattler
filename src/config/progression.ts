@@ -1,4 +1,9 @@
-import type { DamageEffectiveness, DamageType, MoraleEffectType, SubsystemType } from '../types/index.js';
+import type {
+  DamageEffectiveness,
+  DamageType,
+  MoraleEffectType,
+  SubsystemType,
+} from '../types/index.js';
 
 /**
  * Configuration for the ship progression system
@@ -18,20 +23,20 @@ export const XP_CONFIG = {
 
 // Level-up Bonus Configuration (percentage bonuses per level)
 export const LEVEL_BONUSES = {
-  hull: { bonus: 0.05, cap: 0.5, maxLevel: 10 },         // +5% maxHp per level, cap at +50%
-  shield: { bonus: 0.05, cap: 0.5, maxLevel: 10 },       // +5% maxShield per level, cap at +50%
-  damage: { bonus: 0.03, cap: 0.3, maxLevel: 10 },       // +3% damage per level, cap at +30%
-  shieldRegen: { bonus: 0.04, cap: 0.4, maxLevel: 10 },  // +4% shieldRegen per level, cap at +40%
-  repairRate: { bonus: 0.05, cap: 0.5, maxLevel: 10 },   // +5% repair rate per level, cap at +50%
-  fireRate: { bonus: 0.02, cap: 0.15, maxLevel: 8 },     // +2% fire rate per level, cap at +15% (performance)
+  hull: { bonus: 0.05, cap: 0.5, maxLevel: 10 }, // +5% maxHp per level, cap at +50%
+  shield: { bonus: 0.05, cap: 0.5, maxLevel: 10 }, // +5% maxShield per level, cap at +50%
+  damage: { bonus: 0.03, cap: 0.3, maxLevel: 10 }, // +3% damage per level, cap at +30%
+  shieldRegen: { bonus: 0.04, cap: 0.4, maxLevel: 10 }, // +4% shieldRegen per level, cap at +40%
+  repairRate: { bonus: 0.05, cap: 0.5, maxLevel: 10 }, // +5% repair rate per level, cap at +50%
+  fireRate: { bonus: 0.02, cap: 0.15, maxLevel: 8 }, // +2% fire rate per level, cap at +15% (performance)
 } as const;
 
 // Damage Type Effectiveness Matrix
 export const DAMAGE_EFFECTIVENESS: DamageEffectiveness = {
-  kinetic: { hull: 1.0, shield: 0.8, armor: 1.2 },  // Good vs armor, poor vs shields
-  plasma:  { hull: 1.1, shield: 0.9, armor: 1.3 },  // Best vs armor, decent overall
-  ion:     { hull: 0.7, shield: 1.4, armor: 0.9 },  // Excellent vs shields, poor vs hull
-  explosive: { hull: 1.2, shield: 0.6, armor: 1.1 } // Great vs hull, terrible vs shields
+  kinetic: { hull: 1.0, shield: 0.8, armor: 1.2 }, // Good vs armor, poor vs shields
+  plasma: { hull: 1.1, shield: 0.9, armor: 1.3 }, // Best vs armor, decent overall
+  ion: { hull: 0.7, shield: 1.4, armor: 0.9 }, // Excellent vs shields, poor vs hull
+  explosive: { hull: 1.2, shield: 0.6, armor: 1.1 }, // Great vs hull, terrible vs shields
 };
 
 // Captain System Configuration
@@ -49,25 +54,28 @@ export const CAPTAIN_CONFIG = {
 } as const;
 
 // Morale Ability Configuration
-export const MORALE_ABILITIES: Record<MoraleEffectType, {
-  duration: number;
-  cooldown: number;
-  description: string;
-}> = {
+export const MORALE_ABILITIES: Record<
+  MoraleEffectType,
+  {
+    duration: number;
+    cooldown: number;
+    description: string;
+  }
+> = {
   aggression_boost: {
     duration: 10,
     cooldown: 60,
-    description: 'Increases attack intent weights by 50%'
+    description: 'Increases attack intent weights by 50%',
   },
   repair_boost: {
     duration: 8,
     cooldown: 90,
-    description: 'Doubles repair rate for all subsystems'
+    description: 'Doubles repair rate for all subsystems',
   },
   accuracy_boost: {
     duration: 12,
     cooldown: 75,
-    description: 'Increases hit chance by 25%'
+    description: 'Increases hit chance by 25%',
   },
 };
 
@@ -98,35 +106,35 @@ export const SUBSYSTEM_CONFIG = {
 // Subsystem Status Effect Configuration
 export const SUBSYSTEM_EFFECTS = {
   engine: {
-    damaged: 0.75,    // -25% speed
-    offline: 0.5,     // -50% speed
+    damaged: 0.75, // -25% speed
+    offline: 0.5, // -50% speed
   },
   weapons: {
-    damaged: 0.7,     // -30% damage
-    offline: 0.4,     // -60% damage
+    damaged: 0.7, // -30% damage
+    offline: 0.4, // -60% damage
   },
   shields: {
-    damaged: 0.7,     // -30% shield regen
-    offline: 0.0,     // no shield regen
+    damaged: 0.7, // -30% shield regen
+    offline: 0.0, // no shield regen
   },
 } as const;
 
 // Default damage types for each hull class
 export const HULL_DAMAGE_TYPES: Record<string, DamageType> = {
-  fighter: 'kinetic',    // Fast, balanced
-  corvette: 'kinetic',   // Similar role to fighters
-  frigate: 'plasma',     // Heavier weapons
-  destroyer: 'plasma',   // Dedicated warships
-  carrier: 'ion',        // Anti-shield for bomber support
+  fighter: 'kinetic', // Fast, balanced
+  corvette: 'kinetic', // Similar role to fighters
+  frigate: 'plasma', // Heavier weapons
+  destroyer: 'plasma', // Dedicated warships
+  carrier: 'ion', // Anti-shield for bomber support
 };
 
 // Default armor values for each hull class
 export const HULL_ARMOR_VALUES: Record<string, number> = {
-  fighter: 5,     // Light armor
-  corvette: 8,    // Light-medium armor
-  frigate: 12,    // Medium armor
-  destroyer: 18,  // Heavy armor
-  carrier: 15,    // Medium-heavy armor (big but not as armored as destroyer)
+  fighter: 5, // Light armor
+  corvette: 8, // Light-medium armor
+  frigate: 12, // Medium armor
+  destroyer: 18, // Heavy armor
+  carrier: 15, // Medium-heavy armor (big but not as armored as destroyer)
 };
 
 /**
@@ -150,6 +158,9 @@ export function calculateLevelBonus(stat: keyof typeof LEVEL_BONUSES, level: num
 /**
  * Get effective damage multiplier for a damage type against a defense type
  */
-export function getDamageEffectiveness(damageType: DamageType, defenseType: 'hull' | 'shield' | 'armor'): number {
+export function getDamageEffectiveness(
+  damageType: DamageType,
+  defenseType: 'hull' | 'shield' | 'armor',
+): number {
   return DAMAGE_EFFECTIVENESS[damageType]?.[defenseType] ?? 1.0;
 }

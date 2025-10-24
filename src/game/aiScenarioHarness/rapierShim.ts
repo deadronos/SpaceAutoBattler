@@ -16,17 +16,7 @@ export function createRigidBodyShim(
     setNextKinematicTranslation: ({ x, y, z }: { x: number; y: number; z: number }) => {
       position.set(x, y, z);
     },
-    setNextKinematicRotation: ({
-      x,
-      y,
-      z,
-      w,
-    }: {
-      x: number;
-      y: number;
-      z: number;
-      w: number;
-    }) => {
+    setNextKinematicRotation: ({ x, y, z, w }: { x: number; y: number; z: number; w: number }) => {
       rotation.set(x, y, z, w);
     },
     setLinvel: ({ x, y, z }: { x: number; y: number; z: number }) => {

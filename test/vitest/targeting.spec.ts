@@ -76,4 +76,3 @@ describe('findNearestEnemy', () => {
     expect(result).toBeNull();
   });
 });
-

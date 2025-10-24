@@ -3,8 +3,14 @@ import { describe, expect, it, vi } from 'vitest';
 vi.mock('../../src/game/systems/carriers.js', () => ({ updateCarrierLaunchSystem: vi.fn() }));
 vi.mock('../../src/game/systems/motion.js', () => ({ updateMotionSystem: vi.fn() }));
 vi.mock('../../src/game/explosions.js', () => ({ updateExplosions: vi.fn() }));
-vi.mock('../../src/game/systems/decision/manager.js', () => ({ updateDecisionSystem: vi.fn(), runDecisionTick: vi.fn() }));
-vi.mock('../../src/game/systems/decision/blackboard.js', () => ({ refreshBlackboard: vi.fn(), assignTeamRoles: vi.fn() }));
+vi.mock('../../src/game/systems/decision/manager.js', () => ({
+  updateDecisionSystem: vi.fn(),
+  runDecisionTick: vi.fn(),
+}));
+vi.mock('../../src/game/systems/decision/blackboard.js', () => ({
+  refreshBlackboard: vi.fn(),
+  assignTeamRoles: vi.fn(),
+}));
 vi.mock('../../src/game/systems/decision/intents.js', () => ({
   selectIntent: vi.fn(),
   scoreAttackIntent: vi.fn(),
@@ -19,9 +25,19 @@ vi.mock('../../src/game/systems/decision/intents.js', () => ({
   writeCommand: vi.fn(),
   computeInterceptHeadingVector: vi.fn(),
 }));
-vi.mock('../../src/game/systems/shipControl.js', () => ({ prepareShips: vi.fn(), executeAICommand: vi.fn(), runLegacyShipBehavior: vi.fn() }));
-vi.mock('../../src/game/systems/projectiles.js', () => ({ fireProjectile: vi.fn(), advanceProjectiles: vi.fn() }));
-vi.mock('../../src/game/systems/turrets.js', () => ({ findNearestEnemy: vi.fn(), updateTurrets: vi.fn() }));
+vi.mock('../../src/game/systems/shipControl.js', () => ({
+  prepareShips: vi.fn(),
+  executeAICommand: vi.fn(),
+  runLegacyShipBehavior: vi.fn(),
+}));
+vi.mock('../../src/game/systems/projectiles.js', () => ({
+  fireProjectile: vi.fn(),
+  advanceProjectiles: vi.fn(),
+}));
+vi.mock('../../src/game/systems/turrets.js', () => ({
+  findNearestEnemy: vi.fn(),
+  updateTurrets: vi.fn(),
+}));
 vi.mock('../../src/game/damage.js', () => ({ resolveProjectiles: vi.fn() }));
 vi.mock('../../src/game/sync.js', () => ({ syncTransforms: vi.fn() }));
 

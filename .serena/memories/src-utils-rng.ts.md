@@ -16,9 +16,11 @@ Key exports / summary of implementation:
   - `normal(mean = 0, stdDev = 1): number` — Gaussian sample using the Box–Muller transform (ensures non-zero uniform inputs before transform).
 
 Notes & recommendations:
+
 - This RNG is intentionally small and deterministic; do not replace this with `Math.random` for simulation-critical code or tests.
 - The `GameState` factory (`createGameState`) seeds an instance of `SeededRng` (commonly using a default seed in tests), attach it on the returned `GameState` object, and all simulation code should read from that instance to remain deterministic.
 
 References:
+
 - `src/utils/rng.ts` (implementation)
 - `src/game/state.ts` (seed wiring and use in factory)

@@ -224,7 +224,7 @@ export const CELESTIAL_ENVIRONMENT: CelestialEnvironmentConfig = {
       id: 'distantStar1',
       position: [8000, 2000, -12000],
       size: 600,
-      color: '#ffddaa', 
+      color: '#ffddaa',
       opacity: 0.3,
       parallaxFactor: 0.05,
     },

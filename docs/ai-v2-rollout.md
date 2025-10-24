@@ -29,12 +29,12 @@ For CI automation, run `npm run test:ci` which now chains Vitest and the perf bu
 
 ## Troubleshooting & Rollback
 
-| Symptom | Action |
-| --- | --- |
-| Budget script fails | Inspect `state.ai.metrics` counters in the HUD. Reduce `AI_CONFIG.maxPerTick`, widen LOD thresholds, or throttle scenario complexity. |
-| Scenario harness diff | Run `vitest --run ai-scenario-harness.spec.ts --reporter verbose` to view the delta. Update fixtures only after confirming behavioral intent. |
-| Non-deterministic commands | Ensure all randomness flows through `SeededRng`; check for stray `Math.random` or Date usage. |
-| Need emergency rollback | Clear `AI_V2_DEFAULT`, disable the HUD toggle, and redeploy. Legacy AI code path remains intact and fully covered by `ai-regression.spec.ts`. |
+| Symptom                    | Action                                                                                                                                        |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Budget script fails        | Inspect `state.ai.metrics` counters in the HUD. Reduce `AI_CONFIG.maxPerTick`, widen LOD thresholds, or throttle scenario complexity.         |
+| Scenario harness diff      | Run `vitest --run ai-scenario-harness.spec.ts --reporter verbose` to view the delta. Update fixtures only after confirming behavioral intent. |
+| Non-deterministic commands | Ensure all randomness flows through `SeededRng`; check for stray `Math.random` or Date usage.                                                 |
+| Need emergency rollback    | Clear `AI_V2_DEFAULT`, disable the HUD toggle, and redeploy. Legacy AI code path remains intact and fully covered by `ai-regression.spec.ts`. |
 
 ## Communication Checklist
 
@@ -43,4 +43,5 @@ For CI automation, run `npm run test:ci` which now chains Vitest and the perf bu
 - Post-rollout, monitor perf dashboards for spikes in `ai.metrics.budgetHits`.
 
 ---
+
 With intercept/reposition/regroup now implemented and under test, the system is gated behind deterministic fixtures, perf checks, and environment-based toggles—providing a clear, reversible path to enable AI V2 by default.

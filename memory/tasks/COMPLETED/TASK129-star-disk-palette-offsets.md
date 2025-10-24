@@ -26,12 +26,12 @@ Document how derived star disk colours are generated and expose the palette offs
 
 **Overall Status:** Completed - 100%
 
-| ID | Description | Status | Updated | Notes |
-| --- | --- | --- | --- | --- |
-| 1.1 | Add palette offset schemas & defaults | Complete | 2025-09-26 | Config interfaces and environment defaults updated. |
-| 1.2 | Clamp/apply offsets in material helper | Complete | 2025-09-26 | `buildColorPalette` honours configurable offsets. |
-| 1.3 | Expand Vitest coverage | Complete | 2025-09-26 | Added clamp + custom offset assertions. |
-| 1.4 | Update docs/memory & run validation | Complete | 2025-09-26 | Requirements/design/activeContext/progress refreshed; tests pending verification. |
+| ID  | Description                            | Status   | Updated    | Notes                                                                             |
+| --- | -------------------------------------- | -------- | ---------- | --------------------------------------------------------------------------------- |
+| 1.1 | Add palette offset schemas & defaults  | Complete | 2025-09-26 | Config interfaces and environment defaults updated.                               |
+| 1.2 | Clamp/apply offsets in material helper | Complete | 2025-09-26 | `buildColorPalette` honours configurable offsets.                                 |
+| 1.3 | Expand Vitest coverage                 | Complete | 2025-09-26 | Added clamp + custom offset assertions.                                           |
+| 1.4 | Update docs/memory & run validation    | Complete | 2025-09-26 | Requirements/design/activeContext/progress refreshed; tests pending verification. |
 
 ## Progress Log
 

@@ -175,10 +175,7 @@ describe('rippleUtils', () => {
     });
 
     it('should filter out low amplitude ripples', () => {
-      const ripples = [
-        createRipple(-1.0, 0),
-        createRipple(0.5, 1),
-      ];
+      const ripples = [createRipple(-1.0, 0), createRipple(0.5, 1)];
       const processed = processRipplesForRendering(ripples, defaultTuning);
       expect(processed.length).toBeLessThan(ripples.length);
     });
@@ -206,11 +203,7 @@ describe('rippleUtils', () => {
     });
 
     it('should coalesce nearby ripples', () => {
-      const ripples = [
-        createRipple(0.5, 0.0),
-        createRipple(0.5, 0.02),
-        createRipple(0.5, 0.03),
-      ];
+      const ripples = [createRipple(0.5, 0.0), createRipple(0.5, 0.02), createRipple(0.5, 0.03)];
       const processed = processRipplesForRendering(ripples, defaultTuning);
       expect(processed.length).toBeLessThan(ripples.length);
     });

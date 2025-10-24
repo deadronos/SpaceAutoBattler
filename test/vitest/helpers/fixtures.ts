@@ -30,12 +30,12 @@ export function createTestBlackboard(): AIBlackboard {
 /**
  * Create a minimal GameState stub for tests.
  * Uses proper initialization for all nested structures.
- * 
+ *
  * @param overrides Optional partial overrides for specific state properties
  */
 export function createTestGameState(overrides?: Partial<GameState>): GameState {
   const ships: ShipEntity[] = [];
-  
+
   const baseState: GameState = {
     ai: {
       enabled: true,
@@ -97,7 +97,7 @@ export function createTestGameState(overrides?: Partial<GameState>): GameState {
 
 /**
  * Create a minimal AIState stub for tests with proper initialization.
- * 
+ *
  * @param overrides Optional partial overrides for specific AI properties
  */
 export function createTestAIState(overrides?: Partial<AIState>): AIState {
@@ -126,7 +126,7 @@ export function createTestAIState(overrides?: Partial<AIState>): AIState {
 /**
  * Create a minimal ship entity stub for tests.
  * Includes proper progression defaults and AI state initialization.
- * 
+ *
  * @param id Entity ID
  * @param team Team assignment
  * @param position World position

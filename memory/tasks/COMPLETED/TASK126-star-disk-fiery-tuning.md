@@ -26,12 +26,12 @@ Correct the star disk's stretched appearance and push the shader toward a hotter
 
 **Overall Status:** Completed - 100%
 
-| ID | Description | Status | Updated | Notes |
-| --- | --- | --- | --- | --- |
-| 1.1 | Capture requirements and design updates | Complete | 2025-09-25 | Added new EARS + design Section 11 |
-| 1.2 | Implement aspect ratio fix | Complete | 2025-09-25 | Shader uniform now uses reciprocal aspect with guard + warning |
-| 1.3 | Apply fiery tuning to shader/config | Complete | 2025-09-25 | Boosted defaults, fragment mix, and environment overrides |
-| 1.4 | Expand tests and validation | Complete | 2025-09-25 | Added fiery default/fallback coverage + ran typecheck/test |
+| ID  | Description                             | Status   | Updated    | Notes                                                          |
+| --- | --------------------------------------- | -------- | ---------- | -------------------------------------------------------------- |
+| 1.1 | Capture requirements and design updates | Complete | 2025-09-25 | Added new EARS + design Section 11                             |
+| 1.2 | Implement aspect ratio fix              | Complete | 2025-09-25 | Shader uniform now uses reciprocal aspect with guard + warning |
+| 1.3 | Apply fiery tuning to shader/config     | Complete | 2025-09-25 | Boosted defaults, fragment mix, and environment overrides      |
+| 1.4 | Expand tests and validation             | Complete | 2025-09-25 | Added fiery default/fallback coverage + ran typecheck/test     |
 
 ## Progress Log
 

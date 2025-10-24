@@ -31,14 +31,14 @@ Implement the boundary feather design described in `memory/design-star-disk-boun
 
 ### Subtasks
 
-| ID  | Description | Status | Updated | Notes |
-| --- | ----------- | ------ | ------- | ----- |
-| 1.1 | Extend config and types | Completed | 2025-09-27 | Added `StarDiskBoundaryConfig` and defaults to environment config. |
+| ID  | Description                            | Status    | Updated    | Notes                                                              |
+| --- | -------------------------------------- | --------- | ---------- | ------------------------------------------------------------------ |
+| 1.1 | Extend config and types                | Completed | 2025-09-27 | Added `StarDiskBoundaryConfig` and defaults to environment config. |
 | 1.2 | Add material uniform + clamping helper | Completed | 2025-09-27 | Implemented `deriveBoundaryUniform` and seeded `iBoundaryFeather`. |
-| 1.3 | Implement shader boundary feather | Completed | 2025-09-27 | Added GLSL helper multiplying final color/alpha. |
-| 1.4 | Wire boundary config in component | Completed | 2025-09-27 | Threaded boundary props/env through per-frame update. |
-| 1.5 | Implement unit tests | Completed | 2025-09-27 | Added `star-disk-boundary`, expanded material/component specs. |
-| 1.6 | Run validation and update docs/memory | Completed | 2025-09-27 | `npm run typecheck` + `npm test`; memory updated. |
+| 1.3 | Implement shader boundary feather      | Completed | 2025-09-27 | Added GLSL helper multiplying final color/alpha.                   |
+| 1.4 | Wire boundary config in component      | Completed | 2025-09-27 | Threaded boundary props/env through per-frame update.              |
+| 1.5 | Implement unit tests                   | Completed | 2025-09-27 | Added `star-disk-boundary`, expanded material/component specs.     |
+| 1.6 | Run validation and update docs/memory  | Completed | 2025-09-27 | `npm run typecheck` + `npm test`; memory updated.                  |
 
 ## Progress Log
 

@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { computeShieldFraction, shouldDisplayShield, validateShieldVisibility } from '../../../src/components/ship/shieldUtils.js';
+import {
+  computeShieldFraction,
+  shouldDisplayShield,
+  validateShieldVisibility,
+} from '../../../src/components/ship/shieldUtils.js';
 
 describe('shieldUtils', () => {
   describe('computeShieldFraction', () => {

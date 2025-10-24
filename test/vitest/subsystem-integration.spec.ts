@@ -1,7 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { Vector3 } from 'three';
 import type { ShipComponent } from '../../src/types/index.js';
-import { getEffectiveStats, applySubsystemDamage, createLevelBonusState } from '../../src/game/progression.js';
+import {
+  getEffectiveStats,
+  applySubsystemDamage,
+  createLevelBonusState,
+} from '../../src/game/progression.js';
 import { SeededRng } from '../../src/utils/rng.js';
 
 describe('Subsystem Integration Tests', () => {
@@ -161,7 +165,7 @@ describe('Subsystem Integration Tests', () => {
     }
 
     // At least one subsystem should have taken damage
-    const hasSubsystemDamage = 
+    const hasSubsystemDamage =
       testShip.subsystems.engine.hp < initialSubsystemHp.engine ||
       testShip.subsystems.weapons.hp < initialSubsystemHp.weapons ||
       testShip.subsystems.shields.hp < initialSubsystemHp.shields;
@@ -169,7 +173,7 @@ describe('Subsystem Integration Tests', () => {
     expect(hasSubsystemDamage).toBe(true);
 
     // At least one subsystem should have non-online status
-    const hasStatusEffect = 
+    const hasStatusEffect =
       testShip.subsystems.engine.status !== 'online' ||
       testShip.subsystems.weapons.status !== 'online' ||
       testShip.subsystems.shields.status !== 'online';
@@ -260,7 +264,7 @@ describe('Subsystem Integration Tests', () => {
     // Demonstrate the performance difference
     const healthyDamageOutput = 10 * healthyStats.damageMultiplier;
     const damagedDamageOutput = 10 * damagedStats.damageMultiplier;
-    
+
     expect(healthyDamageOutput).toBe(10);
     expect(damagedDamageOutput).toBe(4); // 60% reduction
 

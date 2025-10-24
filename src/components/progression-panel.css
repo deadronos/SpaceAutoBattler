@@ -6,13 +6,20 @@
   z-index: 30;
   background: rgba(12, 12, 16, 0.9);
   color: #eaeaea;
-  border: 1px solid rgba(255,255,255,0.06);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   padding: 8px;
   width: 360px;
   max-height: 60vh;
   overflow: auto;
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.6);
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    'Helvetica Neue',
+    Arial,
+    sans-serif;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6);
   border-radius: 6px;
 }
 
@@ -37,11 +44,15 @@
   padding: 6px 8px;
   margin: 6px 0;
   border-radius: 4px;
-  background: rgba(255,255,255,0.02);
+  background: rgba(255, 255, 255, 0.02);
 }
 
-.ship-progression-card--blue { border-left: 3px solid #3aa0ff; }
-.ship-progression-card--red { border-left: 3px solid #ff6b6b; }
+.ship-progression-card--blue {
+  border-left: 3px solid #3aa0ff;
+}
+.ship-progression-card--red {
+  border-left: 3px solid #ff6b6b;
+}
 
 .ship-progression-card__header {
   display: flex;
@@ -49,22 +60,80 @@
   gap: 8px;
 }
 
-.ship-progression-card__info { flex: 1 1 auto; }
-.ship-progression-card__name { font-weight: 600; margin-right: 8px; }
-.ship-progression-card__level { font-size: 12px; opacity: 0.9; }
+.ship-progression-card__info {
+  flex: 1 1 auto;
+}
+.ship-progression-card__name {
+  font-weight: 600;
+  margin-right: 8px;
+}
+.ship-progression-card__level {
+  font-size: 12px;
+  opacity: 0.9;
+}
 
-.ship-progression-card__xp { width: 160px; flex: 0 0 auto; }
-.ship-progression-card__xp-text { font-size: 12px; text-align: right; }
-.ship-progression-card__progress-bar { height: 8px; background: rgba(255,255,255,0.04); border-radius: 4px; overflow: hidden; margin-top: 4px; }
-.ship-progression-card__progress-fill { height: 100%; background: linear-gradient(90deg, #7ee787, #3aa0ff); width: 0%; transition: width 180ms linear; }
+.ship-progression-card__xp {
+  width: 160px;
+  flex: 0 0 auto;
+}
+.ship-progression-card__xp-text {
+  font-size: 12px;
+  text-align: right;
+}
+.ship-progression-card__progress-bar {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+.ship-progression-card__progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #7ee787, #3aa0ff);
+  width: 0%;
+  transition: width 180ms linear;
+}
 
-.ship-progression-card__toggle { background: transparent; border: none; color: inherit; cursor: pointer; padding: 4px 6px; font-size: 16px; }
+.ship-progression-card__toggle {
+  background: transparent;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 4px 6px;
+  font-size: 16px;
+}
 
-.progression-events { list-style: none; padding: 0; margin: 8px 0 0 0; }
-.progression-event { display: flex; gap: 8px; align-items: center; font-size: 12px; padding: 4px 0; }
-.progression-event__icon { width: 18px; text-align: center; }
-.progression-event__time { opacity: 0.8; font-size: 11px; }
-.progression-event__delta { font-weight: 600; margin-left: auto; }
-.progression-event__details { margin-left: 8px; opacity: 0.9; }
+.progression-events {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0 0;
+}
+.progression-event {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 12px;
+  padding: 4px 0;
+}
+.progression-event__icon {
+  width: 18px;
+  text-align: center;
+}
+.progression-event__time {
+  opacity: 0.8;
+  font-size: 11px;
+}
+.progression-event__delta {
+  font-weight: 600;
+  margin-left: auto;
+}
+.progression-event__details {
+  margin-left: 8px;
+  opacity: 0.9;
+}
 
-.progression-events--empty { font-size: 12px; opacity: 0.8; margin: 8px 0; }
+.progression-events--empty {
+  font-size: 12px;
+  opacity: 0.8;
+  margin: 8px 0;
+}

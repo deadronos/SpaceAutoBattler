@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { BufferGeometry, Color, InstancedMesh, MeshBasicMaterial, Object3D, Quaternion, Vector3 } from 'three';
+import {
+  BufferGeometry,
+  Color,
+  InstancedMesh,
+  MeshBasicMaterial,
+  Object3D,
+  Quaternion,
+  Vector3,
+} from 'three';
 import { DebrisInstancedManager } from '../../../src/components/debris/DebrisInstancedManager.js';
 import type { EffectUpdateContext } from '../../../src/components/explosions/effectUpdaters/types.js';
 
@@ -93,4 +101,3 @@ describe('DebrisInstancedManager', () => {
     expect(result.saturated).toBe(true);
   });
 });
-

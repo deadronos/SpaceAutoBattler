@@ -62,7 +62,7 @@ export function recordRapierStepPanic(state: GameState, error: unknown): void {
   }
 
   const message = error instanceof Error ? error.message : String(error ?? 'Rapier panic');
-  const stack = error instanceof Error ? error.stack ?? undefined : undefined;
+  const stack = error instanceof Error ? (error.stack ?? undefined) : undefined;
   const timestamp = Date.now();
 
   diagnostics.lastStepPanicTick = tickIndex;
@@ -83,15 +83,22 @@ export function recordRapierStepPanic(state: GameState, error: unknown): void {
   });
 }
 
-export function recordSubsystemFailure(state: GameState, subsystem: string, error: unknown, sanitizedState?: unknown): void {
+export function recordSubsystemFailure(
+  state: GameState,
+  subsystem: string,
+  error: unknown,
+  sanitizedState?: unknown,
+): void {
   const diagnostics = state.simulation.rapierDiagnostics;
   diagnostics.subsystemFailures = (diagnostics.subsystemFailures || 0) + 1;
 
   const tickIndex = state.simulation.lastTickIndex;
   diagnostics.lastSubsystemFailureTick = tickIndex;
   diagnostics.lastSubsystemFailureTimestamp = Date.now();
-  diagnostics.lastSubsystemFailureMessage = error instanceof Error ? error.message : String(error ?? 'Subsystem failure');
-  diagnostics.lastSubsystemFailureStack = error instanceof Error ? error.stack ?? undefined : undefined;
+  diagnostics.lastSubsystemFailureMessage =
+    error instanceof Error ? error.message : String(error ?? 'Subsystem failure');
+  diagnostics.lastSubsystemFailureStack =
+    error instanceof Error ? (error.stack ?? undefined) : undefined;
 
   publishRapierPanicSnapshot({
     tickIndex,
@@ -110,7 +117,9 @@ export function enqueueDeferredMutation(state: GameState, op: DeferredMutation):
   if (typeof op !== 'function') return;
   if (!state) return;
   if (!state.simulation || !Array.isArray(state.simulation.deferredMutations)) {
-    throw new Error('enqueueDeferredMutation requires state.simulation.deferredMutations to be initialized. Initialize a SimulationClock on state.simulation (use createTestGameState in tests).');
+    throw new Error(
+      'enqueueDeferredMutation requires state.simulation.deferredMutations to be initialized. Initialize a SimulationClock on state.simulation (use createTestGameState in tests).',
+    );
   }
   state.simulation.deferredMutations.push(op);
 }
@@ -119,7 +128,9 @@ export function enqueuePostPhysicsMutation(state: GameState, op: DeferredMutatio
   if (typeof op !== 'function') return;
   if (!state) return;
   if (!state.simulation || !Array.isArray(state.simulation.postStepMutations)) {
-    throw new Error('enqueuePostPhysicsMutation requires state.simulation.postStepMutations to be initialized. Initialize a SimulationClock on state.simulation (use createTestGameState in tests).');
+    throw new Error(
+      'enqueuePostPhysicsMutation requires state.simulation.postStepMutations to be initialized. Initialize a SimulationClock on state.simulation (use createTestGameState in tests).',
+    );
   }
   state.simulation.postStepMutations.push(op);
 }

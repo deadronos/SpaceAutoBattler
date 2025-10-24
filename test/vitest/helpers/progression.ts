@@ -6,7 +6,10 @@ export interface ProgressionOptions {
   maxHpOverride?: number;
 }
 
-export function applyProgressionDefaults<T extends ShipComponent>(ship: T, options: ProgressionOptions = {}): T {
+export function applyProgressionDefaults<T extends ShipComponent>(
+  ship: T,
+  options: ProgressionOptions = {},
+): T {
   const hull = (options.hull ?? ship.hull ?? 'fighter') as ShipHull;
   const defaults = createProgressionDefaults(hull);
   const maxHp = options.maxHpOverride ?? ship.maxHp ?? 100;

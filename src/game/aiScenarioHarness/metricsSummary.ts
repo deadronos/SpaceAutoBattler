@@ -25,7 +25,11 @@ export function collectTestMetrics(log: AIScenarioLog): AIScenarioTestMetrics {
 
   for (const entry of log.entries) {
     for (const command of entry.commands) {
-      if (command.intent === 'Attack' || command.intent === 'Intercept' || command.intent === 'Kite') {
+      if (
+        command.intent === 'Attack' ||
+        command.intent === 'Intercept' ||
+        command.intent === 'Kite'
+      ) {
         totalFighterEscortCommands += 1;
         if (Math.abs(command.heading[1]) > 0.05) {
           verticalCommands += 1;

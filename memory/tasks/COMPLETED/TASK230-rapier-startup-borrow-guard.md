@@ -44,13 +44,13 @@ Cold-starting the battlefield triggers Rapier's `recursive use of an object dete
 
 ### Subtasks
 
-| ID | Description | Status | Updated | Notes |
-| --- | --- | --- | --- | --- |
-| 1.1 | Implement deferred mutation queue helpers and wire into `GameState` | Completed | 2025-09-30 | Added `simulationQueue.ts`, initialised `simulation.deferredMutations` in state factory. |
-| 1.2 | Share safe kinematic utilities between ships and turrets | Completed | 2025-09-30 | Extracted `safeSetNextKinematicTranslation` into `physics/safeKinematics.ts` and updated consumers. |
-| 1.3 | Integrate queue with carrier launches and `updateGame` flush point | Completed | 2025-09-30 | Carrier launches enqueue closures; `updateGame` flushes before stepping Rapier. |
-| 1.4 | Author regression/unit tests covering queue + turret safety | Completed | 2025-09-30 | Added `simulation-queue`, `safe-kinematics`, and refreshed `carrier-launch` specs. |
-| 1.5 | Run validation suite and update memory documentation | Completed | 2025-09-30 | `npm run typecheck`, `npm test` (472 tests) pass; memory docs updated. |
+| ID  | Description                                                         | Status    | Updated    | Notes                                                                                               |
+| --- | ------------------------------------------------------------------- | --------- | ---------- | --------------------------------------------------------------------------------------------------- |
+| 1.1 | Implement deferred mutation queue helpers and wire into `GameState` | Completed | 2025-09-30 | Added `simulationQueue.ts`, initialised `simulation.deferredMutations` in state factory.            |
+| 1.2 | Share safe kinematic utilities between ships and turrets            | Completed | 2025-09-30 | Extracted `safeSetNextKinematicTranslation` into `physics/safeKinematics.ts` and updated consumers. |
+| 1.3 | Integrate queue with carrier launches and `updateGame` flush point  | Completed | 2025-09-30 | Carrier launches enqueue closures; `updateGame` flushes before stepping Rapier.                     |
+| 1.4 | Author regression/unit tests covering queue + turret safety         | Completed | 2025-09-30 | Added `simulation-queue`, `safe-kinematics`, and refreshed `carrier-launch` specs.                  |
+| 1.5 | Run validation suite and update memory documentation                | Completed | 2025-09-30 | `npm run typecheck`, `npm test` (472 tests) pass; memory docs updated.                              |
 
 ## Progress Log
 

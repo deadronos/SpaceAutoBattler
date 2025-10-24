@@ -29,13 +29,13 @@
 
 ### Subtasks
 
-| ID  | Description                                                                     | Status        | Updated    | Notes |
-| --- | ------------------------------------------------------------------------------- | ------------- | ---------- | ----- |
-| 1.1 | Refactor smoke import spec to loader map and `.ts` extensions                    | Completed     | 2025-09-27 | Switched to `import.meta.glob` with correct relative paths and allowed real `three` imports. |
-| 1.2 | Introduce projectile geometry helper and update component usage                 | Completed     | 2025-09-27 | Component now pulls radii via `getProjectileBaseRadius`; shared helper stabilises tests. |
-| 1.3 | Mock React/R3F hooks in projectile specs and update import paths                 | Completed     | 2025-09-27 | Tests inspect JSX children to validate `sphereGeometry` args without hook violations. |
-| 1.4 | Address TypeScript narrowing issues in test files                                | Completed     | 2025-09-27 | Added typed helpers for geometry specs and smoke error formatting. |
-| 1.5 | Run validation commands (typecheck, test, build)                                | Completed     | 2025-09-27 | `npm run typecheck`, `npm test`, and `npm run build` all pass (build emits existing asset warnings only). |
+| ID  | Description                                                      | Status    | Updated    | Notes                                                                                                     |
+| --- | ---------------------------------------------------------------- | --------- | ---------- | --------------------------------------------------------------------------------------------------------- |
+| 1.1 | Refactor smoke import spec to loader map and `.ts` extensions    | Completed | 2025-09-27 | Switched to `import.meta.glob` with correct relative paths and allowed real `three` imports.              |
+| 1.2 | Introduce projectile geometry helper and update component usage  | Completed | 2025-09-27 | Component now pulls radii via `getProjectileBaseRadius`; shared helper stabilises tests.                  |
+| 1.3 | Mock React/R3F hooks in projectile specs and update import paths | Completed | 2025-09-27 | Tests inspect JSX children to validate `sphereGeometry` args without hook violations.                     |
+| 1.4 | Address TypeScript narrowing issues in test files                | Completed | 2025-09-27 | Added typed helpers for geometry specs and smoke error formatting.                                        |
+| 1.5 | Run validation commands (typecheck, test, build)                 | Completed | 2025-09-27 | `npm run typecheck`, `npm test`, and `npm run build` all pass (build emits existing asset warnings only). |
 
 ## Progress Log
 

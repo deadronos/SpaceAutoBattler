@@ -27,13 +27,13 @@ Expose additional StarDisk shader configuration parameters through `CelestialEnv
 
 **Overall Status:** Completed - 100%
 
-| ID | Description | Status | Updated | Notes |
-| --- | --- | --- | --- | --- |
-| 1.1 | Extend config schema and defaults | Complete | 2025-09-26 | Added new fields with descriptive comments in `environment.ts`. |
-| 1.2 | Update material builder and uniforms | Complete | 2025-09-26 | Clamped inputs and added new uniform values in `starDiskMaterial.ts`. |
-| 1.3 | Wire GLSL uniforms and runtime updates | Complete | 2025-09-26 | Fragment shader now respects strength/tiling/speed uniforms. |
-| 1.4 | Expand Vitest coverage | Complete | 2025-09-26 | Added clamp and lifecycle assertions for each new uniform. |
-| 1.5 | Run validation and update memory docs | Complete | 2025-09-26 | Ran typecheck + tests; recorded requirements, design, and active context updates. |
+| ID  | Description                            | Status   | Updated    | Notes                                                                             |
+| --- | -------------------------------------- | -------- | ---------- | --------------------------------------------------------------------------------- |
+| 1.1 | Extend config schema and defaults      | Complete | 2025-09-26 | Added new fields with descriptive comments in `environment.ts`.                   |
+| 1.2 | Update material builder and uniforms   | Complete | 2025-09-26 | Clamped inputs and added new uniform values in `starDiskMaterial.ts`.             |
+| 1.3 | Wire GLSL uniforms and runtime updates | Complete | 2025-09-26 | Fragment shader now respects strength/tiling/speed uniforms.                      |
+| 1.4 | Expand Vitest coverage                 | Complete | 2025-09-26 | Added clamp and lifecycle assertions for each new uniform.                        |
+| 1.5 | Run validation and update memory docs  | Complete | 2025-09-26 | Ran typecheck + tests; recorded requirements, design, and active context updates. |
 
 ## Progress Log
 

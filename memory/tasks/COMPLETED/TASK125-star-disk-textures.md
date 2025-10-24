@@ -30,12 +30,12 @@ Regenerate the Shadertoy `Organic2` and `RGBA Noise Small` texture inputs (or cl
 
 **Overall Status:** Completed - 100%
 
-| ID | Description | Status | Updated | Notes |
-| --- | --- | --- | --- | --- |
-| 1.1 | Bake procedural texture assets | Completed | 2025-09-25 | `generate_star_disk_textures.mjs` emits deterministic PNGs |
-| 1.2 | Integrate textures + shader updates | Completed | 2025-09-25 | GLSL uniforms and material now consume new samplers |
-| 1.3 | Add tests + validation | Completed | 2025-09-25 | Vitest suite covers texture uniforms; npm typecheck/test green |
-| 1.4 | Update memory/docs | Completed | 2025-09-25 | Requirements/design/memory refreshed |
+| ID  | Description                         | Status    | Updated    | Notes                                                          |
+| --- | ----------------------------------- | --------- | ---------- | -------------------------------------------------------------- |
+| 1.1 | Bake procedural texture assets      | Completed | 2025-09-25 | `generate_star_disk_textures.mjs` emits deterministic PNGs     |
+| 1.2 | Integrate textures + shader updates | Completed | 2025-09-25 | GLSL uniforms and material now consume new samplers            |
+| 1.3 | Add tests + validation              | Completed | 2025-09-25 | Vitest suite covers texture uniforms; npm typecheck/test green |
+| 1.4 | Update memory/docs                  | Completed | 2025-09-25 | Requirements/design/memory refreshed                           |
 
 ## Progress Log
 

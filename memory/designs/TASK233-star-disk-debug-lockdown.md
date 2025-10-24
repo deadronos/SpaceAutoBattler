@@ -43,12 +43,12 @@ isDebugEnabled --> (useEffect/useFrame)
 
 ## Error Handling Matrix
 
-| Failure Mode | Detection | Response | Notes |
-| --- | --- | --- | --- |
-| Shader material missing while debug helpers requested | `shaderMaterialRef.current` null | Skip helper execution, log nothing | Existing defensive checks suffice |
-| DOM overlay creation throws (e.g., document undefined) | `try/catch` around DOM ops | Swallow error; helpers remain disabled | Behavior unchanged |
-| Window helper invocation without debug | `debugEnabled` false | Helpers not registered; requests ignored | Verified via tests |
-| Residual forced material after debug | Cleanup effect runs with `debugEnabled === false` | Restore original material, dispose forced material | Covered by new tests |
+| Failure Mode                                           | Detection                                         | Response                                           | Notes                             |
+| ------------------------------------------------------ | ------------------------------------------------- | -------------------------------------------------- | --------------------------------- |
+| Shader material missing while debug helpers requested  | `shaderMaterialRef.current` null                  | Skip helper execution, log nothing                 | Existing defensive checks suffice |
+| DOM overlay creation throws (e.g., document undefined) | `try/catch` around DOM ops                        | Swallow error; helpers remain disabled             | Behavior unchanged                |
+| Window helper invocation without debug                 | `debugEnabled` false                              | Helpers not registered; requests ignored           | Verified via tests                |
+| Residual forced material after debug                   | Cleanup effect runs with `debugEnabled === false` | Restore original material, dispose forced material | Covered by new tests              |
 
 ## Unit Testing Strategy
 

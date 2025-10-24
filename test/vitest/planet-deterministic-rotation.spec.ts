@@ -31,7 +31,7 @@ describe('Planet Deterministic Rotation', () => {
     // Apply tilt if specified
     if (config.tilt) {
       const tiltQuat = new Quaternion().setFromEuler(
-        new Euler(config.tilt.x, config.tilt.y, config.tilt.z, 'XYZ')
+        new Euler(config.tilt.x, config.tilt.y, config.tilt.z, 'XYZ'),
       );
       workingQuat.copy(tiltQuat);
     }
@@ -41,9 +41,9 @@ describe('Planet Deterministic Rotation', () => {
       const rotationAxis = new Vector3(
         config.rotation.axis.x,
         config.rotation.axis.y,
-        config.rotation.axis.z
+        config.rotation.axis.z,
       ).normalize();
-      
+
       const angle = (config.rotation.offset ?? 0) + simTime * config.rotation.speed;
       spinQuat.setFromAxisAngle(rotationAxis, angle);
       workingQuat.multiply(spinQuat);
@@ -74,14 +74,14 @@ describe('Planet Deterministic Rotation', () => {
 
     // Calculate expected angle difference
     const expectedAngleDiff = deltaTime * mockPlanetConfig.rotation!.speed;
-    
+
     // Extract angles from quaternions for comparison
     const euler0 = new Euler().setFromQuaternion(rotation0, 'XYZ');
     const euler10 = new Euler().setFromQuaternion(rotation10, 'XYZ');
-    
+
     // Y-axis rotation should have changed by expectedAngleDiff (accounting for tilt interaction)
     const actualAngleDiff = Math.abs(euler10.y - euler0.y);
-    
+
     // Allow some tolerance for tilt interaction and floating point precision
     expect(actualAngleDiff).toBeCloseTo(expectedAngleDiff, 2);
   });
@@ -98,11 +98,10 @@ describe('Planet Deterministic Rotation', () => {
     // Test with very large time
     const rotationLarge = calculatePlanetRotation(mockPlanetConfig, 1000000);
     expect(rotationLarge).toBeDefined();
-    
+
     // Quaternion should still be normalized
     const magnitude = Math.sqrt(
-      rotationLarge.x ** 2 + rotationLarge.y ** 2 + 
-      rotationLarge.z ** 2 + rotationLarge.w ** 2
+      rotationLarge.x ** 2 + rotationLarge.y ** 2 + rotationLarge.z ** 2 + rotationLarge.w ** 2,
     );
     expect(magnitude).toBeCloseTo(1.0, 6);
   });
@@ -127,18 +126,18 @@ describe('Planet Deterministic Rotation', () => {
     };
 
     const simTime = 0; // At time 0, only offset should matter
-    
+
     const rotationWithOffset = calculatePlanetRotation(configWithOffset, simTime);
     const rotationWithoutOffset = calculatePlanetRotation(configWithoutOffset, simTime);
 
     // The rotations should be different due to the offset
     const dotProduct = Math.abs(
       rotationWithOffset.x * rotationWithoutOffset.x +
-      rotationWithOffset.y * rotationWithoutOffset.y +
-      rotationWithOffset.z * rotationWithoutOffset.z +
-      rotationWithOffset.w * rotationWithoutOffset.w
+        rotationWithOffset.y * rotationWithoutOffset.y +
+        rotationWithOffset.z * rotationWithoutOffset.z +
+        rotationWithOffset.w * rotationWithoutOffset.w,
     );
-    
+
     // If quaternions are identical, dot product would be 1
     expect(dotProduct).toBeLessThan(0.99);
   });
@@ -150,13 +149,13 @@ describe('Planet Deterministic Rotation', () => {
     };
 
     const rotation = calculatePlanetRotation(configNoRotation, 100);
-    
+
     // Should only apply tilt, no spin
     expect(rotation).toBeDefined();
-    
+
     // Verify it's still a valid normalized quaternion
     const magnitude = Math.sqrt(
-      rotation.x ** 2 + rotation.y ** 2 + rotation.z ** 2 + rotation.w ** 2
+      rotation.x ** 2 + rotation.y ** 2 + rotation.z ** 2 + rotation.w ** 2,
     );
     expect(magnitude).toBeCloseTo(1.0, 6);
   });

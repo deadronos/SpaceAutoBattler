@@ -1,4 +1,3 @@
-
 # AI tuning notes — verticality, posture, and spawn tuning
 
 This document summarizes recent analysis and recommended experiments to increase 3D variation in fights, diagnose why both fleets can "hold" (be overly cautious), and a roadmap of low-risk, reversible tuning steps. It references concrete fields and files in the codebase so changes are actionable and deterministic.
@@ -88,7 +87,6 @@ All experiments should be run deterministically (same SeededRng seed) for before
 ## Next steps
 
 Pick 1–2 experiments to run. Recommended first sequence:
-
 
 If you want, I can prepare the patch for any of the above (instrumentation, vertical toggle, AI/profile tweaks, spawn spacing) and run the deterministic tests. Confirm which experiments you want me to implement first, or say “I'll apply these manually” if you only wanted the plan.
 

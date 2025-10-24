@@ -29,7 +29,7 @@ export type EffectUpdater = (
   ctx: EffectUpdateContext,
   mesh: InstancedMesh,
   startIndex: number,
-  capacity: number
+  capacity: number,
 ) => EffectUpdateResult;
 
 export const EMPTY_EFFECT_RESULT: EffectUpdateResult = Object.freeze({

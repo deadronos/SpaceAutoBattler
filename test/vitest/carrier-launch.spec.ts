@@ -114,7 +114,8 @@ describe('carrier launch system', () => {
 
     expect(spawnShipMock).toHaveBeenCalledTimes(2);
     expect(carrier.carrier?.activeFighterIds.length).toBe(2);
-    const foreignIds = carrier.carrier?.activeFighterIds.filter((id) => id === otherFighter.id) ?? [];
+    const foreignIds =
+      carrier.carrier?.activeFighterIds.filter((id) => id === otherFighter.id) ?? [];
     expect(foreignIds.length).toBe(0);
   });
 
@@ -279,4 +280,3 @@ function createState(ships: ShipEntity[]): GameState {
     },
   } as unknown as GameState;
 }
-

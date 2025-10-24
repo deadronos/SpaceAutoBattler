@@ -151,7 +151,7 @@ export function dampVerticalAmplitude(
     // Progressive damping: stronger damping for repeated spikes and for
     // profiles with low patience (they're more likely to oscillate)
     const patienceFactor = 1 - Math.min(1, profile.patience) * 0.5;
-    const damping = 0.6 + (0.3 * patienceFactor); // ~0.6 - 0.9
+    const damping = 0.6 + 0.3 * patienceFactor; // ~0.6 - 0.9
     const adjusted = rawAmplitude * damping;
     s.lastVerticalAmplitude = adjusted;
     s.lastVerticalTick = now;

@@ -285,4 +285,3 @@ describe('Turret system', () => {
     expect(moved.length()).toBeLessThan(0.5);
   });
 });
-

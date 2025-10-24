@@ -46,7 +46,9 @@ if (files.length === 0) {
 const results = files.map((f) => analyzeImage(path.join(baseDir, f)));
 console.log('Baseline analysis results:');
 for (const r of results) {
-  console.log(`- ${path.basename(r.path)}: ${r.width}x${r.height}, nonBlackRatio=${(r.nonBlackRatio*100).toFixed(2)}%, greenishRatio=${(r.greenishRatio*100).toFixed(4)}%`);
+  console.log(
+    `- ${path.basename(r.path)}: ${r.width}x${r.height}, nonBlackRatio=${(r.nonBlackRatio * 100).toFixed(2)}%, greenishRatio=${(r.greenishRatio * 100).toFixed(4)}%`,
+  );
 }
 
 // Find images that look empty (low nonBlackRatio) and those with small green text
@@ -68,7 +70,9 @@ if (greenText.length > 0) {
 
 // Exit codes: 0 ok, 3 if all baselines empty/green only
 if (results.every((r) => r.nonBlackRatio < 0.02 || r.greenishRatio > 0.0005)) {
-  console.warn('All baselines are mostly empty or contain only small green text. This indicates renderer did not draw the scene content.');
+  console.warn(
+    'All baselines are mostly empty or contain only small green text. This indicates renderer did not draw the scene content.',
+  );
   process.exit(3);
 }
 

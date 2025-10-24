@@ -8,8 +8,14 @@ function RegisterTest({ setResult }: { setResult: (r: any) => void }) {
   const ctx = useBloomContext();
   React.useEffect(() => {
     if (!ctx) return;
-    const meshBloomOnly = new Mesh(new BoxGeometry(1, 1, 1), new MeshBasicMaterial({ color: 0xffffff, transparent: true }));
-    const meshForceWrite = new Mesh(new BoxGeometry(1, 1, 1), new MeshBasicMaterial({ color: 0xffffff, transparent: true }));
+    const meshBloomOnly = new Mesh(
+      new BoxGeometry(1, 1, 1),
+      new MeshBasicMaterial({ color: 0xffffff, transparent: true }),
+    );
+    const meshForceWrite = new Mesh(
+      new BoxGeometry(1, 1, 1),
+      new MeshBasicMaterial({ color: 0xffffff, transparent: true }),
+    );
 
     (meshForceWrite.material as any).userData = { __copilot_forceColorWrite: true };
 
@@ -32,13 +38,12 @@ function RegisterTest({ setResult }: { setResult: (r: any) => void }) {
 describe('BloomProvider bloomOnly wiring', () => {
   it('disables colorWrite for transparent materials that are not force-write (bloom-only path)', async () => {
     let result: any = null;
-    const Tree = () => (
+    const Tree = () =>
       React.createElement(
         BloomProvider,
         { enabled: true },
-        React.createElement(RegisterTest, { setResult: (r: any) => (result = r) })
-      )
-    );
+        React.createElement(RegisterTest, { setResult: (r: any) => (result = r) }),
+      );
 
     const { container } = render(React.createElement(Tree));
     expect(container).toBeTruthy();
@@ -53,8 +58,13 @@ describe('BloomProvider bloomOnly wiring', () => {
       const ctx = useBloomContext();
       React.useEffect(() => {
         if (!ctx) return;
-        const mesh = new Mesh(new BoxGeometry(1, 1, 1), new MeshBasicMaterial({ color: 0xffffff, transparent: true }));
-        try { (mesh.material as any).colorWrite = true; } catch {}
+        const mesh = new Mesh(
+          new BoxGeometry(1, 1, 1),
+          new MeshBasicMaterial({ color: 0xffffff, transparent: true }),
+        );
+        try {
+          (mesh.material as any).colorWrite = true;
+        } catch {}
         ctx.register(mesh as unknown as Object3D, { group: 'test', active: true });
         ctx.unregister(mesh as unknown as Object3D);
         result = { colorWriteAfterUnregister: (mesh.material as any).colorWrite };
@@ -62,9 +72,12 @@ describe('BloomProvider bloomOnly wiring', () => {
       return null;
     }
 
-    const Tree = () => (
-      React.createElement(BloomProvider, { enabled: true }, React.createElement(RegisterAndUnregister))
-    );
+    const Tree = () =>
+      React.createElement(
+        BloomProvider,
+        { enabled: true },
+        React.createElement(RegisterAndUnregister),
+      );
 
     const { container } = render(React.createElement(Tree));
     expect(container).toBeTruthy();

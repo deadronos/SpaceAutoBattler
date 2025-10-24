@@ -28,6 +28,7 @@ Ensure your GitHub repository has GitHub Pages configured:
 ## Release Process
 
 1. Create and push a tag:
+
 ```bash
 git tag v1.0.0
 git push origin v1.0.0
@@ -61,6 +62,7 @@ If a deployment fails or has issues:
 ## File Structure Verification
 
 The deployed `dist/` folder should contain:
+
 - `index.html` (copied from `spaceautobattler.html`)
 - `spaceautobattler.html` (original webpack output)
 - Asset folders: `assets/`, `models/`, `styles/`, `workers/`

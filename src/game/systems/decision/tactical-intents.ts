@@ -36,7 +36,12 @@ export function scoreInterceptIntent(
   let desiredMin = profile.desiredRange[0];
   let desiredMax = profile.desiredRange[1];
   if (getEffectiveAIConfig().hysteresisEnabled && aiState) {
-    [desiredMin, desiredMax] = computeEffectiveDesiredRange(aiState, profile, distance, state.ai.tickIndex);
+    [desiredMin, desiredMax] = computeEffectiveDesiredRange(
+      aiState,
+      profile,
+      distance,
+      state.ai.tickIndex,
+    );
   }
   const bandPressure = Math.max(0, distance - desiredMax);
 
@@ -45,10 +50,17 @@ export function scoreInterceptIntent(
   const escortBonus = escortAssignment && escortAssignment.threatId === target.id ? 80 : 0;
   const aggression = profile.aggression * traits.aggression;
 
-  const isOpeningSalvo = AI_CONFIG.engagementBoostEnabled && state.time < AI_CONFIG.openingSalvoDuration;
+  const isOpeningSalvo =
+    AI_CONFIG.engagementBoostEnabled && state.time < AI_CONFIG.openingSalvoDuration;
   const aggressionMultiplier = isOpeningSalvo ? AI_CONFIG.openingSalvoAggressionBoost : 1.0;
 
-  let score = 480 + bandPressure * 2 + targetSpeed * 12 + aggression * 108 * aggressionMultiplier + threatBonus + escortBonus;
+  let score =
+    480 +
+    bandPressure * 2 +
+    targetSpeed * 12 +
+    aggression * 108 * aggressionMultiplier +
+    threatBonus +
+    escortBonus;
   if (posture === 'aggressive') score += 100 * aggressionMultiplier;
   if (posture === 'retreat') score -= 110;
   score += computeBandPreferenceBonus(distance, desiredMin, desiredMax, profile.bandPreference);
@@ -60,7 +72,7 @@ export function scoreInterceptIntent(
     }
   }
   const focusMap = state.blackboard.focusFire?.[ship.ship.team];
-  const interceptFocusLoad = focusMap ? focusMap.get(target.id) ?? 0 : 0;
+  const interceptFocusLoad = focusMap ? (focusMap.get(target.id) ?? 0) : 0;
   score += Math.max(-70, 28 - interceptFocusLoad * 24);
   if (AI_CONFIG.engagementBoostEnabled && profile.engagementBias) {
     score += profile.engagementBias;
@@ -94,7 +106,12 @@ export function scoreRepositionIntent(
   let desiredMin = profile.desiredRange[0];
   let desiredMax = profile.desiredRange[1];
   if (getEffectiveAIConfig().hysteresisEnabled && aiState) {
-    [desiredMin, desiredMax] = computeEffectiveDesiredRange(aiState, profile, distance, state.ai.tickIndex);
+    [desiredMin, desiredMax] = computeEffectiveDesiredRange(
+      aiState,
+      profile,
+      distance,
+      state.ai.tickIndex,
+    );
   }
   const below = Math.max(0, desiredMin - distance);
   const above = Math.max(0, distance - desiredMax);

@@ -1,6 +1,28 @@
 ---
 description: Claudette Coding Agent v5 (Optimized for Autonomous Execution)
-tools: ['extensions', 'codebase', 'usages', 'vscodeAPI', 'problems', 'changes', 'testFailure', 'terminalSelection', 'terminalLastCommand', 'openSimpleBrowser', 'fetch', 'findTestFiles', 'searchResults', 'githubRepo', 'runCommands', 'runTasks', 'editFiles', 'runNotebooks', 'search', 'new']
+tools:
+  [
+    'extensions',
+    'codebase',
+    'usages',
+    'vscodeAPI',
+    'problems',
+    'changes',
+    'testFailure',
+    'terminalSelection',
+    'terminalLastCommand',
+    'openSimpleBrowser',
+    'fetch',
+    'findTestFiles',
+    'searchResults',
+    'githubRepo',
+    'runCommands',
+    'runTasks',
+    'editFiles',
+    'runNotebooks',
+    'search',
+    'new',
+  ]
 ---
 
 # Claudette Coding Agent v5 (Optimized for Autonomous Execution)
@@ -45,7 +67,7 @@ tools: ['extensions', 'codebase', 'usages', 'vscodeAPI', 'problems', 'changes', 
 ### Phase 1: MANDATORY Repository Analysis
 
 ```markdown
-- [ ] CRITICAL: Read thoroughly through AGENTS.md, .agents/*.md, README.md, etc.
+- [ ] CRITICAL: Read thoroughly through AGENTS.md, .agents/\*.md, README.md, etc.
 - [ ] Identify project type (package.json, requirements.txt, Cargo.toml, etc.)
 - [ ] Analyze existing tools: dependencies, scripts, testing frameworks, build tools
 - [ ] Check for monorepo configuration (nx.json, lerna.json, workspaces)
@@ -195,8 +217,8 @@ When encountering issues requiring research:
 **File Cleanup Checklist:**
 
 ```markdown
-- [ ] Delete any *.test.ts, *.spec.ts files from failed test attempts
-- [ ] Remove unused component files (*.tsx, *.vue, *.component.ts)
+- [ ] Delete any _.test.ts, _.spec.ts files from failed test attempts
+- [ ] Remove unused component files (_.tsx, _.vue, \*.component.ts)
 - [ ] Clean up temporary utility files
 - [ ] Remove experimental configuration files
 - [ ] Delete debug scripts or helper files
@@ -348,10 +370,10 @@ When stuck or when solutions introduce new problems:
 ```markdown
 - [ ] ASSESS: Is this approach fundamentally flawed?
 - [ ] CLEANUP FILES: Delete all temporary/experimental files from failed attempt
-  - Remove test files: *.test.*, *.spec.*
-  - Remove component files: unused *.tsx, *.vue, *.component.*
-  - Remove helper files: temp-*, debug-*, test-*
-  - Remove config experiments: *.config.backup, test.config.*
+  - Remove test files: _.test._, _.spec._
+  - Remove component files: unused _.tsx, _.vue, _.component._
+  - Remove helper files: temp-_, debug-_, test-\*
+  - Remove config experiments: _.config.backup, test.config._
 - [ ] REVERT CODE: Undo problematic changes to return to working state
   - Restore modified files to last working version
   - Remove added dependencies (package.json, requirements.txt, etc.)

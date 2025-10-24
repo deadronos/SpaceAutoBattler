@@ -23,7 +23,12 @@ export function scoreAttackIntent(
   let desiredMin = profile.desiredRange[0];
   let desiredMax = profile.desiredRange[1];
   if (getEffectiveAIConfig().hysteresisEnabled && aiState) {
-    [desiredMin, desiredMax] = computeEffectiveDesiredRange(aiState, profile, dist, state.ai.tickIndex);
+    [desiredMin, desiredMax] = computeEffectiveDesiredRange(
+      aiState,
+      profile,
+      dist,
+      state.ai.tickIndex,
+    );
   }
   const mid = (desiredMin + desiredMax) * 0.5;
   const bandError = Math.abs(dist - mid);
@@ -31,7 +36,8 @@ export function scoreAttackIntent(
   const aggression = profile.aggression * traits.aggression;
 
   const effectiveCfg = getEffectiveAIConfig();
-  const isOpeningSalvo = effectiveCfg.engagementBoostEnabled && state.time < effectiveCfg.openingSalvoDuration;
+  const isOpeningSalvo =
+    effectiveCfg.engagementBoostEnabled && state.time < effectiveCfg.openingSalvoDuration;
   const aggressionMultiplier = isOpeningSalvo ? effectiveCfg.openingSalvoAggressionBoost : 1.0;
 
   let score = 1000 - bandError * 4.6 + aggression * 120 * aggressionMultiplier;
@@ -50,7 +56,7 @@ export function scoreAttackIntent(
   }
   score += computeThreatBonus(state, ship.ship.team, target.id);
   const focusMap = state.blackboard.focusFire?.[ship.ship.team];
-  const focusLoad = focusMap ? focusMap.get(target.id) ?? 0 : 0;
+  const focusLoad = focusMap ? (focusMap.get(target.id) ?? 0) : 0;
   const focusBias = focusLoad === 0 ? 40 : Math.max(-80, 35 - focusLoad * 30);
   score += focusBias;
   if (effectiveCfg.engagementBoostEnabled && profile.engagementBias) {
@@ -92,7 +98,9 @@ export function scoreFleeIntent(
   const gate = profile.gates?.hpRetreatPct ?? 0.2;
   const patience = profile.patience * traits.patience;
   if (hpRatio > gate && posture !== 'retreat') return quantizeScore(150 - patience * 40);
-  const threat = target ? ship.transform.position.distanceTo(target.transform.position) : profile.desiredRange[1];
+  const threat = target
+    ? ship.transform.position.distanceTo(target.transform.position)
+    : profile.desiredRange[1];
   const nerve = 1 - Math.min(0.6, patience * 0.3);
   const dodge = 1 + (traits.dodge - 1) * 0.5;
   const base = 400 + (gate - hpRatio) * 400 * (1 + patience * 0.1);

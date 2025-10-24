@@ -1,4 +1,3 @@
-
 # Enable 3D combat: spawn geometry & cadence (Stage 1)
 
 Labels: enhancement, ai, spike
@@ -16,7 +15,7 @@ The game code supports 3D movement but in-practice combat is biased toward the h
 
 1. Add `spawn.verticalSpreadFactor` config (default 0.2) and use it when computing spawn Y offsets: `verticalSpread = WORLD_HALF * spawn.verticalSpreadFactor`.
 2. Randomize team anchor Y when spawning teams (config `spawn.anchorYRandomization = true`).
-3. Compute `initialSeparationFactor` (default 1.5) and ensure initial ships are at least separationFactor * maxWeaponRange apart.
+3. Compute `initialSeparationFactor` (default 1.5) and ensure initial ships are at least separationFactor \* maxWeaponRange apart.
 4. Set `AI_CONFIG.tickRateHz = 15` behind a feature flag `AI_CONFIG.tickRateHzExperiment` to allow rollback.
 5. Add unit tests to assert deterministic spawn Y offsets with the seeded RNG (e.g., seed=1337).
 

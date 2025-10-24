@@ -54,7 +54,8 @@ export function getIntentPriority(intent: AIState['intent']): number {
 
 export function ensureCandidateDefaults(candidate: IntentCandidate, fallbackIndex: number): void {
   candidate.score = quantizeScore(candidate.score);
-  if (candidate.intentPriority == null) candidate.intentPriority = getIntentPriority(candidate.intent);
+  if (candidate.intentPriority == null)
+    candidate.intentPriority = getIntentPriority(candidate.intent);
   if (candidate.threatRank == null) candidate.threatRank = Number.POSITIVE_INFINITY;
   if (candidate.distanceSq == null) candidate.distanceSq = Number.POSITIVE_INFINITY;
   if (candidate.index == null) candidate.index = fallbackIndex;

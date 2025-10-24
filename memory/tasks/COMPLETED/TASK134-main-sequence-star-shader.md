@@ -32,11 +32,11 @@
 
 ### Subtasks
 
-| ID | Description | Status | Updated | Notes |
-| --- | --- | --- | --- | --- |
-| 1.1 | Draft requirements and design for shader swap | Complete | 2025-09-26 | Captured in memory bank (`requirements.md`, `memory/designs_completed/design-main-sequence-star.md`). |
-| 1.2 | Implement shader/material/React integration changes | Complete | 2025-09-27 | Replaced config-driven pipeline with new factory and component wiring. |
-| 1.3 | Update Vitest coverage and validation scripts | Complete | 2025-09-27 | Added material/component specs and ran typecheck + full Vitest suite. |
+| ID  | Description                                         | Status   | Updated    | Notes                                                                                                 |
+| --- | --------------------------------------------------- | -------- | ---------- | ----------------------------------------------------------------------------------------------------- |
+| 1.1 | Draft requirements and design for shader swap       | Complete | 2025-09-26 | Captured in memory bank (`requirements.md`, `memory/designs_completed/design-main-sequence-star.md`). |
+| 1.2 | Implement shader/material/React integration changes | Complete | 2025-09-27 | Replaced config-driven pipeline with new factory and component wiring.                                |
+| 1.3 | Update Vitest coverage and validation scripts       | Complete | 2025-09-27 | Added material/component specs and ran typecheck + full Vitest suite.                                 |
 
 ## Progress Log
 

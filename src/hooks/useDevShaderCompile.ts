@@ -11,7 +11,8 @@ import type { Mesh, ShaderMaterial, WebGLRenderer, Scene, Camera } from 'three';
 
 function isProductionEnv(): boolean {
   try {
-    const env = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env;
+    const env = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process
+      ?.env;
     if (env?.NODE_ENV === 'production') {
       return true;
     }
@@ -31,7 +32,6 @@ function isProductionEnv(): boolean {
   return false;
 }
 
-
 /**
  * Force shader compilation in development mode for debugging.
  *
@@ -48,7 +48,7 @@ export function useDevShaderCompile(
   shaderMaterial: ShaderMaterial | null,
   gl: WebGLRenderer,
   scene: Scene,
-  camera: Camera
+  camera: Camera,
 ): void {
   useEffect(() => {
     if (isProductionEnv()) {
@@ -77,20 +77,19 @@ export function useDevShaderCompile(
           if (scene && camera && typeof gl.compile === 'function') {
             gl.compile(scene, camera);
 
-            console.info('[StarDisk][DEV] forced renderer.compile(scene, camera) to trigger shader compilation');
+            console.info(
+              '[StarDisk][DEV] forced renderer.compile(scene, camera) to trigger shader compilation',
+            );
           } else {
-
             console.warn('[StarDisk][DEV] Unable to find scene/camera for forced compile');
           }
         } catch (err) {
-
           console.warn('[StarDisk][DEV] Forced compile failed', err);
         }
         clearInterval(intervalId);
         return;
       }
       if (attempts >= maxAttempts) {
-
         console.warn('[StarDisk][DEV] Giving up waiting for mesh to be parented before compile');
         clearInterval(intervalId);
       }
@@ -101,7 +100,3 @@ export function useDevShaderCompile(
     };
   }, [enabled, shaderMaterial, gl, scene, camera, meshRef]);
 }
-
-
-
-
