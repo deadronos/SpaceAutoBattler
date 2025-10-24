@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { deriveHazeUniform } from '../../src/renderer/starMaterial.js';
+import { deriveHazeUniform } from '../../src/renderer/starDiskMaterial.js';
 
 describe('deriveHazeUniform', () => {
   it('returns near-unity fade when facing the disk head-on', () => {

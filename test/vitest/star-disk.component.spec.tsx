@@ -42,7 +42,7 @@ afterEach(() => {
 
 describe('StarDisk component', () => {
   it('falls back to mesh basic material when shader creation fails', async () => {
-    const starMaterialModule = await import('../../src/renderer/starMaterial.js');
+    const starMaterialModule = await import('../../src/renderer/starDiskMaterial.js');
     const createSpy = vi
       .spyOn(starMaterialModule, 'createMainSequenceStarMaterial')
       .mockImplementation(() => {
@@ -78,7 +78,7 @@ describe('StarDisk component', () => {
   });
 
   it('updates boundary uniforms when boundary props change', async () => {
-    const starMaterialModule = await import('../../src/renderer/starMaterial.js');
+    const starMaterialModule = await import('../../src/renderer/starDiskMaterial.js');
     const originalCreate = starMaterialModule.createMainSequenceStarMaterial;
     let createdMaterial: ShaderMaterial | null = null;
     const createSpy = vi

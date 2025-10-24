@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { deriveBoundaryUniform } from '../../src/renderer/starMaterial.js';
+import { deriveBoundaryUniform } from '../../src/renderer/starDiskMaterial.js';
 
 const smoothstep = (edge0: number, edge1: number, x: number): number => {
   const span = Math.max(edge1 - edge0, 1e-6);
