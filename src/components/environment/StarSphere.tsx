@@ -7,7 +7,7 @@ import vertexShader from '../../renderer/shaders/starDisk.vertex.glsl';
 import type { StarLightConfig, CelestialEnvironmentConfig, StarDiskHazeConfig, StarDiskBoundaryConfig } from '../../config/environment.js';
 import { useStarTextures } from '../../hooks/useStarTextures.js';
 import { useStarMaterial } from '../../hooks/useStarMaterial.js';
-import { updateMainSequenceStarUniforms } from '../../renderer/starDiskMaterial.js';
+import { updateMainSequenceStarUniforms } from '../../renderer/starMaterial.js';
 
 interface StarSphereProps {
   config?: StarLightConfig;
