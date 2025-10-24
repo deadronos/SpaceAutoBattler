@@ -37,12 +37,12 @@ Three.js Camera -> StarDisk.useFrame -> viewDirection (world) -> project onto me
 
 ## Error Handling
 
-| Scenario | Detection | Response |
-| --- | --- | --- |
-| Mesh or parent matrices not ready | `meshRef.current` null or no parent | Skip orientation/update for the frame; retain last valid uniforms |
-| Camera missing (e.g., suspense) | `state.camera` falsy | Abort update (no uniform change) to avoid NaNs |
-| Facing cosine <= 0 due to camera behind disc | Clamp to 0 via `Math.max` | Treat as edge-on; shader receives minimal brightness |
-| Uniform update receives NaN/Inf | `Number.isFinite` guard | Default to `(0, 0, 1)` to keep shader stable |
+| Scenario                                     | Detection                           | Response                                                          |
+| -------------------------------------------- | ----------------------------------- | ----------------------------------------------------------------- |
+| Mesh or parent matrices not ready            | `meshRef.current` null or no parent | Skip orientation/update for the frame; retain last valid uniforms |
+| Camera missing (e.g., suspense)              | `state.camera` falsy                | Abort update (no uniform change) to avoid NaNs                    |
+| Facing cosine <= 0 due to camera behind disc | Clamp to 0 via `Math.max`           | Treat as edge-on; shader receives minimal brightness              |
+| Uniform update receives NaN/Inf              | `Number.isFinite` guard             | Default to `(0, 0, 1)` to keep shader stable                      |
 
 ## Unit Testing Strategy
 

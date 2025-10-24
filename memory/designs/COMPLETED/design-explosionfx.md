@@ -111,13 +111,13 @@ export interface ExplosionConfigEntry {
 
 ## Error Handling Matrix
 
-| Scenario | Detection | Response | Validation |
-| --- | --- | --- | --- |
-| Pool exhaustion (more ship kills than pool size) | `emitShipKillExplosion` finds no free slot | Reuse oldest inactive slot after logging rate-limit warning; ensure determinism by deterministic eviction | Vitest stress test simulates rapid kills and asserts oldest event recycled |
-| Missing config entry for faction/hull | Config lookup undefined | Fallback to neutral preset (orange-white) and log once | Unit test mocks missing key, expects fallback palette and warning |
-| Shader compilation failure for shockwave/fireball | Material compilation throws | Swap to `meshStandardMaterial` fallback with reduced visuals, keep event active | Renderer unit injects failure and asserts fallback path |
-| Dynamic light creation fails (WebGL limit) | Light manager catches allocation error | Skip light stage but continue other visuals | Unit test mocks failure and ensures event still renders |
-| Playwright capture mismatch due to bloom intensity | Visual diff exceeds threshold | Provide tuning knobs in config (follow-up) and update baseline once tuned | Manual review + future tuning issue |
+| Scenario                                           | Detection                                  | Response                                                                                                  | Validation                                                                 |
+| -------------------------------------------------- | ------------------------------------------ | --------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| Pool exhaustion (more ship kills than pool size)   | `emitShipKillExplosion` finds no free slot | Reuse oldest inactive slot after logging rate-limit warning; ensure determinism by deterministic eviction | Vitest stress test simulates rapid kills and asserts oldest event recycled |
+| Missing config entry for faction/hull              | Config lookup undefined                    | Fallback to neutral preset (orange-white) and log once                                                    | Unit test mocks missing key, expects fallback palette and warning          |
+| Shader compilation failure for shockwave/fireball  | Material compilation throws                | Swap to `meshStandardMaterial` fallback with reduced visuals, keep event active                           | Renderer unit injects failure and asserts fallback path                    |
+| Dynamic light creation fails (WebGL limit)         | Light manager catches allocation error     | Skip light stage but continue other visuals                                                               | Unit test mocks failure and ensures event still renders                    |
+| Playwright capture mismatch due to bloom intensity | Visual diff exceeds threshold              | Provide tuning knobs in config (follow-up) and update baseline once tuned                                 | Manual review + future tuning issue                                        |
 
 ## Testing Strategy
 

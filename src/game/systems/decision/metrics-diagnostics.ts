@@ -1,10 +1,5 @@
 import { Vector3 } from 'three';
-import type {
-  AIState,
-  GameState,
-  ShipEntity,
-  EntityId,
-} from '../../../types/index.js';
+import type { AIState, GameState, ShipEntity, EntityId } from '../../../types/index.js';
 import { AI_CONFIG } from '../../config.js';
 
 export function recordFocusDiagnostics(
@@ -17,7 +12,7 @@ export function recordFocusDiagnostics(
   const manager = state.ai;
   if (!manager) return;
   const teamCounts = state.blackboard.teamCounts;
-  const teamCount = teamCounts ? teamCounts[ship.ship.team] ?? 0 : 0;
+  const teamCount = teamCounts ? (teamCounts[ship.ship.team] ?? 0) : 0;
   if (teamCount <= 0) return;
   const focusFire = state.blackboard.focusFire;
   if (!focusFire) return;

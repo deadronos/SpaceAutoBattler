@@ -14,12 +14,12 @@ All values live under `ShipStats.motion` in `src/data/shipStats.ts`. Validation 
 ## Recommended Hull Values
 
 | Hull      | turnKp | turnKd | Settling Rate (rad/s) | Settle Tolerance (°) |
-|-----------|-------:|-------:|----------------------:|---------------------:|
-| Fighter   | 6.2    | 0.85   | 0.12                  | 3.0                  |
-| Corvette  | 5.0    | 0.80   | 0.10                  | 3.5                  |
-| Frigate   | 4.2    | 0.75   | 0.09                  | 4.0                  |
-| Destroyer | 3.6    | 0.72   | 0.08                  | 4.5                  |
-| Carrier   | 3.0    | 0.70   | 0.07                  | 5.0                  |
+| --------- | -----: | -----: | --------------------: | -------------------: |
+| Fighter   |    6.2 |   0.85 |                  0.12 |                  3.0 |
+| Corvette  |    5.0 |   0.80 |                  0.10 |                  3.5 |
+| Frigate   |    4.2 |   0.75 |                  0.09 |                  4.0 |
+| Destroyer |    3.6 |   0.72 |                  0.08 |                  4.5 |
+| Carrier   |    3.0 |   0.70 |                  0.07 |                  5.0 |
 
 > **Tip:** Start with the recommended pair for a new hull that shares a mass class, then adjust `turnKp` ±0.3 to reach the desired snap speed. Increase `turnKd` if oscillations appear; lower it if turns feel sluggish.
 

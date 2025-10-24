@@ -38,7 +38,7 @@ This index tracks active tasks and their memory files. Use the `tasks/` folder f
 - [TASK126](TASK126-star-disk-fiery-tuning.md) — Corrected star disk aspect ratio and retuned shader for a hotter corona.
 - [TASK100](COMPLETED/TASK100-memory-bank-summary.md) — Memory-bank summary entry for initial knowledge-base bootstrap.
 - [TASK101](COMPLETED/TASK101-implement-miniplex-zustand.md) — Implemented Miniplex + Zustand integration with lifecycle hooks and UI store replacement.
-- [TASK136](COMPLETED/TASK136-implement-physical-movement.md) — Implemented Miniplex + deterministic physical movement system, renderer smoothing, and tests.  (Renamed from TASK102 to resolve ID collision.)
+- [TASK136](COMPLETED/TASK136-implement-physical-movement.md) — Implemented Miniplex + deterministic physical movement system, renderer smoothing, and tests. (Renamed from TASK102 to resolve ID collision.)
 - [TASK102](COMPLETED/TASK102-ai-v2-skeleton.md) — Established AI V2 blackboard, scheduler, and profile plumbing behind feature flag. (Retained TASK102 identifier.)
 - [TASK103](COMPLETED/TASK103-ai-traits.md) — Added AI trait multipliers with deterministic seeding and coverage.
 - [TASK104](COMPLETED/TASK104-ai-metrics.md) — Instrumented AI metrics and documented rollout.
@@ -48,7 +48,7 @@ This index tracks active tasks and their memory files. Use the `tasks/` folder f
 - [TASK108](COMPLETED/TASK108-ai-rollout-automation.md) — Wired AI V2 rollout automation, env flag toggles, and CI alignment.
 - [TASK109](COMPLETED/TASK109-ai-scenario-fixtures.md) — Added bomber intercept and artillery retreat scenarios with logs.
 - [TASK110](COMPLETED/TASK110-planet-texture-assets.md) — Canonicalised planet texture asset keys and registry. (Retained TASK110 identifier.)
-- [TASK137](COMPLETED/TASK137-implement-skysphere.md) — Implemented 8192x4096 skysphere with equirectangular mapping and Suspense boundary.  (Renamed from TASK110 to resolve ID collision.)
+- [TASK137](COMPLETED/TASK137-implement-skysphere.md) — Implemented 8192x4096 skysphere with equirectangular mapping and Suspense boundary. (Renamed from TASK110 to resolve ID collision.)
 - [TASK111](COMPLETED/TASK111-celestial-environment-config.md) — Authored celestial environment config schema and defaults.
 - [TASK112](COMPLETED/TASK112-planet-texture-loading.md) — Implemented `usePlanetTexture` hook with SRGB/anisotropy setup.
 - [TASK113](COMPLETED/TASK113-planet-material-baseline.md) — Established baseline planet material with emissive boost controls.
@@ -73,4 +73,3 @@ This index tracks active tasks and their memory files. Use the `tasks/` folder f
 ## Abandoned
 
 - _None tracked._
-

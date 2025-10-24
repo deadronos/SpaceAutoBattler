@@ -127,7 +127,11 @@ describe('updateMainSequenceStarUniforms', () => {
       cameraRoll: Number.NaN,
       starNorth: Number.NaN,
       viewAlignment: { x: Number.POSITIVE_INFINITY, y: Number.NaN, z: 2 },
-      haze: { taperStrength: Number.NaN, edgeFadeThreshold: Number.POSITIVE_INFINITY, edgeExponent: Number.NaN },
+      haze: {
+        taperStrength: Number.NaN,
+        edgeFadeThreshold: Number.POSITIVE_INFINITY,
+        edgeExponent: Number.NaN,
+      },
       boundary: { featherStart: Number.NaN, featherExponent: Number.NaN, alphaFloor: Number.NaN },
     });
 

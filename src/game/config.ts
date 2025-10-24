@@ -23,7 +23,9 @@ export const FOG_DEFAULTS: readonly [string, number, number] = [
 // AI configuration
 function readBooleanEnv(name: string, defaultValue = false): boolean {
   try {
-    const source = globalThis as unknown as { process?: { env?: Record<string, string | undefined> } };
+    const source = globalThis as unknown as {
+      process?: { env?: Record<string, string | undefined> };
+    };
     const raw = source.process?.env?.[name];
     if (!raw) return defaultValue;
     const normalized = raw.toLowerCase();
@@ -67,20 +69,12 @@ const TICK_RATE_BASE = 12;
 const TICK_RATE_EXPERIMENTAL = 15;
 const TICK_RATE_FORCE_ON = readBooleanEnv('AI_TICKRATE_EXPERIMENT_ON');
 const TICK_RATE_FORCE_OFF = readBooleanEnv('AI_TICKRATE_EXPERIMENT_OFF');
-const TICK_RATE_EXPERIMENT_ENABLED = TICK_RATE_FORCE_OFF
-  ? false
-  : TICK_RATE_FORCE_ON
-  ? true
-  : true;
+const TICK_RATE_EXPERIMENT_ENABLED = TICK_RATE_FORCE_OFF ? false : TICK_RATE_FORCE_ON ? true : true;
 
 // Vertical maneuver experiment flags
 const VERTICAL_FORCE_ON = readBooleanEnv('AI_VERTICAL_EXPERIMENT_ON');
 const VERTICAL_FORCE_OFF = readBooleanEnv('AI_VERTICAL_EXPERIMENT_OFF');
-const VERTICAL_DEFAULT = VERTICAL_FORCE_OFF
-  ? false
-  : VERTICAL_FORCE_ON
-  ? true
-  : true; // Current default
+const VERTICAL_DEFAULT = VERTICAL_FORCE_OFF ? false : VERTICAL_FORCE_ON ? true : true; // Current default
 const VERTICAL_EXPERIMENT_ENABLED = readBooleanParam('ai_vertical', VERTICAL_DEFAULT);
 
 // Engagement boost experiment flags
@@ -89,14 +83,16 @@ const ENGAGEMENT_BOOST_FORCE_OFF = readBooleanEnv('AI_ENGAGEMENT_BOOST_OFF');
 const ENGAGEMENT_BOOST_DEFAULT = ENGAGEMENT_BOOST_FORCE_OFF
   ? false
   : ENGAGEMENT_BOOST_FORCE_ON
-  ? true
-  : true; // Current default
+    ? true
+    : true; // Current default
 const ENGAGEMENT_BOOST_ENABLED = readBooleanParam('ai_engagement', ENGAGEMENT_BOOST_DEFAULT);
 
 // Range policy experiment flags
 function readStringEnv(name: string, defaultValue: string): string {
   try {
-    const source = globalThis as unknown as { process?: { env?: Record<string, string | undefined> } };
+    const source = globalThis as unknown as {
+      process?: { env?: Record<string, string | undefined> };
+    };
     const raw = source.process?.env?.[name];
     return raw || defaultValue;
   } catch {
@@ -105,13 +101,18 @@ function readStringEnv(name: string, defaultValue: string): string {
 }
 
 const RANGE_POLICY_OVERRIDE = readStringEnv('AI_RANGE_POLICY', '');
-const RANGE_POLICY_DEFAULT = RANGE_POLICY_OVERRIDE ? RANGE_POLICY_OVERRIDE : 'v0.1.1-exp' as const; // Current default
+const RANGE_POLICY_DEFAULT = RANGE_POLICY_OVERRIDE
+  ? RANGE_POLICY_OVERRIDE
+  : ('v0.1.1-exp' as const); // Current default
 const RANGE_POLICY_EFFECTIVE = readStringParam('ai_range_policy', RANGE_POLICY_DEFAULT);
 
 // Update tick rate to also support query params for consistency
 const TICK_RATE_QUERY_OVERRIDE = readQueryParam('ai_tick_rate');
-const TICK_RATE_EXPERIMENT_QUERY = readBooleanParam('ai_tick_experiment', TICK_RATE_EXPERIMENT_ENABLED);
-const TICK_RATE_FINAL = TICK_RATE_QUERY_OVERRIDE 
+const TICK_RATE_EXPERIMENT_QUERY = readBooleanParam(
+  'ai_tick_experiment',
+  TICK_RATE_EXPERIMENT_ENABLED,
+);
+const TICK_RATE_FINAL = TICK_RATE_QUERY_OVERRIDE
   ? TICK_RATE_QUERY_OVERRIDE === 'experimental' || TICK_RATE_QUERY_OVERRIDE === '15'
   : TICK_RATE_EXPERIMENT_QUERY;
 const TICK_RATE_EFFECTIVE_FINAL = TICK_RATE_FINAL ? TICK_RATE_EXPERIMENTAL : TICK_RATE_BASE;
@@ -121,10 +122,18 @@ if (typeof globalThis !== 'undefined' && globalThis.console) {
   const isDev = readQueryParam('debug') === 'config' || readBooleanEnv('DEBUG_CONFIG');
   if (isDev) {
     console.log('🔧 AI Feature Flag Configuration:');
-    console.log(`  verticalEnabled: ${VERTICAL_EXPERIMENT_ENABLED} (env: ${VERTICAL_FORCE_ON ? 'ON' : VERTICAL_FORCE_OFF ? 'OFF' : 'default'})`);
-    console.log(`  engagementBoostEnabled: ${ENGAGEMENT_BOOST_ENABLED} (env: ${ENGAGEMENT_BOOST_FORCE_ON ? 'ON' : ENGAGEMENT_BOOST_FORCE_OFF ? 'OFF' : 'default'})`);
-    console.log(`  tickRateHzExperiment: ${TICK_RATE_FINAL} (env: ${TICK_RATE_FORCE_ON ? 'ON' : TICK_RATE_FORCE_OFF ? 'OFF' : 'default'})`);
-    console.log(`  rangePolicy: ${RANGE_POLICY_EFFECTIVE} (env: ${RANGE_POLICY_OVERRIDE || 'default'})`);
+    console.log(
+      `  verticalEnabled: ${VERTICAL_EXPERIMENT_ENABLED} (env: ${VERTICAL_FORCE_ON ? 'ON' : VERTICAL_FORCE_OFF ? 'OFF' : 'default'})`,
+    );
+    console.log(
+      `  engagementBoostEnabled: ${ENGAGEMENT_BOOST_ENABLED} (env: ${ENGAGEMENT_BOOST_FORCE_ON ? 'ON' : ENGAGEMENT_BOOST_FORCE_OFF ? 'OFF' : 'default'})`,
+    );
+    console.log(
+      `  tickRateHzExperiment: ${TICK_RATE_FINAL} (env: ${TICK_RATE_FORCE_ON ? 'ON' : TICK_RATE_FORCE_OFF ? 'OFF' : 'default'})`,
+    );
+    console.log(
+      `  rangePolicy: ${RANGE_POLICY_EFFECTIVE} (env: ${RANGE_POLICY_OVERRIDE || 'default'})`,
+    );
   }
 }
 
@@ -156,7 +165,15 @@ export const AI_CONFIG = {
   strengthRatioThreshold: 1.6,
   bandStickinessDuration: 3,
   scorePrecision: 0.1,
-  intentPriority: ['Attack', 'Intercept', 'Escort', 'Kite', 'Reposition', 'Regroup', 'Flee'] as const,
+  intentPriority: [
+    'Attack',
+    'Intercept',
+    'Escort',
+    'Kite',
+    'Reposition',
+    'Regroup',
+    'Flee',
+  ] as const,
   threatWeights: {
     hull: {
       carrier: 6,
@@ -178,7 +195,7 @@ export const AI_CONFIG = {
 
 /**
  * Runtime AI Configuration Helpers
- * 
+ *
  * These functions check for runtime overrides from the UI store and return
  * the effective configuration values, allowing for real-time experimentation.
  */
@@ -199,7 +216,8 @@ interface UiStoreLike {
 
 function resolveUiStore(): UiStoreLike | null {
   try {
-    const possibleStore = (globalThis as { __spaceAutobattlerUiStore?: unknown }).__spaceAutobattlerUiStore;
+    const possibleStore = (globalThis as { __spaceAutobattlerUiStore?: unknown })
+      .__spaceAutobattlerUiStore;
     if (possibleStore && typeof (possibleStore as { getState?: unknown }).getState === 'function') {
       return possibleStore as UiStoreLike;
     }
@@ -208,7 +226,6 @@ function resolveUiStore(): UiStoreLike | null {
   }
   return null;
 }
-
 
 export function getEffectiveAIConfig() {
   const uiStore = resolveUiStore();
@@ -251,6 +268,3 @@ export function clampToWorld(v: { x: number; y: number; z: number }): void {
   v.y = Math.min(Math.max(v.y, min), max);
   v.z = Math.min(Math.max(v.z, min), max);
 }
-
-
-

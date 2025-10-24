@@ -28,13 +28,13 @@ Capture before/after renders for docs/debug UI to showcase the fuller-disc star 
 
 ### Subtasks
 
-| ID  | Description | Status | Updated | Notes |
-| --- | --- | --- | --- | --- |
-| 1.1 | Add debug override plumbing to star disk config/material creation | Completed | 2025-09-26 | Introduced `applyStarDiskDebugOverrides` and wired it into `StarDisk`. |
-| 1.2 | Unit test override helper for immutability/clamping | Completed | 2025-09-26 | Vitest covers numeric + palette overrides and ensures state is not mutated. |
-| 1.3 | Implement Playwright comparison spec with screenshot capture | Completed | 2025-09-26 | Authored `star-disk-compare.spec.ts` with role-based locators and override polling. |
-| 1.4 | Ensure artifacts write to `playwright-debug/` and document usage | Completed | 2025-09-26 | Spec saves `star-disk-before.png` and `star-disk-after.png` under `playwright-debug/`. |
-| 1.5 | Run validation suites (`npm run typecheck`, `npm test`, Playwright capture) | Completed | 2025-09-26 | Typecheck, Vitest, and Playwright comparison spec all pass and produce artifacts. |
+| ID  | Description                                                                 | Status    | Updated    | Notes                                                                                  |
+| --- | --------------------------------------------------------------------------- | --------- | ---------- | -------------------------------------------------------------------------------------- |
+| 1.1 | Add debug override plumbing to star disk config/material creation           | Completed | 2025-09-26 | Introduced `applyStarDiskDebugOverrides` and wired it into `StarDisk`.                 |
+| 1.2 | Unit test override helper for immutability/clamping                         | Completed | 2025-09-26 | Vitest covers numeric + palette overrides and ensures state is not mutated.            |
+| 1.3 | Implement Playwright comparison spec with screenshot capture                | Completed | 2025-09-26 | Authored `star-disk-compare.spec.ts` with role-based locators and override polling.    |
+| 1.4 | Ensure artifacts write to `playwright-debug/` and document usage            | Completed | 2025-09-26 | Spec saves `star-disk-before.png` and `star-disk-after.png` under `playwright-debug/`. |
+| 1.5 | Run validation suites (`npm run typecheck`, `npm test`, Playwright capture) | Completed | 2025-09-26 | Typecheck, Vitest, and Playwright comparison spec all pass and produce artifacts.      |
 
 ## Progress Log
 

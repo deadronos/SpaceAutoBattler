@@ -1,16 +1,21 @@
 # SpaceAutoBattler v0.1.4b Overview
 
 ## Project purpose and scope
+
 SpaceAutoBattler is positioned as a lightweight, research-oriented 3D space combat simulator that deliberately splits deterministic game simulation from the rendering and UI stack to support headless experimentation and fast iteration.【F:README.md†L5-L6】 The repository focuses development within the `src/` tree, emphasizing React Three Fiber rendering, a Miniplex ECS, and Rapier physics to create autonomous fleet battles.【F:README.md†L41-L47】【F:spec/src-structure.md†L12-L90】
 
 ## High-level architecture
+
 The simulation core resides in `src/game`, where `createGameState` assembles the Rapier world, ECS queries, deterministic RNG, and AI bookkeeping into the canonical `GameState` structure consumed by both logic and rendering layers.【F:src/game/state.ts†L19-L162】 Per-tick orchestration is handled by `updateGame`, which advances AI decision systems, motion, turrets, projectiles, and explosion effects while capturing failures for diagnostics without halting the frame.【F:src/game/systems.ts†L46-L99】 Rendering responsibilities live under `src/components`, with `Battlefield` composing scene layers, postprocessing, and simulation stepping hooks to drive the headless logic from React's render loop.【F:spec/src-structure.md†L21-L67】【F:src/components/Battlefield.tsx†L68-L104】
 
 ## Simulation loop integration
+
 `BattlefieldSystems` bridges React Three Fiber's `useFrame` callback to the deterministic fixed-step simulation, synchronizing pause and time scaling controls, clamping accumulated time, and adjusting Rapier integration parameters before stepping the ECS systems.【F:src/components/BattlefieldSystems.tsx†L7-L52】 Within `updateGame`, each subsystem runs through a `runSafely` wrapper that records sanitized snapshots on failure and updates Rapier diagnostic counters via the simulation queue utilities.【F:src/game/systems.ts†L54-L99】【F:src/game/simulationQueue.ts†L86-L107】 Diagnostics, deferred mutations, and physics panics feed into shared structures on `GameState` so downstream tooling can inspect recent issues or replay safe snapshots.【F:src/game/state.ts†L72-L105】【F:src/game/simulationQueue.ts†L55-L165】
 
 ## Tooling and developer workflows
+
 The project ships npm scripts covering type checks, Vitest suites, Playwright E2E runs, and Webpack builds, supporting both CI pipelines and local iteration.【F:README.md†L55-L135】 Documentation under `spec/` and `docs/` catalogs module responsibilities (e.g., `spec/src-structure.md`) and feature-specific guidance such as motion specs, renderer audits, and balance notes, giving contributors an indexed starting point for deeper research.【F:README.md†L31-L36】【F:spec/src-structure.md†L1-L152】【F:docs/gamebalance-report-v0.1.4.md†L1-L40】
 
 ## Key supporting systems
+
 Custom React hooks like `useArchetypeEntities` abstract Miniplex archetype subscriptions across legacy and v2 APIs, ensuring UI layers respond to ECS mutations without breaking React's hooks rules.【F:src/hooks/useArchetypeEntities.ts†L6-L88】 Visual subsystems leverage instanced layers (`ShipsLayer`, `ProjectilesLayer`, `TurretsLayer`) and postprocessing composers guarded by runtime checks so rendering features degrade gracefully when disabled or unavailable.【F:spec/src-structure.md†L86-L116】【F:src/components/Postprocessing.tsx†L20-L147】

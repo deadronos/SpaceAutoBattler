@@ -19,6 +19,7 @@ Restore visible ship hulls after the instancing refactor by ensuring the LOD man
 ## Scope
 
 In scope:
+
 - `src/components/lod/ShipLODManager.tsx`
 - `src/components/layers/ShipsLayer.tsx` (only if wiring adjustments required)
 - `src/components/lod/__tests__` / `test/components/lod/ShipLODManager.spec.ts`
@@ -26,6 +27,7 @@ In scope:
 - Minor renderer config tweaks (distance thresholds, bloom flags) if necessary for hull visibility
 
 Out of scope:
+
 - Overhauling GLTF asset loading or introducing full instanced hull rendering
 - Deep rework of thruster/projectile instancing (audit only, no structural change unless a regression is found during implementation)
 
@@ -95,17 +97,20 @@ export interface PopulateImpostorParams {
   };
 }
 
-export function populateImpostorInstances(params: PopulateImpostorParams): { count: number; saturated: boolean };
+export function populateImpostorInstances(params: PopulateImpostorParams): {
+  count: number;
+  saturated: boolean;
+};
 ```
 
 ## Error Handling Matrix
 
-| Scenario | Detection | Response | Notes |
-| --- | --- | --- | --- |
-| Instanced mesh ref missing | `populateImpostorInstances` receives `mesh === null` | Return `{ count: 0, saturated: false }` without throwing | Maintains resilience during Suspense fallback |
-| Capacity saturation | Helper detects index >= capacity | Set `saturated = true`, clamp writes, log via `warnOnSaturation` | Existing warning infrastructure reused |
-| Ship array empty mid-frame | Loop completes with zero count | Mesh `visible = false`, `count = 0` | Prevents stale impostor quads |
-| Threshold misconfiguration (negative/NaN) | Validate inputs before use | Fallback to defaults (clamp to positive numbers) | Implement simple guards in component |
+| Scenario                                  | Detection                                            | Response                                                         | Notes                                         |
+| ----------------------------------------- | ---------------------------------------------------- | ---------------------------------------------------------------- | --------------------------------------------- |
+| Instanced mesh ref missing                | `populateImpostorInstances` receives `mesh === null` | Return `{ count: 0, saturated: false }` without throwing         | Maintains resilience during Suspense fallback |
+| Capacity saturation                       | Helper detects index >= capacity                     | Set `saturated = true`, clamp writes, log via `warnOnSaturation` | Existing warning infrastructure reused        |
+| Ship array empty mid-frame                | Loop completes with zero count                       | Mesh `visible = false`, `count = 0`                              | Prevents stale impostor quads                 |
+| Threshold misconfiguration (negative/NaN) | Validate inputs before use                           | Fallback to defaults (clamp to positive numbers)                 | Implement simple guards in component          |
 
 ## Testing Strategy
 
@@ -118,7 +123,7 @@ export function populateImpostorInstances(params: PopulateImpostorParams): { cou
 
 ## Work Plan
 
-1. Finalize requirements + design (this document) and update memory tasks. *(Status: In Progress — TASK245 subtask 1.1)*
+1. Finalize requirements + design (this document) and update memory tasks. _(Status: In Progress — TASK245 subtask 1.1)_
 2. Implement code changes:
    - Introduce helpers and stateful partition logic in `ShipLODManager.tsx`.
    - Adjust default thresholds and reuse helpers.
@@ -129,9 +134,9 @@ export function populateImpostorInstances(params: PopulateImpostorParams): { cou
 
 ## Risks & Mitigations
 
-- **Risk:** Per-frame state updates could trigger extra React renders. *Mitigation:* Only call `setPartition` when `partitionsEqual` reports a difference; keep helper allocations minimal.
-- **Risk:** Mocking `InstancedMesh` in tests may diverge from Three.js behaviour. *Mitigation:* Implement lightweight mock capturing last matrix/quaternion values and assert against them; ensure helper works with minimal API.
-- **Risk:** Raising default threshold could impact performance. *Mitigation:* Document change, keep impostor capacity instancing, and monitor counts in saturation logs; consider future dynamic thresholds based on FOV.
+- **Risk:** Per-frame state updates could trigger extra React renders. _Mitigation:_ Only call `setPartition` when `partitionsEqual` reports a difference; keep helper allocations minimal.
+- **Risk:** Mocking `InstancedMesh` in tests may diverge from Three.js behaviour. _Mitigation:_ Implement lightweight mock capturing last matrix/quaternion values and assert against them; ensure helper works with minimal API.
+- **Risk:** Raising default threshold could impact performance. _Mitigation:_ Document change, keep impostor capacity instancing, and monitor counts in saturation logs; consider future dynamic thresholds based on FOV.
 
 ## Open Questions
 

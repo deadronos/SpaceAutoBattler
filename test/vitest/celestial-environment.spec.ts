@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { PLANET_TEXTURE_PATHS } from '../../src/assets/planets.js';
-import {
-  CELESTIAL_ENVIRONMENT,
-  PLANET_GEOMETRY_SEGMENTS,
-} from '../../src/config/environment.js';
-
+import { CELESTIAL_ENVIRONMENT, PLANET_GEOMETRY_SEGMENTS } from '../../src/config/environment.js';
 
 describe('celestial environment config', () => {
   it('references known planet texture keys', () => {
@@ -30,7 +26,8 @@ describe('celestial environment config', () => {
 
   it('provides valid star light direction and distance', () => {
     const { direction, distance, intensity } = CELESTIAL_ENVIRONMENT.starLight;
-    const lengthSq = direction.x * direction.x + direction.y * direction.y + direction.z * direction.z;
+    const lengthSq =
+      direction.x * direction.x + direction.y * direction.y + direction.z * direction.z;
     expect(Math.abs(Math.sqrt(lengthSq) - 1)).toBeLessThan(1e-3);
     expect(distance).toBeGreaterThan(0);
     expect(intensity).toBeGreaterThan(0);

@@ -26,12 +26,12 @@ Integrate the [Shadertoy solar flare shader](https://www.shadertoy.com/view/4dXG
 
 **Overall Status:** Completed - 100%
 
-| ID | Description | Status | Updated | Notes |
-| --- | --- | --- | --- | --- |
-| 1.1 | Port shader assets and helpers | Complete | 2025-09-25 | Adapted vertex/fragment GLSL, added Vitest loader |
-| 1.2 | Refactor StarDisk component | Complete | 2025-09-25 | Integrated shader material + deterministic time flow |
-| 1.3 | Add tests and bloom integration checks | Complete | 2025-09-25 | Authored uniform + lifecycle specs, ran npm test |
-| 1.4 | Update docs and baselines | Complete | 2025-09-25 | Updated memory/task docs; Playwright baseline deferred |
+| ID  | Description                            | Status   | Updated    | Notes                                                  |
+| --- | -------------------------------------- | -------- | ---------- | ------------------------------------------------------ |
+| 1.1 | Port shader assets and helpers         | Complete | 2025-09-25 | Adapted vertex/fragment GLSL, added Vitest loader      |
+| 1.2 | Refactor StarDisk component            | Complete | 2025-09-25 | Integrated shader material + deterministic time flow   |
+| 1.3 | Add tests and bloom integration checks | Complete | 2025-09-25 | Authored uniform + lifecycle specs, ran npm test       |
+| 1.4 | Update docs and baselines              | Complete | 2025-09-25 | Updated memory/task docs; Playwright baseline deferred |
 
 ## Progress Log
 

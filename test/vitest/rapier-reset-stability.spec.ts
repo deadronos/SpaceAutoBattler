@@ -1,5 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { createGameState, requestReset, resetGame, disposeGameState, spawnInitialFleets } from '../../src/game/state.js';
+import {
+  createGameState,
+  requestReset,
+  resetGame,
+  disposeGameState,
+  spawnInitialFleets,
+} from '../../src/game/state.js';
 import { updateGame } from '../../src/game/systems.js';
 import type { GameState } from '../../src/types/index.js';
 

@@ -1,7 +1,16 @@
 import { useFrame } from '@react-three/fiber';
 import { useEffect, useMemo, useRef } from 'react';
 import type { MutableRefObject } from 'react';
-import { Box3, Color, MathUtils, Mesh, MeshStandardMaterial, Object3D, SphereGeometry, Vector3 } from 'three';
+import {
+  Box3,
+  Color,
+  MathUtils,
+  Mesh,
+  MeshStandardMaterial,
+  Object3D,
+  SphereGeometry,
+  Vector3,
+} from 'three';
 import type { ShipEntity } from '../types/index.js';
 import { THRUSTER_GLOW_CONFIG } from '../config/renderer.js';
 import { useBloomContext } from '../renderer/BloomProvider.js';
@@ -53,14 +62,17 @@ export function useShipThrusters(
         }
 
         const baseEmissive = material.emissive.clone();
-        const emissiveLuminance = baseEmissive.r * 0.299 + baseEmissive.g * 0.587 + baseEmissive.b * 0.114;
+        const emissiveLuminance =
+          baseEmissive.r * 0.299 + baseEmissive.g * 0.587 + baseEmissive.b * 0.114;
         const finalEmissive =
           emissiveLuminance < THRUSTER_GLOW_CONFIG.darkEmissiveThreshold
             ? new Color(THRUSTER_GLOW_CONFIG.defaultEmissiveColor)
             : baseEmissive;
 
         material.emissive.copy(finalEmissive);
-        const baseIntensity = Number.isFinite(material.emissiveIntensity) ? material.emissiveIntensity : 1;
+        const baseIntensity = Number.isFinite(material.emissiveIntensity)
+          ? material.emissiveIntensity
+          : 1;
 
         thrusters.push({
           material,
@@ -125,7 +137,8 @@ export function useShipThrusters(
         glowMesh.position.set(x, y, tailZ);
         scene.add(glowMesh);
 
-        const hasExtremeMeshPosition = Math.abs(x) > 1000 || Math.abs(y) > 1000 || Math.abs(tailZ) > 1000;
+        const hasExtremeMeshPosition =
+          Math.abs(x) > 1000 || Math.abs(y) > 1000 || Math.abs(tailZ) > 1000;
         if (hasExtremeMeshPosition) {
           console.warn(`[Ship] Engine glow mesh extreme position:`, {
             shipId: entity.id,
@@ -208,7 +221,3 @@ export function updateThrusterIntensity(
     }
   }
 }
-
-
-
-

@@ -137,7 +137,12 @@ describe('AI scorer snapshots', () => {
   it('favors attack intent when inside desired engagement band', () => {
     const state = createState();
     const ship = createShip({ id: 1, team: 'blue', position: new Vector3(), hp: 96, maxHp: 120 });
-    const target = createShip({ id: 2, team: 'red', position: new Vector3(150, 0, 0), hull: 'fighter' });
+    const target = createShip({
+      id: 2,
+      team: 'red',
+      position: new Vector3(150, 0, 0),
+      hull: 'fighter',
+    });
     const profile = resolveBehaviorProfile('brawler');
     const holdScore = scoreAttackIntent(state, ship, profile, target, 'hold', BASE_TRAITS);
     // Updated expectation: base 1136 + engagement bias 25 + opening salvo boost ~21.6 + focus bias 40 ≈ 1222.6
@@ -146,14 +151,31 @@ describe('AI scorer snapshots', () => {
     const retreatScore = scoreAttackIntent(state, ship, profile, target, 'retreat', BASE_TRAITS);
     expect(retreatScore).toBeCloseTo(holdScore - 120, 1);
 
-    const distant = createShip({ id: 3, team: 'red', position: new Vector3(400, 0, 0), hull: 'carrier' });
+    const distant = createShip({
+      id: 3,
+      team: 'red',
+      position: new Vector3(400, 0, 0),
+      hull: 'carrier',
+    });
     const farScore = scoreAttackIntent(state, ship, profile, distant, 'hold', BASE_TRAITS);
     expect(holdScore).toBeGreaterThan(farScore);
   });
 
   it('boosts kite score when posture is retreat and hp is low', () => {
-    const ship = createShip({ id: 10, team: 'red', position: new Vector3(), hp: 40, maxHp: 120, hull: 'frigate' });
-    const target = createShip({ id: 11, team: 'blue', position: new Vector3(220, 0, 0), hull: 'destroyer' });
+    const ship = createShip({
+      id: 10,
+      team: 'red',
+      position: new Vector3(),
+      hp: 40,
+      maxHp: 120,
+      hull: 'frigate',
+    });
+    const target = createShip({
+      id: 11,
+      team: 'blue',
+      position: new Vector3(220, 0, 0),
+      hull: 'destroyer',
+    });
     const profile = resolveBehaviorProfile('kiter');
 
     const hold = scoreKiteIntent(ship, profile, target, 'hold', BASE_TRAITS);
@@ -163,8 +185,18 @@ describe('AI scorer snapshots', () => {
 
   it('prioritizes escort targets threatened by VIP markers', () => {
     const state = createState();
-    const escort = createShip({ id: 21, team: 'blue', position: new Vector3(0, 0, 0), hull: 'fighter' });
-    const vip = createShip({ id: 22, team: 'blue', position: new Vector3(90, 0, 0), hull: 'carrier' });
+    const escort = createShip({
+      id: 21,
+      team: 'blue',
+      position: new Vector3(0, 0, 0),
+      hull: 'fighter',
+    });
+    const vip = createShip({
+      id: 22,
+      team: 'blue',
+      position: new Vector3(90, 0, 0),
+      hull: 'carrier',
+    });
     const profile = resolveBehaviorProfile('escort');
 
     const assignment = { vipId: vip.id, offset: new Vector3(50, 0, 0) };
@@ -176,8 +208,20 @@ describe('AI scorer snapshots', () => {
 
   it('ramps flee score once hp drops below retreat gate or posture flips', () => {
     const profile = resolveBehaviorProfile('brawler');
-    const shipHealthy = createShip({ id: 31, team: 'blue', position: new Vector3(), hp: 110, maxHp: 120 });
-    const shipDamaged = createShip({ id: 32, team: 'blue', position: new Vector3(), hp: 20, maxHp: 120 });
+    const shipHealthy = createShip({
+      id: 31,
+      team: 'blue',
+      position: new Vector3(),
+      hp: 110,
+      maxHp: 120,
+    });
+    const shipDamaged = createShip({
+      id: 32,
+      team: 'blue',
+      position: new Vector3(),
+      hp: 20,
+      maxHp: 120,
+    });
     const threat = createShip({ id: 33, team: 'red', position: new Vector3(80, 0, 0) });
 
     const healthyScore = scoreFleeIntent(shipHealthy, profile, threat, 'hold', BASE_TRAITS);
@@ -190,8 +234,18 @@ describe('AI scorer snapshots', () => {
 
   it('boosts intercept score for fast VIP threats', () => {
     const state = createState();
-    const interceptor = createShip({ id: 41, team: 'blue', position: new Vector3(0, 0, 0), hull: 'fighter' });
-    const vip = createShip({ id: 42, team: 'blue', position: new Vector3(60, 0, 0), hull: 'carrier' });
+    const interceptor = createShip({
+      id: 41,
+      team: 'blue',
+      position: new Vector3(0, 0, 0),
+      hull: 'fighter',
+    });
+    const vip = createShip({
+      id: 42,
+      team: 'blue',
+      position: new Vector3(60, 0, 0),
+      hull: 'carrier',
+    });
     const bomber = createShip({
       id: 43,
       team: 'red',
@@ -203,9 +257,32 @@ describe('AI scorer snapshots', () => {
     const profile = resolveBehaviorProfile('escort');
 
     const assignment = { vipId: vip.id, offset: new Vector3(60, 0, 0) };
-    const score = scoreInterceptIntent(state, interceptor, profile, bomber, vip, 'hold', BASE_TRAITS, assignment);
-    const slow = createShip({ id: 44, team: 'red', position: new Vector3(220, 0, 0), hull: 'corvette' });
-    const neutral = scoreInterceptIntent(state, interceptor, profile, slow, vip, 'hold', BASE_TRAITS, assignment);
+    const score = scoreInterceptIntent(
+      state,
+      interceptor,
+      profile,
+      bomber,
+      vip,
+      'hold',
+      BASE_TRAITS,
+      assignment,
+    );
+    const slow = createShip({
+      id: 44,
+      team: 'red',
+      position: new Vector3(220, 0, 0),
+      hull: 'corvette',
+    });
+    const neutral = scoreInterceptIntent(
+      state,
+      interceptor,
+      profile,
+      slow,
+      vip,
+      'hold',
+      BASE_TRAITS,
+      assignment,
+    );
 
     expect(score).toBeGreaterThan(neutral);
     expect(score).toBeGreaterThan(700);
@@ -213,13 +290,32 @@ describe('AI scorer snapshots', () => {
 
   it('raises reposition score for artillery outside engagement band', () => {
     const state = createState();
-    const artillery = createShip({ id: 50, team: 'blue', position: new Vector3(), hull: 'destroyer' });
+    const artillery = createShip({
+      id: 50,
+      team: 'blue',
+      position: new Vector3(),
+      hull: 'destroyer',
+    });
     const farTarget = createShip({ id: 51, team: 'red', position: new Vector3(820, 0, 0) });
     const nearTarget = createShip({ id: 52, team: 'red', position: new Vector3(420, 0, 0) });
     const profile = resolveBehaviorProfile('artillery');
 
-    const farScore = scoreRepositionIntent(state, artillery, profile, farTarget, BASE_TRAITS, 'hold');
-    const nearScore = scoreRepositionIntent(state, artillery, profile, nearTarget, BASE_TRAITS, 'hold');
+    const farScore = scoreRepositionIntent(
+      state,
+      artillery,
+      profile,
+      farTarget,
+      BASE_TRAITS,
+      'hold',
+    );
+    const nearScore = scoreRepositionIntent(
+      state,
+      artillery,
+      profile,
+      nearTarget,
+      BASE_TRAITS,
+      'hold',
+    );
 
     expect(farScore).toBeGreaterThan(nearScore);
     expect(farScore).toBeGreaterThan(nearScore + 100);
@@ -230,7 +326,13 @@ describe('AI scorer snapshots', () => {
     state.blackboard.teamPosture.blue = 'retreat';
     state.blackboard.allyCentroid.blue.set(240, 0, 0);
     const profile = resolveBehaviorProfile('brawler');
-    const ship = createShip({ id: 60, team: 'blue', position: new Vector3(0, 0, 0), hp: 80, maxHp: 120 });
+    const ship = createShip({
+      id: 60,
+      team: 'blue',
+      position: new Vector3(0, 0, 0),
+      hp: 80,
+      maxHp: 120,
+    });
 
     const regroup = scoreRegroupIntent(state, ship, profile, 'retreat', BASE_TRAITS);
     const hold = scoreRegroupIntent(state, ship, profile, 'hold', BASE_TRAITS);
@@ -302,15 +404,32 @@ describe('AI scorer snapshots', () => {
     // Test during opening salvo
     const earlyState = createState();
     earlyState.time = 0;
-    const earlyScore = scoreInterceptIntent(earlyState, ship, profile, target, null, 'hold', BASE_TRAITS, null);
+    const earlyScore = scoreInterceptIntent(
+      earlyState,
+      ship,
+      profile,
+      target,
+      null,
+      'hold',
+      BASE_TRAITS,
+      null,
+    );
 
     // Test after opening salvo period
     const lateState = createState();
     lateState.time = 35;
-    const lateScore = scoreInterceptIntent(lateState, ship, profile, target, null, 'hold', BASE_TRAITS, null);
+    const lateScore = scoreInterceptIntent(
+      lateState,
+      ship,
+      profile,
+      target,
+      null,
+      'hold',
+      BASE_TRAITS,
+      null,
+    );
 
     // Early score should be higher due to opening salvo boost
     expect(earlyScore).toBeGreaterThan(lateScore);
   });
 });
-

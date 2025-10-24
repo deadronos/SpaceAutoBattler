@@ -16,9 +16,9 @@ The user asked to review the current state of the game (version v0.1.4d), propos
 
 ## Requirements (EARS)
 
-1. WHEN drafting the Version 2.0 vision, THE SYSTEM SHALL outline 3–5 strategic pillars that explain the overarching goals for the sequel release.  
-2. WHEN presenting feature concepts, THE SYSTEM SHALL describe gameplay, progression, and technical evolutions grounded in current version learnings.  
-3. WHEN documenting risks, THE SYSTEM SHALL note validation or research needs so follow-up tasks can be identified.  
+1. WHEN drafting the Version 2.0 vision, THE SYSTEM SHALL outline 3–5 strategic pillars that explain the overarching goals for the sequel release.
+2. WHEN presenting feature concepts, THE SYSTEM SHALL describe gameplay, progression, and technical evolutions grounded in current version learnings.
+3. WHEN documenting risks, THE SYSTEM SHALL note validation or research needs so follow-up tasks can be identified.
 4. WHEN finalizing the document, THE SYSTEM SHALL place it at `docs/ideas-version2.0.md` with clear sections for pillars, features, and dependencies.
 
 ## Implementation Plan
@@ -34,11 +34,11 @@ The user asked to review the current state of the game (version v0.1.4d), propos
 
 ### Subtasks
 
-| ID  | Description                                   | Status       | Updated    | Notes |
-| --- | --------------------------------------------- | ------------ | ---------- | ----- |
-| 1.1 | Synthesize v0.1.4d learnings and gaps         | Completed    | 2025-10-13 | Balance + AI docs reviewed, baseline captured |
-| 1.2 | Draft Version 2.0 pillars and feature ideas   | Completed    | 2025-10-13 | Defined five strategic pillars with initiatives |
-| 1.3 | Author `docs/ideas-version2.0.md` and finalize | Completed    | 2025-10-13 | Authored document and saved under `docs/` |
+| ID  | Description                                    | Status    | Updated    | Notes                                           |
+| --- | ---------------------------------------------- | --------- | ---------- | ----------------------------------------------- |
+| 1.1 | Synthesize v0.1.4d learnings and gaps          | Completed | 2025-10-13 | Balance + AI docs reviewed, baseline captured   |
+| 1.2 | Draft Version 2.0 pillars and feature ideas    | Completed | 2025-10-13 | Defined five strategic pillars with initiatives |
+| 1.3 | Author `docs/ideas-version2.0.md` and finalize | Completed | 2025-10-13 | Authored document and saved under `docs/`       |
 
 ## Progress Log
 

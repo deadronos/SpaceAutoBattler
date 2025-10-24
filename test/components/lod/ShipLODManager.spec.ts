@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { Color, InstancedBufferAttribute, InstancedMesh, Matrix4, MeshBasicMaterial, PlaneGeometry, Quaternion, Vector3 } from 'three';
+import {
+  Color,
+  InstancedBufferAttribute,
+  InstancedMesh,
+  Matrix4,
+  MeshBasicMaterial,
+  PlaneGeometry,
+  Quaternion,
+  Vector3,
+} from 'three';
 import type { ShipEntity, Team } from '../../../src/types/index.js';
 import {
   partitionShipsByDistance,
@@ -183,4 +192,3 @@ describe('populateImpostorInstances', () => {
     material.dispose();
   });
 });
-

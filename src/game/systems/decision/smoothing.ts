@@ -36,19 +36,19 @@ function ensureSmoothingState(ai: AIState): SmoothingState {
 
 /**
  * Apply exponential moving average (low-pass filter) to commanded heading.
- * 
+ *
  * Purpose:
  * - Reduces high-frequency jitter and sharp direction changes that can cause
  *   steering oscillation or make motion look robotic.
  * - The smoothing factor (alpha) controls the blend: lower alpha = more smoothing
  *   but slower response; higher alpha = faster response but less damping.
- * 
+ *
  * Behavior:
  * - Alpha is scaled by patience (more patient ships get smoother commands) and
  *   by aggression (aggressive ships get snappier commands).
  * - Heavy ships (destroyer/carrier) get additional smoothing to reduce their
  *   tendency to overshoot due to high inertia.
- * 
+ *
  * @param ai - AIState for this ship (used to store smoothing history)
  * @param rawHeading - The newly computed heading direction (will be modified in-place)
  * @param patience - Patience value from profile (0..1)
@@ -80,7 +80,8 @@ export function smoothHeading(
   // partially blend — this avoids small numeric deviations for tests
   // that expect exact full-forward or full-reverse headings.
   const dot = rawHeading.dot(s.lastHeading);
-  const axisAligned = Math.max(Math.abs(rawHeading.x), Math.abs(rawHeading.y), Math.abs(rawHeading.z)) > 0.9999;
+  const axisAligned =
+    Math.max(Math.abs(rawHeading.x), Math.abs(rawHeading.y), Math.abs(rawHeading.z)) > 0.9999;
   // Only treat near-reversals (large-angle changes) as instantaneous
   // discontinuities. Use a conservative threshold so moderate lateral
   // changes are still smoothed by the EMA.
@@ -136,7 +137,10 @@ export function smoothHeading(
   if (rawDeltaLen > maxDelta && rawDeltaLen > 1e-6) {
     newHeading.copy(s.lastHeading).addScaledVector(rawDeltaVec, maxDelta / rawDeltaLen);
   }
-  rawHeading.copy(s.lastHeading).multiplyScalar(1 - alpha).addScaledVector(newHeading, alpha);
+  rawHeading
+    .copy(s.lastHeading)
+    .multiplyScalar(1 - alpha)
+    .addScaledVector(newHeading, alpha);
 
   // Renormalize to ensure heading remains unit-length
   const len = rawHeading.length();
@@ -154,15 +158,15 @@ export function smoothHeading(
 
 /**
  * Apply exponential moving average (low-pass filter) to commanded thrust.
- * 
+ *
  * Purpose:
  * - Reduces abrupt throttle changes that cause acceleration spikes and overshoot.
  * - Smooths approach/retreat oscillations near desiredRange boundaries.
- * 
+ *
  * Behavior:
  * - Similar alpha scaling as heading smoothing: patience increases smoothing,
  *   aggression reduces it, and hull mass adds smoothing for heavy ships.
- * 
+ *
  * @param ai - AIState for this ship
  * @param rawThrust - The newly computed thrust value (0..1, will be modified)
  * @param patience - Patience value from profile (0..1)

@@ -28,12 +28,12 @@ Move thruster trails to GPU-managed buffers. The current particle trail system p
 
 ### Subtasks
 
-| ID  | Description                                                      | Status     | Updated     | Notes |
-| --- | ---------------------------------------------------------------- | ---------- | ----------- | ----- |
-| 1.1 | Publish requirements and DESIGN003, register TASK246             | Completed  | 2025-10-06  | Requirements + design added to memory bank |
-| 1.2 | Implement GPU resource factory and refactor `ParticleTrails`     | Completed  | 2025-10-06  | GPU instancing, shader, and deterministic spawning implemented |
-| 1.3 | Add Vitest coverage for GPU trails and deterministic spawning    | Completed  | 2025-10-06  | Added `particle-trails-gpu.spec.tsx` with spawn/uniform assertions |
-| 1.4 | Run validation, document reflections, and prep PR summary        | In Progress| 2025-10-06  | Type-check + tests running; documentation/summary pending |
+| ID  | Description                                                   | Status      | Updated    | Notes                                                              |
+| --- | ------------------------------------------------------------- | ----------- | ---------- | ------------------------------------------------------------------ |
+| 1.1 | Publish requirements and DESIGN003, register TASK246          | Completed   | 2025-10-06 | Requirements + design added to memory bank                         |
+| 1.2 | Implement GPU resource factory and refactor `ParticleTrails`  | Completed   | 2025-10-06 | GPU instancing, shader, and deterministic spawning implemented     |
+| 1.3 | Add Vitest coverage for GPU trails and deterministic spawning | Completed   | 2025-10-06 | Added `particle-trails-gpu.spec.tsx` with spawn/uniform assertions |
+| 1.4 | Run validation, document reflections, and prep PR summary     | In Progress | 2025-10-06 | Type-check + tests running; documentation/summary pending          |
 
 ## Progress Log
 

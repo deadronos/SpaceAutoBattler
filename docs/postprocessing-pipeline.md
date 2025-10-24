@@ -86,6 +86,7 @@ flowchart TD
 ```
 
 Notes:
+
 - The group names and assigned layers illustrated above (engines=11, projectiles=12, explosions=13) are examples — actual group names and layer allocations come from `POSTPROCESSING_CONFIG.bloomGroups` and the runtime `BloomProvider` allocation which starts at `bloomLayerStart` (default 11) and increments per group.
 - The EffectPass merges effects where possible for performance, but order is preserved functionally.
 

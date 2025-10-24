@@ -10,30 +10,32 @@ describe('selective bloom effect', () => {
     // This test validates that the BloomProvider and Postprocessing components
     // can be rendered without errors. The actual selective bloom behavior
     // would need to be tested with a WebGL context.
-    const TestScene = () => React.createElement(
-      BloomProvider,
-      { enabled: true },
+    const TestScene = () =>
       React.createElement(
-        Canvas,
-        { style: { width: '100px', height: '100px' } },
-        React.createElement(Postprocessing, { enabled: true })
-      )
-    );
+        BloomProvider,
+        { enabled: true },
+        React.createElement(
+          Canvas,
+          { style: { width: '100px', height: '100px' } },
+          React.createElement(Postprocessing, { enabled: true }),
+        ),
+      );
 
     const { container } = render(React.createElement(TestScene));
     expect(container).toBeTruthy();
   });
 
   it('should handle empty selections gracefully', () => {
-    const TestScene = () => React.createElement(
-      BloomProvider,
-      { enabled: true },
+    const TestScene = () =>
       React.createElement(
-        Canvas,
-        { style: { width: '100px', height: '100px' } },
-        React.createElement(Postprocessing, { enabled: true })
-      )
-    );
+        BloomProvider,
+        { enabled: true },
+        React.createElement(
+          Canvas,
+          { style: { width: '100px', height: '100px' } },
+          React.createElement(Postprocessing, { enabled: true }),
+        ),
+      );
 
     const { container } = render(React.createElement(TestScene));
     expect(container).toBeTruthy();

@@ -9,7 +9,9 @@
 - Color usage must meet WCAG 2.1 AA contrast ratios to remain legible under varied backgrounds and color-vision differences.[^wcag]
 
 [^nng]: Katie Sherwin, "Progress Indicators Make a Slow System Less Insufferable," Nielsen Norman Group, Oct 26, 2014 — <https://www.nngroup.com/articles/progress-indicators/>
+
 [^gag]: Game Accessibility Guidelines — <https://gameaccessibilityguidelines.com/full-list/>
+
 [^wcag]: W3C, "Understanding Success Criterion 1.4.3 Contrast (Minimum)," — <https://www.w3.org/WAI/WCAG21/Understanding/contrast-minimum.html>
 
 ## Goals
@@ -90,13 +92,13 @@ export interface HudHealthBarsStoreSlice {
 
 ## Error Handling Matrix
 
-| Scenario | Detection | Response | Test Coverage |
-| --- | --- | --- | --- |
-| Ship lacks `maxHp`/`maxShield` or values ≤ 0 | Ratio calculation yields NaN/∞ | Clamp to 0, log once via debug channel, render empty bar | Unit test stubs invalid data and asserts safe default |
-| Status effect tag missing from registry | Lookup returns undefined | Render generic warning icon with tooltip "Unknown effect" | Unit test feeds unknown tag and expects fallback |
-| Projection fails (ship off-screen / camera missing) | `screenPosition.visible === false` | Hide overlay but keep scoreboard text fallback | Playwright spec hovers camera edge case |
-| Overlay bounding box collides with HUD panels | Collision detector returns `true` | Apply vertical offset; if still colliding, suppress overlay | Integration test positions ship near UI edges |
-| Toggle state desynchronised with authoritative game state | UI store toggles while `GameState` flagged paused/resumed | Mirror toggle value into `GameState.uiFlags.hudHealthBars` on next frame to keep deterministic record | State-sync unit test mocks store update |
+| Scenario                                                  | Detection                                                 | Response                                                                                              | Test Coverage                                         |
+| --------------------------------------------------------- | --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| Ship lacks `maxHp`/`maxShield` or values ≤ 0              | Ratio calculation yields NaN/∞                            | Clamp to 0, log once via debug channel, render empty bar                                              | Unit test stubs invalid data and asserts safe default |
+| Status effect tag missing from registry                   | Lookup returns undefined                                  | Render generic warning icon with tooltip "Unknown effect"                                             | Unit test feeds unknown tag and expects fallback      |
+| Projection fails (ship off-screen / camera missing)       | `screenPosition.visible === false`                        | Hide overlay but keep scoreboard text fallback                                                        | Playwright spec hovers camera edge case               |
+| Overlay bounding box collides with HUD panels             | Collision detector returns `true`                         | Apply vertical offset; if still colliding, suppress overlay                                           | Integration test positions ship near UI edges         |
+| Toggle state desynchronised with authoritative game state | UI store toggles while `GameState` flagged paused/resumed | Mirror toggle value into `GameState.uiFlags.hudHealthBars` on next frame to keep deterministic record | State-sync unit test mocks store update               |
 
 ## Testing Strategy
 

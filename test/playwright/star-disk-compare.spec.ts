@@ -19,7 +19,10 @@ const LEGACY_OVERRIDES = {
 };
 
 test.describe('StarSphere before/after capture', () => {
-  test('captures star sphere legacy and fuller-disc presets for documentation', async ({ page, context }) => {
+  test('captures star sphere legacy and fuller-disc presets for documentation', async ({
+    page,
+    context,
+  }) => {
     await fs.mkdir(CAPTURE_DIR, { recursive: true });
     const beforePath = path.join(CAPTURE_DIR, BEFORE_FILE);
     const afterPath = path.join(CAPTURE_DIR, AFTER_FILE);
@@ -27,7 +30,11 @@ test.describe('StarSphere before/after capture', () => {
     await test.step('Capture legacy preset screenshot with debug overrides', async () => {
       await page.setViewportSize(VIEWPORT);
       await page.addInitScript((overrides) => {
-        (window as typeof window & { __STAR_DISK_DEBUG__?: { shaderOverrides?: typeof LEGACY_OVERRIDES } }).__STAR_DISK_DEBUG__ = {
+        (
+          window as typeof window & {
+            __STAR_DISK_DEBUG__?: { shaderOverrides?: typeof LEGACY_OVERRIDES };
+          }
+        ).__STAR_DISK_DEBUG__ = {
           shaderOverrides: overrides,
         };
       }, LEGACY_OVERRIDES);
@@ -42,11 +49,15 @@ test.describe('StarSphere before/after capture', () => {
       }
       await expect
         .poll(() =>
-          page.evaluate(() => Boolean(
-            (window as typeof window & {
-              __STAR_DISK_DEBUG__?: { shaderOverrides?: { textureRadialPower?: number } };
-            }).__STAR_DISK_DEBUG__?.shaderOverrides,
-          )),
+          page.evaluate(() =>
+            Boolean(
+              (
+                window as typeof window & {
+                  __STAR_DISK_DEBUG__?: { shaderOverrides?: { textureRadialPower?: number } };
+                }
+              ).__STAR_DISK_DEBUG__?.shaderOverrides,
+            ),
+          ),
         )
         .toBeTruthy();
       await canvas.screenshot({ path: beforePath });
@@ -69,11 +80,15 @@ test.describe('StarSphere before/after capture', () => {
       }
       await expect
         .poll(() =>
-          afterPage.evaluate(() => Boolean(
-            (window as typeof window & {
-              __STAR_DISK_DEBUG__?: unknown;
-            }).__STAR_DISK_DEBUG__,
-          )),
+          afterPage.evaluate(() =>
+            Boolean(
+              (
+                window as typeof window & {
+                  __STAR_DISK_DEBUG__?: unknown;
+                }
+              ).__STAR_DISK_DEBUG__,
+            ),
+          ),
         )
         .toBeFalsy();
       await canvas.screenshot({ path: afterPath });
@@ -81,7 +96,9 @@ test.describe('StarSphere before/after capture', () => {
 
     await afterPage.close();
 
-    const [beforeBuffer, afterBuffer] = await Promise.all([beforePath, afterPath].map((filePath) => fs.readFile(filePath)));
+    const [beforeBuffer, afterBuffer] = await Promise.all(
+      [beforePath, afterPath].map((filePath) => fs.readFile(filePath)),
+    );
 
     expect(beforeBuffer.length).toBeGreaterThan(0);
     expect(afterBuffer.length).toBeGreaterThan(0);

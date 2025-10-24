@@ -207,7 +207,11 @@ describe('useShipInterpolation helpers', () => {
 
       const maxBankDeg = entity.ship.motion.visual!.bank!.maxDeg ?? 30;
       const targetBankRad = MathUtils.degToRad(
-        Math.min(maxBankDeg, entity.ship.angularVelocity.y * (entity.ship.motion.visualBankFactor ?? smoothing.bankFactor)),
+        Math.min(
+          maxBankDeg,
+          entity.ship.angularVelocity.y *
+            (entity.ship.motion.visualBankFactor ?? smoothing.bankFactor),
+        ),
       );
 
       const bankValueRef: Ref<number> = { current: 0 };
@@ -326,4 +330,3 @@ describe('useShipInterpolation helpers', () => {
     });
   });
 });
-

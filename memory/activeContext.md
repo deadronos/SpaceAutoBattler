@@ -67,7 +67,6 @@ Recent quick maintenance (2025-10-18):
   - No code changes were required; this inspection was recorded in the memory bank and a task file was created (TASK248) to document the update.
 
   Environment renderer component summaries (2025-10-18):
-
   - `CelestialEnvironment` (`src/components/environment/CelestialEnvironment.tsx`)
     - Top-level environment group that wires skysphere, `StarLight` (and star representation), planets, and parallax billboards based on `CELESTIAL_ENVIRONMENT` config.
     - Uses `Suspense` for skysphere and planet bodies to allow asset loading to suspend rendering.
@@ -101,11 +100,9 @@ Recent quick maintenance (2025-10-18):
     - Small, camera-facing plane that shifts position based on camera movement (`useFrame`) and a `parallaxFactor`. Uses `meshBasicMaterial` and `lookAt` to face the camera. Feature-gated via `enabled` prop and global `features` config.
 
   Notes / Engineering guidance:
-
   - Depth and occlusion: star visuals intentionally use a small opaque depth core or a depth-only pass (StarSphere) so planets/rings can occlude the star consistently. When adding new halo-like elements follow this pattern (depth core + additive halo) to preserve deterministic occlusion.
   - Postprocessing fallback: `PlanetRings` exposes both a shader and a `MeshBasicMaterial` fallback and toggles uniforms based on `postprocessingEnabled` from the UI store. When adding shader features consider adding a graceful fallback path so scene remains readable with postprocessing off.
   - Debugging hooks: several components publish debug helpers/refs onto `window` when `?copilot_debug=1` is present. These are useful for Playwright/automation tests but must remain guarded behind debug checks to avoid production side-effects.
-
 
 Status updates:
 

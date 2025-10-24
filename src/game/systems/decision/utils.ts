@@ -5,4 +5,3 @@ export function hashToInt(value: number): number {
   x ^= x << 5;
   return x | 0;
 }
-

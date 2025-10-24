@@ -176,16 +176,10 @@ export function maybeWriteScenarioJson(log: AIScenarioLog, scenarioName: string)
 }
 
 function normalizeForLog(vec: Vector3): readonly [number, number, number] {
-  return [
-    clampNumber(vec.x, 3),
-    clampNumber(vec.y, 3),
-    clampNumber(vec.z, 3),
-  ] as const;
+  return [clampNumber(vec.x, 3), clampNumber(vec.y, 3), clampNumber(vec.z, 3)] as const;
 }
 
 function clampNumber(value: number, decimals: number): number {
   const factor = 10 ** decimals;
   return Math.round(value * factor) / factor;
 }
-
-

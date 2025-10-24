@@ -22,15 +22,15 @@ function analyzePixelsAtRadius(
   centerX: number,
   centerY: number,
   radius: number,
-  sampleCount: number = 32
+  sampleCount: number = 32,
 ): { luminanceValues: number[]; meanLuminance: number; variance: number } {
   const luminanceValues: number[] = [];
-  
+
   for (let i = 0; i < sampleCount; i++) {
     const angle = (i / sampleCount) * 2 * Math.PI;
     const x = Math.round(centerX + Math.cos(angle) * radius);
     const y = Math.round(centerY + Math.sin(angle) * radius);
-    
+
     // Ensure coordinates are within bounds
     if (x >= 0 && x < pngData.width && y >= 0 && y < pngData.height) {
       const idx = (pngData.width * y + x) << 2; // RGBA format
@@ -41,15 +41,19 @@ function analyzePixelsAtRadius(
       luminanceValues.push(luminance);
     }
   }
-  
+
   const meanLuminance = luminanceValues.reduce((sum, val) => sum + val, 0) / luminanceValues.length;
-  const variance = luminanceValues.reduce((sum, val) => sum + Math.pow(val - meanLuminance, 2), 0) / luminanceValues.length;
-  
+  const variance =
+    luminanceValues.reduce((sum, val) => sum + Math.pow(val - meanLuminance, 2), 0) /
+    luminanceValues.length;
+
   return { luminanceValues, meanLuminance, variance };
 }
 
 test.describe('StarSphere Fiery Alignment Metrics', () => {
-  test('validates luminance ratio, filament variance, and halo brightness criteria', async ({ page }) => {
+  test('validates luminance ratio, filament variance, and halo brightness criteria', async ({
+    page,
+  }) => {
     await fs.mkdir(CAPTURE_DIR, { recursive: true });
     const metricsPath = path.join(CAPTURE_DIR, FIERY_METRICS_FILE);
 
@@ -57,68 +61,94 @@ test.describe('StarSphere Fiery Alignment Metrics', () => {
       await page.setViewportSize(VIEWPORT);
       await page.goto('/spaceautobattler.html');
       await page.waitForLoadState('networkidle');
-      
+
       const canvas = page.locator('canvas');
       await expect(canvas).toBeVisible();
-      
+
       // Pause the simulation for stable analysis
       const pauseButton = page.getByRole('button', { name: 'Pause' });
       if (await pauseButton.isVisible()) {
         await pauseButton.click({ force: true });
         await expect(page.getByRole('button', { name: 'Resume' })).toBeVisible();
       }
-      
+
       // Wait for a stable frame
       await page.waitForTimeout(1000);
-      
+
       await canvas.screenshot({ path: metricsPath });
     });
 
     await test.step('Analyze pixel data for acceptance criteria', async () => {
       const pngBuffer = await fs.readFile(metricsPath);
       const pngData = PNG.sync.read(pngBuffer);
-      
+
       // Estimate star disk radius based on viewport size (adjust based on actual star size)
       const estimatedStarRadius = Math.min(VIEWPORT.width, VIEWPORT.height) * 0.15; // Roughly 15% of viewport
-      
+
       // 1. Centre-to-mid radius luminance ratio ≥ 3.3×
       const centerRadius = estimatedStarRadius * 0.1; // Core center
       const midRadius = estimatedStarRadius * 0.6; // Mid-radius for comparison
-      
-      const centerMetrics = analyzePixelsAtRadius(pngData, STAR_CENTER_X, STAR_CENTER_Y, centerRadius, 8);
-      const midMetrics = analyzePixelsAtRadius(pngData, STAR_CENTER_X, STAR_CENTER_Y, midRadius, 32);
-      
-      const luminanceRatio = centerMetrics.meanLuminance / Math.max(midMetrics.meanLuminance, 0.001);
-      
+
+      const centerMetrics = analyzePixelsAtRadius(
+        pngData,
+        STAR_CENTER_X,
+        STAR_CENTER_Y,
+        centerRadius,
+        8,
+      );
+      const midMetrics = analyzePixelsAtRadius(
+        pngData,
+        STAR_CENTER_X,
+        STAR_CENTER_Y,
+        midRadius,
+        32,
+      );
+
+      const luminanceRatio =
+        centerMetrics.meanLuminance / Math.max(midMetrics.meanLuminance, 0.001);
+
       console.log(`Center luminance: ${centerMetrics.meanLuminance.toFixed(4)}`);
       console.log(`Mid-radius luminance: ${midMetrics.meanLuminance.toFixed(4)}`);
       console.log(`Luminance ratio: ${luminanceRatio.toFixed(2)}×`);
-      
+
       // Relaxed threshold after switching to StarSphere rendering (was 3.3 for disk)
       expect(luminanceRatio).toBeGreaterThanOrEqual(1.8);
-      
+
       // 2. Filament variance σ ≥ 0.08 at radius 0.45
       const filamentRadius = estimatedStarRadius * 0.45;
-      const filamentMetrics = analyzePixelsAtRadius(pngData, STAR_CENTER_X, STAR_CENTER_Y, filamentRadius, 32);
+      const filamentMetrics = analyzePixelsAtRadius(
+        pngData,
+        STAR_CENTER_X,
+        STAR_CENTER_Y,
+        filamentRadius,
+        32,
+      );
       const standardDeviation = Math.sqrt(filamentMetrics.variance);
-      
+
       console.log(`Filament variance at r=0.45: σ = ${standardDeviation.toFixed(4)}`);
-      
+
       // Allow slightly lower filament variance for new sphere rendering
       expect(standardDeviation).toBeGreaterThanOrEqual(0.06);
-      
+
       // 3. Halo brightness at 1.15× radius ≤ 35% of core while ≥ 10% visible
       const haloRadius = estimatedStarRadius * 1.15;
-      const haloMetrics = analyzePixelsAtRadius(pngData, STAR_CENTER_X, STAR_CENTER_Y, haloRadius, 32);
-      
-      const haloBrightnessRatio = haloMetrics.meanLuminance / Math.max(centerMetrics.meanLuminance, 0.001);
-      
+      const haloMetrics = analyzePixelsAtRadius(
+        pngData,
+        STAR_CENTER_X,
+        STAR_CENTER_Y,
+        haloRadius,
+        32,
+      );
+
+      const haloBrightnessRatio =
+        haloMetrics.meanLuminance / Math.max(centerMetrics.meanLuminance, 0.001);
+
       console.log(`Halo luminance: ${haloMetrics.meanLuminance.toFixed(4)}`);
       console.log(`Halo brightness ratio: ${(haloBrightnessRatio * 100).toFixed(1)}% of core`);
-      
+
       expect(haloBrightnessRatio).toBeLessThanOrEqual(0.35); // ≤ 35% of core
-      expect(haloBrightnessRatio).toBeGreaterThanOrEqual(0.10); // ≥ 10% visible
-      
+      expect(haloBrightnessRatio).toBeGreaterThanOrEqual(0.1); // ≥ 10% visible
+
       // Log additional metrics for debugging
       console.log(`--- Fiery Star Disk Metrics ---`);
       console.log(`Estimated star radius: ${estimatedStarRadius.toFixed(1)}px`);
@@ -149,18 +179,18 @@ test.describe('StarSphere Fiery Alignment Metrics', () => {
       await page.addInitScript((overrides) => {
         (window as any).__STAR_DISK_DEBUG__ = { shaderOverrides: overrides };
       }, LEGACY_OVERRIDES);
-      
+
       await page.goto('/spaceautobattler.html');
       await page.waitForLoadState('networkidle');
-      
+
       const canvas = page.locator('canvas');
       await expect(canvas).toBeVisible();
-      
+
       const pauseButton = page.getByRole('button', { name: 'Pause' });
       if (await pauseButton.isVisible()) {
         await pauseButton.click({ force: true });
       }
-      
+
       await page.waitForTimeout(1000);
       await canvas.screenshot({ path: beforePath });
     });
@@ -172,22 +202,22 @@ test.describe('StarSphere Fiery Alignment Metrics', () => {
       await afterPage.setViewportSize(VIEWPORT);
       // Use debug override to freeze animation for stable comparison
       await afterPage.addInitScript(() => {
-        (window as any).__STAR_DISK_DEBUG__ = { 
-          shaderOverrides: { timeMultiplier: 0 } 
+        (window as any).__STAR_DISK_DEBUG__ = {
+          shaderOverrides: { timeMultiplier: 0 },
         };
       });
-      
+
       await afterPage.goto('/spaceautobattler.html');
       await afterPage.waitForLoadState('networkidle');
-      
+
       const canvas = afterPage.locator('canvas');
       await expect(canvas).toBeVisible();
-      
+
       const pauseButton = afterPage.getByRole('button', { name: 'Pause' });
       if (await pauseButton.isVisible()) {
         await pauseButton.click();
       }
-      
+
       await afterPage.waitForTimeout(1000);
       await canvas.screenshot({ path: afterPath });
     });
@@ -197,9 +227,9 @@ test.describe('StarSphere Fiery Alignment Metrics', () => {
     // Verify files were created and are different
     const [beforeBuffer, afterBuffer] = await Promise.all([
       fs.readFile(beforePath),
-      fs.readFile(afterPath)
+      fs.readFile(afterPath),
     ]);
-    
+
     expect(beforeBuffer.length).toBeGreaterThan(0);
     expect(afterBuffer.length).toBeGreaterThan(0);
     expect(beforeBuffer.equals(afterBuffer)).toBe(false);

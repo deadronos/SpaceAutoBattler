@@ -1,5 +1,14 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { Camera, Color, InstancedMesh, Object3D, Quaternion, Vector3, SphereGeometry, MeshBasicMaterial } from 'three';
+import {
+  Camera,
+  Color,
+  InstancedMesh,
+  Object3D,
+  Quaternion,
+  Vector3,
+  SphereGeometry,
+  MeshBasicMaterial,
+} from 'three';
 import { updateSparks } from '../../../../src/components/explosions/effectUpdaters/sparksUpdater.js';
 import type { EffectUpdateContext } from '../../../../src/components/explosions/effectUpdaters/types.js';
 import type { ExplosionEvent } from '../../../../src/types/index.js';
@@ -83,13 +92,13 @@ describe('sparksUpdater', () => {
     const camera = ctx.camera;
     camera.quaternion.set(0.1, 0.2, 0.3, 0.9);
     camera.quaternion.normalize(); // Ensure valid quaternion
-    
+
     updateSparks(ctx, mesh, 0, 100);
-    
+
     const dummy = new Object3D();
     mesh.getMatrixAt(0, dummy.matrix);
     dummy.matrix.decompose(dummy.position, dummy.quaternion, dummy.scale);
-    
+
     // Sparks are camera-facing billboards, so quaternions should match closely
     expect(dummy.quaternion.x).toBeCloseTo(camera.quaternion.x, 2);
     expect(dummy.quaternion.y).toBeCloseTo(camera.quaternion.y, 2);

@@ -35,13 +35,13 @@ Diagnose and fix the ESLint errors reported by `npm run lint:fix`, covering unus
 
 ### Subtasks
 
-| ID  | Description                                                     | Status        | Updated    | Notes |
-| --- | --------------------------------------------------------------- | ------------- | ---------- | ----- |
-| 1.1 | Fix explosion effect updater unused imports/args                | Completed     | 2025-10-03 | Unused constants removed; capacity args prefixed when unused. |
-| 1.2 | Refactor `config.ts` resolver pattern and types                 | Completed     | 2025-10-03 | Added global resolver + typed slice; dropped legacy require. |
-| 1.3 | Tighten AI harness diagnostics typing                           | Completed     | 2025-10-03 | Diagnostics now reuse intent types and avoid `any`. |
-| 1.4 | Update React hooks to avoid globals/`any` usage                 | Completed     | 2025-10-03 | React types imported explicitly; thruster hook strongly typed. |
-| 1.5 | Re-run lint/type checks and document verification               | Completed     | 2025-10-03 | `npx tsc --noEmit` and `npm run lint` now pass cleanly. |
+| ID  | Description                                       | Status    | Updated    | Notes                                                          |
+| --- | ------------------------------------------------- | --------- | ---------- | -------------------------------------------------------------- |
+| 1.1 | Fix explosion effect updater unused imports/args  | Completed | 2025-10-03 | Unused constants removed; capacity args prefixed when unused.  |
+| 1.2 | Refactor `config.ts` resolver pattern and types   | Completed | 2025-10-03 | Added global resolver + typed slice; dropped legacy require.   |
+| 1.3 | Tighten AI harness diagnostics typing             | Completed | 2025-10-03 | Diagnostics now reuse intent types and avoid `any`.            |
+| 1.4 | Update React hooks to avoid globals/`any` usage   | Completed | 2025-10-03 | React types imported explicitly; thruster hook strongly typed. |
+| 1.5 | Re-run lint/type checks and document verification | Completed | 2025-10-03 | `npx tsc --noEmit` and `npm run lint` now pass cleanly.        |
 
 ## Progress Log
 

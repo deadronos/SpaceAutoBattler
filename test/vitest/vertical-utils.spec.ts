@@ -56,7 +56,10 @@ function makeState() {
 describe('computeVerticalClamp', () => {
   it('returns higher clamp for fighters with escort style', () => {
     const ship = makeShip('fighter', 0);
-    const profile = { ...resolveBehaviorProfile('escort'), verticalManeuver: 0.7 } as BehaviorProfile;
+    const profile = {
+      ...resolveBehaviorProfile('escort'),
+      verticalManeuver: 0.7,
+    } as BehaviorProfile;
     const state = makeState();
     const ai = { desiredRange: [50, 300] } as any;
     const target = makeTarget(200);
@@ -68,7 +71,10 @@ describe('computeVerticalClamp', () => {
 
   it('returns lower clamp for destroyers', () => {
     const ship = makeShip('destroyer', 0);
-    const profile = { ...resolveBehaviorProfile('artillery'), verticalManeuver: 0.8 } as BehaviorProfile;
+    const profile = {
+      ...resolveBehaviorProfile('artillery'),
+      verticalManeuver: 0.8,
+    } as BehaviorProfile;
     const state = makeState();
     const ai = { desiredRange: [30, 200] } as any;
     const target = makeTarget(100);
@@ -80,7 +86,10 @@ describe('computeVerticalClamp', () => {
 
   it('scales clamp based on distance deviation from midpoint', () => {
     const ship = makeShip('fighter', 0);
-    const profile = { ...resolveBehaviorProfile('escort'), verticalManeuver: 0.7 } as BehaviorProfile;
+    const profile = {
+      ...resolveBehaviorProfile('escort'),
+      verticalManeuver: 0.7,
+    } as BehaviorProfile;
     const state = makeState();
     const ai = { desiredRange: [50, 300] } as any;
 

@@ -9,14 +9,13 @@ Current focuses (short-term):
 Recent changes:
 
 - **TASK154 (In Progress - 70%)**: Implemented Playwright ship mock render tests per design document:
-  * Created test page (`test/playwright/pages/ship-renderer.html`) with Three.js scene, fixed camera/lighting, deterministic rendering
-  * Implemented `window.__TEST__` API (waitForReady, getSceneSummary, setOptions) for test coordination
-  * Created comprehensive test suite (`test/playwright/ship-hulls.spec.ts`) with two-tier verification (scene introspection + screenshot comparison)
-  * Added baseline generation script (`scripts/generate-playwright-baselines.ts`) with CLI args and SwiftShader support
-  * Documented workflow in `test/playwright/README-ship-tests.md` covering running tests, generating baselines, troubleshooting
-  * All TypeScript compilation passes (`npm run typecheck`)
-  * Pending: Local validation with actual GLTF assets, CI job integration, Chromium flag tuning
-  
+  - Created test page (`test/playwright/pages/ship-renderer.html`) with Three.js scene, fixed camera/lighting, deterministic rendering
+  - Implemented `window.__TEST__` API (waitForReady, getSceneSummary, setOptions) for test coordination
+  - Created comprehensive test suite (`test/playwright/ship-hulls.spec.ts`) with two-tier verification (scene introspection + screenshot comparison)
+  - Added baseline generation script (`scripts/generate-playwright-baselines.ts`) with CLI args and SwiftShader support
+  - Documented workflow in `test/playwright/README-ship-tests.md` covering running tests, generating baselines, troubleshooting
+  - All TypeScript compilation passes (`npm run typecheck`)
+  - Pending: Local validation with actual GLTF assets, CI job integration, Chromium flag tuning
 - Hardened ship progression test scaffolding (TASK152): shared helper now hydrates subsystem defaults, AI scenario harness ships receive progression stats, projectile resolution expectations adjusted for damage type multipliers, and full Vitest suite passes.
 - Added HUD settings/debug drawers (TASK147), defaulting postprocessing + AI V2 to enabled and relocating overlay toggles from the top control bar.
 - Migrated Vitest smoke importer to Vite glob loaders, rewrote projectile geometry specs to inspect JSX output, and revalidated `npm run typecheck`, `npm test`, and `npm run build` to stabilise the build/test pipeline post React 19 upgrade.

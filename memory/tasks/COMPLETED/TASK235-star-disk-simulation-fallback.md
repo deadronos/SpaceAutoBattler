@@ -25,11 +25,11 @@ Star shader appears static without `?copilot_debug=1`, indicating the animation 
 
 **Overall Status:** Completed - 100%
 
-| ID  | Description                                                      | Status      | Updated    | Notes |
-| --- | ---------------------------------------------------------------- | ----------- | ---------- | ----- |
-| 1.1 | Implement monotonic fallback logic in `StarDisk.tsx`             | Completed   | 2025-10-03 | Added `lastUniformTimeRef` and delta fallback for stalled simulation clocks. |
-| 1.2 | Add Vitest coverage for stalled/resumed simulation scenarios     | Completed   | 2025-10-03 | Extended `star-disk-debug-lockdown` spec with fallback and realignment cases. |
-| 1.3 | Run validations and refresh memory documentation                | Completed   | 2025-10-03 | Ran `npx vitest test/vitest/star-disk-debug-lockdown.spec.tsx` and `npm run typecheck`; updated memory files. |
+| ID  | Description                                                  | Status    | Updated    | Notes                                                                                                         |
+| --- | ------------------------------------------------------------ | --------- | ---------- | ------------------------------------------------------------------------------------------------------------- |
+| 1.1 | Implement monotonic fallback logic in `StarDisk.tsx`         | Completed | 2025-10-03 | Added `lastUniformTimeRef` and delta fallback for stalled simulation clocks.                                  |
+| 1.2 | Add Vitest coverage for stalled/resumed simulation scenarios | Completed | 2025-10-03 | Extended `star-disk-debug-lockdown` spec with fallback and realignment cases.                                 |
+| 1.3 | Run validations and refresh memory documentation             | Completed | 2025-10-03 | Ran `npx vitest test/vitest/star-disk-debug-lockdown.spec.tsx` and `npm run typecheck`; updated memory files. |
 
 ## Progress Log
 

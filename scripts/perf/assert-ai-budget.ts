@@ -90,12 +90,24 @@ function populateShips(state: GameState): void {
   for (let i = 0; i < half; i += 1) {
     const column = i % columns;
     const row = Math.floor(i / columns);
-    ships.push(createShip(id++, 'blue', new Vector3(-320 + column * spacing, 0, (row - columns / 2) * spacing)));
+    ships.push(
+      createShip(
+        id++,
+        'blue',
+        new Vector3(-320 + column * spacing, 0, (row - columns / 2) * spacing),
+      ),
+    );
   }
   for (let i = 0; i < SHIP_COUNT - half; i += 1) {
     const column = i % columns;
     const row = Math.floor(i / columns);
-    ships.push(createShip(id++, 'red', new Vector3(320 - column * spacing, 0, (row - columns / 2) * spacing)));
+    ships.push(
+      createShip(
+        id++,
+        'red',
+        new Vector3(320 - column * spacing, 0, (row - columns / 2) * spacing),
+      ),
+    );
   }
 }
 

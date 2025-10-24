@@ -25,7 +25,6 @@
   display: block;
 }
 
-
 /* Ripple debug overlay removed */
 .loading-overlay {
   width: 100%;
@@ -207,7 +206,9 @@
   justify-content: center;
   background: rgba(255, 255, 255, 0.05);
   color: #f2f7ff;
-  transition: background 120ms ease, border-color 120ms ease;
+  transition:
+    background 120ms ease,
+    border-color 120ms ease;
 }
 
 .hud-toggle-drawer__trigger:hover {
@@ -285,7 +286,9 @@
   color: #e4f2ff;
   font: inherit;
   text-align: left;
-  transition: background 120ms ease, border-color 120ms ease;
+  transition:
+    background 120ms ease,
+    border-color 120ms ease;
 }
 
 .hud-toggle-drawer__toggle:hover:not(:disabled) {
@@ -647,7 +650,7 @@
    Keep a subtle blue highlight consistent with other UI elements */
 .controls-bar select option:checked,
 .controls-bar select option:active {
-  background: linear-gradient(90deg, rgba(74,158,255,0.14), rgba(106,182,255,0.14));
+  background: linear-gradient(90deg, rgba(74, 158, 255, 0.14), rgba(106, 182, 255, 0.14));
   color: #eaf4ff;
 }
 

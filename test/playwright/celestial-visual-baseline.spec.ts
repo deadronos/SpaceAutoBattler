@@ -21,7 +21,7 @@ test.describe('Celestial Environment Visual Baseline', () => {
 
     // Wait for the 3D scene to load
     await page.waitForSelector('canvas');
-    
+
     // Wait a bit for assets to load and scene to stabilize
     await page.waitForTimeout(3000);
   });
@@ -78,7 +78,7 @@ test.describe('Celestial Environment Visual Baseline', () => {
   test('verifies celestial objects are rendered', async ({ page }) => {
     // This test ensures that celestial objects are actually being rendered
     // by checking for expected visual elements in the scene
-    
+
     const canvas = page.locator('canvas');
     await expect(canvas).toBeVisible();
 
@@ -89,12 +89,13 @@ test.describe('Celestial Environment Visual Baseline', () => {
     // Verify no critical rendering errors
     const errors = await page.evaluate(() => {
       const logs = (window as any).__testLogs || [];
-      return logs.filter((log: any) => 
-        log.level === 'error' && 
-        (log.message.includes('WebGL') || log.message.includes('Three.js'))
+      return logs.filter(
+        (log: any) =>
+          log.level === 'error' &&
+          (log.message.includes('WebGL') || log.message.includes('Three.js')),
       );
     });
-    
+
     expect(errors.length).toBe(0);
   });
 
@@ -131,7 +132,7 @@ test.describe('Celestial Environment Visual Baseline', () => {
           await page.mouse.down();
           await page.mouse.move(
             (await canvas.boundingBox())!.x + angle.drag.x,
-            (await canvas.boundingBox())!.y + angle.drag.y
+            (await canvas.boundingBox())!.y + angle.drag.y,
           );
           await page.mouse.up();
           await page.waitForTimeout(500);

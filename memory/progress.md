@@ -43,7 +43,7 @@ Recent updates (automated agent)
 - 2025-09-24: Delivered celestial environment renderer baseline — `CelestialEnvironment`, `StarLight`, `PlanetBody`, `PlanetRings`, rim material, and config toggles.
 - 2025-09-24: Implemented `usePlanetTexture` hook with SRGB, anisotropy setup, and fallback colour; set shared geometry segments and deterministic rotation pipeline.
 - 2025-09-24: Created task suite TASK110–TASK119 to track environment delivery (textures, config, materials, lighting, validation) and captured code references.
-- 2025-09-21: Established core memory files (projectbrief, productContext, techContext, systemPatterns, core-* references) and archived draft artifacts under `memory/ARCHIVE/`.
+- 2025-09-21: Established core memory files (projectbrief, productContext, techContext, systemPatterns, core-\* references) and archived draft artifacts under `memory/ARCHIVE/`.
 
 Historical log
 

@@ -10,10 +10,10 @@ describe('Planet Texture Fallback', () => {
   test('returns fallback color when no texture key provided', () => {
     // Test the hook's behavior with undefined key
     // This doesn't require Canvas context since it's just the logic
-    
+
     // Since we can't test the hook directly without Canvas, we'll test the underlying logic
     const result = mockUsePlanetTexture(undefined);
-    
+
     expect(result.texture).toBeNull();
     expect(result.fallbackColor).toBeDefined();
     expect(typeof result.fallbackColor).toBe('string');
@@ -22,7 +22,7 @@ describe('Planet Texture Fallback', () => {
 
   test('provides fallback color for invalid texture keys', () => {
     const result = mockUsePlanetTexture('invalidKey' as PlanetTextureKey);
-    
+
     expect(result.texture).toBeNull();
     expect(result.error).toBeDefined();
     expect(result.error?.message).toContain('Unknown planet texture key');
@@ -32,7 +32,7 @@ describe('Planet Texture Fallback', () => {
   test('fallback color is consistent', () => {
     const result1 = mockUsePlanetTexture(undefined);
     const result2 = mockUsePlanetTexture(undefined);
-    
+
     expect(result1.fallbackColor).toBe(result2.fallbackColor);
   });
 
@@ -41,7 +41,7 @@ describe('Planet Texture Fallback', () => {
     const undefinedResult = mockUsePlanetTexture(undefined);
     expect(undefinedResult.texture).toBeNull();
     expect(undefinedResult.fallbackColor).toBeDefined();
-    
+
     // Test with invalid key
     const invalidResult = mockUsePlanetTexture('nonexistent' as PlanetTextureKey);
     expect(invalidResult.texture).toBeNull();
@@ -53,7 +53,7 @@ describe('Planet Texture Fallback', () => {
     // This tests that PlanetBody can render even when textures fail to load
     // We can't easily test the component directly without Canvas, but we can
     // verify the configuration supports fallback scenarios
-    
+
     expect(() => {
       const result = mockUsePlanetTexture(undefined);
       // Component should be able to use the fallback color
@@ -67,14 +67,14 @@ describe('Planet Texture Fallback', () => {
  */
 function mockUsePlanetTexture(key: PlanetTextureKey | undefined) {
   const FALLBACK_COLOR = '#2e3142';
-  
+
   if (!key) {
     return { texture: null, fallbackColor: FALLBACK_COLOR };
   }
 
   // Simulate known texture keys
   const knownKeys = ['gasGiant12', 'icePlanet1'];
-  
+
   if (!knownKeys.includes(key)) {
     return {
       texture: null,

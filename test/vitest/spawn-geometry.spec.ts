@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { Vector3 } from 'three';
-import { createGameState, disposeGameState, spawnInitialFleets, spawnRandomShip } from '../../src/game/state.js';
+import {
+  createGameState,
+  disposeGameState,
+  spawnInitialFleets,
+  spawnRandomShip,
+} from '../../src/game/state.js';
 import { SPAWN_CONFIG, WORLD_HALF } from '../../src/game/config.js';
 import { SHIP_STATS } from '../../src/game/ships.js';
 import type { ShipEntity } from '../../src/types/index.js';
@@ -38,7 +43,9 @@ describe('spawnInitialFleets', () => {
     try {
       spawnInitialFleets(state);
       const ships = state.queries.ships.entities as ShipEntity[];
-      const blueHeights = ships.filter((s) => s.ship.team === 'blue').map((s) => Math.abs(s.transform.position.y));
+      const blueHeights = ships
+        .filter((s) => s.ship.team === 'blue')
+        .map((s) => Math.abs(s.transform.position.y));
       const maxHeight = Math.max(...blueHeights);
       const expectedSpread = WORLD_HALF * SPAWN_CONFIG.verticalSpreadFactor;
       expect(maxHeight).toBeGreaterThan(expectedSpread * 0.1);
@@ -72,7 +79,9 @@ describe('spawnInitialFleets', () => {
     try {
       spawnInitialFleets(state);
       const ships = state.queries.ships.entities as ShipEntity[];
-      const absoluteHeights = ships.map((ship) => Math.abs(ship.transform.position.y)).sort((a, b) => a - b);
+      const absoluteHeights = ships
+        .map((ship) => Math.abs(ship.transform.position.y))
+        .sort((a, b) => a - b);
       const mid = Math.floor(absoluteHeights.length / 2);
       const median =
         absoluteHeights.length % 2 === 1

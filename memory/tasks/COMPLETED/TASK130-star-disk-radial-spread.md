@@ -28,12 +28,12 @@
 
 ### Subtasks
 
-| ID  | Description                                                                  | Status      | Updated    | Notes |
-| --- | ---------------------------------------------------------------------------- | ----------- | ---------- | ----- |
-| 1.1 | Extend config/uniform types with new radial parameters                       | Completed   | 2025-09-25 | Added `textureRadialPower`, `coronaEdgeSoftness`, `baseFillStrength` with clamps. |
-| 1.2 | Revise fragment shader to apply new uniforms and base fill                   | Completed   | 2025-09-25 | Shader now biases radial sampling, adds swirl, and injects base fill/alpha boost. |
-| 1.3 | Update defaults, tests, and ensure uniform propagation without recreation    | Completed   | 2025-09-25 | Defaults tuned; Vitest extended for clamps, defaults, and runtime updates. |
-| 1.4 | Run validation suite and capture qualitative improvement for handoff notes   | Completed   | 2025-09-25 | Ran `npm run typecheck` + `npm test`; qualitative capture pending screenshot follow-up. |
+| ID  | Description                                                                | Status    | Updated    | Notes                                                                                   |
+| --- | -------------------------------------------------------------------------- | --------- | ---------- | --------------------------------------------------------------------------------------- |
+| 1.1 | Extend config/uniform types with new radial parameters                     | Completed | 2025-09-25 | Added `textureRadialPower`, `coronaEdgeSoftness`, `baseFillStrength` with clamps.       |
+| 1.2 | Revise fragment shader to apply new uniforms and base fill                 | Completed | 2025-09-25 | Shader now biases radial sampling, adds swirl, and injects base fill/alpha boost.       |
+| 1.3 | Update defaults, tests, and ensure uniform propagation without recreation  | Completed | 2025-09-25 | Defaults tuned; Vitest extended for clamps, defaults, and runtime updates.              |
+| 1.4 | Run validation suite and capture qualitative improvement for handoff notes | Completed | 2025-09-25 | Ran `npm run typecheck` + `npm test`; qualitative capture pending screenshot follow-up. |
 
 ## Progress Log
 

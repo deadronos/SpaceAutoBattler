@@ -3,12 +3,7 @@ import { AI_CONFIG } from '../../config.js';
 import { resolveBehaviorProfile } from '../../aiProfiles.js';
 import { generateTraitsFromSeed } from '../../aiTraits.js';
 import { recordIntentMetrics } from '../../metrics.js';
-import {
-  selectIntent,
-  computeLod,
-  writeCommand,
-  recordFocusDiagnostics,
-} from './intents.js';
+import { selectIntent, computeLod, writeCommand, recordFocusDiagnostics } from './intents.js';
 import { getEffectiveProfile } from './profile-adjustment.js';
 
 export interface EvaluationResult {
@@ -36,7 +31,7 @@ export function evaluateShip(
   }
   const blackboard = state.blackboard;
   const nearestEnemyId = blackboard.nearestEnemy.get(ship.id);
-  const fallbackTarget = nearestEnemyId != null ? entityById.get(nearestEnemyId) ?? null : null;
+  const fallbackTarget = nearestEnemyId != null ? (entityById.get(nearestEnemyId) ?? null) : null;
   const priorityList = blackboard.teamPriority[ship.ship.team];
   let priorityTarget: ShipEntity | null = null;
   if (priorityList.length > 0) {
@@ -47,7 +42,7 @@ export function evaluateShip(
   }
   const target = priorityTarget ?? fallbackTarget;
   const escortAssignment = state.ai.assignments.escorts.get(ship.id) ?? null;
-  const escortTarget = escortAssignment ? entityById.get(escortAssignment.vipId) ?? null : null;
+  const escortTarget = escortAssignment ? (entityById.get(escortAssignment.vipId) ?? null) : null;
 
   const intent = selectIntent(state, ship, ai, profile, target, escortTarget, escortAssignment);
   const previousTargetId = ai.targetId ?? null;
@@ -57,7 +52,7 @@ export function evaluateShip(
   const nextThinkAt = state.ai.tickIndex + spacing;
 
   const finalTarget = intent.target ?? target ?? fallbackTarget;
-  const shouldRecordFocusDiagnostics = (intent.intent === 'Attack' || intent.intent === 'Intercept');
+  const shouldRecordFocusDiagnostics = intent.intent === 'Attack' || intent.intent === 'Intercept';
 
   return {
     intent: intent.intent,
@@ -95,7 +90,7 @@ export function applyEvaluationResult(
   const baseProfile = resolveBehaviorProfile(ai.profileId);
   const profile = getEffectiveProfile(state, ship, baseProfile);
   const escortAssignment = state.ai.assignments.escorts.get(ship.id) ?? null;
-  const escortTarget = escortAssignment ? entityById.get(escortAssignment.vipId) ?? null : null;
+  const escortTarget = escortAssignment ? (entityById.get(escortAssignment.vipId) ?? null) : null;
   const target = result.finalTarget;
 
   writeCommand(state, ship, ai, profile, target, escortTarget, escortAssignment);

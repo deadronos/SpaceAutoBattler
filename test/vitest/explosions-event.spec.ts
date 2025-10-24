@@ -1,7 +1,11 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { Quaternion, Vector3 } from 'three';
 import type { GameState, ShipEntity, ProjectileEntity } from '../../src/types/index.js';
-import { emitShipKillExplosion, updateExplosions, resetExplosionOverflowWarning } from '../../src/game/explosions.js';
+import {
+  emitShipKillExplosion,
+  updateExplosions,
+  resetExplosionOverflowWarning,
+} from '../../src/game/explosions.js';
 import { getExplosionConfig, DEFAULT_EXPLOSION_CONFIG } from '../../src/config/explosions.js';
 import { createDefaultMotionStats } from '../../src/game/ships.js';
 
@@ -41,7 +45,7 @@ function makeState(rngValue = 0.42): GameState {
       lastTickDuration: 1 / 20,
       deferredMutations: [],
       postStepMutations: [],
-        rapierDiagnostics: {
+      rapierDiagnostics: {
         deferredMutationFailures: 0,
         guardTrips: 0,
         lastFailureTick: -1,
@@ -53,12 +57,12 @@ function makeState(rngValue = 0.42): GameState {
         lastStepPanicDelta: 0,
         lastStepPanicMessage: undefined,
         lastStepPanicStack: undefined,
-          lastStepPanicTimestamp: 0,
-          subsystemFailures: 0,
-          lastSubsystemFailureTick: -1,
-          lastSubsystemFailureMessage: undefined,
-          lastSubsystemFailureStack: undefined,
-          lastSubsystemFailureTimestamp: 0,
+        lastStepPanicTimestamp: 0,
+        subsystemFailures: 0,
+        lastSubsystemFailureTick: -1,
+        lastSubsystemFailureMessage: undefined,
+        lastSubsystemFailureStack: undefined,
+        lastSubsystemFailureTimestamp: 0,
       },
     },
     ai: undefined as any,
@@ -140,7 +144,7 @@ describe('emitShipKillExplosion', () => {
     expect(event.flashIntensity).toBeCloseTo(config.flashIntensity, 5);
     expect(event.particles.sparks).toBe(config.particleCounts.sparks);
     expect(event.palette.flash).toBe(config.palette.flash);
-    
+
     // Test timing configuration
     expect(event.duration).toBe(config.timing.duration);
     expect(event.lightDuration).toBe(config.timing.lightDuration);
@@ -161,7 +165,7 @@ describe('emitShipKillExplosion', () => {
     // Reavers should generally have longer, more dramatic explosions
     expect(reaversEvent.duration).toBeGreaterThan(allianceEvent.duration);
     expect(reaversEvent.lightDuration).toBeGreaterThan(allianceEvent.lightDuration);
-    
+
     // Colors should be faction-specific
     expect(allianceEvent.palette.flash).toContain('#a6d8ff'); // Alliance blue
     expect(reaversEvent.palette.flash).toContain('#ffb347'); // Reavers orange
@@ -180,7 +184,7 @@ describe('emitShipKillExplosion', () => {
     expect(carrierEvent.lightDuration).toBeGreaterThan(fighterEvent.lightDuration);
     expect(carrierEvent.shockwave.duration).toBeGreaterThan(fighterEvent.shockwave.duration);
     expect(carrierEvent.fireball.duration).toBeGreaterThan(fighterEvent.fireball.duration);
-    
+
     // Debris speed should also scale
     expect(carrierEvent.debris.speed[0]).toBeGreaterThan(fighterEvent.debris.speed[0]);
     expect(carrierEvent.debris.speed[1]).toBeGreaterThan(fighterEvent.debris.speed[1]);
@@ -216,7 +220,9 @@ describe('explosion config parsing', () => {
     expect(DEFAULT_EXPLOSION_CONFIG.timing.fireball.delay).toBeGreaterThanOrEqual(0);
     expect(DEFAULT_EXPLOSION_CONFIG.timing.fireball.duration).toBeGreaterThan(0);
     expect(DEFAULT_EXPLOSION_CONFIG.timing.debrisSpeed).toHaveLength(2);
-    expect(DEFAULT_EXPLOSION_CONFIG.timing.debrisSpeed[1]).toBeGreaterThan(DEFAULT_EXPLOSION_CONFIG.timing.debrisSpeed[0]);
+    expect(DEFAULT_EXPLOSION_CONFIG.timing.debrisSpeed[1]).toBeGreaterThan(
+      DEFAULT_EXPLOSION_CONFIG.timing.debrisSpeed[0],
+    );
   });
 
   it('handles invalid faction gracefully with fallback', () => {
@@ -227,7 +233,7 @@ describe('explosion config parsing', () => {
   });
 
   it('handles invalid hull gracefully with fallback', () => {
-    // @ts-expect-error - testing invalid input  
+    // @ts-expect-error - testing invalid input
     const config = getExplosionConfig('alliance', 'invalid-hull');
     expect(config).toBe(DEFAULT_EXPLOSION_CONFIG);
     expect(config.timing.duration).toBe(DEFAULT_EXPLOSION_CONFIG.timing.duration);

@@ -1,13 +1,19 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
-import { recordRapierStepPanic, type RapierStepPanicSnapshot } from '../../src/game/simulationQueue.js';
+import {
+  recordRapierStepPanic,
+  type RapierStepPanicSnapshot,
+} from '../../src/game/simulationQueue.js';
 import { createTestGameState } from './helpers/fixtures.js';
 
 function setCopilotDebug(enabled: boolean): void {
   (window as Window & { __copilotDebugForce?: boolean }).__copilotDebugForce = enabled;
   try {
-    delete (window as Window & { __copilot_rapierPanics?: RapierStepPanicSnapshot[] }).__copilot_rapierPanics;
+    delete (window as Window & { __copilot_rapierPanics?: RapierStepPanicSnapshot[] })
+      .__copilot_rapierPanics;
   } catch {
-    (window as Window & { __copilot_rapierPanics?: RapierStepPanicSnapshot[] }).__copilot_rapierPanics = undefined;
+    (
+      window as Window & { __copilot_rapierPanics?: RapierStepPanicSnapshot[] }
+    ).__copilot_rapierPanics = undefined;
   }
 }
 
@@ -32,7 +38,7 @@ describe('recordRapierStepPanic', () => {
     const panic = new Error('memory access out of bounds');
     panic.stack = 'panic stack trace';
 
-  const now = Date.now();
+    const now = Date.now();
     recordRapierStepPanic(state, panic);
 
     const diagnostics = state.simulation.rapierDiagnostics;
@@ -42,9 +48,10 @@ describe('recordRapierStepPanic', () => {
     expect(diagnostics.lastStepPanicDelta).toBeCloseTo(0.05);
     expect(diagnostics.lastStepPanicMessage).toBe('memory access out of bounds');
     expect(diagnostics.lastStepPanicStack).toBe('panic stack trace');
-  expect(diagnostics.lastStepPanicTimestamp).toBe(now);
+    expect(diagnostics.lastStepPanicTimestamp).toBe(now);
 
-    const buffer = (window as Window & { __copilot_rapierPanics?: RapierStepPanicSnapshot[] }).__copilot_rapierPanics;
+    const buffer = (window as Window & { __copilot_rapierPanics?: RapierStepPanicSnapshot[] })
+      .__copilot_rapierPanics;
     expect(buffer).toBeDefined();
     expect(buffer).toHaveLength(1);
     expect(buffer?.[0]).toMatchObject({
@@ -74,7 +81,8 @@ describe('recordRapierStepPanic', () => {
     expect(diagnostics.lastStepPanicMessage).toBe('first panic');
     expect(diagnostics.lastStepPanicTimestamp).toBe(firstTimestamp);
 
-    const buffer = (window as Window & { __copilot_rapierPanics?: RapierStepPanicSnapshot[] }).__copilot_rapierPanics;
+    const buffer = (window as Window & { __copilot_rapierPanics?: RapierStepPanicSnapshot[] })
+      .__copilot_rapierPanics;
     expect(buffer).toHaveLength(1);
   });
 
@@ -103,7 +111,8 @@ describe('recordRapierStepPanic', () => {
       recordRapierStepPanic(state, new Error(`panic ${i}`));
     }
 
-    const buffer = (window as Window & { __copilot_rapierPanics?: RapierStepPanicSnapshot[] }).__copilot_rapierPanics;
+    const buffer = (window as Window & { __copilot_rapierPanics?: RapierStepPanicSnapshot[] })
+      .__copilot_rapierPanics;
     expect(buffer).toHaveLength(20);
     expect(buffer?.[0].tickIndex).toBe(2);
     expect(buffer?.[buffer.length - 1].tickIndex).toBe(21);

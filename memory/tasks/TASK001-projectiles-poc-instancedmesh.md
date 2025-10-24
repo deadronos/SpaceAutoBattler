@@ -69,14 +69,14 @@ Implement the full instanced rendering design from `memory/designs/DESIGN001-pro
 
 ## Subtasks Table
 
-| ID  | Description                                   | Status      | Updated    |
-| --- | --------------------------------------------- | ----------- | ---------- |
-| 1.1 | Implement `ProjectilesInstancedLayer`         | Completed   | 2025-10-05 |
-| 1.2 | Implement `MuzzleFlashInstancedLayer`         | Completed   | 2025-10-05 |
-| 1.3 | Update `materialRegistry` & geometry cache    | Completed   | 2025-10-05 |
-| 1.4 | Add unit tests & snapshot smoke tests         | Completed   | 2025-10-05 |
-| 1.5 | Add perf harness and collect baseline         | Completed   | 2025-10-05 |
-| 1.6 | Remove legacy `Projectile.tsx` after validation| Completed   | 2025-10-05 |
+| ID  | Description                                     | Status    | Updated    |
+| --- | ----------------------------------------------- | --------- | ---------- |
+| 1.1 | Implement `ProjectilesInstancedLayer`           | Completed | 2025-10-05 |
+| 1.2 | Implement `MuzzleFlashInstancedLayer`           | Completed | 2025-10-05 |
+| 1.3 | Update `materialRegistry` & geometry cache      | Completed | 2025-10-05 |
+| 1.4 | Add unit tests & snapshot smoke tests           | Completed | 2025-10-05 |
+| 1.5 | Add perf harness and collect baseline           | Completed | 2025-10-05 |
+| 1.6 | Remove legacy `Projectile.tsx` after validation | Completed | 2025-10-05 |
 
 ## Next Steps
 
@@ -84,4 +84,4 @@ Implement the full instanced rendering design from `memory/designs/DESIGN001-pro
 
 ---
 
-*This task implements the full design from `DESIGN001` as requested. Subsequent TASK002+ files may still be used to split follow-up work (e.g., deeper material shader work) if needed.*
+_This task implements the full design from `DESIGN001` as requested. Subsequent TASK002+ files may still be used to split follow-up work (e.g., deeper material shader work) if needed._

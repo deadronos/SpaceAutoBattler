@@ -79,20 +79,20 @@ Rapier runtime panics currently surface as opaque WASM "memory access out of bou
 
 ## Error Handling Matrix
 
-| Scenario | Detection | Recorder Response | External Exposure | Rethrow |
-| --- | --- | --- | --- | --- |
-| `physicsWorld.step` throws Error | try/catch around `step` | Increment `stepPanics`, update `lastStepPanic*`, memoise snapshot per tick | Append snapshot to `window.__copilot_rapierPanics` when debug flag true | Yes (preserve current behaviour) |
-| Non-Error throw (string/number) | Same catch | Coerce via `String(error)` for message, omit stack | Same as above | Yes |
-| Multiple throws same tick | `sim.lastTickIndex` check | Increment counter, skip duplicate snapshot | No new snapshot | Yes |
-| Snapshot ring buffer overflow | Buffer length check | Remove oldest entries until length ≤ 20 | n/a | n/a |
+| Scenario                         | Detection                 | Recorder Response                                                          | External Exposure                                                       | Rethrow                          |
+| -------------------------------- | ------------------------- | -------------------------------------------------------------------------- | ----------------------------------------------------------------------- | -------------------------------- |
+| `physicsWorld.step` throws Error | try/catch around `step`   | Increment `stepPanics`, update `lastStepPanic*`, memoise snapshot per tick | Append snapshot to `window.__copilot_rapierPanics` when debug flag true | Yes (preserve current behaviour) |
+| Non-Error throw (string/number)  | Same catch                | Coerce via `String(error)` for message, omit stack                         | Same as above                                                           | Yes                              |
+| Multiple throws same tick        | `sim.lastTickIndex` check | Increment counter, skip duplicate snapshot                                 | No new snapshot                                                         | Yes                              |
+| Snapshot ring buffer overflow    | Buffer length check       | Remove oldest entries until length ≤ 20                                    | n/a                                                                     | n/a                              |
 
 ## Unit Testing Strategy
 
 - **rapierDiagnostics.spec.ts** (new)
-  1. *Captures metadata*: Stub state & error, call recorder, assert diagnostics fields populated and snapshot appended when debug flag set.
-  2. *De-duplicates per tick*: Invoke recorder twice within same tick, verify `stepPanics` increments twice, `lastStepPanicTick` unchanged, buffer length remains 1.
-  3. *Handles non-Error throws*: Pass string throw, ensure message coerced and stack omitted without crash.
-  4. *Snapshot trimming*: Drive >20 inserts, confirm buffer trimmed to 20 with newest retained.
+  1. _Captures metadata_: Stub state & error, call recorder, assert diagnostics fields populated and snapshot appended when debug flag set.
+  2. _De-duplicates per tick_: Invoke recorder twice within same tick, verify `stepPanics` increments twice, `lastStepPanicTick` unchanged, buffer length remains 1.
+  3. _Handles non-Error throws_: Pass string throw, ensure message coerced and stack omitted without crash.
+  4. _Snapshot trimming_: Drive >20 inserts, confirm buffer trimmed to 20 with newest retained.
 - **systems.spec.ts** (new or existing): Validate `updateGame` rethrows after recording by mocking `physicsWorld.step` to throw and expecting the error to bubble.
 
 ## Implementation Plan (High-Level)

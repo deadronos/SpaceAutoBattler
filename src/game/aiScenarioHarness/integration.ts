@@ -30,7 +30,7 @@ export function applyHarnessIntegration(state: HarnessGameState, delta: number):
     if (ai.command.firePrimary && ship.ship.cooldown <= 0) {
       const targetId = ai.command.targetId ?? ai.targetId;
       const target = targetId
-        ? ships.find((candidate) => candidate.id === targetId) ?? null
+        ? (ships.find((candidate) => candidate.id === targetId) ?? null)
         : null;
 
       const distanceToTarget = target

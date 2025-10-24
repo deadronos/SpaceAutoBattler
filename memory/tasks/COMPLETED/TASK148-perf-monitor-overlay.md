@@ -35,13 +35,13 @@ Wire the [`r3f-perf`](https://github.com/utsuboco/r3f-perf) panel into the battl
 
 ### Subtasks
 
-| ID  | Description                                        | Status       | Updated     | Notes |
-| --- | -------------------------------------------------- | ------------ | ----------- | ----- |
-| 1.1 | Extend UI store with perf monitor slice            | Completed    | 2025-09-28  | Added enablement toggle and persisted drag position. |
-| 1.2 | Wire toggle into debug drawer registry             | Completed    | 2025-09-28  | HUD wrench menu exposes "Perf Monitor" toggle. |
-| 1.3 | Implement `PerfMonitorOverlay` and battlefield hook | Completed    | 2025-09-28  | Overlay mounts once per canvas and supports dragging with clamped bounds. |
-| 1.4 | Author/update Vitest coverage for toggle + overlay | Completed    | 2025-09-28  | Added dedicated spec and updated existing UI toggle suites. |
-| 1.5 | Execute validations (`npm run typecheck`, `npm test`) | Completed | 2025-09-28  | Typecheck clean, full Vitest suite passing. |
+| ID  | Description                                           | Status    | Updated    | Notes                                                                     |
+| --- | ----------------------------------------------------- | --------- | ---------- | ------------------------------------------------------------------------- |
+| 1.1 | Extend UI store with perf monitor slice               | Completed | 2025-09-28 | Added enablement toggle and persisted drag position.                      |
+| 1.2 | Wire toggle into debug drawer registry                | Completed | 2025-09-28 | HUD wrench menu exposes "Perf Monitor" toggle.                            |
+| 1.3 | Implement `PerfMonitorOverlay` and battlefield hook   | Completed | 2025-09-28 | Overlay mounts once per canvas and supports dragging with clamped bounds. |
+| 1.4 | Author/update Vitest coverage for toggle + overlay    | Completed | 2025-09-28 | Added dedicated spec and updated existing UI toggle suites.               |
+| 1.5 | Execute validations (`npm run typecheck`, `npm test`) | Completed | 2025-09-28 | Typecheck clean, full Vitest suite passing.                               |
 
 ## Progress Log
 

@@ -29,13 +29,13 @@
 
 ### Subtasks
 
-| ID  | Description                                      | Status        | Updated    | Notes |
-| --- | ------------------------------------------------ | ------------- | ---------- | ----- |
-| 1.1 | Replace rim wrapper with additive shell overlay  | Complete      | 2025-09-27 | Rim shell renders above surface, base material remains standard. |
-| 1.2 | Enable planet cast/receive shadows               | Complete      | 2025-09-26 | Planet meshes flagged for shadow mapping participation. |
-| 1.3 | Tune directional light shadow camera             | Complete      | 2025-09-26 | Configured map size, bias, and camera span from light distance. |
-| 1.4 | Extend Vitest coverage for rim/shadow settings   | Complete      | 2025-09-27 | Coverage focuses on rim shell parameters and shadow flags. |
-| 1.5 | Run validation commands                          | Complete      | 2025-09-26 | `npm run typecheck`, `npm test`. |
+| ID  | Description                                     | Status   | Updated    | Notes                                                            |
+| --- | ----------------------------------------------- | -------- | ---------- | ---------------------------------------------------------------- |
+| 1.1 | Replace rim wrapper with additive shell overlay | Complete | 2025-09-27 | Rim shell renders above surface, base material remains standard. |
+| 1.2 | Enable planet cast/receive shadows              | Complete | 2025-09-26 | Planet meshes flagged for shadow mapping participation.          |
+| 1.3 | Tune directional light shadow camera            | Complete | 2025-09-26 | Configured map size, bias, and camera span from light distance.  |
+| 1.4 | Extend Vitest coverage for rim/shadow settings  | Complete | 2025-09-27 | Coverage focuses on rim shell parameters and shadow flags.       |
+| 1.5 | Run validation commands                         | Complete | 2025-09-26 | `npm run typecheck`, `npm test`.                                 |
 
 ## Progress Log
 

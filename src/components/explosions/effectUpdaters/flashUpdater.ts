@@ -1,7 +1,12 @@
 import type { InstancedMesh } from 'three';
 import { FLASH_DURATION } from '../constants.js';
 import { clamp01, easeOutQuad, getCachedColor } from '../derived.js';
-import { EMPTY_EFFECT_RESULT, type EffectUpdateContext, type EffectUpdater, type EffectUpdateResult } from './types.js';
+import {
+  EMPTY_EFFECT_RESULT,
+  type EffectUpdateContext,
+  type EffectUpdater,
+  type EffectUpdateResult,
+} from './types.js';
 
 /**
  * Updates flash effect instances.

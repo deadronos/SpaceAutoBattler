@@ -3,7 +3,9 @@
 if (typeof window !== 'undefined') {
   type GlLog = { time: number; type: string; details: string | number | object | null };
   const win = window as Window & { __copilot_glLogs?: Array<GlLog> & { __installed?: boolean } };
-  const debugEnabled = (typeof process !== 'undefined' && process.env && process.env.NODE_ENV !== 'production') || (typeof win.location === 'object' && String(win.location.search).includes('copilot_debug=1'));
+  const debugEnabled =
+    (typeof process !== 'undefined' && process.env && process.env.NODE_ENV !== 'production') ||
+    (typeof win.location === 'object' && String(win.location.search).includes('copilot_debug=1'));
   if (debugEnabled) {
     try {
       win.__copilot_glLogs = win.__copilot_glLogs || [];
@@ -12,7 +14,10 @@ if (typeof window !== 'undefined') {
         logs.__installed = true;
 
         // Save originals
-        const proto = typeof WebGL2RenderingContext !== 'undefined' ? WebGL2RenderingContext.prototype : WebGLRenderingContext.prototype;
+        const proto =
+          typeof WebGL2RenderingContext !== 'undefined'
+            ? WebGL2RenderingContext.prototype
+            : WebGLRenderingContext.prototype;
         const origCompileShader = proto.compileShader;
         const origLinkProgram = proto.linkProgram;
         const origGetError = proto.getError;
@@ -65,7 +70,11 @@ if (typeof window !== 'undefined') {
                 attributes.push(null);
               }
             }
-            logs.push({ time: Date.now(), type: 'programMetadata', details: { linkStatus, activeUniforms, activeAttributes, uniforms, attributes } });
+            logs.push({
+              time: Date.now(),
+              type: 'programMetadata',
+              details: { linkStatus, activeUniforms, activeAttributes, uniforms, attributes },
+            });
           } catch {
             logs.push({ time: Date.now(), type: 'programMetadataException', details: 'exception' });
           }
@@ -84,7 +93,9 @@ if (typeof window !== 'undefined') {
         };
 
         logs.push({ time: Date.now(), type: 'installedPrototypePatch', details: {} });
-        console.info('[copilot][glDebug] installed WebGL prototype patch (window.__copilot_glLogs)');
+        console.info(
+          '[copilot][glDebug] installed WebGL prototype patch (window.__copilot_glLogs)',
+        );
       }
     } catch (err) {
       console.warn('[copilot][glDebug] prototype patch failed', String(err));

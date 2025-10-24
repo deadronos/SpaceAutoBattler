@@ -50,7 +50,8 @@ export function updateCarrierLaunchSystem(state: GameState, dt: number): void {
 
     let spawned = 0;
     for (; spawned < launches; spawned += 1) {
-      const slotIndex = (carrier.launchIndex + spawned) % Math.max(1, carrier.config.formation.length);
+      const slotIndex =
+        (carrier.launchIndex + spawned) % Math.max(1, carrier.config.formation.length);
       const slot = carrier.config.formation[slotIndex] ?? FALLBACK_SLOT;
       const spawnPosition = computeLaunchPosition(ship, carrier.config, slot, state).clone();
       const heading = computeHeadingYaw(ship.transform.rotation);
@@ -72,7 +73,6 @@ export function updateCarrierLaunchSystem(state: GameState, dt: number): void {
     carrier.launchIndex += spawned;
     carrier.launchCooldownRemaining = carrier.config.cooldownSeconds;
   }
-
 }
 
 function pruneTrackedFighters(

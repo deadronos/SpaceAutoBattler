@@ -1,6 +1,11 @@
 import type { InstancedMesh } from 'three';
 import { clamp01, getCachedColor } from '../derived.js';
-import { EMPTY_EFFECT_RESULT, type EffectUpdateContext, type EffectUpdater, type EffectUpdateResult } from './types.js';
+import {
+  EMPTY_EFFECT_RESULT,
+  type EffectUpdateContext,
+  type EffectUpdater,
+  type EffectUpdateResult,
+} from './types.js';
 
 /**
  * Updates fireball effect instances.

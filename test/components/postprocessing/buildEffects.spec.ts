@@ -35,7 +35,10 @@ const hoisted = vi.hoisted(() => {
     public renderToScreen = false;
     public effects: unknown[];
 
-    constructor(public camera: Camera, ...effects: unknown[]) {
+    constructor(
+      public camera: Camera,
+      ...effects: unknown[]
+    ) {
       this.effects = effects;
     }
   }
@@ -108,7 +111,9 @@ describe('buildEffects', () => {
     expect(effectPassInstance.renderToScreen).toBe(true);
 
     expect(bloomEffects).toHaveLength(2);
-    const defaultBloom = bloomEffects[0] as unknown as InstanceType<typeof hoisted.MockSelectiveBloomEffect>;
+    const defaultBloom = bloomEffects[0] as unknown as InstanceType<
+      typeof hoisted.MockSelectiveBloomEffect
+    >;
     expect(defaultBloom.options.intensity).toBe(0.6);
     expect(defaultBloom.ignoreBackground).toBe(true);
     expect(defaultBloom.blendMode.opacity.value).toBe(1);
@@ -117,7 +122,9 @@ describe('buildEffects', () => {
     expect(defaultBloom.luminanceMaterial.smoothing).toBe(0.3);
     expect(defaultBloom.mipmapBlur).toBe(true);
 
-    const enginesBloom = bloomEffects[1] as unknown as InstanceType<typeof hoisted.MockSelectiveBloomEffect>;
+    const enginesBloom = bloomEffects[1] as unknown as InstanceType<
+      typeof hoisted.MockSelectiveBloomEffect
+    >;
     enginesSelection.size = 0;
     expect(enginesBloom.blendMode.opacity.value).toBe(0);
 

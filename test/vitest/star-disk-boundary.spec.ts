@@ -7,7 +7,10 @@ const smoothstep = (edge0: number, edge1: number, x: number): number => {
   return t * t * (3 - 2 * t);
 };
 
-const evaluateBoundaryFeather = (radius: number, params: ReturnType<typeof deriveBoundaryUniform>): number => {
+const evaluateBoundaryFeather = (
+  radius: number,
+  params: ReturnType<typeof deriveBoundaryUniform>,
+): number => {
   if (params.start >= 0.999 || params.alphaFloor >= 0.999) {
     return 1;
   }
@@ -31,7 +34,11 @@ describe('deriveBoundaryUniform', () => {
   });
 
   it('clamps inputs into the supported range', () => {
-    const params = deriveBoundaryUniform({ featherStart: 0.4, featherExponent: 12, alphaFloor: 0.6 });
+    const params = deriveBoundaryUniform({
+      featherStart: 0.4,
+      featherExponent: 12,
+      alphaFloor: 0.6,
+    });
     expect(params.start).toBeCloseTo(0.6, 3);
     expect(params.exponent).toBeCloseTo(6, 3);
     expect(params.alphaFloor).toBeCloseTo(0.3, 3);
@@ -45,7 +52,11 @@ describe('deriveBoundaryUniform', () => {
   });
 
   it('produces a monotonic attenuation curve without discontinuities', () => {
-    const params = deriveBoundaryUniform({ featherStart: 0.82, featherExponent: 3.5, alphaFloor: 0.05 });
+    const params = deriveBoundaryUniform({
+      featherStart: 0.82,
+      featherExponent: 3.5,
+      alphaFloor: 0.05,
+    });
     let previous = 1;
     for (let step = 0; step <= 20; step += 1) {
       const radius = step / 20;

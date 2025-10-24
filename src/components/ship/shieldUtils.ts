@@ -12,7 +12,7 @@ export function computeShieldFraction(
   maxShield: number,
   shipId: number,
   hull: ShipHull,
-  minThreshold: number = 0.01
+  minThreshold: number = 0.01,
 ): ShieldFractionResult {
   const warnings: string[] = [];
 
@@ -31,7 +31,7 @@ export function computeShieldFraction(
   const ratio = shield / maxShield;
   if (!Number.isFinite(ratio)) {
     warnings.push(
-      `Ship ${shipId} (${hull}) computed invalid ratio (shield=${shield}, maxShield=${maxShield}, ratio=${ratio})`
+      `Ship ${shipId} (${hull}) computed invalid ratio (shield=${shield}, maxShield=${maxShield}, ratio=${ratio})`,
     );
     return { fraction: 0, shouldDisplay: false, warnings };
   }
@@ -52,7 +52,7 @@ export function validateShieldVisibility(
   maxShield: number,
   minThreshold: number,
   shipId: number,
-  hull: ShipHull
+  hull: ShipHull,
 ): string | null {
   if (computedFraction >= minThreshold) {
     return null;

@@ -11,7 +11,10 @@ const hoisted = vi.hoisted(() => {
     public dispose = mockComposerDispose;
     public setSize = vi.fn();
 
-    constructor(public renderer: unknown, public renderTarget: unknown) {}
+    constructor(
+      public renderer: unknown,
+      public renderTarget: unknown,
+    ) {}
 
     addPass(pass: unknown): void {
       this.passes.push(pass);
@@ -19,7 +22,10 @@ const hoisted = vi.hoisted(() => {
   }
 
   class MockRenderPass {
-    constructor(public scene: unknown, public camera: unknown) {}
+    constructor(
+      public scene: unknown,
+      public camera: unknown,
+    ) {}
   }
 
   return { MockEffectComposer, MockRenderPass, mockComposerDispose };

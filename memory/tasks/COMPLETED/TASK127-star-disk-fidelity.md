@@ -26,13 +26,13 @@ Make the in-game star disk resemble the fiery reference render by preserving tex
 
 **Overall Status:** Completed - 100%
 
-| ID | Description | Status | Updated | Notes |
-| --- | --- | --- | --- | --- |
-| 1.1 | Update palette/brightness requirements | Complete | 2025-09-25 | Added Fiery Fidelity section to requirements doc |
-| 1.2 | Document design adjustments | Complete | 2025-09-25 | Added Section 12 to design doc with goals/strategy |
-| 1.3 | Implement shader/material tuning | Complete | 2025-09-25 | Warmed palette, rebalance brightness, stronger texture blend |
-| 1.4 | Update tests & validation | Complete | 2025-09-25 | Adjusted Vitest coverage, ran `npm run typecheck` + `npm test` + `npm run build` |
-| 1.5 | Record task completion | Complete | 2025-09-25 | Updated memory (activeContext, progress, task index) |
+| ID  | Description                            | Status   | Updated    | Notes                                                                            |
+| --- | -------------------------------------- | -------- | ---------- | -------------------------------------------------------------------------------- |
+| 1.1 | Update palette/brightness requirements | Complete | 2025-09-25 | Added Fiery Fidelity section to requirements doc                                 |
+| 1.2 | Document design adjustments            | Complete | 2025-09-25 | Added Section 12 to design doc with goals/strategy                               |
+| 1.3 | Implement shader/material tuning       | Complete | 2025-09-25 | Warmed palette, rebalance brightness, stronger texture blend                     |
+| 1.4 | Update tests & validation              | Complete | 2025-09-25 | Adjusted Vitest coverage, ran `npm run typecheck` + `npm test` + `npm run build` |
+| 1.5 | Record task completion                 | Complete | 2025-09-25 | Updated memory (activeContext, progress, task index)                             |
 
 ## Progress Log
 

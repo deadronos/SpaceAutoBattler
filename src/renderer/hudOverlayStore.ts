@@ -32,7 +32,11 @@ interface HudOverlayStore {
   frame: number;
   overlays: ShipHudOverlaySnapshot[];
   viewport: HudOverlayViewport;
-  setSnapshot: (frame: number, overlays: ShipHudOverlaySnapshot[], viewport: HudOverlayViewport) => void;
+  setSnapshot: (
+    frame: number,
+    overlays: ShipHudOverlaySnapshot[],
+    viewport: HudOverlayViewport,
+  ) => void;
   clear: () => void;
 }
 

@@ -25,12 +25,12 @@ The failing Vitest suites highlight three regressions: (1) percentile outputs no
 
 ### Subtasks
 
-| ID | Description | Status | Updated | Notes |
-| --- | --- | --- | --- | --- |
+| ID  | Description                                               | Status   | Updated    | Notes                                                                                                     |
+| --- | --------------------------------------------------------- | -------- | ---------- | --------------------------------------------------------------------------------------------------------- |
 | 1.1 | Capture requirements and design for AI metrics resilience | Complete | 2025-09-28 | Added entries to `memory/requirements.md` and `memory/designs_completed/design-ai-metrics-resilience.md`. |
-| 1.2 | Patch percentile helper and test stubs | Complete | 2025-09-28 | Restored lower-bound percentile and added physics shims to Vitest harness. |
-| 1.3 | Refresh scenario fixtures and validate tests | Complete | 2025-09-28 | Regenerated metrics snapshots for escort, bomber, and artillery scenarios. |
-| 1.4 | Update task status and summary | Complete | 2025-09-28 | Finalised task log and marked completion. |
+| 1.2 | Patch percentile helper and test stubs                    | Complete | 2025-09-28 | Restored lower-bound percentile and added physics shims to Vitest harness.                                |
+| 1.3 | Refresh scenario fixtures and validate tests              | Complete | 2025-09-28 | Regenerated metrics snapshots for escort, bomber, and artillery scenarios.                                |
+| 1.4 | Update task status and summary                            | Complete | 2025-09-28 | Finalised task log and marked completion.                                                                 |
 
 ## Progress Log
 

@@ -28,13 +28,13 @@ Improve "aibobbing" by exposing per-hull motion configurables, documenting recom
 
 ### Subtasks
 
-| ID  | Description                                               | Status       | Updated    | Notes |
-| --- | --------------------------------------------------------- | ------------ | ---------- | ----- |
-| 1.1 | Analyze controller/smoothing interaction and gather data  | Completed    | 2025-10-03 | Collected PD vs smoothing observations and requirements.
-| 1.2 | Design updated motion tuning interface and defaults       | Completed    | 2025-10-03 | Authored design in memory/designs/TASK241-motion-pd-tuning.md.
-| 1.3 | Implement code changes and tuned hull values              | Completed    | 2025-10-03 | Added per-hull gains, settling logic, and smoothing gates.
-| 1.4 | Add tests validating damping and configurability          | Completed    | 2025-10-03 | Extended motion.system/bloom specs with new assertions.
-| 1.5 | Document tuning guidance and update memory artifacts      | Completed    | 2025-10-03 | Added spec/motion-tuning.md and refreshed active context.
+| ID  | Description                                              | Status    | Updated    | Notes                                                          |
+| --- | -------------------------------------------------------- | --------- | ---------- | -------------------------------------------------------------- |
+| 1.1 | Analyze controller/smoothing interaction and gather data | Completed | 2025-10-03 | Collected PD vs smoothing observations and requirements.       |
+| 1.2 | Design updated motion tuning interface and defaults      | Completed | 2025-10-03 | Authored design in memory/designs/TASK241-motion-pd-tuning.md. |
+| 1.3 | Implement code changes and tuned hull values             | Completed | 2025-10-03 | Added per-hull gains, settling logic, and smoothing gates.     |
+| 1.4 | Add tests validating damping and configurability         | Completed | 2025-10-03 | Extended motion.system/bloom specs with new assertions.        |
+| 1.5 | Document tuning guidance and update memory artifacts     | Completed | 2025-10-03 | Added spec/motion-tuning.md and refreshed active context.      |
 
 ## Progress Log
 
@@ -53,5 +53,3 @@ Improve "aibobbing" by exposing per-hull motion configurables, documenting recom
 - Tuned ship stats with recommended PD gains and settling rates; updated validation to cover new fields.
 - Added motion system coverage for gains/settling behavior and stabilized bloom provider tests.
 - Authored spec/motion-tuning.md and updated memory artifacts.
-
-

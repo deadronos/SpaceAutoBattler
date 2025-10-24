@@ -10,7 +10,9 @@ declare module '@react-three/drei' {
   // lightweight stub for development typechecks
   export function useTexture(url: string): Texture;
   export function useTexture(urls: string[]): Texture[];
-  export function useTexture<T extends Record<string, string>>(urls: T): { [K in keyof T]: Texture };
+  export function useTexture<T extends Record<string, string>>(
+    urls: T,
+  ): { [K in keyof T]: Texture };
   export function useGLTF(path: string): unknown;
   // Material component from drei: https://drei.docs.pmnd.rs/shaders/mesh-transmission-material
   export const MeshTransmissionMaterial: React.FC<Record<string, unknown>>;

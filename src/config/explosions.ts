@@ -48,7 +48,11 @@ const ALLIANCE_BASE: Record<ShipHull, ExplosionConfigEntry> = {
     lightColor: '#a6d8ff',
     lightFalloff: 55,
     debrisCount: 8 * EXPLOSION_SCALE,
-    particleCounts: { ...DEFAULT_PARTICLE_COUNTS, sparks: 14 * EXPLOSION_SCALE, plasma: 8 * EXPLOSION_SCALE },
+    particleCounts: {
+      ...DEFAULT_PARTICLE_COUNTS,
+      sparks: 14 * EXPLOSION_SCALE,
+      plasma: 8 * EXPLOSION_SCALE,
+    },
     palette: {
       flash: '#a6d8ff',
       shockwave: '#8fb6ff',
@@ -70,14 +74,24 @@ const ALLIANCE_BASE: Record<ShipHull, ExplosionConfigEntry> = {
     lightColor: '#a6d8ff',
     lightFalloff: 65,
     debrisCount: 10 * EXPLOSION_SCALE,
-    particleCounts: { sparks: 16 * EXPLOSION_SCALE, plasma: 10 * EXPLOSION_SCALE, smoke: 12 * EXPLOSION_SCALE },
+    particleCounts: {
+      sparks: 16 * EXPLOSION_SCALE,
+      plasma: 10 * EXPLOSION_SCALE,
+      smoke: 12 * EXPLOSION_SCALE,
+    },
     palette: {
       flash: '#a6d8ff',
       shockwave: '#85acff',
       fireballHot: '#d7ecff',
       smoke: '#5f6c87',
     },
-    timing: { ...DEFAULT_TIMING, debrisSpeed: [DEFAULT_TIMING.debrisSpeed[0] * EXPLOSION_SCALE, DEFAULT_TIMING.debrisSpeed[1] * EXPLOSION_SCALE] }, // Standard timing for medium ships
+    timing: {
+      ...DEFAULT_TIMING,
+      debrisSpeed: [
+        DEFAULT_TIMING.debrisSpeed[0] * EXPLOSION_SCALE,
+        DEFAULT_TIMING.debrisSpeed[1] * EXPLOSION_SCALE,
+      ],
+    }, // Standard timing for medium ships
     shockwaveMaxRadiusMulti: DEFAULT_SHOCKWAVE_MULTI,
   },
   destroyer: {
@@ -86,7 +100,11 @@ const ALLIANCE_BASE: Record<ShipHull, ExplosionConfigEntry> = {
     lightColor: '#a6d8ff',
     lightFalloff: 75,
     debrisCount: 12 * EXPLOSION_SCALE,
-    particleCounts: { sparks: 18 * EXPLOSION_SCALE, plasma: 12 * EXPLOSION_SCALE, smoke: 14 * EXPLOSION_SCALE },
+    particleCounts: {
+      sparks: 18 * EXPLOSION_SCALE,
+      plasma: 12 * EXPLOSION_SCALE,
+      smoke: 14 * EXPLOSION_SCALE,
+    },
     palette: {
       flash: '#a6d8ff',
       shockwave: '#7ca3ff',
@@ -108,7 +126,11 @@ const ALLIANCE_BASE: Record<ShipHull, ExplosionConfigEntry> = {
     lightColor: '#a6d8ff',
     lightFalloff: 90,
     debrisCount: 16 * EXPLOSION_SCALE,
-    particleCounts: { sparks: 20 * EXPLOSION_SCALE, plasma: 14 * EXPLOSION_SCALE, smoke: 18 * EXPLOSION_SCALE },
+    particleCounts: {
+      sparks: 20 * EXPLOSION_SCALE,
+      plasma: 14 * EXPLOSION_SCALE,
+      smoke: 18 * EXPLOSION_SCALE,
+    },
     palette: {
       flash: '#a6d8ff',
       shockwave: '#7298ff',
@@ -133,7 +155,11 @@ const REAVERS_BASE: Record<ShipHull, ExplosionConfigEntry> = {
     lightColor: '#ff8447',
     lightFalloff: 40,
     debrisCount: 7 * EXPLOSION_SCALE,
-    particleCounts: { sparks: 14 * EXPLOSION_SCALE, plasma: 6 * EXPLOSION_SCALE, smoke: 9 * EXPLOSION_SCALE },
+    particleCounts: {
+      sparks: 14 * EXPLOSION_SCALE,
+      plasma: 6 * EXPLOSION_SCALE,
+      smoke: 9 * EXPLOSION_SCALE,
+    },
     palette: {
       flash: '#ffb347',
       shockwave: '#ff7847',
@@ -155,7 +181,11 @@ const REAVERS_BASE: Record<ShipHull, ExplosionConfigEntry> = {
     lightColor: '#ff8447',
     lightFalloff: 55,
     debrisCount: 9 * EXPLOSION_SCALE,
-    particleCounts: { sparks: 16 * EXPLOSION_SCALE, plasma: 8 * EXPLOSION_SCALE, smoke: 11 * EXPLOSION_SCALE },
+    particleCounts: {
+      sparks: 16 * EXPLOSION_SCALE,
+      plasma: 8 * EXPLOSION_SCALE,
+      smoke: 11 * EXPLOSION_SCALE,
+    },
     palette: {
       flash: '#ffb347',
       shockwave: '#ff6a36',
@@ -177,7 +207,11 @@ const REAVERS_BASE: Record<ShipHull, ExplosionConfigEntry> = {
     lightColor: '#ff8447',
     lightFalloff: 65,
     debrisCount: 12 * EXPLOSION_SCALE,
-    particleCounts: { sparks: 18 * EXPLOSION_SCALE, plasma: 10 * EXPLOSION_SCALE, smoke: 14 * EXPLOSION_SCALE },
+    particleCounts: {
+      sparks: 18 * EXPLOSION_SCALE,
+      plasma: 10 * EXPLOSION_SCALE,
+      smoke: 14 * EXPLOSION_SCALE,
+    },
     palette: {
       flash: '#ffb347',
       shockwave: '#ff612c',
@@ -199,7 +233,11 @@ const REAVERS_BASE: Record<ShipHull, ExplosionConfigEntry> = {
     lightColor: '#ff8447',
     lightFalloff: 80,
     debrisCount: 15 * EXPLOSION_SCALE,
-    particleCounts: { sparks: 22 * EXPLOSION_SCALE, plasma: 12 * EXPLOSION_SCALE, smoke: 16 * EXPLOSION_SCALE },
+    particleCounts: {
+      sparks: 22 * EXPLOSION_SCALE,
+      plasma: 12 * EXPLOSION_SCALE,
+      smoke: 16 * EXPLOSION_SCALE,
+    },
     palette: {
       flash: '#ffb347',
       shockwave: '#ff531d',
@@ -221,7 +259,11 @@ const REAVERS_BASE: Record<ShipHull, ExplosionConfigEntry> = {
     lightColor: '#ff8447',
     lightFalloff: 95,
     debrisCount: 20 * EXPLOSION_SCALE,
-    particleCounts: { sparks: 26 * EXPLOSION_SCALE, plasma: 16 * EXPLOSION_SCALE, smoke: 20 * EXPLOSION_SCALE },
+    particleCounts: {
+      sparks: 26 * EXPLOSION_SCALE,
+      plasma: 16 * EXPLOSION_SCALE,
+      smoke: 20 * EXPLOSION_SCALE,
+    },
     palette: {
       flash: '#ffb347',
       shockwave: '#ff4512',
@@ -250,18 +292,31 @@ export const DEFAULT_EXPLOSION_CONFIG: ExplosionConfigEntry = {
   lightColor: '#ffb347',
   lightFalloff: 60,
   debrisCount: 8 * EXPLOSION_SCALE,
-  particleCounts: { sparks: 14 * EXPLOSION_SCALE, plasma: 8 * EXPLOSION_SCALE, smoke: 10 * EXPLOSION_SCALE },
+  particleCounts: {
+    sparks: 14 * EXPLOSION_SCALE,
+    plasma: 8 * EXPLOSION_SCALE,
+    smoke: 10 * EXPLOSION_SCALE,
+  },
   palette: {
     flash: '#ffb347',
     shockwave: '#ff7847',
     fireballHot: '#ff6138',
     smoke: '#4a281c',
   },
-  timing: { ...DEFAULT_TIMING, debrisSpeed: [DEFAULT_TIMING.debrisSpeed[0] * EXPLOSION_SCALE, DEFAULT_TIMING.debrisSpeed[1] * EXPLOSION_SCALE] },
+  timing: {
+    ...DEFAULT_TIMING,
+    debrisSpeed: [
+      DEFAULT_TIMING.debrisSpeed[0] * EXPLOSION_SCALE,
+      DEFAULT_TIMING.debrisSpeed[1] * EXPLOSION_SCALE,
+    ],
+  },
   shockwaveMaxRadiusMulti: DEFAULT_SHOCKWAVE_MULTI,
 };
 
-export function getExplosionConfig(faction: ExplosionFaction, hull: ShipHull): ExplosionConfigEntry {
+export function getExplosionConfig(
+  faction: ExplosionFaction,
+  hull: ShipHull,
+): ExplosionConfigEntry {
   const factionMap = EXPLOSION_CONFIG[faction];
   if (!factionMap) return DEFAULT_EXPLOSION_CONFIG;
   return factionMap[hull] ?? DEFAULT_EXPLOSION_CONFIG;

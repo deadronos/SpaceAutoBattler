@@ -23,7 +23,7 @@ The implementation will be display-only and read from canonical GameState withou
 ## Implementation Plan
 
 - Extend UI store with progression panel toggle state
-- Add toggle to settings drawer configuration  
+- Add toggle to settings drawer configuration
 - Create ProgressionPanel component with ship list and event logs
 - Implement progression event tracking system
 - Integrate component into HUD overlay system
@@ -36,25 +36,25 @@ The implementation will be display-only and read from canonical GameState withou
 
 ### Subtasks
 
-| ID  | Description                                        | Status      | Updated    | Notes                               |
-| --- | ------------------------------------------------- | ----------- | ---------- | ----------------------------------- |
-| 1.1 | Create task file and update memory bank index     | Complete    | 2025-01-27 | Task created following template     |
-| 1.2 | Add progression panel state to UI store           | Complete    | 2025-01-27 | Added toggle with state management  |
-| 1.3 | Add toggle to settings drawer configuration       | Complete    | 2025-01-27 | Added to SETTINGS_TOGGLES array    |
-| 1.4 | Create ProgressionPanel component structure       | Complete    | 2025-01-27 | Component with ship cards/events    |
-| 1.5 | Implement progression event tracking system       | Complete    | 2025-01-27 | Events stored in GameState Map      |
-| 1.6 | Add data transformation utilities                 | Complete    | 2025-01-27 | Ship to panel format conversion     |
-| 1.7 | Integrate component into HUD system               | Complete    | 2025-01-27 | Added to Hud.tsx overlay layer     |
-| 1.8 | Add unit tests for data transformation            | Complete    | 2025-01-27 | 3 tests for core logic pass        |
-| 1.9 | Add integration tests for UI components           | Partial     | 2025-01-27 | UI tests need environment debugging |
-| 1.10| Manual validation and screenshot capture          | Pending     | -          | Build succeeds, manual test needed  |
+| ID   | Description                                   | Status   | Updated    | Notes                               |
+| ---- | --------------------------------------------- | -------- | ---------- | ----------------------------------- |
+| 1.1  | Create task file and update memory bank index | Complete | 2025-01-27 | Task created following template     |
+| 1.2  | Add progression panel state to UI store       | Complete | 2025-01-27 | Added toggle with state management  |
+| 1.3  | Add toggle to settings drawer configuration   | Complete | 2025-01-27 | Added to SETTINGS_TOGGLES array     |
+| 1.4  | Create ProgressionPanel component structure   | Complete | 2025-01-27 | Component with ship cards/events    |
+| 1.5  | Implement progression event tracking system   | Complete | 2025-01-27 | Events stored in GameState Map      |
+| 1.6  | Add data transformation utilities             | Complete | 2025-01-27 | Ship to panel format conversion     |
+| 1.7  | Integrate component into HUD system           | Complete | 2025-01-27 | Added to Hud.tsx overlay layer      |
+| 1.8  | Add unit tests for data transformation        | Complete | 2025-01-27 | 3 tests for core logic pass         |
+| 1.9  | Add integration tests for UI components       | Partial  | 2025-01-27 | UI tests need environment debugging |
+| 1.10 | Manual validation and screenshot capture      | Pending  | -          | Build succeeds, manual test needed  |
 
 ## Progress Log
 
 ### 2025-01-27
 
 - Created task file following memory bank instructions
-- Analyzed ISSUE224 requirements and existing codebase patterns  
+- Analyzed ISSUE224 requirements and existing codebase patterns
 - Identified integration points: UI store, settings drawer, HUD overlay system
 - Confirmed ship progression system already exists in types - this is display-only implementation
 - Validated current test suite passes (290/290 tests)

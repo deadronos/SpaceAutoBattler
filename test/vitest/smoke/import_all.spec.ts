@@ -14,10 +14,7 @@ vi.mock('@dimforge/rapier3d-compat', () => ({}));
 vi.mock('gsap', () => ({}));
 vi.mock('idb-keyval', () => ({}));
 
-const moduleLoaders = import.meta.glob<unknown>(
-  '../../../src/**/*.{ts,tsx}',
-  { eager: false }
-);
+const moduleLoaders = import.meta.glob<unknown>('../../../src/**/*.{ts,tsx}', { eager: false });
 
 const moduleKeys = [
   '../../../src/config/carriers.ts',

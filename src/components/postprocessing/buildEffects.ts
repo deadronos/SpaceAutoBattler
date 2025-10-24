@@ -34,7 +34,12 @@ type SelectiveBloomWithInternals = SelectiveBloomEffect & {
   mipmapBlur?: boolean;
 };
 
-export function buildEffects({ scene, camera, bloomContext, config }: BuildEffectsOptions): BuildEffectsResult {
+export function buildEffects({
+  scene,
+  camera,
+  bloomContext,
+  config,
+}: BuildEffectsOptions): BuildEffectsResult {
   const groupConfigs = config.bloomGroups ?? {};
   const defaultGroup = bloomContext?.defaultGroup ?? config.bloomDefaultGroup ?? 'default';
   const groupNames = new Set<string>([...Object.keys(groupConfigs), defaultGroup]);

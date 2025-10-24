@@ -49,7 +49,9 @@ describe('validateMotionStats', () => {
 
   it('throws for negative maxReverseSpeed', () => {
     const stats = { ...validStats, maxReverseSpeed: -20 };
-    expect(() => validateMotionStats(stats)).toThrow('motion.maxReverseSpeed must be ≥ 0. Received -20');
+    expect(() => validateMotionStats(stats)).toThrow(
+      'motion.maxReverseSpeed must be ≥ 0. Received -20',
+    );
   });
 
   it('accepts undefined maxReverseSpeed', () => {
@@ -59,12 +61,16 @@ describe('validateMotionStats', () => {
 
   it('throws for negative linearAcceleration', () => {
     const stats = { ...validStats, linearAcceleration: -1 };
-    expect(() => validateMotionStats(stats)).toThrow('motion.linearAcceleration must be ≥ 0. Received -1');
+    expect(() => validateMotionStats(stats)).toThrow(
+      'motion.linearAcceleration must be ≥ 0. Received -1',
+    );
   });
 
   it('throws for negative linearDamping', () => {
     const stats = { ...validStats, linearDamping: -0.5 };
-    expect(() => validateMotionStats(stats)).toThrow('motion.linearDamping must be ≥ 0. Received -0.5');
+    expect(() => validateMotionStats(stats)).toThrow(
+      'motion.linearDamping must be ≥ 0. Received -0.5',
+    );
   });
 
   it('throws for negative maxTurnRate', () => {
@@ -74,17 +80,23 @@ describe('validateMotionStats', () => {
 
   it('throws for negative angularAcceleration', () => {
     const stats = { ...validStats, angularAcceleration: -2 };
-    expect(() => validateMotionStats(stats)).toThrow('motion.angularAcceleration must be ≥ 0. Received -2');
+    expect(() => validateMotionStats(stats)).toThrow(
+      'motion.angularAcceleration must be ≥ 0. Received -2',
+    );
   });
 
   it('throws for negative angularDamping', () => {
     const stats = { ...validStats, angularDamping: -0.1 };
-    expect(() => validateMotionStats(stats)).toThrow('motion.angularDamping must be ≥ 0. Received -0.1');
+    expect(() => validateMotionStats(stats)).toThrow(
+      'motion.angularDamping must be ≥ 0. Received -0.1',
+    );
   });
 
   it('throws for negative maxLateralAcceleration', () => {
     const stats = { ...validStats, maxLateralAcceleration: -5 };
-    expect(() => validateMotionStats(stats)).toThrow('motion.maxLateralAcceleration must be ≥ 0. Received -5');
+    expect(() => validateMotionStats(stats)).toThrow(
+      'motion.maxLateralAcceleration must be ≥ 0. Received -5',
+    );
   });
 
   it('accepts undefined maxLateralAcceleration', () => {
@@ -109,7 +121,9 @@ describe('validateMotionStats', () => {
 
   it('throws for negative visualBankFactor', () => {
     const stats = { ...validStats, visualBankFactor: -1 };
-    expect(() => validateMotionStats(stats)).toThrow('motion.visualBankFactor must be ≥ 0. Received -1');
+    expect(() => validateMotionStats(stats)).toThrow(
+      'motion.visualBankFactor must be ≥ 0. Received -1',
+    );
   });
 
   it('accepts undefined visualBankFactor', () => {
@@ -119,42 +133,60 @@ describe('validateMotionStats', () => {
 
   it('throws for positionLerp below 0', () => {
     const stats = { ...validStats, smoothing: { ...validStats.smoothing!, positionLerp: -0.1 } };
-    expect(() => validateMotionStats(stats)).toThrow('motion.smoothing.positionLerp must be ≥ 0. Received -0.1');
+    expect(() => validateMotionStats(stats)).toThrow(
+      'motion.smoothing.positionLerp must be ≥ 0. Received -0.1',
+    );
   });
 
   it('throws for positionLerp above 1', () => {
     const stats = { ...validStats, smoothing: { ...validStats.smoothing!, positionLerp: 1.5 } };
-    expect(() => validateMotionStats(stats)).toThrow('motion.smoothing.positionLerp must be ≤ 1. Received 1.5');
+    expect(() => validateMotionStats(stats)).toThrow(
+      'motion.smoothing.positionLerp must be ≤ 1. Received 1.5',
+    );
   });
 
   it('accepts undefined positionLerp', () => {
-    const stats = { ...validStats, smoothing: { ...validStats.smoothing!, positionLerp: undefined } };
+    const stats = {
+      ...validStats,
+      smoothing: { ...validStats.smoothing!, positionLerp: undefined },
+    };
     expect(() => validateMotionStats(stats)).not.toThrow();
   });
 
   it('throws for rotationSlerp below 0', () => {
     const stats = { ...validStats, smoothing: { ...validStats.smoothing!, rotationSlerp: -0.2 } };
-    expect(() => validateMotionStats(stats)).toThrow('motion.smoothing.rotationSlerp must be ≥ 0. Received -0.2');
+    expect(() => validateMotionStats(stats)).toThrow(
+      'motion.smoothing.rotationSlerp must be ≥ 0. Received -0.2',
+    );
   });
 
   it('throws for rotationSlerp above 1', () => {
     const stats = { ...validStats, smoothing: { ...validStats.smoothing!, rotationSlerp: 2.0 } };
-    expect(() => validateMotionStats(stats)).toThrow('motion.smoothing.rotationSlerp must be ≤ 1. Received 2');
+    expect(() => validateMotionStats(stats)).toThrow(
+      'motion.smoothing.rotationSlerp must be ≤ 1. Received 2',
+    );
   });
 
   it('accepts undefined rotationSlerp', () => {
-    const stats = { ...validStats, smoothing: { ...validStats.smoothing!, rotationSlerp: undefined } };
+    const stats = {
+      ...validStats,
+      smoothing: { ...validStats.smoothing!, rotationSlerp: undefined },
+    };
     expect(() => validateMotionStats(stats)).not.toThrow();
   });
 
   it('throws for bankLerp below 0', () => {
     const stats = { ...validStats, smoothing: { ...validStats.smoothing!, bankLerp: -0.3 } };
-    expect(() => validateMotionStats(stats)).toThrow('motion.smoothing.bankLerp must be ≥ 0. Received -0.3');
+    expect(() => validateMotionStats(stats)).toThrow(
+      'motion.smoothing.bankLerp must be ≥ 0. Received -0.3',
+    );
   });
 
   it('throws for bankLerp above 1', () => {
     const stats = { ...validStats, smoothing: { ...validStats.smoothing!, bankLerp: 1.1 } };
-    expect(() => validateMotionStats(stats)).toThrow('motion.smoothing.bankLerp must be ≤ 1. Received 1.1');
+    expect(() => validateMotionStats(stats)).toThrow(
+      'motion.smoothing.bankLerp must be ≤ 1. Received 1.1',
+    );
   });
 
   it('accepts undefined bankLerp', () => {
@@ -164,11 +196,16 @@ describe('validateMotionStats', () => {
 
   it('throws for negative teleportDistance', () => {
     const stats = { ...validStats, smoothing: { ...validStats.smoothing!, teleportDistance: -50 } };
-    expect(() => validateMotionStats(stats)).toThrow('motion.smoothing.teleportDistance must be ≥ 0. Received -50');
+    expect(() => validateMotionStats(stats)).toThrow(
+      'motion.smoothing.teleportDistance must be ≥ 0. Received -50',
+    );
   });
 
   it('accepts undefined teleportDistance', () => {
-    const stats = { ...validStats, smoothing: { ...validStats.smoothing!, teleportDistance: undefined } };
+    const stats = {
+      ...validStats,
+      smoothing: { ...validStats.smoothing!, teleportDistance: undefined },
+    };
     expect(() => validateMotionStats(stats)).not.toThrow();
   });
 

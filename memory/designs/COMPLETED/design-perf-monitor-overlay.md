@@ -65,13 +65,13 @@ export function PerfMonitorOverlay(): React.ReactElement | null;
 
 ## Error Handling Matrix
 
-| Scenario | Detection | Response | Notes |
-| --- | --- | --- | --- |
-| Canvas not yet initialised (no `gl.domElement.parentNode`) | `Perf` fails to mount or DOM node missing | `PerfMonitorOverlay` guards on DOM lookup; if the node is absent, it retries on the next effect tick without throwing | Drag activator effect listens to store changes and aborts when node undefined |
-| Pointer events unsupported (legacy browsers / tests) | `window.PointerEvent` undefined | Skip drag wiring; log debug warning (console.debug) and leave panel anchored at default position | JSDOM supports pointer events, but guard remains |
-| Panel dragged beyond viewport bounds | Computed `nextX/nextY` exceed allowable range | Clamp coordinates between `0` and `(viewport - panelSize - margin)` before storing | Prevents lost panel |
-| Toggle flips off during active drag | `enabled` becomes false mid-drag | Effect cleanup removes listeners and resets local dragging state | Ensures no dangling window listeners |
-| Multiple perf panels accidentally mounted | Additional DOM node discovered | Drag hook only binds to the first `.hud-perf-monitor` element; store prevents duplicate toggles | Toggle is unique; future guard ensures only one instance |
+| Scenario                                                   | Detection                                     | Response                                                                                                              | Notes                                                                         |
+| ---------------------------------------------------------- | --------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| Canvas not yet initialised (no `gl.domElement.parentNode`) | `Perf` fails to mount or DOM node missing     | `PerfMonitorOverlay` guards on DOM lookup; if the node is absent, it retries on the next effect tick without throwing | Drag activator effect listens to store changes and aborts when node undefined |
+| Pointer events unsupported (legacy browsers / tests)       | `window.PointerEvent` undefined               | Skip drag wiring; log debug warning (console.debug) and leave panel anchored at default position                      | JSDOM supports pointer events, but guard remains                              |
+| Panel dragged beyond viewport bounds                       | Computed `nextX/nextY` exceed allowable range | Clamp coordinates between `0` and `(viewport - panelSize - margin)` before storing                                    | Prevents lost panel                                                           |
+| Toggle flips off during active drag                        | `enabled` becomes false mid-drag              | Effect cleanup removes listeners and resets local dragging state                                                      | Ensures no dangling window listeners                                          |
+| Multiple perf panels accidentally mounted                  | Additional DOM node discovered                | Drag hook only binds to the first `.hud-perf-monitor` element; store prevents duplicate toggles                       | Toggle is unique; future guard ensures only one instance                      |
 
 ## Testing Strategy
 

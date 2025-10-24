@@ -31,11 +31,11 @@ Investigate and resolve the runtime error `recursive use of an object detected w
 
 ### Subtasks
 
-| ID | Description | Status | Updated | Notes |
-| --- | --- | --- | --- | --- |
-| 1.1 | Draft EARS requirements and design covering deferred carrier spawns | Complete | 2025-09-29 | Added TASK226 requirements and design doc in memory bank |
+| ID  | Description                                                               | Status   | Updated    | Notes                                                     |
+| --- | ------------------------------------------------------------------------- | -------- | ---------- | --------------------------------------------------------- |
+| 1.1 | Draft EARS requirements and design covering deferred carrier spawns       | Complete | 2025-09-29 | Added TASK226 requirements and design doc in memory bank  |
 | 1.2 | Implement spawn queuing in `updateCarrierLaunchSystem` with updated tests | Complete | 2025-09-29 | Deferred spawn queue implemented with regression coverage |
-| 1.3 | Run validation suite and document completion in memory bank | Complete | 2025-09-29 | `npm run typecheck` and `npm test` both pass |
+| 1.3 | Run validation suite and document completion in memory bank               | Complete | 2025-09-29 | `npm run typecheck` and `npm test` both pass              |
 
 ## Progress Log
 

@@ -163,6 +163,6 @@ These artifacts simplify root-cause analysis (mesh missing vs uniform mismatch v
 - Implement the PoC (single-hull Playwright spec + test page) and iterate until stable.
 - Create `memory/tasks/TASK-playwright-ship-screenshots.md` and update `memory/tasks/_index.md` referencing this design.
 
-
 ---
+
 Design authored by automation to support reproducible visual testing of ship hulls.

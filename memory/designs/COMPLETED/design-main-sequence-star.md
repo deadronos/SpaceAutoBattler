@@ -38,18 +38,23 @@ export interface MainSequenceStarMaterialUniforms {
   iChannel1: Texture;
 }
 
-export function createMainSequenceStarMaterial(options: MainSequenceStarMaterialOptions): ShaderMaterial;
-export function updateMainSequenceStarUniforms(material: ShaderMaterial, uniforms: MainSequenceStarMaterialUniforms): void;
+export function createMainSequenceStarMaterial(
+  options: MainSequenceStarMaterialOptions,
+): ShaderMaterial;
+export function updateMainSequenceStarUniforms(
+  material: ShaderMaterial,
+  uniforms: MainSequenceStarMaterialUniforms,
+): void;
 ```
 
 ## Error Handling Matrix
 
-| Scenario | Detection | Response | Test Coverage |
-| --- | --- | --- | --- |
-| Organic or noise texture missing | `options.organic` / `options.noise` nullish | Substitute generated SRGB/nearest fallback textures | Vitest material spec asserts fallbacks are used and named |
-| Shader compilation fails | `createMainSequenceStarMaterial` throws | Log warning, return `null`, trigger `MeshBasicMaterial` fallback in `StarDisk` | Vitest spec stubs factory to throw and checks fallback |
-| Renderer size undefined | `state.size.width` or `height` non-finite | Default `iResolution` to `(1,1,1)` and warn once | Component spec simulates NaN size and asserts safe defaults |
-| Simulation context absent | `useOptionalGameState` returns undefined | Accumulate delta time on uniform but keep deterministic path when available | Component spec toggles simulation presence |
+| Scenario                         | Detection                                   | Response                                                                       | Test Coverage                                               |
+| -------------------------------- | ------------------------------------------- | ------------------------------------------------------------------------------ | ----------------------------------------------------------- |
+| Organic or noise texture missing | `options.organic` / `options.noise` nullish | Substitute generated SRGB/nearest fallback textures                            | Vitest material spec asserts fallbacks are used and named   |
+| Shader compilation fails         | `createMainSequenceStarMaterial` throws     | Log warning, return `null`, trigger `MeshBasicMaterial` fallback in `StarDisk` | Vitest spec stubs factory to throw and checks fallback      |
+| Renderer size undefined          | `state.size.width` or `height` non-finite   | Default `iResolution` to `(1,1,1)` and warn once                               | Component spec simulates NaN size and asserts safe defaults |
+| Simulation context absent        | `useOptionalGameState` returns undefined    | Accumulate delta time on uniform but keep deterministic path when available    | Component spec toggles simulation presence                  |
 
 ## Testing Strategy
 

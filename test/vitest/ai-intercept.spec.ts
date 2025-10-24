@@ -111,7 +111,7 @@ function createShip(options: ShipOptions): ShipEntity {
         z: options.position.z,
       }),
       rotation: () => ({ x: 0, y: 0, z: 0, w: 1 }),
-  linvel: options.linvel ?? (() => ({ x: velocity.x, y: velocity.y, z: velocity.z })),
+      linvel: options.linvel ?? (() => ({ x: velocity.x, y: velocity.y, z: velocity.z })),
     } as never,
     collider: {} as never,
     transform: {
@@ -153,7 +153,12 @@ describe('selectIntent with new intents', () => {
     const state = createState();
     const interceptor = createShip({ id: 1, team: 'blue', position: new Vector3(0, 0, 0) });
     interceptor.ship.projectileSpeed = 120;
-    const vip = createShip({ id: 2, team: 'blue', position: new Vector3(80, 0, 0), hull: 'carrier' });
+    const vip = createShip({
+      id: 2,
+      team: 'blue',
+      position: new Vector3(80, 0, 0),
+      hull: 'carrier',
+    });
     const bomber = createShip({
       id: 3,
       team: 'red',
@@ -172,27 +177,38 @@ describe('selectIntent with new intents', () => {
   it('keeps escort priority when assigned to VIP', () => {
     const state = createState();
     const escort = createShip({ id: 4, team: 'blue', position: new Vector3(0, 0, 0) });
-    const vip = createShip({ id: 5, team: 'blue', position: new Vector3(90, 0, 0), hull: 'carrier' });
-    const threat = createShip({ id: 6, team: 'red', position: new Vector3(260, 0, 0), hull: 'fighter' });
+    const vip = createShip({
+      id: 5,
+      team: 'blue',
+      position: new Vector3(90, 0, 0),
+      hull: 'carrier',
+    });
+    const threat = createShip({
+      id: 6,
+      team: 'red',
+      position: new Vector3(260, 0, 0),
+      hull: 'fighter',
+    });
     state.blackboard.threatToVip.set(vip.id, threat.id);
     const profile = resolveBehaviorProfile('escort');
 
-    const intent = selectIntent(
-      state,
-      escort,
-      escort.ai!,
-      profile,
-      threat,
-      vip,
-      { vipId: vip.id, offset: new Vector3(60, 0, 0) },
-    );
+    const intent = selectIntent(state, escort, escort.ai!, profile, threat, vip, {
+      vipId: vip.id,
+      offset: new Vector3(60, 0, 0),
+    });
 
     expect(intent.intent).toBe('Escort');
   });
 
   it('prefers regroup when posture flips to retreat', () => {
     const state = createState();
-    const ship = createShip({ id: 7, team: 'blue', position: new Vector3(0, 0, 0), hp: 70, maxHp: 120 });
+    const ship = createShip({
+      id: 7,
+      team: 'blue',
+      position: new Vector3(0, 0, 0),
+      hp: 70,
+      maxHp: 120,
+    });
     state.blackboard.teamPosture.blue = 'retreat';
     state.blackboard.allyCentroid.blue.set(240, 0, 0);
     const profile = resolveBehaviorProfile('brawler');
@@ -249,4 +265,3 @@ describe('selectIntent with new intents', () => {
     expect(linvelSpy).not.toHaveBeenCalled();
   });
 });
-

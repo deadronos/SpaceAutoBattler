@@ -8,7 +8,7 @@
     },
     {
       "id": "corvette",
-      "name": "Corvette", 
+      "name": "Corvette",
       "category": "small",
       "modelPath": "../../../src/assets/gltf/corvette.glb"
     },

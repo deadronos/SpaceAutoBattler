@@ -133,7 +133,6 @@ Phase 4 — beams/hitscan
 - Implement `fireBeam` (deterministic raycast + instant damage) and a `BeamLayer` visual.
 
   Estimated effort: medium.
-
   - Implement `fireBeam` (deterministic raycast + instant damage) and a `BeamLayer` visual. The simulation's raycast result must be authoritative; the BeamLayer should render a Line (for example using Drei) between the source and the hit point or toward the aimed direction when no hit occurred. Default TTL for the visual is 0.5 seconds. Add configurable jitter for misses so beams that don't hit a target still show a believable endpoint.
 
 Phase 5 — AI & PD

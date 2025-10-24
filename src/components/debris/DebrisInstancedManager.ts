@@ -2,7 +2,11 @@ import { InstancedBufferAttribute, Matrix4, Quaternion, Vector3 } from 'three';
 import type { InstancedMesh } from 'three';
 import { DEBRIS_DELAY } from '../explosions/constants.js';
 import { clamp01, getCachedColor } from '../explosions/derived.js';
-import { EMPTY_EFFECT_RESULT, type EffectUpdateContext, type EffectUpdateResult } from '../explosions/effectUpdaters/types.js';
+import {
+  EMPTY_EFFECT_RESULT,
+  type EffectUpdateContext,
+  type EffectUpdateResult,
+} from '../explosions/effectUpdaters/types.js';
 
 const HIDDEN_MATRIX = new Matrix4().makeScale(0, 0, 0);
 const TMP_QUAT = new Quaternion();
@@ -91,4 +95,3 @@ export class DebrisInstancedManager {
     return { count, saturated };
   }
 }
-

@@ -8,15 +8,21 @@ export function installWebGLDebugHooks(renderer: WebGLRenderer): void {
   const win = window as Window & { __copilot_glLogs?: Array<unknown> & { __installed?: boolean } };
 
   // Enable if NODE_ENV !== 'production' OR ?copilot_debug=1 in URL
-  const debugEnabled = (typeof process !== 'undefined' && process.env && process.env.NODE_ENV !== 'production') || (typeof win.location === 'object' && String(win.location.search).includes('copilot_debug=1'));
+  const debugEnabled =
+    (typeof process !== 'undefined' && process.env && process.env.NODE_ENV !== 'production') ||
+    (typeof win.location === 'object' && String(win.location.search).includes('copilot_debug=1'));
   if (!debugEnabled) return;
 
   // Avoid double-install
   if (win.__copilot_glLogs && win.__copilot_glLogs.__installed) return;
 
   // Try to obtain the raw WebGL context
-  const ctx = (renderer.getContext && (renderer.getContext() as WebGLRenderingContext | WebGL2RenderingContext)) ||
-    (renderer.domElement && ((renderer.domElement.getContext('webgl2') as WebGL2RenderingContext) || (renderer.domElement.getContext('webgl') as WebGLRenderingContext)));
+  const ctx =
+    (renderer.getContext &&
+      (renderer.getContext() as WebGLRenderingContext | WebGL2RenderingContext)) ||
+    (renderer.domElement &&
+      ((renderer.domElement.getContext('webgl2') as WebGL2RenderingContext) ||
+        (renderer.domElement.getContext('webgl') as WebGLRenderingContext)));
   if (!ctx) return;
 
   win.__copilot_glLogs = win.__copilot_glLogs || [];
@@ -77,7 +83,13 @@ export function installWebGLDebugHooks(renderer: WebGLRenderer): void {
           attributes.push(null);
         }
       }
-      push('programMetadata', { linkStatus, activeUniforms, activeAttributes, uniforms, attributes });
+      push('programMetadata', {
+        linkStatus,
+        activeUniforms,
+        activeAttributes,
+        uniforms,
+        attributes,
+      });
     } catch (e) {
       push('programMetadataException', String(e));
     }

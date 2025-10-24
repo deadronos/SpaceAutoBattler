@@ -36,7 +36,10 @@ export function validateMotionStats(stats: MotionStats): void {
     assertRange('motion.angularSettlingRate', stats.angularSettlingRate, { min: 0 });
   }
   if (stats.angularSettleToleranceDeg != null) {
-    assertRange('motion.angularSettleToleranceDeg', stats.angularSettleToleranceDeg, { min: 0, max: 45 });
+    assertRange('motion.angularSettleToleranceDeg', stats.angularSettleToleranceDeg, {
+      min: 0,
+      max: 45,
+    });
   }
   if (stats.maxBankDeg != null) {
     assertRange('motion.maxBankDeg', stats.maxBankDeg, { min: 0, max: 90 });
@@ -48,7 +51,10 @@ export function validateMotionStats(stats: MotionStats): void {
     assertRange('motion.smoothing.positionLerp', stats.smoothing.positionLerp, { min: 0, max: 1 });
   }
   if (stats.smoothing?.rotationSlerp != null) {
-    assertRange('motion.smoothing.rotationSlerp', stats.smoothing.rotationSlerp, { min: 0, max: 1 });
+    assertRange('motion.smoothing.rotationSlerp', stats.smoothing.rotationSlerp, {
+      min: 0,
+      max: 1,
+    });
   }
   if (stats.smoothing?.bankLerp != null) {
     assertRange('motion.smoothing.bankLerp', stats.smoothing.bankLerp, { min: 0, max: 1 });

@@ -27,7 +27,7 @@ This index tracks active tasks and their memory files. Use the `/memory/tasks` f
 - [TASK243](COMPLETED/TASK243-thruster-glow-regression.md) — Restore thruster glow regression coverage and reinstate hook identifiers. (2025-10-04)
 
 - [TASK237](TASK237-star-disk-telemetry-monitoring.md) — Monitor StarDisk uniform telemetry (iTime progression) with Rapier panic correlation for debugging animation freezes (2025-10-02).
- 
+
 - [TASK237](TASK237-star-disk-telemetry-monitoring.md) — Monitor StarDisk uniform telemetry (iTime progression) with Rapier panic correlation for debugging animation freezes (2025-10-02).
 - [TASK153](TASK153-level-bonus-caps.md) — Enforced level bonus caps so leveling respects progression limits and subsystem repair rates plateau at configured maxima (2025-09-29).
 - [TASK152](TASK152-fix-progression-tests.md) — Hardened Vitest ship stubs with progression defaults; full suite passes (2025-09-29).
@@ -45,7 +45,7 @@ This index tracks active tasks and their memory files. Use the `/memory/tasks` f
 - [TASK108](COMPLETED/TASK108-ai-rollout-automation.md) — Wired AI V2 rollout automation, env flag toggles, and CI alignment.
 - [TASK109](COMPLETED/TASK109-ai-scenario-fixtures.md) — Added bomber intercept and artillery retreat scenarios with logs.
 - [TASK110](COMPLETED/TASK110-planet-texture-assets.md) — Canonicalised planet texture asset keys and registry. (Retained TASK110 identifier.)
-- [TASK137](COMPLETED/TASK137-implement-skysphere.md) — Implemented 8192x4096 skysphere with equirectangular mapping and Suspense boundary.  (Renamed from TASK110 to resolve ID collision.)
+- [TASK137](COMPLETED/TASK137-implement-skysphere.md) — Implemented 8192x4096 skysphere with equirectangular mapping and Suspense boundary. (Renamed from TASK110 to resolve ID collision.)
 - [TASK111](COMPLETED/TASK111-celestial-environment-config.md) — Authored celestial environment config schema and defaults.
 - [TASK112](COMPLETED/TASK112-planet-texture-loading.md) — Implemented `usePlanetTexture` hook with SRGB/anisotropy setup.
 - [TASK113](COMPLETED/TASK113-planet-material-baseline.md) — Established baseline planet material with emissive boost controls.
@@ -76,4 +76,3 @@ This index tracks active tasks and their memory files. Use the `/memory/tasks` f
 ## Abandoned
 
 - _None tracked._
-

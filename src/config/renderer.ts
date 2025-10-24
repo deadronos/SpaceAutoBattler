@@ -35,7 +35,10 @@ export const RENDERER_VISUAL_CONFIG = {
   legacyFrameDt: 1 / 60,
 };
 
-function kToFrameLerp(k: number | undefined, frameDt = RENDERER_VISUAL_CONFIG.legacyFrameDt): number {
+function kToFrameLerp(
+  k: number | undefined,
+  frameDt = RENDERER_VISUAL_CONFIG.legacyFrameDt,
+): number {
   if (!k || k <= 0) return 0;
   return 1 - Math.exp(-k * frameDt);
 }
@@ -56,7 +59,10 @@ export function resolveRendererMotionConfig(motion?: MotionStats): RendererMotio
       bankLerp: kToFrameLerp(bankK),
       maxBankDeg: visual.bank?.maxDeg ?? motion?.maxBankDeg ?? RENDERER_MOTION_DEFAULTS.maxBankDeg,
       bankFactor: motion?.visualBankFactor ?? RENDERER_MOTION_DEFAULTS.bankFactor,
-      teleportDistance: visual.teleportDistance ?? smoothing?.teleportDistance ?? RENDERER_MOTION_DEFAULTS.teleportDistance,
+      teleportDistance:
+        visual.teleportDistance ??
+        smoothing?.teleportDistance ??
+        RENDERER_MOTION_DEFAULTS.teleportDistance,
       thrusterIntensity: RENDERER_MOTION_DEFAULTS.thrusterIntensity,
     };
   }
@@ -154,9 +160,11 @@ export function getShieldVisuals(hull: ShipHull): Required<ShieldVisualSettings>
       thickness: cfg.meshtransmission?.thickness ?? DEFAULTS.meshtransmission.thickness,
       chromaticAberration:
         cfg.meshtransmission?.chromaticAberration ?? DEFAULTS.meshtransmission.chromaticAberration,
-      anisotropicBlur: cfg.meshtransmission?.anisotropicBlur ?? DEFAULTS.meshtransmission.anisotropicBlur,
+      anisotropicBlur:
+        cfg.meshtransmission?.anisotropicBlur ?? DEFAULTS.meshtransmission.anisotropicBlur,
       distortion: cfg.meshtransmission?.distortion ?? DEFAULTS.meshtransmission.distortion,
-      distortionScale: cfg.meshtransmission?.distortionScale ?? DEFAULTS.meshtransmission.distortionScale,
+      distortionScale:
+        cfg.meshtransmission?.distortionScale ?? DEFAULTS.meshtransmission.distortionScale,
       temporalDistortion:
         cfg.meshtransmission?.temporalDistortion ?? DEFAULTS.meshtransmission.temporalDistortion,
       attenuationDistance:
@@ -273,7 +281,7 @@ export interface ShieldRippleTuning {
 export const SHIELD_RIPPLE_TUNING: ShieldRippleTuning = {
   maxRipples: 8,
   defaultSpeed: 3.1,
-  baseWidth: 0.10,
+  baseWidth: 0.1,
   ampScale: 3.9,
   coalesceWindow: 0.03,
   rippleLife: 0.9,
@@ -440,4 +448,3 @@ export const POSTPROCESSING_CONFIG: PostprocessingConfig = {
     },
   },
 };
-

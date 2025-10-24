@@ -45,14 +45,14 @@ Implement Stage 1 of issue #194 "Enable 3D combat: spawn geometry & cadence" cov
 
 ### Subtasks
 
-| ID  | Description                                           | Status     | Updated     | Notes |
-| --- | ----------------------------------------------------- | ---------- | ----------- | ----- |
-| 1.1 | Extend AI config with experiment toggles              | Complete   | 2025-09-28 | Includes env override wiring. |
-| 1.2 | Apply spawn geometry updates across fleet/random spawns | Complete   | 2025-09-28 | Added anchor jitter and shared spread usage. |
-| 1.3 | Update scheduler consumers with flag awareness        | Complete   | 2025-09-28 | Scheduler picks resolved tick interval. |
-| 1.4 | Add deterministic spawn and dispersion tests          | Complete   | 2025-09-28 | Added centroid, median spread, and determinism checks. |
-| 1.5 | Add tick-rate regression test validating throughput gain | Complete   | 2025-09-28 | Switched KPI to decision-tick ratio for determinism. |
-| 1.6 | Run typecheck and tests                               | Complete   | 2025-09-28 | `npm test` passes post-changes. |
+| ID  | Description                                              | Status   | Updated    | Notes                                                  |
+| --- | -------------------------------------------------------- | -------- | ---------- | ------------------------------------------------------ |
+| 1.1 | Extend AI config with experiment toggles                 | Complete | 2025-09-28 | Includes env override wiring.                          |
+| 1.2 | Apply spawn geometry updates across fleet/random spawns  | Complete | 2025-09-28 | Added anchor jitter and shared spread usage.           |
+| 1.3 | Update scheduler consumers with flag awareness           | Complete | 2025-09-28 | Scheduler picks resolved tick interval.                |
+| 1.4 | Add deterministic spawn and dispersion tests             | Complete | 2025-09-28 | Added centroid, median spread, and determinism checks. |
+| 1.5 | Add tick-rate regression test validating throughput gain | Complete | 2025-09-28 | Switched KPI to decision-tick ratio for determinism.   |
+| 1.6 | Run typecheck and tests                                  | Complete | 2025-09-28 | `npm test` passes post-changes.                        |
 
 ## Progress Log
 

@@ -1,10 +1,5 @@
 import { Vector3 } from 'three';
-import type {
-  ExplosionEvent,
-  GameState,
-  ProjectileEntity,
-  ShipEntity,
-} from '../types/index.js';
+import type { ExplosionEvent, GameState, ProjectileEntity, ShipEntity } from '../types/index.js';
 import { DEFAULT_EXPLOSION_CONFIG, getExplosionConfig } from '../config/explosions.js';
 
 const MAX_EXPLOSIONS = 48;
@@ -30,18 +25,18 @@ function obtainExplosion(state: GameState): ExplosionEvent {
     lightFalloff: DEFAULT_EXPLOSION_CONFIG.lightFalloff,
     lightColor: DEFAULT_EXPLOSION_CONFIG.lightColor,
     flashIntensity: DEFAULT_EXPLOSION_CONFIG.flashIntensity,
-    shockwave: { 
-      delay: defaultTiming.shockwave.delay, 
-      duration: defaultTiming.shockwave.duration, 
-      maxRadius: 0 
+    shockwave: {
+      delay: defaultTiming.shockwave.delay,
+      duration: defaultTiming.shockwave.duration,
+      maxRadius: 0,
     },
-    fireball: { 
-      delay: defaultTiming.fireball.delay, 
-      duration: defaultTiming.fireball.duration 
+    fireball: {
+      delay: defaultTiming.fireball.delay,
+      duration: defaultTiming.fireball.duration,
     },
-    debris: { 
-      count: DEFAULT_EXPLOSION_CONFIG.debrisCount, 
-      speed: [...defaultTiming.debrisSpeed] as [number, number] 
+    debris: {
+      count: DEFAULT_EXPLOSION_CONFIG.debrisCount,
+      speed: [...defaultTiming.debrisSpeed] as [number, number],
     },
     particles: { ...DEFAULT_EXPLOSION_CONFIG.particleCounts },
     palette: { ...DEFAULT_EXPLOSION_CONFIG.palette },

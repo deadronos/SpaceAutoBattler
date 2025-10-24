@@ -50,12 +50,12 @@
 
 ## Error Handling Matrix
 
-| Scenario | Detection | Response | Notes |
-| --- | --- | --- | --- |
-| Division by zero when recovering base stats (e.g., fire rate 0) | Check `baseValue` before division | Treat base value as `0` and leave stat unchanged | Keeps zero-rated stats stable and avoids `Infinity`. |
-| Missing `levelBonuses` on legacy ship entity | TypeScript compile-time error; runtime fallback guard | Initialise zeroed bonuses if absent (defensive guard in `applyLevelUpBonuses`) | Guard ensures backward compatibility with serialized states. |
-| Subsystem missing (malformed ship) | Existing iteration over `Object.values(ship.subsystems)` | Skip undefined entries | Behaviour unchanged from current implementation. |
-| Bonus cap misconfiguration (negative or NaN) | `calculateLevelBonus` would propagate invalid value | Clamp to `Math.max(0, cap)` before use | Maintains non-negative progression even if config is corrupted. |
+| Scenario                                                        | Detection                                                | Response                                                                       | Notes                                                           |
+| --------------------------------------------------------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------ | --------------------------------------------------------------- |
+| Division by zero when recovering base stats (e.g., fire rate 0) | Check `baseValue` before division                        | Treat base value as `0` and leave stat unchanged                               | Keeps zero-rated stats stable and avoids `Infinity`.            |
+| Missing `levelBonuses` on legacy ship entity                    | TypeScript compile-time error; runtime fallback guard    | Initialise zeroed bonuses if absent (defensive guard in `applyLevelUpBonuses`) | Guard ensures backward compatibility with serialized states.    |
+| Subsystem missing (malformed ship)                              | Existing iteration over `Object.values(ship.subsystems)` | Skip undefined entries                                                         | Behaviour unchanged from current implementation.                |
+| Bonus cap misconfiguration (negative or NaN)                    | `calculateLevelBonus` would propagate invalid value      | Clamp to `Math.max(0, cap)` before use                                         | Maintains non-negative progression even if config is corrupted. |
 
 ## Testing Strategy
 

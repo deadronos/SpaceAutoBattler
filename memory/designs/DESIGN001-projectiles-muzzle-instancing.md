@@ -52,7 +52,6 @@ Replace per-entity projectile and muzzle-flash meshes with instanced renderers t
 - Renderer: a new `ProjectilesInstancedLayer` component subscribes to `projectiles` archetype (via `useArchetypeEntities`) and the `MuzzleFlashInstancedLayer` subscribes to a renderer-visible queue or directly reads turret entities to collect muzzle flash events.
 
 - For each bullet group (bulletType/material key) the layer creates:
-
   - one `InstancedMesh` with shared geometry and shared material instance.
 
   - an optional `InstancedBufferAttribute` for per-instance color/tint or custom attributes (float intensity, etc.).
@@ -65,21 +64,19 @@ Game simulation -> (creates projectile entities) -> GameState
 
 Renderer frame:
 
-  ProjectilesInstancedLayer.useFrame -> reads projectile archetype -> for each projectile, compute matrix, write into InstancedMesh at index i -> set mesh.count = activeCount -> mark needsUpdate
-
+ProjectilesInstancedLayer.useFrame -> reads projectile archetype -> for each projectile, compute matrix, write into InstancedMesh at index i -> set mesh.count = activeCount -> mark needsUpdate
 
 Muzzle flash sequence:
 
-  Turret system enqueues muzzle flash event OR turret entity has `muzzleFlashes[]` updated in simulation
+Turret system enqueues muzzle flash event OR turret entity has `muzzleFlashes[]` updated in simulation
 
-  MuzzleFlashInstancedLayer.useFrame -> collects events -> assigns indices from pool -> writes matrices and attributes -> updates instance lifetimes each frame -> deallocates indices when lifetime ends
+MuzzleFlashInstancedLayer.useFrame -> collects events -> assigns indices from pool -> writes matrices and attributes -> updates instance lifetimes each frame -> deallocates indices when lifetime ends
 
 ## Data structures & interfaces
 
 Example TypeScript interfaces (render-side)
 
 - ProjectilesInstancedLayer props
-
   - `archetype: Archetype<GameEntity, ['projectile']>`
 
   - `capacityByType?: Record<string, number>` // override defaults
@@ -87,11 +84,9 @@ Example TypeScript interfaces (render-side)
   - `maxTotal?: number`
 
 - Internal structures
-
   - `groupMap: Map<string /* bulletType */, { meshRef: InstancedMesh, capacity: number, nextFreeIndex: number[], usedIndices: Map<number, number> }>`
 
 - MuzzleFlash pool
-
   - `poolIndices: number[]` // free indices
 
   - `activeList: Array<{ index: number, ttl: number, entityId?: number }>`
@@ -99,25 +94,28 @@ Example TypeScript interfaces (render-side)
 Example public component signature
 
 ```ts
-function ProjectilesInstancedLayer({ archetype, capacityByType }: { archetype: Archetype<any, ['projectile']>, capacityByType?: Record<string, number> }): ReactElement
+function ProjectilesInstancedLayer({
+  archetype,
+  capacityByType,
+}: {
+  archetype: Archetype<any, ['projectile']>;
+  capacityByType?: Record<string, number>;
+}): ReactElement;
 ```
 
 ## Implementation details
 
 1. Geometry & materials
-
    - Use `getProjectileBaseRadius(key)` and existing `getMaterial(key)` to obtain geometry size and material.
 
    - For performance, create low-poly shared geometry per bulletType (sphere with low segments or custom low-poly cylinder depending on bullet style). Cache geometries in a module-level map.
 
 2. Grouping strategy
-
    - Primary grouping by `projectile.projectile.bulletType` (string key). This maps to material registry keys (e.g. `bullet:laser`, `bullet:plasma`)
 
    - For groups without a registered material, use fallback simple `meshStandardMaterial` used in current `Projectile.tsx`.
 
 3. Instance allocation
-
    - Use a fixed-size pool per group.
 
    - Map projectile.entity.id -> instance index (in usedIndices) so we can update an existing projectile's instance efficiently if it persists across frames.
@@ -127,7 +125,6 @@ function ProjectilesInstancedLayer({ archetype, capacityByType }: { archetype: A
    - On removal: reclaim index back to free list.
 
 4. Updating per-frame
-
    - In `useFrame` perform a single pass: gather `projectiles` archetype entities, for each entity find group, get/index assign instance index, compute model matrix (position, rotation, scale) using temporary Object3D/dummy, `setMatrixAt(index, dummy.matrix)`.
 
    - If per-instance color is needed use `mesh.setColorAt(index, color)` and then `mesh.instanceColor!.needsUpdate = true` (ensure `mesh.instanceColor` exists by calling `mesh.instanceColor = new InstancedBufferAttribute(new Float32Array(capacity*3), 3)` or via `setColorAt` helper depending on three version).
@@ -135,7 +132,6 @@ function ProjectilesInstancedLayer({ archetype, capacityByType }: { archetype: A
    - Set `mesh.count = activeCount` and `mesh.instanceMatrix.needsUpdate = true`.
 
 5. Muzzle flash pooling
-
    - Muzzle flash events contain: worldPosition (Vector3), worldQuaternion (Quaternion), localScale/size, color/tint, ttl.
 
    - The MuzzleFlashInstancedLayer maintains a pool and active list. On new event, assign index and set the matrix and attribute (intensity), and track ttl per instance. Each frame decrement ttl and fade scale/opacity.
@@ -143,11 +139,9 @@ function ProjectilesInstancedLayer({ archetype, capacityByType }: { archetype: A
    - Use additive/blended material and register with BloomProvider similar to `useBloomRegistration`.
 
 6. Determinism & ordering
-
    - Rendering is read-only w.r.t. GameState. The order of instances does not matter for game logic; keep mapping stable per projectile entity id so that instance indices are reused consistently while entity persists.
 
 7. Tests
-
    - Unit test: verify `ProjectilesInstancedLayer` creates instances that match entity transforms for random sample entities.
 
    - Saturation test: spawn more projectiles than capacity and assert the renderer logs the expected saturation warning and does not throw.
@@ -157,15 +151,12 @@ function ProjectilesInstancedLayer({ archetype, capacityByType }: { archetype: A
 ## Validation plan
 
 - Visual tests
-
   - Automated snapshot tests with multiple projectile counts (10, 100, 1000) and image diff thresholds.
 
 - Functional tests
-
   - Unit tests for instance assignment/reclamation logic (stable mapping from entity.id to index).
 
 - Performance tests
-
   - Benchmarks: measure draw calls and ms/frame in a headless or local profiling harness; expect draw calls scale with groups not entities and frame time to reduce vs baseline in heavy load.
 
 ## Migration strategy
@@ -236,7 +227,7 @@ Rollback strategy:
 
 Create the following tasks to track the single-phase implementation. Assign task owners and expected deliverables; each task file should contain clear EARS requirements and unit/perf acceptance criteria.
 
-- TASK001 — Implement `ProjectilesInstancedLayer` (grouped instancing, per-group pools, instanceColor where available).  (High priority)
+- TASK001 — Implement `ProjectilesInstancedLayer` (grouped instancing, per-group pools, instanceColor where available). (High priority)
 - TASK002 — Implement `MuzzleFlashInstancedLayer` (pooled manager, bloom integration, TTL fade/scale). (High priority)
 - TASK003 — Update `materialRegistry` and geometry cache utilities to support instanced rendering and material fallbacks. (Medium priority)
 - TASK004 — Add unit tests, image-snapshot smoke tests, and perf harness; capture baseline comparisons and gate CI. (High priority)

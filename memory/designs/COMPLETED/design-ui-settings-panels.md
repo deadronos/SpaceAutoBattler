@@ -51,8 +51,8 @@ interface HudToggleDefinition {
 }
 
 interface HudToggleDrawerProps {
-  label: string;           // Accessible label for the trigger button
-  icon: React.ReactNode;   // SVG icon rendered inside the trigger
+  label: string; // Accessible label for the trigger button
+  icon: React.ReactNode; // SVG icon rendered inside the trigger
   toggles: HudToggleDefinition[];
   alignment?: 'left' | 'right';
 }
@@ -74,12 +74,12 @@ interface HudToggleDrawerProps {
 
 ## Error Handling Matrix
 
-| Scenario | Detection | User Impact | Handling Strategy |
-| --- | --- | --- | --- |
-| `useUiStore` selector throws because store is undefined (React tree mis-mounted) | React runtime error boundary | HUD drawers fail to render | Maintain existing safety: `Hud` already mounts inside providers; no new risk introduced. |
-| Toggle handler runs while `useGameState` context is null (e.g., before initialization) | Handler still updates UI state; dependent systems guard null state | None; toggles update UI store only | No action required; toggles remain safe. |
-| Postprocessing toggle is disabled while Bloom pipeline fails to mount | `PostprocessingLazy` or `BloomProvider` throws | Visual effects disappear | Drawer retains toggle state; errors bubble to existing error boundaries. Provide fallback logging (existing). |
-| Debug overlay toggles engaged while overlays not mounted | Overlay components return `null` when disabled | No debug overlay visible | Config-driven toggles only flip store flags; overlays already guard on flags. |
+| Scenario                                                                               | Detection                                                          | User Impact                        | Handling Strategy                                                                                             |
+| -------------------------------------------------------------------------------------- | ------------------------------------------------------------------ | ---------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `useUiStore` selector throws because store is undefined (React tree mis-mounted)       | React runtime error boundary                                       | HUD drawers fail to render         | Maintain existing safety: `Hud` already mounts inside providers; no new risk introduced.                      |
+| Toggle handler runs while `useGameState` context is null (e.g., before initialization) | Handler still updates UI state; dependent systems guard null state | None; toggles update UI store only | No action required; toggles remain safe.                                                                      |
+| Postprocessing toggle is disabled while Bloom pipeline fails to mount                  | `PostprocessingLazy` or `BloomProvider` throws                     | Visual effects disappear           | Drawer retains toggle state; errors bubble to existing error boundaries. Provide fallback logging (existing). |
+| Debug overlay toggles engaged while overlays not mounted                               | Overlay components return `null` when disabled                     | No debug overlay visible           | Config-driven toggles only flip store flags; overlays already guard on flags.                                 |
 
 ## Testing Strategy
 

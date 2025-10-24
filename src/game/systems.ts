@@ -6,10 +6,7 @@ import {
   updateDecisionSystem,
   runDecisionTick as runDecisionTickInternal,
 } from './systems/decision/manager.js';
-import {
-  refreshBlackboard,
-  assignTeamRoles,
-} from './systems/decision/blackboard.js';
+import { refreshBlackboard, assignTeamRoles } from './systems/decision/blackboard.js';
 import {
   selectIntent,
   scoreAttackIntent,
@@ -59,7 +56,7 @@ export function updateGame(state: GameState, delta: number): void {
         // Capture a small, safe snapshot for diagnostics and continue.
         const snap = safeSnapshot(state);
         recordSubsystemFailure(state, name, error, snap);
-  } catch {
+      } catch {
         // Best-effort: don't allow diagnostics to throw and break the tick.
         try {
           recordSubsystemFailure(state, name, error);

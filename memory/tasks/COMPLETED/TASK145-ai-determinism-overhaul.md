@@ -25,12 +25,12 @@ The existing AI decision pipeline suffers from coarse score quantisation, non-de
 
 ## Error Handling Matrix (Draft)
 
-| Failure Mode | Detection | Response | Follow-up |
-| --- | --- | --- | --- |
-| Interrupt thrash from repeated HP drops | Track cumulative HP delta per ship and throttle to one interrupt per tick | Queue excess events for next tick and log `ai.interrupt.throttle` metric | Tune cooldown threshold once latency telemetry is collected |
-| Empty or stale target cache | Blackboard rebuild observes zero valid entries or stale tick | Rehydrate from nearest-enemy fallback and flag `ai.targetcache.rebuild` warning | Add regression to ensure caches refresh after entity despawn |
-| Score comparator fed invalid data | Guard assertions detect `NaN` or missing threat rank | Fall back to prior deterministic ordering and emit structured warning | Extend diagnostics snapshot with offending ship/intent payload |
-| Metrics histogram overflow | Sample array length > 256 entries | Drop oldest samples before push and increment `ai.metrics.trimmed` counter | Review bucket sizing after first full scenario replay |
+| Failure Mode                            | Detection                                                                 | Response                                                                        | Follow-up                                                      |
+| --------------------------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| Interrupt thrash from repeated HP drops | Track cumulative HP delta per ship and throttle to one interrupt per tick | Queue excess events for next tick and log `ai.interrupt.throttle` metric        | Tune cooldown threshold once latency telemetry is collected    |
+| Empty or stale target cache             | Blackboard rebuild observes zero valid entries or stale tick              | Rehydrate from nearest-enemy fallback and flag `ai.targetcache.rebuild` warning | Add regression to ensure caches refresh after entity despawn   |
+| Score comparator fed invalid data       | Guard assertions detect `NaN` or missing threat rank                      | Fall back to prior deterministic ordering and emit structured warning           | Extend diagnostics snapshot with offending ship/intent payload |
+| Metrics histogram overflow              | Sample array length > 256 entries                                         | Drop oldest samples before push and increment `ai.metrics.trimmed` counter      | Review bucket sizing after first full scenario replay          |
 
 ## Progress Tracking
 
@@ -38,14 +38,14 @@ The existing AI decision pipeline suffers from coarse score quantisation, non-de
 
 ### Subtasks
 
-| ID  | Description                                             | Status        | Updated     | Notes |
-| --- | ------------------------------------------------------- | ------------- | ----------- | ----- |
-| 1.1 | Implement score quantisation and deterministic comparator| Completed     | 2025-09-28  | Shipped prior to this pass; quantiser/comparator live in `src/game/systems.ts`. |
-| 1.2 | Build threat-weighted target prioritisation cache       | Completed     | 2025-09-28  | Blackboard priority queues and focus tracking already in place. |
-| 1.3 | Add interrupt manager for reactive decisions            | Completed     | 2025-09-30  | Interrupt queue snaps `nextThinkAt`, latency buckets covered by new Vitest spec. |
-| 1.4 | Expand vertical clamp per role                          | Completed     | 2025-09-30  | Added role-aware clamps plus heading dispersion coverage in `ai-vertical` spec. |
-| 1.5 | Extend diagnostics with tie/latency/focus data          | Completed     | 2025-09-30  | Harness metrics expose decision latency, focus fire, heading amplitude, and ties. |
-| 1.6 | Tune scoring weights with threat/focus bias             | Completed     | 2025-09-30  | Threat/focus weighting stabilised with deterministic scoring snapshots and fixtures. |
+| ID  | Description                                               | Status    | Updated    | Notes                                                                                |
+| --- | --------------------------------------------------------- | --------- | ---------- | ------------------------------------------------------------------------------------ |
+| 1.1 | Implement score quantisation and deterministic comparator | Completed | 2025-09-28 | Shipped prior to this pass; quantiser/comparator live in `src/game/systems.ts`.      |
+| 1.2 | Build threat-weighted target prioritisation cache         | Completed | 2025-09-28 | Blackboard priority queues and focus tracking already in place.                      |
+| 1.3 | Add interrupt manager for reactive decisions              | Completed | 2025-09-30 | Interrupt queue snaps `nextThinkAt`, latency buckets covered by new Vitest spec.     |
+| 1.4 | Expand vertical clamp per role                            | Completed | 2025-09-30 | Added role-aware clamps plus heading dispersion coverage in `ai-vertical` spec.      |
+| 1.5 | Extend diagnostics with tie/latency/focus data            | Completed | 2025-09-30 | Harness metrics expose decision latency, focus fire, heading amplitude, and ties.    |
+| 1.6 | Tune scoring weights with threat/focus bias               | Completed | 2025-09-30 | Threat/focus weighting stabilised with deterministic scoring snapshots and fixtures. |
 
 ## Progress Log
 

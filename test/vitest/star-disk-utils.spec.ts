@@ -1,5 +1,9 @@
 import { describe, expect, it, beforeEach, afterEach } from 'vitest';
-import { wrapStarTime, isCopilotDebugEnabled, STAR_TIME_WRAP_SECONDS } from '../../src/utils/starDisk.js';
+import {
+  wrapStarTime,
+  isCopilotDebugEnabled,
+  STAR_TIME_WRAP_SECONDS,
+} from '../../src/utils/starDisk.js';
 
 describe('wrapStarTime', () => {
   it('returns wrapped:0, cycles:0 for time=0', () => {
@@ -77,7 +81,7 @@ describe('isCopilotDebugEnabled', () => {
       // Clean up any test flags
       const win = window as Window & { __copilotDebugForce?: boolean };
       delete win.__copilotDebugForce;
-      
+
       // Restore location if it was modified
       if (originalLocation) {
         Object.defineProperty(window, 'location', {

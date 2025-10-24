@@ -49,20 +49,20 @@
 ## Data Models
 
 - **Rating Rubric**
-  - *Excellent*: Demonstrates proactive pooling/instancing/caching with minimal per-frame allocations and adaptive hooks.
-  - *Good*: Applies at least one strong optimization (instancing, memoization, Suspense) with minor gaps.
-  - *Fair*: Baseline implementation; opportunities exist to reduce allocations, consolidate resources, or add adaptive controls.
-  - *Poor*: Lacks expected reuse strategies and introduces avoidable per-frame work or unbounded allocations.
+  - _Excellent_: Demonstrates proactive pooling/instancing/caching with minimal per-frame allocations and adaptive hooks.
+  - _Good_: Applies at least one strong optimization (instancing, memoization, Suspense) with minor gaps.
+  - _Fair_: Baseline implementation; opportunities exist to reduce allocations, consolidate resources, or add adaptive controls.
+  - _Poor_: Lacks expected reuse strategies and introduces avoidable per-frame work or unbounded allocations.
 - **Subsystem Buckets**: Assets, Components (Environment, HUD, Combat), Game Systems, Renderer Utilities, Hooks, Config/Data, Types, Utilities, Root Entrypoints.
 
 ## Error Handling Matrix
 
-| Scenario | Detection | Response |
-| --- | --- | --- |
-| File inventory misses new files | Compare report list count vs `Get-ChildItem` output | Re-run enumeration, update report table before finalizing |
-| Rating evidence insufficient | Manual review notes lack examples | Re-open file, capture explicit code references in notes |
-| Markdown validation failure (missing front matter) | Pre-publish lint/test | Add required YAML block and rerun check |
-| Conflicting ratings across sessions | Memory/requirements mismatch | Update design doc and report to align with latest rubric |
+| Scenario                                           | Detection                                           | Response                                                  |
+| -------------------------------------------------- | --------------------------------------------------- | --------------------------------------------------------- |
+| File inventory misses new files                    | Compare report list count vs `Get-ChildItem` output | Re-run enumeration, update report table before finalizing |
+| Rating evidence insufficient                       | Manual review notes lack examples                   | Re-open file, capture explicit code references in notes   |
+| Markdown validation failure (missing front matter) | Pre-publish lint/test                               | Add required YAML block and rerun check                   |
+| Conflicting ratings across sessions                | Memory/requirements mismatch                        | Update design doc and report to align with latest rubric  |
 
 ## Testing Strategy
 

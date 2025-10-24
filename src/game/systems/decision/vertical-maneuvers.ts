@@ -1,10 +1,5 @@
 import { Vector3 } from 'three';
-import type {
-  AIState,
-  BehaviorProfile,
-  GameState,
-  ShipEntity,
-} from '../../../types/index.js';
+import type { AIState, BehaviorProfile, GameState, ShipEntity } from '../../../types/index.js';
 import { AI_CONFIG, getEffectiveAIConfig } from '../../config.js';
 import { computeVerticalClamp } from '../../utils/ai-vertical.js';
 import { SeededRng } from '../../../utils/rng.js';

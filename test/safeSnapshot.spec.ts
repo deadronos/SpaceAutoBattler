@@ -8,7 +8,13 @@ describe('safeSnapshot utilities', () => {
 
     const mockState: any = {
       time: 1.23,
-      simulation: { lastTickIndex: 5, lastTickDuration: 0.05, accumulator: 0, deferredMutations: [], postStepMutations: [] },
+      simulation: {
+        lastTickIndex: 5,
+        lastTickDuration: 0.05,
+        accumulator: 0,
+        deferredMutations: [],
+        postStepMutations: [],
+      },
       world: { entities: [{}, {}, {}] },
       queries: {
         ships: { entities: [{}, {}] },

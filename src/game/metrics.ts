@@ -281,7 +281,8 @@ export function aggregateKpis(metrics: AIMetrics, tick: number): void {
     metrics.verticalSamples > 0 ? metrics.verticalAboveThreshold / metrics.verticalSamples : null;
 
   const latencyBuckets = metrics.decisionLatencyBuckets;
-  const latencyTotal = latencyBuckets[0] + latencyBuckets[1] + latencyBuckets[2] + latencyBuckets[3];
+  const latencyTotal =
+    latencyBuckets[0] + latencyBuckets[1] + latencyBuckets[2] + latencyBuckets[3];
   metrics.kpis.decisionLatency.buckets = [
     latencyBuckets[0],
     latencyBuckets[1],

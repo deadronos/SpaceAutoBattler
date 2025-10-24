@@ -105,6 +105,7 @@ This project is configured to automatically deploy to GitHub Pages when a new ta
 ### Initial Setup
 
 Repository owners need to enable GitHub Pages:
+
 1. Go to repository Settings → Pages
 2. Set Source to "GitHub Actions"
 3. No additional configuration needed

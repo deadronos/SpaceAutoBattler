@@ -72,13 +72,17 @@ export function sanitizeForLog(value: unknown, depth = 2): unknown {
 export function safeSnapshot(state: GameState): Record<string, unknown> {
   try {
     const sim = state.simulation;
-    const worldEntities = Array.isArray((state.world as unknown as Record<string, unknown>).entities)
-      ? ((state.world as unknown as { entities: unknown[] }).entities.length)
+    const worldEntities = Array.isArray(
+      (state.world as unknown as Record<string, unknown>).entities,
+    )
+      ? (state.world as unknown as { entities: unknown[] }).entities.length
       : undefined;
 
     const ships = (() => {
       try {
-        return Array.isArray(state.queries.ships.entities) ? state.queries.ships.entities.length : undefined;
+        return Array.isArray(state.queries.ships.entities)
+          ? state.queries.ships.entities.length
+          : undefined;
       } catch {
         return undefined;
       }
@@ -86,7 +90,9 @@ export function safeSnapshot(state: GameState): Record<string, unknown> {
 
     const projectiles = (() => {
       try {
-        return Array.isArray(state.queries.projectiles.entities) ? state.queries.projectiles.entities.length : undefined;
+        return Array.isArray(state.queries.projectiles.entities)
+          ? state.queries.projectiles.entities.length
+          : undefined;
       } catch {
         return undefined;
       }
@@ -94,7 +100,9 @@ export function safeSnapshot(state: GameState): Record<string, unknown> {
 
     const turretCount = (() => {
       try {
-        return Array.isArray(state.queries.turrets.entities) ? state.queries.turrets.entities.length : undefined;
+        return Array.isArray(state.queries.turrets.entities)
+          ? state.queries.turrets.entities.length
+          : undefined;
       } catch {
         return undefined;
       }
@@ -121,9 +129,12 @@ export function safeSnapshot(state: GameState): Record<string, unknown> {
       // Accept a shallow, sanitized representation of the blackboard so we can
       // inspect team counts and a small set of useful primitives without
       // traversing Three.js or Rapier internals.
-      blackboard: sanitizeForLog({
-        teamCounts: state.blackboard.teamCounts,
-      }, 1),
+      blackboard: sanitizeForLog(
+        {
+          teamCounts: state.blackboard.teamCounts,
+        },
+        1,
+      ),
     };
   } catch {
     return { error: 'safeSnapshot failed' };

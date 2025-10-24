@@ -143,7 +143,11 @@ describe('AI flag-off regression', () => {
 
     const { ship: aiBlue, recorder: aiRecorder } = createShip(1, 'blue', new Vector3(0, 0, 0));
     const { ship: aiRed } = createShip(2, 'red', new Vector3(120, 0, 0));
-    const { ship: legacyBlue, recorder: legacyRecorder } = createShip(3, 'blue', new Vector3(0, 0, 0));
+    const { ship: legacyBlue, recorder: legacyRecorder } = createShip(
+      3,
+      'blue',
+      new Vector3(0, 0, 0),
+    );
     const { ship: legacyRed } = createShip(4, 'red', new Vector3(120, 0, 0));
 
     delete (legacyBlue as { ai?: unknown }).ai;
@@ -162,4 +166,3 @@ describe('AI flag-off regression', () => {
     expect(aiTranslation).toEqual(legacyTranslation);
   });
 });
-

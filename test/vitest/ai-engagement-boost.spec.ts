@@ -119,25 +119,27 @@ describe('Engagement Boost Acceptance Criteria', () => {
     const ship = createShip(1, 'blue', new Vector3(), 'brawler');
     const target = createShip(2, 'red', new Vector3(280, 0, 0)); // Far enough to make Kite competitive
     const profile = resolveBehaviorProfile('brawler');
-    
+
     // Test opening period (time=5s - within 30s opening salvo)
     const earlyState = createState(5);
     const earlyCandidate = selectIntent(earlyState, ship, ship.ai!, profile, target, null, null);
-    
+
     // Test late period (time=35s - after 30s opening salvo)
     const lateState = createState(35);
     const lateCandidate = selectIntent(lateState, ship, ship.ai!, profile, target, null, null);
-    
+
     console.log(`Early ${earlyCandidate.intent}: ${earlyCandidate.score}`);
     console.log(`Late ${lateCandidate.intent}: ${lateCandidate.score}`);
-    
+
     // The boost should increase scores for Attack and Intercept intents
     // Even if the winner doesn't change, we should see higher scores during opening salvo
-    if (earlyCandidate.intent === lateCandidate.intent && 
-        (earlyCandidate.intent === 'Attack' || earlyCandidate.intent === 'Intercept')) {
+    if (
+      earlyCandidate.intent === lateCandidate.intent &&
+      (earlyCandidate.intent === 'Attack' || earlyCandidate.intent === 'Intercept')
+    ) {
       expect(earlyCandidate.score).toBeGreaterThan(lateCandidate.score);
     }
-    
+
     // At minimum, verify the boost is functional
     expect(earlyCandidate.score).toBeGreaterThan(0);
     expect(lateCandidate.score).toBeGreaterThan(0);
@@ -149,31 +151,33 @@ describe('Engagement Boost Acceptance Criteria', () => {
     let earlyAttackCount = 0;
     let lateAttackCount = 0;
     const testCount = 50;
-    
+
     for (let i = 0; i < testCount; i++) {
       // Use distances where Attack vs Kite decisions are borderline
       const distance = 260 + (i % 20); // 260-280 range - boundary for brawler
       const ship = createShip(1, 'blue', new Vector3(), 'brawler');
       const target = createShip(2, 'red', new Vector3(distance, 0, 0));
       const profile = resolveBehaviorProfile('brawler');
-      
+
       // Early period
       const earlyState = createState(5);
       const earlyResult = selectIntent(earlyState, ship, ship.ai!, profile, target, null, null);
       if (earlyResult.intent === 'Attack') earlyAttackCount++;
-      
-      // Late period  
+
+      // Late period
       const lateState = createState(35);
       const lateResult = selectIntent(lateState, ship, ship.ai!, profile, target, null, null);
       if (lateResult.intent === 'Attack') lateAttackCount++;
     }
-    
+
     const earlyAttackRate = (earlyAttackCount / testCount) * 100;
     const lateAttackRate = (lateAttackCount / testCount) * 100;
     const improvement = earlyAttackRate - lateAttackRate;
-    
-    console.log(`Borderline scenario - Early attack rate: ${earlyAttackRate}%, Late: ${lateAttackRate}%, Improvement: ${improvement}%`);
-    
+
+    console.log(
+      `Borderline scenario - Early attack rate: ${earlyAttackRate}%, Late: ${lateAttackRate}%, Improvement: ${improvement}%`,
+    );
+
     // The opening salvo boost should favor attack intents in borderline cases
     expect(earlyAttackRate).toBeGreaterThanOrEqual(lateAttackRate);
   });
@@ -189,7 +193,7 @@ describe('Engagement Boost Acceptance Criteria', () => {
 
     // Use writeCommand instead of selectIntent to trigger stickiness logic
     writeCommand(state, ship, ship.ai!, profile, target, null, null);
-    
+
     // Verify stickiness was established
     expect(ship.ai!.stickinessUntil).toBeGreaterThan(state.ai.tickIndex);
     expect(ship.ai!.stickinessTargetId).toBe(target.id);
@@ -199,7 +203,7 @@ describe('Engagement Boost Acceptance Criteria', () => {
   it('applies different engagement bias per profile role', () => {
     const state = createState();
     const target = createShip(1, 'red', new Vector3(150, 0, 0));
-    
+
     const profileScores = {
       brawler: 0,
       escort: 0,
@@ -218,7 +222,7 @@ describe('Engagement Boost Acceptance Criteria', () => {
       const profile = resolveBehaviorProfile(profileId);
       const candidate = selectIntent(state, ship, ship.ai!, profile, target, null, null);
       profileScores[profileId as keyof typeof profileScores] = candidate.score;
-      
+
       // Verify engagement bias is applied
       expect(profile.engagementBias).toBe(expectedBias);
     }

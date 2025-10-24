@@ -31,13 +31,13 @@ Implement the guidance outlined in `memory/designs_completed/design-explosionfx.
 
 ### Subtasks
 
-| ID  | Description | Status | Updated | Notes |
-| --- | ----------- | ------ | ------- | ----- |
-| 1.1 | Extend GameState explosion storage and helpers | Complete | 2025-09-27 | GameState now tracks explosion pool and ids |
-| 1.2 | Simulation hooks for emitting/updating explosions | Complete | 2025-09-27 | Emission + lifecycle wired into projectile resolution |
-| 1.3 | Renderer components for explosion stages and lighting | Complete | 2025-09-27 | Instanced ExplosionRenderer + lights integrated |
-| 1.4 | Configuration presets and palette mappings | Complete | 2025-09-27 | Added faction/hull presets in config module |
-| 1.5 | Test coverage for explosions | Complete | 2025-09-27 | Added Vitest suites and projectile integration assertion |
+| ID  | Description                                           | Status   | Updated    | Notes                                                    |
+| --- | ----------------------------------------------------- | -------- | ---------- | -------------------------------------------------------- |
+| 1.1 | Extend GameState explosion storage and helpers        | Complete | 2025-09-27 | GameState now tracks explosion pool and ids              |
+| 1.2 | Simulation hooks for emitting/updating explosions     | Complete | 2025-09-27 | Emission + lifecycle wired into projectile resolution    |
+| 1.3 | Renderer components for explosion stages and lighting | Complete | 2025-09-27 | Instanced ExplosionRenderer + lights integrated          |
+| 1.4 | Configuration presets and palette mappings            | Complete | 2025-09-27 | Added faction/hull presets in config module              |
+| 1.5 | Test coverage for explosions                          | Complete | 2025-09-27 | Added Vitest suites and projectile integration assertion |
 
 ## Progress Log
 

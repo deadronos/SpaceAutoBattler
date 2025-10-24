@@ -1,6 +1,9 @@
 import { expect, test } from 'vitest';
 import { createTestGameState } from './helpers/fixtures.js';
-import { flushDeferredMutations, flushPostPhysicsMutations } from '../../src/game/simulationQueue.js';
+import {
+  flushDeferredMutations,
+  flushPostPhysicsMutations,
+} from '../../src/game/simulationQueue.js';
 import {
   deferSetNextKinematicTranslation,
   postSetNextKinematicTranslation,

@@ -195,13 +195,13 @@ Carrier swarm saturation and the recent destroyer power increases are the two hi
 
 ## Appendix: computed DPS table (code-derived)
 
-| Hull | Primary DPS | Turret DPS | Total DPS | HP | Shield | Shield Regen/s | Speed | Range | Max Active Fighters |
-|------:|------------:|-----------:|----------:|---:|-------:|---------------:|------:|------:|--------------------:|
-| Fighter | 8.89 | 0.00 | 8.89 | 40 | 24 | 4.00 | 40 | 220 | N/A |
-| Corvette | 10.00 | 12.00 | 22.00 | 75 | 45 | 5.00 | 15 | 220 | N/A |
-| Frigate | 10.67 | 20.00 | 30.67 | 120 | 72 | 7.00 | 12 | 260 | N/A |
-| Destroyer | 16.67 | 39.29 | 55.95 | 250 | 180 | 10.00 | 10 | 700 | N/A |
-| Carrier | 12.73 | 25.85 | 38.57 | 320 | 200 | 10.00 | 7 | 600 | 6 (default in config) |
+|      Hull | Primary DPS | Turret DPS | Total DPS |  HP | Shield | Shield Regen/s | Speed | Range |   Max Active Fighters |
+| --------: | ----------: | ---------: | --------: | --: | -----: | -------------: | ----: | ----: | --------------------: |
+|   Fighter |        8.89 |       0.00 |      8.89 |  40 |     24 |           4.00 |    40 |   220 |                   N/A |
+|  Corvette |       10.00 |      12.00 |     22.00 |  75 |     45 |           5.00 |    15 |   220 |                   N/A |
+|   Frigate |       10.67 |      20.00 |     30.67 | 120 |     72 |           7.00 |    12 |   260 |                   N/A |
+| Destroyer |       16.67 |      39.29 |     55.95 | 250 |    180 |          10.00 |    10 |   700 |                   N/A |
+|   Carrier |       12.73 |      25.85 |     38.57 | 320 |    200 |          10.00 |     7 |   600 | 6 (default in config) |
 
 ---
 

@@ -76,32 +76,32 @@ Ship motion stats (config-level, per class):
 type AngleUnit = 'deg' | 'rad'; // Implementation must select a consistent unit.
 
 interface MotionStats {
-  mass: number;                         // unitless or kg-equivalent
-  maxSpeed: number;                     // units/s
-  linearAcceleration: number;           // units/s^2
-  linearDamping: number;                // per-second damping (continuous model)
-  maxReverseSpeed?: number;             // units/s
-  maxLateralAcceleration?: number;      // units/s^2 (strafing), default 0
+  mass: number; // unitless or kg-equivalent
+  maxSpeed: number; // units/s
+  linearAcceleration: number; // units/s^2
+  linearDamping: number; // per-second damping (continuous model)
+  maxReverseSpeed?: number; // units/s
+  maxLateralAcceleration?: number; // units/s^2 (strafing), default 0
 
-  maxTurnRate: number;                  // deg/s or rad/s (consistent unit)
-  angularAcceleration: number;          // deg/s^2 or rad/s^2
-  angularDamping: number;               // per-second damping (continuous)
+  maxTurnRate: number; // deg/s or rad/s (consistent unit)
+  angularAcceleration: number; // deg/s^2 or rad/s^2
+  angularDamping: number; // per-second damping (continuous)
   steeringController?: 'PD' | 'Torque'; // default: 'PD'
-  turnResponse?: number;                // 0..1 blending of controller styles (optional)
+  turnResponse?: number; // 0..1 blending of controller styles (optional)
 
-  responseDelayMs?: number;             // hysteresis to avoid target flip-flop
+  responseDelayMs?: number; // hysteresis to avoid target flip-flop
 
   // Renderer-only visual smoothing
   smoothing?: {
-    positionLerp?: number;              // 0..1 per frame (simple lerp)
-    rotationSlerp?: number;             // 0..1 per frame (simple slerp)
-    springStiffness?: number;           // optional for spring smoothing
-    springDamping?: number;             // optional for spring smoothing
+    positionLerp?: number; // 0..1 per frame (simple lerp)
+    rotationSlerp?: number; // 0..1 per frame (simple slerp)
+    springStiffness?: number; // optional for spring smoothing
+    springDamping?: number; // optional for spring smoothing
   };
 
   // Visual banking
-  visualBankFactor?: number;            // deg per unit lateral accel or per deg/s yaw
-  maxBankDeg?: number;                  // clamp for roll
+  visualBankFactor?: number; // deg per unit lateral accel or per deg/s yaw
+  maxBankDeg?: number; // clamp for roll
 }
 ```
 
@@ -127,7 +127,7 @@ interface Dynamics {
 
 interface MotionControllerState {
   desiredHeading: { x: number; y: number; z: number }; // unit vector
-  lastUpdateTime: number;                              // ms or sim time
+  lastUpdateTime: number; // ms or sim time
   // Optional: PD gains/derived caches to avoid re-computation
 }
 ```
@@ -249,7 +249,6 @@ Example turn-time intuition:
 
 - With `angularAcceleration = 360°/s²` and `maxTurnRate = 180°/s`, a 180° turn typically uses accelerate→cruise→decelerate. Tuning target: total time ~2.0–2.5s (depends on accel vs cap).
 
-
 Edge cases:
 
 - EC-001: Large `dt` spikes (low FPS) — ensure clamps scale with `dt`.
@@ -258,7 +257,6 @@ Edge cases:
 - EC-004: Target flip-flop — use `responseDelayMs`/hysteresis to prevent micro-oscillation.
 - EC-005: Entity removal mid-turn — renderer must safely drop smoothing state.
 - EC-006: Collision impulses — visual smoothing should follow sim; consider temporarily reducing smoothing alpha after large deltas.
-
 
 ```code
 // Continuous damping converted per-step:

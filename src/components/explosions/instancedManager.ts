@@ -32,7 +32,15 @@ interface CommitSummary {
   saturated: boolean;
 }
 
-const EFFECT_KEYS: EffectKey[] = ['flash', 'shockwave', 'fireball', 'debris', 'sparks', 'plasma', 'smoke'];
+const EFFECT_KEYS: EffectKey[] = [
+  'flash',
+  'shockwave',
+  'fireball',
+  'debris',
+  'sparks',
+  'plasma',
+  'smoke',
+];
 
 function createZeroedCounts(): EffectCounts {
   return {
@@ -79,10 +87,13 @@ export class ExplosionsInstancedManager {
   };
 
   constructor(capacities: Partial<Record<EffectKey, number>>) {
-    this.pools = EFFECT_KEYS.reduce<Record<EffectKey, PoolState>>((acc, key) => {
-      acc[key] = { mesh: null, capacity: sanitizeCapacity(capacities[key]) };
-      return acc;
-    }, {} as Record<EffectKey, PoolState>);
+    this.pools = EFFECT_KEYS.reduce<Record<EffectKey, PoolState>>(
+      (acc, key) => {
+        acc[key] = { mesh: null, capacity: sanitizeCapacity(capacities[key]) };
+        return acc;
+      },
+      {} as Record<EffectKey, PoolState>,
+    );
   }
 
   /**
@@ -155,4 +166,3 @@ export class ExplosionsInstancedManager {
     return { ...this.counts };
   }
 }
-

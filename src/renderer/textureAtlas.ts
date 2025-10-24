@@ -50,4 +50,3 @@ export function normaliseAtlasMetadata(atlas: TextureAtlasMetadata): TextureAtla
     regions: { ...atlas.regions },
   };
 }
-

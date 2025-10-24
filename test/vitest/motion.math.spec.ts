@@ -49,7 +49,7 @@ describe('Motion Math Utilities', () => {
       const damping = 2.0;
       const shortTime = dampingFactor(damping, 0.016);
       const longTime = dampingFactor(damping, 0.1);
-      
+
       expect(shortTime).toBeGreaterThan(longTime);
       expect(shortTime).toBeLessThan(1);
       expect(longTime).toBeGreaterThan(0);
@@ -58,11 +58,11 @@ describe('Motion Math Utilities', () => {
     it('produces consistent exponential decay', () => {
       const damping = 3.0;
       const dt = 0.016;
-      
+
       // Two small steps should equal one larger step
       const twoSteps = dampingFactor(damping, dt) * dampingFactor(damping, dt);
       const oneStep = dampingFactor(damping, dt * 2);
-      
+
       expect(twoSteps).toBeCloseTo(oneStep, 4);
     });
   });

@@ -7,12 +7,14 @@ Playwright-based visual regression tests for ship hull rendering. These tests va
 The test suite uses a **two-tier verification approach**:
 
 ### 1. Scene Introspection (Primary - Fast)
+
 - Validates mesh presence and naming
 - Checks material types and properties
 - Verifies shader uniform values
 - Ensures bounding boxes are reasonable
 
 ### 2. Screenshot Comparison (Secondary - High Confidence)
+
 - Captures canvas screenshots
 - Compares against baseline images
 - Uses configurable pixel diff tolerances
@@ -21,16 +23,19 @@ The test suite uses a **two-tier verification approach**:
 ## Running Tests
 
 ### Run all ship hull tests
+
 ```bash
 npm run test:playwright:ship
 ```
 
 ### Run in headed mode (for debugging)
+
 ```bash
 npx playwright test ship-hulls.spec.ts --headed
 ```
 
 ### Run for specific browser
+
 ```bash
 npx playwright test ship-hulls.spec.ts --project=chromium
 ```
@@ -55,6 +60,7 @@ npx tsx scripts/generate-playwright-baselines.ts -- --hull=fighter
 ### When to Update Baselines
 
 Update baselines when:
+
 - Adding new ship hulls
 - Modifying GLTF models
 - Changing renderer settings (lighting, camera, materials)
@@ -75,7 +81,9 @@ Update baselines when:
 ## Test Configuration
 
 ### Hull List
+
 Hulls are defined in `test/playwright/hulls-list.json`:
+
 ```json
 {
   "hulls": [
@@ -86,26 +94,31 @@ Hulls are defined in `test/playwright/hulls-list.json`:
 ```
 
 ### CI Subset
+
 For faster CI runs, only a representative subset is tested:
+
 - Small: fighter
-- Medium: frigate  
+- Medium: frigate
 - Large: carrier
 
 Full hull suite runs locally and in nightly CI builds.
 
 ### Tolerances
+
 Configure in `test/playwright/ship-hulls.spec.ts`:
+
 ```typescript
 const TEST_CONFIG = {
-  maxDiffPixelRatio: 0.05,  // 5% pixel difference allowed
-  threshold: 0.2,            // Color difference threshold
-  loadTimeout: 30000         // 30s model load timeout
+  maxDiffPixelRatio: 0.05, // 5% pixel difference allowed
+  threshold: 0.2, // Color difference threshold
+  loadTimeout: 30000, // 30s model load timeout
 };
 ```
 
 ## Test Page
 
 The test harness uses a minimal Three.js page (`test/playwright/pages/ship-renderer.html`) that:
+
 - Loads GLTF models with fixed camera/lighting
 - Renders deterministically (no animations, seeded RNG)
 - Exposes `window.__TEST__` API for Playwright
@@ -116,10 +129,10 @@ The test harness uses a minimal Three.js page (`test/playwright/pages/ship-rende
 window.__TEST__ = {
   // Wait for model load and render completion
   async waitForReady(): Promise<{ frameRendered: number }>,
-  
+
   // Get scene introspection data
   async getSceneSummary(): Promise<SceneSummary>,
-  
+
   // Set rendering options (shield, engine, etc.)
   async setOptions(options): Promise<void>
 }
@@ -128,14 +141,16 @@ window.__TEST__ = {
 ## Debug Artifacts
 
 When tests fail, debug artifacts are saved to `test/playwright/debug/<hull>-<timestamp>/`:
+
 - `fullpage.png` - Complete page screenshot
-- `canvas.png` - Canvas-only screenshot  
+- `canvas.png` - Canvas-only screenshot
 - `scene-summary.json` - Scene introspection data
 - `failure.md` - Failure analysis and next steps
 
 ## Determinism
 
 Tests are designed for deterministic rendering:
+
 - Fixed viewport (1280x800)
 - Fixed camera position and FOV
 - Fixed lighting (ambient + directional)
@@ -148,6 +163,7 @@ Tests are designed for deterministic rendering:
 ### Flaky Screenshot Comparisons
 
 If screenshots differ across runs:
+
 1. Check if GPU/driver differences are causing variations
 2. Use SwiftShader for software rendering: `--use-gl=swiftshader`
 3. Increase `maxDiffPixelRatio` tolerance
@@ -156,6 +172,7 @@ If screenshots differ across runs:
 ### Model Loading Failures
 
 If GLTF models fail to load:
+
 1. Verify model paths in `test/playwright/pages/ship-renderer.js`
 2. Check that `npm run build` completed successfully
 3. Ensure `npm run serve` is running on port 8080
@@ -164,6 +181,7 @@ If GLTF models fail to load:
 ### Scene Introspection Issues
 
 If scene structure assertions fail:
+
 1. Check `scene-summary.json` in debug artifacts
 2. Verify mesh names match expected patterns
 3. Ensure materials have required properties
@@ -172,6 +190,7 @@ If scene structure assertions fail:
 ## Future Enhancements
 
 Planned additions:
+
 - [ ] Shield rendering validation (mesh + uniforms)
 - [ ] Engine glow validation (emissive materials)
 - [ ] Postprocessing variant tests (bloom effects)

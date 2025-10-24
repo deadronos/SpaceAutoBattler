@@ -1,5 +1,9 @@
 import type { GameState } from '../../types/index.js';
-import { recordRapierGuardTrip, enqueueDeferredMutation, enqueuePostPhysicsMutation } from '../simulationQueue.js';
+import {
+  recordRapierGuardTrip,
+  enqueueDeferredMutation,
+  enqueuePostPhysicsMutation,
+} from '../simulationQueue.js';
 
 export type KinematicBody = {
   setNextKinematicTranslation: (t: { x: number; y: number; z: number }) => void;
@@ -31,7 +35,9 @@ export function deferSetNextKinematicTranslation(
   z: number,
 ): void {
   if (!state || !state.simulation || !Array.isArray(state.simulation.deferredMutations)) {
-    throw new Error('deferSetNextKinematicTranslation requires state.simulation to be initialized; call createTestGameState or provide a SimulationClock on state.simulation');
+    throw new Error(
+      'deferSetNextKinematicTranslation requires state.simulation to be initialized; call createTestGameState or provide a SimulationClock on state.simulation',
+    );
   }
 
   enqueueDeferredMutation(state, () => {
@@ -57,7 +63,9 @@ export function postSetNextKinematicTranslation(
   z: number,
 ): void {
   if (!state || !state.simulation || !Array.isArray(state.simulation.postStepMutations)) {
-    throw new Error('postSetNextKinematicTranslation requires state.simulation to be initialized; call createTestGameState or provide a SimulationClock on state.simulation');
+    throw new Error(
+      'postSetNextKinematicTranslation requires state.simulation to be initialized; call createTestGameState or provide a SimulationClock on state.simulation',
+    );
   }
   enqueuePostPhysicsMutation(state, () => {
     try {
@@ -83,7 +91,9 @@ export function deferSetNextKinematicRotation(
   w: number,
 ): void {
   if (!state || !state.simulation || !Array.isArray(state.simulation.deferredMutations)) {
-    throw new Error('deferSetNextKinematicRotation requires state.simulation to be initialized; call createTestGameState or provide a SimulationClock on state.simulation');
+    throw new Error(
+      'deferSetNextKinematicRotation requires state.simulation to be initialized; call createTestGameState or provide a SimulationClock on state.simulation',
+    );
   }
 
   enqueueDeferredMutation(state, () => {
@@ -110,7 +120,9 @@ export function postSetNextKinematicRotation(
   w: number,
 ): void {
   if (!state || !state.simulation || !Array.isArray(state.simulation.postStepMutations)) {
-    throw new Error('postSetNextKinematicRotation requires state.simulation to be initialized; call createTestGameState or provide a SimulationClock on state.simulation');
+    throw new Error(
+      'postSetNextKinematicRotation requires state.simulation to be initialized; call createTestGameState or provide a SimulationClock on state.simulation',
+    );
   }
   enqueuePostPhysicsMutation(state, () => {
     try {
@@ -135,7 +147,9 @@ export function deferSetLinvel(
   z: number,
 ): void {
   if (!state || !state.simulation || !Array.isArray(state.simulation.deferredMutations)) {
-    throw new Error('deferSetLinvel requires state.simulation to be initialized; call createTestGameState or provide a SimulationClock on state.simulation');
+    throw new Error(
+      'deferSetLinvel requires state.simulation to be initialized; call createTestGameState or provide a SimulationClock on state.simulation',
+    );
   }
   enqueueDeferredMutation(state, () => {
     try {
@@ -160,7 +174,9 @@ export function postSetLinvel(
   z: number,
 ): void {
   if (!state || !state.simulation || !Array.isArray(state.simulation.postStepMutations)) {
-    throw new Error('postSetLinvel requires state.simulation to be initialized; call createTestGameState or provide a SimulationClock on state.simulation');
+    throw new Error(
+      'postSetLinvel requires state.simulation to be initialized; call createTestGameState or provide a SimulationClock on state.simulation',
+    );
   }
   enqueuePostPhysicsMutation(state, () => {
     try {
@@ -185,7 +201,9 @@ export function deferSetAngvel(
   z: number,
 ): void {
   if (!state || !state.simulation || !Array.isArray(state.simulation.deferredMutations)) {
-    throw new Error('deferSetAngvel requires state.simulation to be initialized; call createTestGameState or provide a SimulationClock on state.simulation');
+    throw new Error(
+      'deferSetAngvel requires state.simulation to be initialized; call createTestGameState or provide a SimulationClock on state.simulation',
+    );
   }
   enqueueDeferredMutation(state, () => {
     try {
@@ -210,7 +228,9 @@ export function postSetAngvel(
   z: number,
 ): void {
   if (!state || !state.simulation || !Array.isArray(state.simulation.postStepMutations)) {
-    throw new Error('postSetAngvel requires state.simulation to be initialized; call createTestGameState or provide a SimulationClock on state.simulation');
+    throw new Error(
+      'postSetAngvel requires state.simulation to be initialized; call createTestGameState or provide a SimulationClock on state.simulation',
+    );
   }
   enqueuePostPhysicsMutation(state, () => {
     try {
@@ -233,7 +253,9 @@ export function deferSetMass(
   mass: number,
 ): void {
   if (!state || !state.simulation || !Array.isArray(state.simulation.deferredMutations)) {
-    throw new Error('deferSetMass requires state.simulation to be initialized; call createTestGameState or provide a SimulationClock on state.simulation');
+    throw new Error(
+      'deferSetMass requires state.simulation to be initialized; call createTestGameState or provide a SimulationClock on state.simulation',
+    );
   }
   enqueueDeferredMutation(state, () => {
     try {
@@ -256,7 +278,9 @@ export function postSetMass(
   mass: number,
 ): void {
   if (!state || !state.simulation || !Array.isArray(state.simulation.postStepMutations)) {
-    throw new Error('postSetMass requires state.simulation to be initialized; call createTestGameState or provide a SimulationClock on state.simulation');
+    throw new Error(
+      'postSetMass requires state.simulation to be initialized; call createTestGameState or provide a SimulationClock on state.simulation',
+    );
   }
   enqueuePostPhysicsMutation(state, () => {
     try {
@@ -277,7 +301,9 @@ export function deferSetLinearDamping(
   damping: number,
 ): void {
   if (!state || !state.simulation || !Array.isArray(state.simulation.deferredMutations)) {
-    throw new Error('deferSetLinearDamping requires state.simulation to be initialized; call createTestGameState or provide a SimulationClock on state.simulation');
+    throw new Error(
+      'deferSetLinearDamping requires state.simulation to be initialized; call createTestGameState or provide a SimulationClock on state.simulation',
+    );
   }
   enqueueDeferredMutation(state, () => {
     try {
@@ -298,7 +324,9 @@ export function postSetLinearDamping(
   damping: number,
 ): void {
   if (!state || !state.simulation || !Array.isArray(state.simulation.postStepMutations)) {
-    throw new Error('postSetLinearDamping requires state.simulation to be initialized; call createTestGameState or provide a SimulationClock on state.simulation');
+    throw new Error(
+      'postSetLinearDamping requires state.simulation to be initialized; call createTestGameState or provide a SimulationClock on state.simulation',
+    );
   }
   enqueuePostPhysicsMutation(state, () => {
     try {
@@ -319,7 +347,9 @@ export function deferSetAngularDamping(
   damping: number,
 ): void {
   if (!state || !state.simulation || !Array.isArray(state.simulation.deferredMutations)) {
-    throw new Error('deferSetAngularDamping requires state.simulation to be initialized; call createTestGameState or provide a SimulationClock on state.simulation');
+    throw new Error(
+      'deferSetAngularDamping requires state.simulation to be initialized; call createTestGameState or provide a SimulationClock on state.simulation',
+    );
   }
   enqueueDeferredMutation(state, () => {
     try {
@@ -340,7 +370,9 @@ export function postSetAngularDamping(
   damping: number,
 ): void {
   if (!state || !state.simulation || !Array.isArray(state.simulation.postStepMutations)) {
-    throw new Error('postSetAngularDamping requires state.simulation to be initialized; call createTestGameState or provide a SimulationClock on state.simulation');
+    throw new Error(
+      'postSetAngularDamping requires state.simulation to be initialized; call createTestGameState or provide a SimulationClock on state.simulation',
+    );
   }
   enqueuePostPhysicsMutation(state, () => {
     try {
@@ -361,7 +393,9 @@ export function deferSetColliderFriction(
   friction: number,
 ): void {
   if (!state || !state.simulation || !Array.isArray(state.simulation.deferredMutations)) {
-    throw new Error('deferSetColliderFriction requires state.simulation to be initialized; call createTestGameState or provide a SimulationClock on state.simulation');
+    throw new Error(
+      'deferSetColliderFriction requires state.simulation to be initialized; call createTestGameState or provide a SimulationClock on state.simulation',
+    );
   }
   enqueueDeferredMutation(state, () => {
     try {
@@ -382,7 +416,9 @@ export function postSetColliderFriction(
   friction: number,
 ): void {
   if (!state || !state.simulation || !Array.isArray(state.simulation.postStepMutations)) {
-    throw new Error('postSetColliderFriction requires state.simulation to be initialized; call createTestGameState or provide a SimulationClock on state.simulation');
+    throw new Error(
+      'postSetColliderFriction requires state.simulation to be initialized; call createTestGameState or provide a SimulationClock on state.simulation',
+    );
   }
   enqueuePostPhysicsMutation(state, () => {
     try {
@@ -403,7 +439,9 @@ export function deferSetColliderRestitution(
   restitution: number,
 ): void {
   if (!state || !state.simulation || !Array.isArray(state.simulation.deferredMutations)) {
-    throw new Error('deferSetColliderRestitution requires state.simulation to be initialized; call createTestGameState or provide a SimulationClock on state.simulation');
+    throw new Error(
+      'deferSetColliderRestitution requires state.simulation to be initialized; call createTestGameState or provide a SimulationClock on state.simulation',
+    );
   }
   enqueueDeferredMutation(state, () => {
     try {
@@ -424,7 +462,9 @@ export function postSetColliderRestitution(
   restitution: number,
 ): void {
   if (!state || !state.simulation || !Array.isArray(state.simulation.postStepMutations)) {
-    throw new Error('postSetColliderRestitution requires state.simulation to be initialized; call createTestGameState or provide a SimulationClock on state.simulation');
+    throw new Error(
+      'postSetColliderRestitution requires state.simulation to be initialized; call createTestGameState or provide a SimulationClock on state.simulation',
+    );
   }
   enqueuePostPhysicsMutation(state, () => {
     try {

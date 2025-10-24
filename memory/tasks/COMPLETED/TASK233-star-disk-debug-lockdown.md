@@ -17,10 +17,10 @@ Clean the remaining StarDisk debug instrumentation so that forced-on-top helpers
 
 ## Implementation Plan
 
-1. Introduce a memoized `debugEnabled` computation inside `StarDisk.tsx` and reuse it across effects and the frame loop.  
-2. Wrap all helper registration (`__copilot_setStarLayer`, `__copilot_setStarBasicMaterial`, etc.), DOM overlay creation, and force-on-top logic inside `if (debugEnabled)` blocks.  
-3. Extend the cleanup effect to remove overlays and forced material state when debug is disabled.  
-4. Author a dedicated Vitest suite validating helper presence/absence with and without the `?copilot_debug=1` flag.  
+1. Introduce a memoized `debugEnabled` computation inside `StarDisk.tsx` and reuse it across effects and the frame loop.
+2. Wrap all helper registration (`__copilot_setStarLayer`, `__copilot_setStarBasicMaterial`, etc.), DOM overlay creation, and force-on-top logic inside `if (debugEnabled)` blocks.
+3. Extend the cleanup effect to remove overlays and forced material state when debug is disabled.
+4. Author a dedicated Vitest suite validating helper presence/absence with and without the `?copilot_debug=1` flag.
 5. Run `npx tsc --noEmit` and `npm test` to confirm full-suite stability.
 
 ## Progress Tracking
@@ -29,12 +29,12 @@ Clean the remaining StarDisk debug instrumentation so that forced-on-top helpers
 
 ### Subtasks
 
-| ID  | Description | Status | Updated | Notes |
-| --- | ----------- | ------ | ------- | ----- |
-| 1.1 | Gate StarDisk helpers behind memoized debug flag | Complete | 2025-10-02 | Implemented `debugEnabled` guard and centralized window cleanup. |
-| 1.2 | Expand cleanup effect to remove overlays/material overrides | Complete | 2025-10-02 | Added cleanup effect plus overlay remover. |
-| 1.3 | Add Vitest coverage for debug gating behavior | Complete | 2025-10-02 | Authored `star-disk-debug-lockdown.spec.tsx`. |
-| 1.4 | Run typecheck and full Vitest suite | Complete | 2025-10-02 | `npx tsc --noEmit` and `npm test` both pass. |
+| ID  | Description                                                 | Status   | Updated    | Notes                                                            |
+| --- | ----------------------------------------------------------- | -------- | ---------- | ---------------------------------------------------------------- |
+| 1.1 | Gate StarDisk helpers behind memoized debug flag            | Complete | 2025-10-02 | Implemented `debugEnabled` guard and centralized window cleanup. |
+| 1.2 | Expand cleanup effect to remove overlays/material overrides | Complete | 2025-10-02 | Added cleanup effect plus overlay remover.                       |
+| 1.3 | Add Vitest coverage for debug gating behavior               | Complete | 2025-10-02 | Authored `star-disk-debug-lockdown.spec.tsx`.                    |
+| 1.4 | Run typecheck and full Vitest suite                         | Complete | 2025-10-02 | `npx tsc --noEmit` and `npm test` both pass.                     |
 
 ## Progress Log
 

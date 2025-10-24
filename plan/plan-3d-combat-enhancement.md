@@ -10,6 +10,7 @@
 **Estimated Effort**: Medium (2-4 hours implementation + testing).
 
 ## Phase 1: Analyze (Current State)
+
 - **Key Finding**: No explicit 2D constraint in code (`src/game/systems.ts`, `ships.ts`); full 3D vectors/quaternions used for motion/AI headings. Report's "zeroes heading.y" outdated—likely legacy.
 - **Perceived Limitation Causes**:
   - AI intents (Attack/Intercept) prioritize x/z distances; y-variation minimal (~10-20% of total).
@@ -23,6 +24,7 @@
   4. WHEN validating 3D usage, THE SYSTEM SHALL track vertical dispersion [Acceptance: >50% shots with |y-diff|>100u; add to ai.metrics].
 
 ## Phase 2: Design
+
 - **Architecture Overview**:
   - Extend `BehaviorProfile` with `verticalManeuver: number` (0.2-0.4; e.g., escort=0.4 for agile y-dodges).
   - In `writeCommand` (`systems.ts`): Add y-perturbation post-heading calc (e.g., `if (intent !== 'Regroup') { heading.y += (rng.next()-0.5) * profile.verticalManeuver; normalize(); }`).
@@ -52,6 +54,7 @@
   ```
 
 ## Phase 3: Implementation Plan
+
 - **Tasks** (in `memory/tasks/` after creation):
   1. **Update Profiles** (`aiProfiles.ts`): Add `verticalManeuver` to each (escort:0.4, brawler:0.3, artillery:0.2, kiter:0.5). Default 0.1.
   2. **Enhance Commands** (`systems.ts`): In `writeCommand`, post-heading: `if (profile.verticalManeuver > 0 && command.thrust > 0.5) { const perturb = (state.rng.next()-0.5) * profile.verticalManeuver; heading.y = Math.max(-0.3, Math.min(0.3, heading.y + perturb)); heading.normalize(); }`. Apply selectively (e.g., Intercept/Kite/Attack).
@@ -62,6 +65,7 @@
 - **Conventions**: Self-explanatory code; comment WHY (e.g., "// Perturb y for 3D tactics, clamped to avoid flips"). Use seeded RNG for determinism.
 
 ## Phase 4: Validate
+
 - **Automated**: `npm test` (add Vitest: mock RNG, assert heading.y ≠0 in 60% cases; check y-variance post-spawn). Coverage >90% on changes.
 - **Manual**: Run seeded sim (RNG=1337); observe trajectories (console log headings); target: y-dispersion >400u, >30% vertical shots.
 - **E2E**: Playwright: Screenshot sequences; assert vertical positions vary (e.g., fighters at y±500u).
@@ -69,17 +73,20 @@
 - **Edge Cases**: Low-HP flee (ensure y-escape viable); carrier launches (fighters inherit 3D tilt).
 
 ## Phase 5: Reflect
+
 - **Refactor**: If over-perturbation (erratic paths), reduce to 0.1-0.15 scale.
 - **Docs**: Update `gamebalance-report-v0.1.1.md` with "Resolved: Full 3D enabled via AI perturbations".
 - **Debt**: If tick rate bottleneck, backlog "Increase to 15Hz" (Priority 4 from report).
 - **Meta**: Protocol adherence good; 3D boosts immersion—consider for future (e.g., y-based fog/LOD).
 
 ## Phase 6: Handoff
+
 - **Summary**: Goal: Transform perceived 2D limit into 3D strength. Changes: AI y-perturb + spawn tilt. Validation: >50% 3D usage. Files: `aiProfiles.ts`, `systems.ts`, `state.ts`, `config.ts`.
 - **PR Prep**: Link this plan; changelog: "Enabled vertical maneuvers in AI for full 3D combat". Artifacts: Seeded logs, y-metric graphs.
 - **Next**: Integrate with report's Priority 2; test carrier swarms in 3D.
 
 **Acceptance Checklist**:
+
 - [ ] 4 EARS requirements met/tested.
 - [ ] Design diagram linked.
 - [ ] Unit tests for y-perturb (deterministic).

@@ -3,7 +3,10 @@ import type { AICommand, GameState, ShipEntity } from '../../types/index.js';
 import type { KinematicBody } from '../physics/safeKinematics.js';
 import { clampToWorld } from '../config.js';
 import { getEffectiveStats } from '../progression.js';
-import { deferSetNextKinematicTranslation, deferSetNextKinematicRotation } from '../physics/safeKinematics.js';
+import {
+  deferSetNextKinematicTranslation,
+  deferSetNextKinematicRotation,
+} from '../physics/safeKinematics.js';
 
 // Reusable temporary objects to avoid per-frame allocations
 const TEMP_FORWARD = new Vector3();
@@ -21,29 +24,28 @@ const DEFAULT_SETTLE_RATE = 0.2;
 const DEFAULT_SETTLE_TOLERANCE_DEG = 5;
 const ANGULAR_SPEED_EPSILON = 1e-5;
 
-
 /**
  * Update physics-based motion for all ships using acceleration limits and damping.
  * This replaces the old kinematic positioning with proper physics integration.
- * 
+ *
  * @param state GameState containing ships and physics world
  * @param dt Delta time in seconds
  */
 export function updateMotionSystem(state: GameState, dt: number): void {
   const ships = state.queries.ships.entities as ShipEntity[];
-  
+
   for (const ship of ships) {
     // Skip ships without AI commands (passive/destroyed ships)
     if (!ship.ai?.command) continue;
-    
+
     const command = ship.ai.command;
-    
+
     // Update angular motion (turning toward desired heading)
     updateAngularMotion(ship, command.heading, dt);
-    
+
     // Update linear motion (thrust and velocity)
     updateLinearMotion(ship, command, dt);
-    
+
     // Apply velocity to position through physics using safe helpers
     applyVelocityToPhysics(state, ship, dt);
   }
@@ -58,7 +60,9 @@ function updateAngularMotion(ship: ShipEntity, targetHeading: Vector3, dt: numbe
   const kp = motion.turnKp ?? DEFAULT_TURN_KP;
   const kd = motion.turnKd ?? DEFAULT_TURN_KD;
   const settleRate = Math.max(0, motion.angularSettlingRate ?? DEFAULT_SETTLE_RATE);
-  const settleTolerance = MathUtils.degToRad(motion.angularSettleToleranceDeg ?? DEFAULT_SETTLE_TOLERANCE_DEG);
+  const settleTolerance = MathUtils.degToRad(
+    motion.angularSettleToleranceDeg ?? DEFAULT_SETTLE_TOLERANCE_DEG,
+  );
   const damping = Math.exp(-motion.angularDamping * Math.max(dt, 0));
   const angularVelocity = ship.ship.angularVelocity;
 
@@ -182,7 +186,9 @@ function updateLinearMotion(ship: ShipEntity, command: AICommand, dt: number): v
   // Apply subsystem effects to speed
   const effectiveStats = getEffectiveStats(ship.ship);
   const effectiveMaxSpeed = motion.maxSpeed * effectiveStats.speedMultiplier;
-  const effectiveMaxReverseSpeed = motion.maxReverseSpeed ? motion.maxReverseSpeed * effectiveStats.speedMultiplier : undefined;
+  const effectiveMaxReverseSpeed = motion.maxReverseSpeed
+    ? motion.maxReverseSpeed * effectiveStats.speedMultiplier
+    : undefined;
 
   // Clamp forward component to max speed / reverse speed limits.
   const forwardSpeed = velocity.dot(TEMP_FORWARD);
@@ -208,19 +214,25 @@ function updateLinearMotion(ship: ShipEntity, command: AICommand, dt: number): v
 function applyVelocityToPhysics(state: GameState, ship: ShipEntity, dt: number): void {
   const velocity = ship.ship.velocity;
   const currentPos = ship.transform.position;
-  
+
   // Calculate next position using actual delta time
   const nextPos = {
     x: currentPos.x + velocity.x * dt,
     y: currentPos.y + velocity.y * dt,
     z: currentPos.z + velocity.z * dt,
   };
-  
+
   // Clamp to world bounds
   clampToWorld(nextPos);
-  
+
   // Update kinematic rigid body safely (guard against Rapier borrow errors)
-  deferSetNextKinematicTranslation(state, ship.rigidBody as unknown as KinematicBody, nextPos.x, nextPos.y, nextPos.z);
+  deferSetNextKinematicTranslation(
+    state,
+    ship.rigidBody as unknown as KinematicBody,
+    nextPos.x,
+    nextPos.y,
+    nextPos.z,
+  );
   deferSetNextKinematicRotation(
     state,
     ship.rigidBody as unknown as KinematicBody,
