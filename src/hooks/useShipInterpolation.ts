@@ -28,9 +28,9 @@ export interface InterpolationState {
 }
 
 export interface SmoothingConfig {
-  positionLerp: number;
-  rotationSlerp: number;
-  bankLerp: number;
+  positionK: number;
+  rotationK: number;
+  bankK: number;
   teleportThresholdSq: number;
   bankFactor: number;
   maxBankDeg: number;
@@ -58,9 +58,9 @@ export function useShipInterpolation(
   const smoothing = useMemo(() => {
     const cfg = resolveRendererMotionConfig(entity.ship.motion);
     return {
-      positionLerp: MathUtils.clamp(cfg.positionLerp, 0, 1),
-      rotationSlerp: MathUtils.clamp(cfg.rotationSlerp, 0, 1),
-      bankLerp: MathUtils.clamp(cfg.bankLerp, 0, 1),
+      positionK: Math.max(0, cfg.positionK),
+      rotationK: Math.max(0, cfg.rotationK),
+      bankK: Math.max(0, cfg.bankK),
       teleportThresholdSq: Math.max(1, cfg.teleportDistance * cfg.teleportDistance),
       bankFactor: cfg.bankFactor,
       maxBankDeg: cfg.maxBankDeg,
@@ -238,13 +238,6 @@ export function updateInterpolation(
   state.targetVisualPosition.copy(state.interpPosition);
   state.visualLocalOffset.set(0, 0, 0);
 
-  const frameDt = Math.max(RENDERER_VISUAL_CONFIG.legacyFrameDt, 1e-6);
-  const legacyToAlpha = (f: number) => {
-    if (f <= 0 || dt <= 0) return 0;
-    const clamped = MathUtils.clamp(f, 0, 1);
-    return 1 - Math.pow(1 - clamped, Math.max(dt, 1e-6) / frameDt);
-  };
-
   if (smoothingEnabled && visualCfg?.bob && visualCfg.bob.enabled !== false) {
     const baseAmp = Math.max(0, visualCfg.bob.baseAmp ?? 0);
     const freq = Math.max(0, visualCfg.bob.freq ?? 0);
@@ -286,10 +279,7 @@ export function updateInterpolation(
     bankValueRef.current = 0;
     bankVelocityRef.current = 0;
   } else {
-    const posAlpha =
-      visualCfg?.position?.k != null && visualCfg.position.k > 0
-        ? kToAlpha(visualCfg.position.k, dt)
-        : legacyToAlpha(smoothing.positionLerp);
+    const posAlpha = kToAlpha(visualCfg?.position?.k ?? smoothing.positionK, dt);
 
     if (posAlpha <= 0) {
       state.visualPosition.copy(state.targetVisualPosition);
@@ -299,10 +289,7 @@ export function updateInterpolation(
       state.visualPosition.lerp(state.targetVisualPosition, MathUtils.clamp(posAlpha, 0, 1));
     }
 
-    const rotAlpha =
-      visualCfg?.rotation?.k != null && visualCfg.rotation.k > 0
-        ? kToAlpha(visualCfg.rotation.k, dt)
-        : legacyToAlpha(smoothing.rotationSlerp);
+    const rotAlpha = kToAlpha(visualCfg?.rotation?.k ?? smoothing.rotationK, dt);
 
     if (rotAlpha <= 0) {
       state.visualRotation.copy(state.interpRotation);
@@ -341,10 +328,7 @@ export function updateInterpolation(
       bankValueRef.current = xNew;
       bankVelocityRef.current = vNew;
     } else {
-      const bankAlpha =
-        visualCfg?.bank?.k != null && visualCfg.bank.k > 0
-          ? kToAlpha(visualCfg.bank.k, dt)
-          : legacyToAlpha(smoothing.bankLerp);
+      const bankAlpha = kToAlpha(visualCfg?.bank?.k ?? smoothing.bankK, dt);
       if (bankAlpha <= 0) {
         bankValueRef.current = targetBankRad;
       } else if (bankAlpha >= 1) {

@@ -2,11 +2,30 @@ import { describe, expect, it, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useArchetypeEntities } from '../../src/hooks/useArchetypeEntities.js';
 
+class MockEvent {
+  listeners = new Set();
+  unsubscribeCallbacks = [];
+
+  subscribe = vi.fn((listener) => {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+      this.unsubscribeCallbacks.push(listener);
+    };
+  });
+
+  emit() {
+    for (const listener of this.listeners) {
+      listener();
+    }
+  }
+}
+
 // Mock an archetype that follows the Miniplex pattern
 class MockArchetype {
   entities = [];
-  onEntityAdded = { add: vi.fn(), remove: vi.fn() };
-  onEntityRemoved = { add: vi.fn(), remove: vi.fn() };
+  onEntityAdded = new MockEvent();
+  onEntityRemoved = new MockEvent();
 
   constructor(initialEntities = []) {
     this.entities = [...initialEntities];
@@ -14,20 +33,14 @@ class MockArchetype {
 
   addEntity(entity) {
     this.entities.push(entity);
-    // Simulate calling all listeners
-    this.onEntityAdded.add.mock.calls.forEach(([listener]) => {
-      listener();
-    });
+    this.onEntityAdded.emit();
   }
 
   removeEntity(entity) {
     const index = this.entities.indexOf(entity);
     if (index > -1) {
       this.entities.splice(index, 1);
-      // Simulate calling all listeners
-      this.onEntityRemoved.add.mock.calls.forEach(([listener]) => {
-        listener();
-      });
+      this.onEntityRemoved.emit();
     }
   }
 }
@@ -35,7 +48,7 @@ class MockArchetype {
 describe('useArchetypeEntities', () => {
   it('returns empty array when archetype is null', () => {
     const { result } = renderHook(() => useArchetypeEntities(null));
-    
+
     expect(result.current).toEqual([]);
   });
 
@@ -45,7 +58,7 @@ describe('useArchetypeEntities', () => {
     const archetype = new MockArchetype([entity1, entity2]);
 
     const { result } = renderHook(() => useArchetypeEntities(archetype));
-    
+
     expect(result.current).toEqual([entity1, entity2]);
   });
 
@@ -53,9 +66,9 @@ describe('useArchetypeEntities', () => {
     const archetype = new MockArchetype([]);
 
     renderHook(() => useArchetypeEntities(archetype));
-    
-    expect(archetype.onEntityAdded.add).toHaveBeenCalledWith(expect.any(Function));
-    expect(archetype.onEntityRemoved.add).toHaveBeenCalledWith(expect.any(Function));
+
+    expect(archetype.onEntityAdded.subscribe).toHaveBeenCalledWith(expect.any(Function));
+    expect(archetype.onEntityRemoved.subscribe).toHaveBeenCalledWith(expect.any(Function));
   });
 
   it('updates entities when archetype changes', () => {
@@ -64,10 +77,9 @@ describe('useArchetypeEntities', () => {
     const archetype1 = new MockArchetype([entity1]);
     const archetype2 = new MockArchetype([entity2]);
 
-    const { result, rerender } = renderHook(
-      ({ archetype }) => useArchetypeEntities(archetype),
-      { initialProps: { archetype: archetype1 } }
-    );
+    const { result, rerender } = renderHook(({ archetype }) => useArchetypeEntities(archetype), {
+      initialProps: { archetype: archetype1 },
+    });
 
     expect(result.current).toEqual([entity1]);
 
@@ -81,10 +93,9 @@ describe('useArchetypeEntities', () => {
     const entity1 = { id: 1 };
     const archetype = new MockArchetype([entity1]);
 
-    const { result, rerender } = renderHook(
-      ({ archetype }) => useArchetypeEntities(archetype),
-      { initialProps: { archetype } }
-    );
+    const { result, rerender } = renderHook(({ archetype }) => useArchetypeEntities(archetype), {
+      initialProps: { archetype },
+    });
 
     expect(result.current).toEqual([entity1]);
 
@@ -98,32 +109,30 @@ describe('useArchetypeEntities', () => {
     const archetype1 = new MockArchetype([]);
     const archetype2 = new MockArchetype([]);
 
-    const { rerender } = renderHook(
-      ({ archetype }) => useArchetypeEntities(archetype),
-      { initialProps: { archetype: archetype1 } }
-    );
+    const { rerender } = renderHook(({ archetype }) => useArchetypeEntities(archetype), {
+      initialProps: { archetype: archetype1 },
+    });
 
     // Change archetype
     rerender({ archetype: archetype2 });
 
-    expect(archetype1.onEntityAdded.remove).toHaveBeenCalledWith(expect.any(Function));
-    expect(archetype1.onEntityRemoved.remove).toHaveBeenCalledWith(expect.any(Function));
+    expect(archetype1.onEntityAdded.unsubscribeCallbacks).toHaveLength(1);
+    expect(archetype1.onEntityRemoved.unsubscribeCallbacks).toHaveLength(1);
   });
 
   it('updates when entities are added to archetype', () => {
     const archetype = new MockArchetype([]);
 
     const { result } = renderHook(() => useArchetypeEntities(archetype));
-    
+
     expect(result.current).toEqual([]);
 
     const newEntity = { id: 1 };
-    
+
     act(() => {
       // Simulate the archetype change by directly calling the listener
       archetype.entities.push(newEntity);
-      const listener = archetype.onEntityAdded.add.mock.calls[0][0];
-      listener();
+      archetype.onEntityAdded.emit();
     });
 
     expect(result.current).toEqual([newEntity]);
@@ -135,14 +144,13 @@ describe('useArchetypeEntities', () => {
     const archetype = new MockArchetype([entity1, entity2]);
 
     const { result } = renderHook(() => useArchetypeEntities(archetype));
-    
+
     expect(result.current).toEqual([entity1, entity2]);
 
     act(() => {
       // Simulate the archetype change by directly calling the listener
       archetype.entities.splice(0, 1); // Remove first entity
-      const listener = archetype.onEntityRemoved.add.mock.calls[0][0];
-      listener();
+      archetype.onEntityRemoved.emit();
     });
 
     expect(result.current).toEqual([entity2]);
@@ -152,10 +160,10 @@ describe('useArchetypeEntities', () => {
     const archetype = new MockArchetype([]);
 
     const { unmount } = renderHook(() => useArchetypeEntities(archetype));
-    
+
     unmount();
 
-    expect(archetype.onEntityAdded.remove).toHaveBeenCalledWith(expect.any(Function));
-    expect(archetype.onEntityRemoved.remove).toHaveBeenCalledWith(expect.any(Function));
+    expect(archetype.onEntityAdded.unsubscribeCallbacks).toHaveLength(1);
+    expect(archetype.onEntityRemoved.unsubscribeCallbacks).toHaveLength(1);
   });
 });

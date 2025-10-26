@@ -64,8 +64,7 @@ export const SHIP_STATS: Record<ShipHull, ShipStats> = {
       maxLateralAcceleration: 12,
       visualBankFactor: 20,
       maxBankDeg: 35,
-      // New visual config (time-constant k semantics). These map to legacy per-frame
-      // factors for backward compatibility until the renderer is updated.
+      // Visual smoothing uses time-constant semantics consumed directly by the renderer.
       visual: {
         enabled: true,
         position: { k: 12.0 },
