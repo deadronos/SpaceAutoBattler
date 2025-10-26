@@ -5,6 +5,17 @@ import { createGameState, disposeGameState, spawnInitialFleets } from './state.j
 import { updateGame } from './systems.js';
 import { mirrorHudHealthBarsFlag, useUiStore } from './uiStore.js';
 
+let warnedAiDisableContext = false;
+function warnAiDisableInContext(): void {
+  if (warnedAiDisableContext) return;
+  warnedAiDisableContext = true;
+  try {
+    globalThis.console?.warn?.('AI v2 disable attempts are ignored in the simulation context.');
+  } catch {
+    // ignore logging failures
+  }
+}
+
 interface GameContextValue {
   state: GameState | null;
 }
@@ -39,7 +50,7 @@ export function GameProvider({ children, fallback = null }: GameProviderProps): 
             (window as unknown as { __SAB?: any }).__SAB = {
               getCounts: () => ({
                 ships: created.queries.ships.entities.length,
-                projectiles: created.queries.projectiles.entities.length
+                projectiles: created.queries.projectiles.entities.length,
               }),
               sampleShipMotion: () => {
                 try {
@@ -55,25 +66,33 @@ export function GameProvider({ children, fallback = null }: GameProviderProps): 
                         team: ship?.team ?? null,
                         hull: ship?.hull ?? null,
                         position: transform
-                          ? { x: transform.position.x, y: transform.position.y, z: transform.position.z }
+                          ? {
+                              x: transform.position.x,
+                              y: transform.position.y,
+                              z: transform.position.z,
+                            }
                           : { x: 0, y: 0, z: 0 },
                         rotation: transform
                           ? {
                               x: transform.rotation.x,
                               y: transform.rotation.y,
                               z: transform.rotation.z,
-                              w: transform.rotation.w
+                              w: transform.rotation.w,
                             }
                           : { x: 0, y: 0, z: 0, w: 1 },
                         velocity: ship
                           ? { x: ship.velocity.x, y: ship.velocity.y, z: ship.velocity.z }
                           : { x: 0, y: 0, z: 0 },
                         angularVelocity: ship
-                          ? { x: ship.angularVelocity.x, y: ship.angularVelocity.y, z: ship.angularVelocity.z }
+                          ? {
+                              x: ship.angularVelocity.x,
+                              y: ship.angularVelocity.y,
+                              z: ship.angularVelocity.z,
+                            }
                           : { x: 0, y: 0, z: 0 },
-                        lateralAcceleration: ship?.lateralAcceleration ?? 0
+                        lateralAcceleration: ship?.lateralAcceleration ?? 0,
                       };
-                    })
+                    }),
                   };
                 } catch {
                   return { tick: created.simulation.lastTickIndex, time: created.time, ships: [] };
@@ -93,7 +112,10 @@ export function GameProvider({ children, fallback = null }: GameProviderProps): 
                   const key = '__sabAutoTick__';
                   const w = window as any;
                   if (w[key]) return; // already running
-                  w[key] = setInterval(() => updateGame(created, dt), Math.max(1, Math.round(dt * 1000)));
+                  w[key] = setInterval(
+                    () => updateGame(created, dt),
+                    Math.max(1, Math.round(dt * 1000)),
+                  );
                 } catch {
                   /* ignore */
                 }
@@ -109,7 +131,7 @@ export function GameProvider({ children, fallback = null }: GameProviderProps): 
                 } catch {
                   /* ignore */
                 }
-              }
+              },
             };
           }
         }
@@ -143,7 +165,18 @@ export function GameProvider({ children, fallback = null }: GameProviderProps): 
 
   useEffect(() => {
     if (!state?.ai) return;
-    state.ai.enabled = aiV2Enabled;
+    if (!aiV2Enabled) {
+      warnAiDisableInContext();
+      try {
+        const store = useUiStore.getState();
+        if (!store.aiV2Enabled) {
+          store.setAiV2Enabled(true);
+        }
+      } catch {
+        // ignore store sync failures
+      }
+    }
+    state.ai.enabled = true;
   }, [state, aiV2Enabled]);
 
   useEffect(() => {
@@ -152,9 +185,7 @@ export function GameProvider({ children, fallback = null }: GameProviderProps): 
   }, [state, hudHealthBarsEnabled]);
 
   return (
-    <GameContext.Provider value={{ state }}>
-      {state ? children : fallback}
-    </GameContext.Provider>
+    <GameContext.Provider value={{ state }}>{state ? children : fallback}</GameContext.Provider>
   );
 }
 
@@ -178,4 +209,3 @@ export function useOptionalGameState(): GameState | null {
   }
   return context.state;
 }
-

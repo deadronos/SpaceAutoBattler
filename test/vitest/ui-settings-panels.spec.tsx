@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import React from 'react';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { SettingsDrawer } from '../../src/components/HudToggleDrawer.js';
@@ -50,7 +50,12 @@ describe('SettingsDrawer', () => {
     expect(useUiStore.getState().hudHealthBarsEnabled).toBe(true);
 
     const aiSwitch = screen.getByRole('switch', { name: 'AI V2' });
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    expect(aiSwitch.getAttribute('aria-checked')).toBe('true');
     fireEvent.click(aiSwitch);
-    expect(useUiStore.getState().aiV2Enabled).toBe(false);
+    expect(useUiStore.getState().aiV2Enabled).toBe(true);
+    expect(aiSwitch.getAttribute('aria-checked')).toBe('true');
+    expect(warnSpy).toHaveBeenCalled();
+    warnSpy.mockRestore();
   });
 });

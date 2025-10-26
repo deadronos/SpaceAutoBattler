@@ -4,6 +4,13 @@
 2. **WHEN** a ship's thrust command meets or exceeds the configured minimum throttle during a render frame, **THE SYSTEM SHALL** write the ship's thruster spawn data into the GPU instanced attribute ring buffer using deterministic jitter so the geometry `instanceCount` increases and spawn arrays record the emission timestamp. _(Acceptance: the same Vitest spec advances a frame with a thrusting fighter and verifies the ring buffer slot stores the expected spawn time while `instanceCount` increments.)_
 3. **WHEN** the render loop advances, **THE SYSTEM SHALL** update the shader time uniform on each frame so GPU-driven fading derives from the current clock value without CPU-side particle iteration. _(Acceptance: the Vitest spec drives successive frames and confirms the material `uTime` uniform tracks the clock time monotonically.)_
 
+## 2025-10-26 — Tech Debt Identification Report (TASK250)
+
+1. **WHEN** the repository undergoes this tech-debt analysis pass, **THE SYSTEM SHALL** catalogue at least five candidate legacy or redundant code paths referencing their source files. _(Acceptance: `docs/tech-debt-report.md` enumerates ≥5 entries with file citations.)_
+2. **WHEN** generating `docs/tech-debt-report.md`, **THE SYSTEM SHALL** include the mandated markdown front matter fields so documentation validators pass without manual edits. _(Acceptance: the new report contains all required metadata keys and conforms to markdown instructions.)_
+3. **WHEN** documenting each tech debt opportunity, **THE SYSTEM SHALL** provide a severity rating expressed as a percentage and an estimated implementation effort for removal or refactor. _(Acceptance: each report entry details both rating and effort columns.)_
+4. **WHEN** the report is finalized, **THE SYSTEM SHALL** store it under `docs/tech-debt-report.md` for maintainers to review. _(Acceptance: the file exists at the path with the finalized content.)_
+
 ## 2025-10-05 — Ship LOD Visibility Regression
 
 1. **WHEN** a ship crosses the configured near/far threshold because either its transform or the active camera position changed, **THE SYSTEM SHALL** recompute the LOD partition within the next render frame so full hull meshes mount for near ships. _(Acceptance: `test/components/lod/ShipLODManager.spec.ts` verifies the new partition refresh helper promotes ships to the near cohort after a simulated camera move.)_
@@ -122,7 +129,7 @@
 ## 2025-09-28 — AI metrics resilience
 
 1. **WHEN** `aggregateKpis` processes recorded first-shot timestamps, **THE SYSTEM SHALL** compute percentile outputs using the floor of `(n - 1) * p` so `p50` reflects the earliest timestamp at or above the target fraction and `p90` remains bounded by the next sampled time. _(Acceptance: `test/vitest/ai-metrics.spec.ts` expects `p50 = 18` and `p90 = 32` for the curated dataset.)_
-2. **WHEN** AI command execution runs inside lightweight harnesses without a full Rapier runtime, **THE SYSTEM SHALL** surface shim implementations for `RigidBodyDesc`, `ColliderDesc`, and physics world hooks so `fireProjectile` executes without throwing while still emitting projectile entities. _(Acceptance: `test/vitest/ai-metrics.spec.ts` covers `executeAICommand` and `runLegacyShipBehavior` in the shimmed state.)_
+2. **WHEN** AI command execution runs inside lightweight harnesses without a full Rapier runtime, **THE SYSTEM SHALL** surface shim implementations for `RigidBodyDesc`, `ColliderDesc`, and physics world hooks so `fireProjectile` executes without throwing while still emitting projectile entities. _(Acceptance: `test/vitest/ai-metrics.spec.ts` covers `executeAICommand` in the shimmed state now that the legacy fallback has been removed.)_
 3. **WHEN** `runAIScenario` completes a deterministic simulation, **THE SYSTEM SHALL** append a metrics snapshot to the exported log, including KPI summaries, first-shot times, histograms, and intent timeline data. _(Acceptance: scenario fixtures in `test/vitest/ai-scenario-harness.spec.ts` assert the serialized metrics payload.)_
 
 ## 2025-09-28 — Renderer Performance Audit Report

@@ -11,15 +11,65 @@ import {
   deferSetNextKinematicRotation,
 } from '../physics/safeKinematics.js';
 
-const FORWARD = new Vector3(0, 0, 1);
 const TEMP_DIR = new Vector3();
 const TEMP_POS = new Vector3();
 const TEMP_REL_POS = new Vector3();
 const TEMP_QUAT = new Quaternion();
+const missingAiShips = new Set<number>();
+let warnedAiDisableInShips = false;
+
+function ensureAiEnabled(state: GameState): void {
+  if (state.ai) state.ai.enabled = true;
+  if (warnedAiDisableInShips) return;
+  warnedAiDisableInShips = true;
+  try {
+    globalThis.console?.warn?.('AI v2 fallback removed: forcing AI enabled for all ships.');
+  } catch {
+    // ignore logging failures in headless tests
+  }
+}
+
+function keepShipStationary(state: GameState, ship: ShipEntity): void {
+  const position = ship.transform.position;
+  deferSetNextKinematicTranslation(
+    state,
+    ship.rigidBody as unknown as KinematicBody,
+    position.x,
+    position.y,
+    position.z,
+  );
+  const rotation = ship.transform.rotation;
+  deferSetNextKinematicRotation(
+    state,
+    ship.rigidBody as unknown as KinematicBody,
+    rotation.x,
+    rotation.y,
+    rotation.z,
+    rotation.w,
+  );
+}
+
+function handleMissingAi(state: GameState, ship: ShipEntity): ShipEntity | null {
+  if (!missingAiShips.has(ship.id)) {
+    missingAiShips.add(ship.id);
+    try {
+      globalThis.console?.error?.(
+        `Ship ${ship.id} is missing an AI component; keeping it stationary.`,
+      );
+    } catch {
+      // ignore logging failures
+    }
+  }
+  keepShipStationary(state, ship);
+  return findNearestEnemy(state, ship);
+}
 
 export function prepareShips(state: GameState, delta: number): void {
   const ships = state.queries.ships.entities as ShipEntity[];
-  const useAIV2 = !!state.ai?.enabled;
+
+  if (state.ai && !state.ai.enabled) {
+    ensureAiEnabled(state);
+  }
 
   for (const ship of ships) {
     ship.ship.cooldown = Math.max(0, ship.ship.cooldown - delta);
@@ -36,13 +86,7 @@ export function prepareShips(state: GameState, delta: number): void {
       ship.ship.shield = Math.min(ship.ship.maxShield, ship.ship.shield + regen * delta);
     }
 
-    let preferredTarget: ShipEntity | null = null;
-
-    if (useAIV2 && ship.ai) {
-      preferredTarget = executeAICommand(state, ship, delta);
-    } else {
-      preferredTarget = runLegacyShipBehavior(state, ship, delta);
-    }
+    const preferredTarget = executeAICommand(state, ship, delta);
 
     if (state.queries.turrets.entities.length === 0 && ship.turrets && preferredTarget) {
       runEmbeddedTurrets(state, ship, preferredTarget);
@@ -61,7 +105,7 @@ export function executeAICommand(
   delta: number,
 ): ShipEntity | null {
   const ai = ship.ai;
-  if (!ai) return runLegacyShipBehavior(state, ship, delta);
+  if (!ai) return handleMissingAi(state, ship);
   const command = ai.command;
   command.ttl = Math.max(0, command.ttl - delta);
 
@@ -169,104 +213,6 @@ export function executeAICommand(
   }
 
   return target;
-}
-
-export function runLegacyShipBehavior(
-  state: GameState,
-  ship: ShipEntity,
-  delta: number,
-): ShipEntity | null {
-  const target = findNearestEnemy(state, ship);
-
-  if (!target) {
-    const p = ship.transform.position;
-    deferSetNextKinematicTranslation(
-      state,
-      ship.rigidBody as unknown as KinematicBody,
-      p.x,
-      p.y,
-      p.z,
-    );
-    return null;
-  }
-
-  const direction = TEMP_DIR.subVectors(target.transform.position, ship.transform.position);
-  const distance = direction.length();
-  if (distance > 0.0001) {
-    direction.normalize();
-  } else {
-    direction.set(0, 0, 1);
-  }
-
-  orientTowards(state, ship, direction);
-
-  if (distance > ship.ship.range * 0.6) {
-    const moveDistance = Math.min(
-      ship.ship.speed * delta,
-      Math.max(distance - ship.ship.range * 0.55, 0),
-    );
-    const nextPosition = TEMP_POS.copy(ship.transform.position).addScaledVector(
-      direction,
-      moveDistance,
-    );
-    clampToWorld(nextPosition);
-    deferSetNextKinematicTranslation(
-      state,
-      ship.rigidBody as unknown as KinematicBody,
-      nextPosition.x,
-      nextPosition.y,
-      nextPosition.z,
-    );
-  } else {
-    const p = ship.transform.position;
-    deferSetNextKinematicTranslation(
-      state,
-      ship.rigidBody as unknown as KinematicBody,
-      p.x,
-      p.y,
-      p.z,
-    );
-  }
-
-  if (distance <= ship.ship.range && ship.ship.cooldown <= 0) {
-    (ship.muzzleFlashes ??= []).push({
-      local: new Vector3(0, 0, ship.transform.scale * 1.6),
-      t0: state.time,
-      amp: 1,
-      bulletType: ship.ship.bulletType,
-    });
-    const metrics = state.ai?.metrics;
-    if (metrics && target) {
-      recordShotMetrics(metrics, {
-        shipId: ship.id,
-        hull: ship.ship.hull,
-        time: state.time,
-        distance,
-        deltaY: target.transform.position.y - ship.transform.position.y,
-      });
-    }
-    fireProjectile(state, ship, direction);
-    ship.ship.cooldown = ship.ship.fireRate;
-  }
-
-  return target;
-}
-
-export function orientTowards(state: GameState, ship: ShipEntity, direction: Vector3): void {
-  const rotation = new Quaternion().setFromUnitVectors(FORWARD, direction);
-  const bank = Math.max(Math.min(direction.x * 0.6, 0.6), -0.6);
-  const banking = new Quaternion().setFromAxisAngle(FORWARD, -bank);
-  rotation.multiply(banking);
-
-  ship.transform.rotation.copy(rotation);
-  deferSetNextKinematicRotation(
-    state,
-    ship.rigidBody as unknown as KinematicBody,
-    rotation.x,
-    rotation.y,
-    rotation.z,
-    rotation.w,
-  );
 }
 
 export function getShipById(state: GameState, id: number | undefined): ShipEntity | null {

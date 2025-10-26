@@ -15,10 +15,11 @@ describe('validateMotionStats', () => {
     maxLateralAcceleration: 15,
     maxBankDeg: 45,
     visualBankFactor: 1.2,
-    smoothing: {
-      positionLerp: 0.3,
-      rotationSlerp: 0.4,
-      bankLerp: 0.5,
+    visual: {
+      enabled: true,
+      position: { k: 12 },
+      rotation: { k: 24 },
+      bank: { k: 18, maxDeg: 45, useCriticallyDamped: true },
       teleportDistance: 100,
     },
   };
@@ -131,87 +132,11 @@ describe('validateMotionStats', () => {
     expect(() => validateMotionStats(stats)).not.toThrow();
   });
 
-  it('throws for positionLerp below 0', () => {
-    const stats = { ...validStats, smoothing: { ...validStats.smoothing!, positionLerp: -0.1 } };
+  it('throws when legacy smoothing config is provided', () => {
+    const stats = { ...validStats, smoothing: { positionLerp: 0.5 } };
     expect(() => validateMotionStats(stats)).toThrow(
-      'motion.smoothing.positionLerp must be ≥ 0. Received -0.1',
+      'motion.smoothing is no longer supported. Use motion.visual instead.',
     );
-  });
-
-  it('throws for positionLerp above 1', () => {
-    const stats = { ...validStats, smoothing: { ...validStats.smoothing!, positionLerp: 1.5 } };
-    expect(() => validateMotionStats(stats)).toThrow(
-      'motion.smoothing.positionLerp must be ≤ 1. Received 1.5',
-    );
-  });
-
-  it('accepts undefined positionLerp', () => {
-    const stats = {
-      ...validStats,
-      smoothing: { ...validStats.smoothing!, positionLerp: undefined },
-    };
-    expect(() => validateMotionStats(stats)).not.toThrow();
-  });
-
-  it('throws for rotationSlerp below 0', () => {
-    const stats = { ...validStats, smoothing: { ...validStats.smoothing!, rotationSlerp: -0.2 } };
-    expect(() => validateMotionStats(stats)).toThrow(
-      'motion.smoothing.rotationSlerp must be ≥ 0. Received -0.2',
-    );
-  });
-
-  it('throws for rotationSlerp above 1', () => {
-    const stats = { ...validStats, smoothing: { ...validStats.smoothing!, rotationSlerp: 2.0 } };
-    expect(() => validateMotionStats(stats)).toThrow(
-      'motion.smoothing.rotationSlerp must be ≤ 1. Received 2',
-    );
-  });
-
-  it('accepts undefined rotationSlerp', () => {
-    const stats = {
-      ...validStats,
-      smoothing: { ...validStats.smoothing!, rotationSlerp: undefined },
-    };
-    expect(() => validateMotionStats(stats)).not.toThrow();
-  });
-
-  it('throws for bankLerp below 0', () => {
-    const stats = { ...validStats, smoothing: { ...validStats.smoothing!, bankLerp: -0.3 } };
-    expect(() => validateMotionStats(stats)).toThrow(
-      'motion.smoothing.bankLerp must be ≥ 0. Received -0.3',
-    );
-  });
-
-  it('throws for bankLerp above 1', () => {
-    const stats = { ...validStats, smoothing: { ...validStats.smoothing!, bankLerp: 1.1 } };
-    expect(() => validateMotionStats(stats)).toThrow(
-      'motion.smoothing.bankLerp must be ≤ 1. Received 1.1',
-    );
-  });
-
-  it('accepts undefined bankLerp', () => {
-    const stats = { ...validStats, smoothing: { ...validStats.smoothing!, bankLerp: undefined } };
-    expect(() => validateMotionStats(stats)).not.toThrow();
-  });
-
-  it('throws for negative teleportDistance', () => {
-    const stats = { ...validStats, smoothing: { ...validStats.smoothing!, teleportDistance: -50 } };
-    expect(() => validateMotionStats(stats)).toThrow(
-      'motion.smoothing.teleportDistance must be ≥ 0. Received -50',
-    );
-  });
-
-  it('accepts undefined teleportDistance', () => {
-    const stats = {
-      ...validStats,
-      smoothing: { ...validStats.smoothing!, teleportDistance: undefined },
-    };
-    expect(() => validateMotionStats(stats)).not.toThrow();
-  });
-
-  it('accepts undefined smoothing object', () => {
-    const stats = { ...validStats, smoothing: undefined };
-    expect(() => validateMotionStats(stats)).not.toThrow();
   });
 
   it('validates all edge cases at once', () => {
@@ -227,10 +152,10 @@ describe('validateMotionStats', () => {
       maxLateralAcceleration: 0,
       maxBankDeg: 0,
       visualBankFactor: 0,
-      smoothing: {
-        positionLerp: 0,
-        rotationSlerp: 0,
-        bankLerp: 0,
+      visual: {
+        position: { k: 0 },
+        rotation: { k: 0 },
+        bank: { k: 0, maxDeg: 0 },
         teleportDistance: 0,
       },
     };
@@ -250,10 +175,10 @@ describe('validateMotionStats', () => {
       maxLateralAcceleration: Number.MAX_SAFE_INTEGER,
       maxBankDeg: 90,
       visualBankFactor: Number.MAX_SAFE_INTEGER,
-      smoothing: {
-        positionLerp: 1,
-        rotationSlerp: 1,
-        bankLerp: 1,
+      visual: {
+        position: { k: Number.MAX_SAFE_INTEGER },
+        rotation: { k: Number.MAX_SAFE_INTEGER },
+        bank: { k: Number.MAX_SAFE_INTEGER, maxDeg: 90 },
         teleportDistance: Number.MAX_SAFE_INTEGER,
       },
     };
