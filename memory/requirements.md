@@ -129,7 +129,7 @@
 ## 2025-09-28 — AI metrics resilience
 
 1. **WHEN** `aggregateKpis` processes recorded first-shot timestamps, **THE SYSTEM SHALL** compute percentile outputs using the floor of `(n - 1) * p` so `p50` reflects the earliest timestamp at or above the target fraction and `p90` remains bounded by the next sampled time. _(Acceptance: `test/vitest/ai-metrics.spec.ts` expects `p50 = 18` and `p90 = 32` for the curated dataset.)_
-2. **WHEN** AI command execution runs inside lightweight harnesses without a full Rapier runtime, **THE SYSTEM SHALL** surface shim implementations for `RigidBodyDesc`, `ColliderDesc`, and physics world hooks so `fireProjectile` executes without throwing while still emitting projectile entities. _(Acceptance: `test/vitest/ai-metrics.spec.ts` covers `executeAICommand` and `runLegacyShipBehavior` in the shimmed state.)_
+2. **WHEN** AI command execution runs inside lightweight harnesses without a full Rapier runtime, **THE SYSTEM SHALL** surface shim implementations for `RigidBodyDesc`, `ColliderDesc`, and physics world hooks so `fireProjectile` executes without throwing while still emitting projectile entities. _(Acceptance: `test/vitest/ai-metrics.spec.ts` covers `executeAICommand` in the shimmed state now that the legacy fallback has been removed.)_
 3. **WHEN** `runAIScenario` completes a deterministic simulation, **THE SYSTEM SHALL** append a metrics snapshot to the exported log, including KPI summaries, first-shot times, histograms, and intent timeline data. _(Acceptance: scenario fixtures in `test/vitest/ai-scenario-harness.spec.ts` assert the serialized metrics payload.)_
 
 ## 2025-09-28 — Renderer Performance Audit Report

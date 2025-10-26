@@ -21,7 +21,7 @@ import {
   writeCommand,
   computeInterceptHeadingVector,
 } from './systems/decision/intents.js';
-import { prepareShips, executeAICommand, runLegacyShipBehavior } from './systems/shipControl.js';
+import { prepareShips, executeAICommand } from './systems/shipControl.js';
 import { fireProjectile, advanceProjectiles } from './systems/projectiles.js';
 import { findNearestEnemy, updateTurrets } from './systems/turrets.js';
 import { resolveProjectiles } from './systems/damage.js';
@@ -111,7 +111,6 @@ export const __aiTestHooks = {
   computeLod,
   writeCommand,
   prepareShips,
-  runLegacyShipBehavior,
   computeInterceptHeadingVector,
   executeAICommand,
 };
