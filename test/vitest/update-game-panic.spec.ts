@@ -28,7 +28,6 @@ vi.mock('../../src/game/systems/decision/intents.js', () => ({
 vi.mock('../../src/game/systems/shipControl.js', () => ({
   prepareShips: vi.fn(),
   executeAICommand: vi.fn(),
-  runLegacyShipBehavior: vi.fn(),
 }));
 vi.mock('../../src/game/systems/projectiles.js', () => ({
   fireProjectile: vi.fn(),

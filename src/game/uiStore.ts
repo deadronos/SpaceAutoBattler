@@ -2,6 +2,17 @@ import { create } from 'zustand';
 import type { GameState } from '../types/index.js';
 import { AI_CONFIG } from './config.js';
 
+let warnedAiDisableToggle = false;
+function warnAiDisable(): void {
+  if (warnedAiDisableToggle) return;
+  warnedAiDisableToggle = true;
+  try {
+    globalThis.console?.warn?.('AI v2 cannot be disabled; ignoring toggle request.');
+  } catch {
+    // ignore logging issues in non-browser runtimes
+  }
+}
+
 export type UiState = {
   paused: boolean;
   timeScale: number; // 0.25x .. 4x typical
@@ -68,8 +79,22 @@ export const useUiStore = create<UiState>((set) => ({
   setPaused: (p: boolean) => set({ paused: p }),
   setTimeScale: (s: number) => set({ timeScale: Math.max(0, s) }),
   aiV2Enabled: AI_CONFIG.v2Enabled,
-  toggleAiV2: () => set((s) => ({ aiV2Enabled: !s.aiV2Enabled })),
-  setAiV2Enabled: (v: boolean) => set({ aiV2Enabled: v }),
+  toggleAiV2: () =>
+    set((s) => {
+      if (s.aiV2Enabled) {
+        warnAiDisable();
+        return { aiV2Enabled: true };
+      }
+      return { aiV2Enabled: true };
+    }),
+  setAiV2Enabled: (v: boolean) =>
+    set(() => {
+      if (!v) {
+        warnAiDisable();
+        return { aiV2Enabled: true };
+      }
+      return { aiV2Enabled: true };
+    }),
   aiDebugEnabled: false,
   toggleAiDebug: () => set((s) => ({ aiDebugEnabled: !s.aiDebugEnabled })),
   setAiDebugEnabled: (v: boolean) => set({ aiDebugEnabled: v }),

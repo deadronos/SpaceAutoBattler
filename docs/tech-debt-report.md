@@ -16,6 +16,7 @@ post_date: '2025-10-26'
 ---
 
 <!-- markdownlint-disable-next-line MD041 -->
+
 ## Overview
 
 This report documents five high-value tech debt or legacy compatibility paths in the SpaceAutoBattler codebase. Each item includes a severity rating (0–100%), estimated effort, rationale, and suggested next steps. Ratings reflect expected maintenance risk or cost if the debt remains.
@@ -30,13 +31,13 @@ This report documents five high-value tech debt or legacy compatibility paths in
 
 ## Candidate Summary
 
-| Item | Rating (%) | Effort | Snapshot |
-| --- | ---: | --- | --- |
-| Legacy AI fallback (`runLegacyShipBehavior`) | 85 | L (≥3d) | Old steering path remains shipped alongside AI v2 and is still exercised in tests. |
-| JSX compatibility shims (`jsx-shim.d.ts`, `jsx-compat.d.ts`) | 70 | M (1–2d) | Temporary React 19 typing workarounds disable intrinsic element safety. |
-| Miniplex legacy event adapters (`useArchetypeEntities`) | 60 | M (1–2d) | Hook maintains dual subscription APIs despite standardising on Miniplex v2. |
-| Renderer smoothing legacy fallback (`legacyFrameDt`) | 55 | M (1–2d) | Interpolation still maps new time-constant stats into deprecated per-frame lerp values. |
-| Unused Pixi dependency (`pixi.js`) | 45 | S (≤0.5d) | Heavy dependency remains in `package.json` but is only mocked in tests. |
+| Item                                                         | Rating (%) | Effort    | Snapshot                                                                                |
+| ------------------------------------------------------------ | ---------: | --------- | --------------------------------------------------------------------------------------- |
+| Legacy AI fallback (`runLegacyShipBehavior`)                 |         85 | L (≥3d)   | Old steering path remains shipped alongside AI v2 and is still exercised in tests.      |
+| JSX compatibility shims (`jsx-shim.d.ts`, `jsx-compat.d.ts`) |         70 | M (1–2d)  | Temporary React 19 typing workarounds disable intrinsic element safety.                 |
+| Miniplex legacy event adapters (`useArchetypeEntities`)      |         60 | M (1–2d)  | Hook maintains dual subscription APIs despite standardising on Miniplex v2.             |
+| Renderer smoothing legacy fallback (`legacyFrameDt`)         |         55 | M (1–2d)  | Interpolation still maps new time-constant stats into deprecated per-frame lerp values. |
+| Unused Pixi dependency (`pixi.js`)                           |         45 | S (≤0.5d) | Heavy dependency remains in `package.json` but is only mocked in tests.                 |
 
 ## Findings
 
@@ -52,6 +53,7 @@ This report documents five high-value tech debt or legacy compatibility paths in
   - Remove the `runLegacyShipBehavior` branch from `prepareShips` and `executeAICommand`, delete the function, and rewrite regression specs to target AI v2 toggles instead of legacy logic.
   - Add a guard in configuration to throw or log when the UI attempts to disable AI v2 after removal.
 - **Dependencies & risks:** Requires migrating or deleting several Vitest suites (`ai-regression`, `ai-metrics`) that currently rely on the fallback. Coordinated QA sign-off needed before removal.
+- **Update (2025-10-26):** AI v2 is now enforced; the legacy fallback was removed, UI toggles ignore disable requests, and Vitest suites target the v2 command path exclusively.
 
 ### JSX compatibility shims (`jsx-shim.d.ts`, `jsx-compat.d.ts`)
 

@@ -18,7 +18,7 @@ import {
 } from '../../src/game/aiScenarioHarness.js';
 import type { AIState, GameState, ShipEntity } from '../../src/types/index.js';
 
-const { executeAICommand, runLegacyShipBehavior } = __aiTestHooks;
+const { executeAICommand } = __aiTestHooks;
 
 describe('AI metrics aggregation', () => {
   it('computes KPI summaries from recorded events', () => {
@@ -138,25 +138,6 @@ describe('AI metrics aggregation', () => {
     expect(metrics.firstShotTimes[0]).toBeCloseTo(state.time, 5);
     expect(metrics.shotDistanceHist.fighter.total).toBe(1);
     expect(metrics.shotDeltaYHist.fighter.total).toBe(1);
-  });
-
-  it('records shot telemetry through legacy behavior', () => {
-    const state = createStubState();
-    state.ai.enabled = false;
-    const ship = createStubShip(5, 'blue', new Vector3(0, 0, 0));
-    const target = createStubShip(6, 'red', new Vector3(100, -120, 0));
-    ship.ship.cooldown = 0;
-
-    const ships = state.queries.ships.entities as ShipEntity[];
-    ships.push(ship, target);
-
-    const result = runLegacyShipBehavior(state, ship, 0.1);
-    expect(result).toBe(target);
-
-    const metrics = state.ai.metrics;
-    expect(metrics.firstShotTimes).toHaveLength(1);
-    expect(metrics.firstShotByShip[ship.id]).toBeCloseTo(state.time, 5);
-    expect(metrics.shotDeltaYHist.fighter.total).toBeGreaterThan(0);
   });
 });
 
