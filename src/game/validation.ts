@@ -47,20 +47,8 @@ export function validateMotionStats(stats: MotionStats): void {
   if (stats.visualBankFactor != null) {
     assertRange('motion.visualBankFactor', stats.visualBankFactor, { min: 0 });
   }
-  if (stats.smoothing?.positionLerp != null) {
-    assertRange('motion.smoothing.positionLerp', stats.smoothing.positionLerp, { min: 0, max: 1 });
-  }
-  if (stats.smoothing?.rotationSlerp != null) {
-    assertRange('motion.smoothing.rotationSlerp', stats.smoothing.rotationSlerp, {
-      min: 0,
-      max: 1,
-    });
-  }
-  if (stats.smoothing?.bankLerp != null) {
-    assertRange('motion.smoothing.bankLerp', stats.smoothing.bankLerp, { min: 0, max: 1 });
-  }
-  if (stats.smoothing?.teleportDistance != null) {
-    assertRange('motion.smoothing.teleportDistance', stats.smoothing.teleportDistance, { min: 0 });
+  if (stats.smoothing) {
+    throw new Error('motion.smoothing is no longer supported. Use motion.visual instead.');
   }
 
   // New visual config validations (time-constant semantics)

@@ -7,7 +7,6 @@ import { describe, it, expect, vi } from 'vitest';
 
 // Mock heavy external deps at the top level
 vi.mock('postprocessing', () => ({}));
-vi.mock('pixi.js', () => ({}));
 vi.mock('puppeteer', () => ({}));
 vi.mock('playwright', () => ({}));
 vi.mock('@dimforge/rapier3d-compat', () => ({}));
