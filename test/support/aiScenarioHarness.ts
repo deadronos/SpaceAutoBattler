@@ -1,3 +1,70 @@
+/**
+ * AI Scenario Harness — Deterministic headless AI testing environment
+ *
+ * This module provides a deterministic test harness for running AI decision scenarios
+ * without requiring a full physics engine or graphics runtime. All runs with the same
+ * seed and config produce identical decision logs, enabling reproducible golden-fixture
+ * regression tests and behavioral validation.
+ *
+ * @module aiScenarioHarness
+ *
+ * ## Key Features
+ *
+ * - **Deterministic**: Uses SeededRng for reproducible AI decisions across runs.
+ * - **Lightweight**: Shims Rapier physics and creates minimal GameState for AI testing only.
+ * - **Metrics**: Collects per-tick decision data, KPIs, and engagement statistics.
+ * - **Test-Only**: This harness is not shipped with production runtime; use `updateGame()` ticks for production.
+ *
+ * ## Usage Example
+ *
+ * ```typescript
+ * import { runAIScenario, collectTestMetrics } from '../support/aiScenarioHarness';
+ * import type { AIScenarioConfig } from '../support/aiScenarioHarness';
+ *
+ * const config: AIScenarioConfig = {
+ *   name: 'escort-vs-brawler',
+ *   ticks: 5,
+ *   seed: 777,
+ *   ships: [
+ *     { team: 'blue', hull: 'fighter', position: [0, 0, 0], profileId: 'escort' },
+ *     { team: 'red', hull: 'corvette', position: [200, 0, 0], profileId: 'brawler' },
+ *   ],
+ * };
+ *
+ * const log = runAIScenario(config);
+ * const metrics = collectTestMetrics(log);
+ *
+ * expect(log.entries[0].commands[0].intent).toBe('Intercept');
+ * expect(metrics.timeToFirstShot.p50).toBeLessThanOrEqual(20);
+ * ```
+ *
+ * ## Sub-modules
+ *
+ * - `aiScenarioHarness/types.ts` — Type definitions for scenario config, logs, and metrics.
+ * - `aiScenarioHarness/shipFactory.ts` — Creates harness ship entities with AI state.
+ * - `aiScenarioHarness/stateFactory.ts` — Creates lightweight GameState shims for testing.
+ * - `aiScenarioHarness/integration.ts` — Integrates physics and transform shims.
+ * - `aiScenarioHarness/logging.ts` — Serializes commands, positions, and metrics to JSON.
+ * - `aiScenarioHarness/metricsSummary.ts` — Aggregates KPIs from scenario logs.
+ *
+ * ## Determinism Guarantees
+ *
+ * All randomness is seeded via SeededRng. To ensure reproducible test runs:
+ * 1. Set the same `seed` in AIScenarioConfig (default: 1337).
+ * 2. Per-ship trait seeds are derived deterministically from the scenario seed.
+ * 3. Module-level temp RNGs (intent-utils, vertical-maneuvers, blackboard) are reset before each run.
+ *
+ * ## Diagnostics
+ *
+ * For known diagnostic seeds (777, 2029, 4041), the harness writes per-ship trait and
+ * trait-seed info to `tmp/ai-initial-{seed}.log` before the scenario runs. Use this
+ * to verify trait generation across runs.
+ *
+ * @see memory/core-aiScenarioHarness.md — Architectural overview
+ * @see memory/guides/TEST_HARNESS_PATTERNS.md — Writing effective AI tests
+ * @see memory/guides/AI_DEPRECATION_GUIDE.md — Deprecated features and migration
+ */
+
 import type { GameState, ShipEntity } from '../../src/types/index.js';
 import { SeededRng } from '../../src/utils/rng.js';
 import { AI_CONFIG } from '../../src/game/config.js';

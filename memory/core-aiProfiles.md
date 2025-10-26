@@ -5,6 +5,7 @@ File: `src/game/aiProfiles.ts`
 Summary
 
 - Declares `AI_PROFILES`, a small set of behavior profiles (e.g., `brawler`, `kiter`, `escort`, `artillery`) implementing the `BehaviorProfile` type and tuning knobs designers use for combat roles.
+- AI v2 is mandatory; legacy v1 fallback was removed in TASK251.
 
 Primary exports & helpers
 
@@ -19,6 +20,7 @@ Usage and patterns
 
 - `spawnShip` calls `getDefaultProfileId` to populate a ship's AI component. The decision system calls `resolveBehaviorProfile` to read behavior knobs when computing intents.
 - Designs should keep profiles data-only; avoid embedding functions or closures since the decision system expects serializable numeric parameters for determinism and test fixtures.
+- Profile names are stable; old names (e.g., `tank`, `hit-and-run`, `guardian`) are no longer recognized. See `guides/AI_DEPRECATION_GUIDE.md` for migration.
 
 Follow-ups
 
@@ -26,4 +28,9 @@ Follow-ups
 
 References
 
-- `src/game/aiProfiles.ts`, `src/game/aiState.ts`, `src/game/systems/decision`
+- `src/game/aiProfiles.ts` (active profile definitions)
+- `src/game/aiState.ts` (AI state type)
+- `src/game/systems/decision` (decision system that uses profiles)
+- `guides/AI_DEPRECATION_GUIDE.md` (removed features and profile name changes)
+- TASK251: Remove legacy AI fallback path
+- DESIGN005: AI v2 enforcement and guard behavior
