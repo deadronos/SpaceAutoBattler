@@ -1,8 +1,8 @@
 import { Vector3 } from 'three';
-import type { AIState, ShipHull } from '../../types/index.js';
-import type { SeededRng } from '../../utils/rng.js';
-import { getDefaultProfileId } from '../aiProfiles.js';
-import { generateTraitsFromSeed } from '../aiTraits.js';
+import type { AIState, ShipHull } from '../../../src/types/index.js';
+import type { SeededRng } from '../../../src/utils/rng.js';
+import { getDefaultProfileId } from '../../../src/game/aiProfiles.js';
+import { generateTraitsFromSeed } from '../../../src/game/aiTraits.js';
 
 /**
  * Creates AI-state defaults for harness ships.

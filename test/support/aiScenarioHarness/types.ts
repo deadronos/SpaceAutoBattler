@@ -8,7 +8,7 @@ import type {
   ShipHull,
   Team,
   TeamPosture,
-} from '../../types/index.js';
+} from '../../../src/types/index.js';
 
 export interface AIScenarioShipConfig {
   id?: number;

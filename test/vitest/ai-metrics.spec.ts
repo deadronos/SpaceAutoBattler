@@ -15,7 +15,7 @@ import {
   runAIScenario,
   collectTestMetrics,
   type AIScenarioConfig,
-} from '../../src/game/aiScenarioHarness.js';
+} from '../support/aiScenarioHarness.js';
 import type { AIState, GameState, ShipEntity } from '../../src/types/index.js';
 
 const { executeAICommand } = __aiTestHooks;

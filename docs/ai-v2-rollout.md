@@ -23,7 +23,7 @@ For CI automation, run `npm run test:ci` which now chains Vitest and the perf bu
 
 ## Scenario Harness Usage
 
-- API lives in `src/game/aiScenarioHarness.ts` and exposes `runAIScenario(config)` returning deterministic logs.
+- API lives in `test/support/aiScenarioHarness.ts` and exposes `runAIScenario(config)` returning deterministic logs for fixtures and tooling.
 - Scenarios are configured via plain objects (ship hulls, positions, optional velocities/HP). See `test/vitest/ai-scenario-harness.spec.ts` alongside fixtures `ai-escort-scenario.json`, `ai-bomber-intercept-scenario.json`, and `ai-artillery-retreat-scenario.json` for reference scripts.
 - To record a new golden log, run the harness with your config in Node (via `tsx` or a Vitest watch run), capture the JSON output, and update the corresponding fixture. Keep logs short (<10 ticks) to avoid bloating the repo.
 
