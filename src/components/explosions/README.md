@@ -125,30 +125,15 @@ npm test -- test/components/explosions
 - **Bloom Groups**: Flash, shockwave, and fireball registered for selective bloom
 - **Frustum Culling**: Disabled for explosion meshes (short-lived, dynamic)
 
-## Backward Compatibility
-
-The original `ExplosionRenderer.tsx` now re-exports from `ExplosionRendererCore.tsx`:
-
-```typescript
-export {
-  ExplosionRendererCore as ExplosionRenderer,
-  ExplosionsLayer,
-} from './explosions/ExplosionRendererCore.js';
-```
-
-Existing code importing `ExplosionsLayer` will continue to work without changes.
-
 ## Migration Guide
 
-For new code, prefer importing directly from the core:
+Import `ExplosionsLayer` directly from the core module:
 
 ```typescript
-// Old (deprecated but still works)
-import { ExplosionsLayer } from './ExplosionRenderer.js';
-
-// New (preferred)
 import { ExplosionsLayer } from './explosions/ExplosionRendererCore.js';
 ```
+
+The deprecated `ExplosionRenderer.tsx` facade has been removed as part of the legacy cleanup.
 
 ## Future Enhancements
 

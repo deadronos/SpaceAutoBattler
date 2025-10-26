@@ -125,16 +125,13 @@ key exports, and any notable dependencies or behaviors.
 - `config.ts` — World bounds, AI flags, and simulation parameters.
 - `ships.ts` — Ship stats, spawning, and blueprint handling.
 - `aiTraits.ts` — Deterministic AI trait generation from seeds.
-- `aiScenarioHarness.ts` — AI scenario testing harness.
+- `aiScenarioHarness.ts` — _Moved to `test/support/aiScenarioHarness.ts`; `src/` no longer ships the harness runtime._
 - `state.ts` — `GameState` creation, disposal, and fleet spawning.
 - `validation.ts` — Motion stats validation utilities.
 - `uiStore.ts` — Zustand store for UI state (pause, toggles).
 - `turretRegistry.ts` — Turret entity registration and cleanup.
-- `integration.ts` — Test harness integration logic.
-- `types.ts` — AI scenario and metrics types.
-- `stateBuilder.ts` — Builds test harness state.
-- `metricsSummary.ts` — Summarizes AI test metrics.
-- `logging.ts` — Serializes and logs scenario data.
+- Harness utilities (`integration.ts`, `types.ts`, `metricsSummary.ts`, `logging.ts`, `aiDefaults.ts`, `rapierShim.ts`, `stateFactory.ts`,
+  `shipFactory.ts`) now live under `test/support/aiScenarioHarness/` alongside deterministic fixtures.
 
 - `aiProfiles.ts` — AI profile presets and deterministic seeds used by
   scenario harnesses and tests.

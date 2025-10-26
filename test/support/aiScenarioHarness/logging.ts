@@ -1,8 +1,8 @@
 import { mkdir, writeFile } from 'fs/promises';
 import { join } from 'path';
 import type { Vector3 } from 'three';
-import type { AIMetrics } from '../../types/index.js';
-import { SHIP_HULLS } from '../metrics.js';
+import type { AIMetrics } from '../../../src/types/index.js';
+import { SHIP_HULLS } from '../../../src/game/metrics.js';
 import type {
   AIScenarioCommandLog,
   AIScenarioLog,

@@ -10,7 +10,7 @@ import { BloomProvider } from '../renderer/BloomProvider.js';
 import PostprocessingLazy from './PostprocessingLazy.js';
 import { ParticleTrails } from './ParticleTrails.js';
 import { HudOverlayCollector } from './HudOverlayCollector.js';
-import { ExplosionsLayer } from './ExplosionRenderer.js';
+import { ExplosionsLayer } from './explosions/ExplosionRendererCore.js';
 import { PerfMonitorOverlay } from './PerfMonitorOverlay.js';
 import { CelestialEnvironment } from './environment/CelestialEnvironment.js';
 import { BattlefieldSystems } from './BattlefieldSystems.js';
@@ -46,7 +46,13 @@ function BattleSceneContent({ ppEnabled }: BattleSceneContentProps): React.React
       {ppEnabled && <PostprocessingLazy />}
       <BattlefieldSystems />
       <HudOverlayCollector />
-      <OrbitControls enableDamping makeDefault target={[0, 0, 0]} maxDistance={WORLD_SIZE * 2} minDistance={10} />
+      <OrbitControls
+        enableDamping
+        makeDefault
+        target={[0, 0, 0]}
+        maxDistance={WORLD_SIZE * 2}
+        minDistance={10}
+      />
       <Grid
         args={[WORLD_SIZE, WORLD_SIZE]}
         cellSize={50}
@@ -71,7 +77,10 @@ export function Battlefield(): React.ReactElement {
   // can force the Postprocessing component to mount even when the UI
   // setting is off. Tests can set `window.__copilot_forcePostprocessingMount = true`.
   const uiPost = useUiStore((s) => s.postprocessingEnabled);
-  const ppEnabled = typeof window !== 'undefined' && (window as any).__copilot_forcePostprocessingMount === true ? true : uiPost;
+  const ppEnabled =
+    typeof window !== 'undefined' && (window as any).__copilot_forcePostprocessingMount === true
+      ? true
+      : uiPost;
 
   if (!state) {
     return <div className="loading-overlay">Preparing simulation…</div>;
@@ -81,7 +90,12 @@ export function Battlefield(): React.ReactElement {
     <Canvas
       shadows
       frameloop="always"
-      camera={{ position: [...CAMERA_DEFAULTS.position], fov: CAMERA_DEFAULTS.fov, near: CAMERA_DEFAULTS.near, far: CAMERA_DEFAULTS.far }}
+      camera={{
+        position: [...CAMERA_DEFAULTS.position],
+        fov: CAMERA_DEFAULTS.fov,
+        near: CAMERA_DEFAULTS.near,
+        far: CAMERA_DEFAULTS.far,
+      }}
       dpr={[1, 2]}
       onCreated={({ gl }) => {
         gl.outputColorSpace = SRGBColorSpace;
@@ -102,4 +116,3 @@ export function Battlefield(): React.ReactElement {
     </Canvas>
   );
 }
-

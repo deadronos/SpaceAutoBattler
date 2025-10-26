@@ -73,12 +73,6 @@ const DEFAULT_BOUNDARY_SETTINGS: Required<StarDiskBoundaryUniformInput> = Object
   alphaFloor: 0.05,
 });
 
-const LEGACY_BOUNDARY_SETTINGS = Object.freeze({
-  start: 0.999,
-  exponent: 1,
-  alphaFloor: 1,
-});
-
 const DEFAULT_BOUNDARY_VECTOR = new Vector4(
   DEFAULT_BOUNDARY_SETTINGS.featherStart,
   DEFAULT_BOUNDARY_SETTINGS.featherExponent,
@@ -149,19 +143,6 @@ const clamp01 = (value: number): number => Math.min(Math.max(value, 0), 1);
 export function deriveBoundaryUniform(
   input?: StarDiskBoundaryUniformInput,
 ): StarDiskBoundaryUniformResult {
-  const disableByStart =
-    Number.isFinite(input?.featherStart as number) && (input?.featherStart as number) >= 0.999;
-  const disableByFloor =
-    Number.isFinite(input?.alphaFloor as number) && (input?.alphaFloor as number) >= 0.99;
-  if (disableByStart || disableByFloor) {
-    return {
-      start: LEGACY_BOUNDARY_SETTINGS.start,
-      exponent: LEGACY_BOUNDARY_SETTINGS.exponent,
-      alphaFloor: LEGACY_BOUNDARY_SETTINGS.alphaFloor,
-      reserved: 0,
-    };
-  }
-
   const rawStart = Number.isFinite(input?.featherStart as number)
     ? (input?.featherStart as number)
     : DEFAULT_BOUNDARY_SETTINGS.featherStart;

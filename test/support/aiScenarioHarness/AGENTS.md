@@ -1,5 +1,5 @@
 ```markdown
-# Agents Guide: src/game/aiScenarioHarness
+# Agents Guide: test/support/aiScenarioHarness
 
 - Purpose: Headless AI scenario harnesses used for deterministic AI testing and golden-log regression tests.
 - Determinism: Always seed the RNG and snapshot `GameState` slices relevant to the scenario to create repeatable baselines.

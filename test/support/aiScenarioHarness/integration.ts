@@ -1,7 +1,7 @@
 import { Vector3 } from 'three';
-import { clampToWorld } from '../config.js';
-import { fireProjectile } from '../systems.js';
-import { recordShotMetrics } from '../metrics.js';
+import { clampToWorld } from '../../../src/game/config.js';
+import { fireProjectile } from '../../../src/game/systems.js';
+import { recordShotMetrics } from '../../../src/game/metrics.js';
 import type { HarnessGameState, HarnessShip } from './types.js';
 
 const HARNESS_TEMP = new Vector3();
