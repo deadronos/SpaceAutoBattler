@@ -1,7 +1,7 @@
 import { Quaternion, Vector3 } from 'three';
-import type { SeededRng } from '../../utils/rng.js';
-import { createDefaultMotionStats, SHIP_STATS } from '../ships.js';
-import { createProgressionDefaults, createSubsystems } from '../progression.js';
+import type { SeededRng } from '../../../src/utils/rng.js';
+import { createDefaultMotionStats, SHIP_STATS } from '../../../src/game/ships.js';
+import { createProgressionDefaults, createSubsystems } from '../../../src/game/progression.js';
 import type { AIScenarioShipConfig, HarnessShip } from './types.js';
 import { createHarnessAIState } from './aiDefaults.js';
 import { createRigidBodyShim } from './rapierShim.js';

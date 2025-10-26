@@ -1,24 +1,25 @@
-import type { GameState, ShipEntity } from '../types/index.js';
-import { SeededRng } from '../utils/rng.js';
-import { AI_CONFIG } from './config.js';
-import { runDecisionTick, __aiTestHooks } from './systems.js';
+import type { GameState, ShipEntity } from '../../src/types/index.js';
+import { SeededRng } from '../../src/utils/rng.js';
+import { AI_CONFIG } from '../../src/game/config.js';
+import { runDecisionTick, __aiTestHooks } from '../../src/game/systems.js';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
-import { resolveBehaviorProfile } from './aiProfiles.js';
-import { aggregateKpis } from './metrics.js';
-import type { IntentCandidate } from './systems/decision/intents.js';
+import { resolveBehaviorProfile } from '../../src/game/aiProfiles.js';
+import { aggregateKpis } from '../../src/game/metrics.js';
+import type { IntentCandidate } from '../../src/game/systems/decision/intents.js';
 import type {
   AIScenarioConfig,
   AIScenarioLog,
   AIScenarioLogEntry,
   HarnessShip,
 } from './aiScenarioHarness/types.js';
-import { createHarnessShip, createHarnessState } from './aiScenarioHarness/stateBuilder.js';
-import { resetTempRng as resetIntentTempRng } from './systems/decision/intent-utils.js';
-import { resetTempRng as resetVerticalTempRng } from './systems/decision/vertical-maneuvers.js';
-import { resetTempRng as resetBlackboardTempRng } from './systems/decision/blackboard.js';
-import { getEffectiveAIConfig } from './config.js';
-import { useUiStore } from './uiStore.js';
+import { createHarnessShip } from './aiScenarioHarness/shipFactory.js';
+import { createHarnessState } from './aiScenarioHarness/stateFactory.js';
+import { resetTempRng as resetIntentTempRng } from '../../src/game/systems/decision/intent-utils.js';
+import { resetTempRng as resetVerticalTempRng } from '../../src/game/systems/decision/vertical-maneuvers.js';
+import { resetTempRng as resetBlackboardTempRng } from '../../src/game/systems/decision/blackboard.js';
+import { getEffectiveAIConfig } from '../../src/game/config.js';
+import { useUiStore } from '../../src/game/uiStore.js';
 import { applyHarnessIntegration } from './aiScenarioHarness/integration.js';
 import {
   serializeCommands,

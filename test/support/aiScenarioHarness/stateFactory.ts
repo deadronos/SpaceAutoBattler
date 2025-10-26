@@ -1,8 +1,8 @@
 import { Vector3 } from 'three';
-import type { GameState, ShipEntity } from '../../types/index.js';
-import type { SeededRng } from '../../utils/rng.js';
-import { AI_CONFIG } from '../config.js';
-import { createDefaultMetrics } from '../metrics.js';
+import type { GameState, ShipEntity } from '../../../src/types/index.js';
+import type { SeededRng } from '../../../src/utils/rng.js';
+import { AI_CONFIG } from '../../../src/game/config.js';
+import { createDefaultMetrics } from '../../../src/game/metrics.js';
 import type { HarnessGameState, HarnessQueries, HarnessShip } from './types.js';
 import { createPhysicsWorldShim, createRapierShim } from './rapierShim.js';
 

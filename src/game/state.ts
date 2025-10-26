@@ -25,24 +25,6 @@ export async function createGameState(): Promise<GameState> {
   const eventQueue = new Rapier.EventQueue({ auto: true });
   const world = new ECSWorld<GameEntity>();
 
-  // Backwards-compatibility shims for older code and test mocks.
-  // Miniplex v2 exposes `add`, `remove`, and `with` — older code used
-  // `createEntity`, `destroyEntity`, and `archetype`. Provide tiny shims so
-  // both shapes work and we don't have to update every usage at once.
-  const wAny = world as unknown as Record<string, unknown>;
-  if (typeof wAny.createEntity === 'undefined') {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (wAny as any).createEntity = (...args: any[]) => (world as any).add(...args);
-  }
-  if (typeof wAny.destroyEntity === 'undefined') {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (wAny as any).destroyEntity = (entity: unknown) => (world as any).remove(entity);
-  }
-  if (typeof wAny.archetype === 'undefined') {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (wAny as any).archetype = (...args: any[]) => (world as any).with(...args);
-  }
-
   const state: GameState = {
     rapier: Rapier,
     physicsWorld,

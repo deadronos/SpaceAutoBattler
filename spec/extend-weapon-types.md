@@ -189,7 +189,7 @@ Phase 5 — AI & PD
 
 ## Follow-ups
 
-- Add harness scenarios in `src/game/aiScenarioHarness` to load stress tests (many missiles, PD salvos, torpedo broadsides).
+- Add harness scenarios in `test/support/aiScenarioHarness` to load stress tests (many missiles, PD salvos, torpedo broadsides).
 - Add tuning documents and experiment logs to `perf/baselines` and `plan/` for long-term balancing.
 
 ## Notes

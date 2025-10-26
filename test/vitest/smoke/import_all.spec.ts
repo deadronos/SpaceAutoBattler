@@ -21,7 +21,6 @@ const moduleKeys = [
   '../../../src/config/projectiles.ts',
   '../../../src/config/renderer.ts',
   '../../../src/game/aiProfiles.ts',
-  '../../../src/game/aiScenarioHarness.ts',
   '../../../src/game/aiTraits.ts',
   '../../../src/game/config.ts',
   '../../../src/game/ships.ts',

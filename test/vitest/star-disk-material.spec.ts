@@ -150,7 +150,7 @@ describe('updateMainSequenceStarUniforms', () => {
     expect(uniforms.iBoundaryFeather.value.z).toBeCloseTo(0.05, 3);
   });
 
-  it('disables boundary feathering when legacy values are requested', () => {
+  it('clamps boundary parameters when legacy values are requested', () => {
     const material = createMainSequenceStarMaterial({ organic: null, noise: null });
     const uniforms = extractUniforms(material);
 
@@ -161,8 +161,8 @@ describe('updateMainSequenceStarUniforms', () => {
     });
 
     expect(uniforms.iBoundaryFeather.value.x).toBeCloseTo(0.999, 3);
-    expect(uniforms.iBoundaryFeather.value.y).toBeCloseTo(1, 3);
-    expect(uniforms.iBoundaryFeather.value.z).toBeCloseTo(1, 3);
+    expect(uniforms.iBoundaryFeather.value.y).toBeCloseTo(5, 3);
+    expect(uniforms.iBoundaryFeather.value.z).toBeCloseTo(0.3, 3);
   });
 });
 

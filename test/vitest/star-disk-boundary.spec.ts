@@ -11,9 +11,6 @@ const evaluateBoundaryFeather = (
   radius: number,
   params: ReturnType<typeof deriveBoundaryUniform>,
 ): number => {
-  if (params.start >= 0.999 || params.alphaFloor >= 0.999) {
-    return 1;
-  }
   const start = Math.min(Math.max(params.start, 0.6), 0.999);
   const exponent = Math.max(params.exponent, 0.5);
   const floor = Math.min(Math.max(params.alphaFloor, 0), 1);
@@ -44,11 +41,11 @@ describe('deriveBoundaryUniform', () => {
     expect(params.alphaFloor).toBeCloseTo(0.3, 3);
   });
 
-  it('returns legacy parameters when feathering is disabled', () => {
+  it('clamps disabling inputs to the supported maximums', () => {
     const params = deriveBoundaryUniform({ featherStart: 1, alphaFloor: 1, featherExponent: 3 });
     expect(params.start).toBeCloseTo(0.999, 3);
-    expect(params.exponent).toBeCloseTo(1, 3);
-    expect(params.alphaFloor).toBeCloseTo(1, 3);
+    expect(params.exponent).toBeCloseTo(3, 3);
+    expect(params.alphaFloor).toBeCloseTo(0.3, 3);
   });
 
   it('produces a monotonic attenuation curve without discontinuities', () => {
