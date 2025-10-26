@@ -62,7 +62,17 @@ function readStringParam(name: string, defaultValue: string): string {
   return query || defaultValue;
 }
 
-const DEFAULT_AI_V2 = readBooleanEnv('AI_V2_DEFAULT', true);
+const REQUESTED_AI_V2_DEFAULT = readBooleanEnv('AI_V2_DEFAULT', true);
+const DEFAULT_AI_V2 = true;
+if (!REQUESTED_AI_V2_DEFAULT && typeof globalThis !== 'undefined') {
+  try {
+    globalThis.console?.warn?.(
+      'AI v2 fallback has been removed; ignoring AI_V2_DEFAULT=false and forcing v2 on.',
+    );
+  } catch {
+    // ignore logging failures
+  }
+}
 const TICK_RATE_BASE = 12;
 
 // Tick rate experiment flags

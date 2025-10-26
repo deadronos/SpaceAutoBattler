@@ -1,12 +1,16 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { Quaternion, Vector3 } from 'three';
 import { applyProgressionDefaults } from './helpers/progression.js';
 import { createDefaultMotionStats } from '../../src/game/ships.js';
 import { __aiTestHooks } from '../../src/game/systems.js';
+import {
+  flushDeferredMutations,
+  flushPostPhysicsMutations,
+} from '../../src/game/simulationQueue.js';
 import { createDefaultMetrics } from '../../src/game/metrics.js';
 import type { GameState, ShipEntity } from '../../src/types/index.js';
 
-const { prepareShips, runLegacyShipBehavior } = __aiTestHooks;
+const { prepareShips, executeAICommand } = __aiTestHooks;
 
 function createRigidBodyRecorder() {
   let last = { x: 0, y: 0, z: 0 };
@@ -135,34 +139,56 @@ function createShip(id: number, team: 'blue' | 'red', position: Vector3) {
   return { ship, recorder };
 }
 
-describe('AI flag-off regression', () => {
-  it('matches legacy steering when AI V2 is disabled', () => {
-    const aiState = createState();
-    const legacyState = createState();
-    legacyState.ai.enabled = false;
+describe('AI v2 enforcement', () => {
+  it('forces AI enabled and still executes commands when the state flag is false', () => {
+    const state = createState();
+    state.ai.enabled = false;
 
-    const { ship: aiBlue, recorder: aiRecorder } = createShip(1, 'blue', new Vector3(0, 0, 0));
-    const { ship: aiRed } = createShip(2, 'red', new Vector3(120, 0, 0));
-    const { ship: legacyBlue, recorder: legacyRecorder } = createShip(
-      3,
-      'blue',
-      new Vector3(0, 0, 0),
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const { ship: blue, recorder } = createShip(1, 'blue', new Vector3(0, 0, 0));
+    blue.ai!.command.thrust = 1;
+    blue.ai!.command.ttl = 1;
+    blue.ai!.command.heading.set(0, 0, 1);
+
+    const { ship: red } = createShip(2, 'red', new Vector3(150, 0, 0));
+    red.ai!.command.heading.set(0, 0, -1);
+
+    const ships = state.queries.ships.entities as unknown as ShipEntity[];
+    ships.splice(0, ships.length, blue, red);
+
+    prepareShips(state, 0.1);
+
+    flushDeferredMutations(state);
+    flushPostPhysicsMutations(state);
+
+    expect(state.ai.enabled).toBe(true);
+    expect(recorder.read()).toEqual({ x: 0, y: 0, z: 3 });
+    expect(warnSpy).toHaveBeenCalled();
+
+    warnSpy.mockRestore();
+  });
+});
+
+describe('Missing AI safeguards', () => {
+  it('logs an error and keeps the ship stationary when AI is missing', () => {
+    const state = createState();
+    const { ship, recorder } = createShip(5, 'blue', new Vector3(12, 0, -4));
+    delete (ship as { ai?: unknown }).ai;
+
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const result = executeAICommand(state, ship, 0.1);
+
+    flushDeferredMutations(state);
+    flushPostPhysicsMutations(state);
+
+    expect(result).toBeNull();
+    expect(recorder.read()).toEqual({ x: 12, y: 0, z: -4 });
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Ship 5 is missing an AI component'),
     );
-    const { ship: legacyRed } = createShip(4, 'red', new Vector3(120, 0, 0));
 
-    delete (legacyBlue as { ai?: unknown }).ai;
-
-    const aiShips = aiState.queries.ships.entities as unknown as ShipEntity[];
-    aiShips.splice(0, aiShips.length, aiBlue, aiRed);
-    const legacyShips = legacyState.queries.ships.entities as unknown as ShipEntity[];
-    legacyShips.splice(0, legacyShips.length, legacyBlue, legacyRed);
-
-    prepareShips(aiState, 0.1);
-    const aiTranslation = aiRecorder.read();
-
-    runLegacyShipBehavior(legacyState, legacyBlue, 0.1);
-    const legacyTranslation = legacyRecorder.read();
-
-    expect(aiTranslation).toEqual(legacyTranslation);
+    errorSpy.mockRestore();
   });
 });
