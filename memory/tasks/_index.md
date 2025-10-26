@@ -16,6 +16,7 @@ This index tracks active tasks and their memory files. Use the `/memory/tasks` f
 
 ## Completed
 
+- [TASK252](TASK252-ai-harness-modernization.md) — Modernized AI test harness documentation and created deprecation/patterns guides. (2025-10-26)
 - [TASK247](TASK247-version2-vision.md) — Authored Version 2.0 vision document outlining pillars, feature concepts, and validation plans. (2025-10-13)
 - [TASK250](TASK250-tech-debt-report.md) — Documented legacy cleanup opportunities with ratings/effort and validated build/tests. (2025-10-26)
 - [TASK251](TASK251-remove-legacy-ai-fallback.md) — Removed the legacy AI fallback, enforced AI V2 enablement, and updated tests. (2025-10-26)
