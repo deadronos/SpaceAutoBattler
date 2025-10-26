@@ -7,7 +7,6 @@ export type {
   RigidBody,
   EntityId,
   Archetype,
-  MiniplexQueryReturn,
 } from './core.js';
 
 // Gameplay types

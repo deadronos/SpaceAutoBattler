@@ -52,14 +52,13 @@ function ensureOutDir() {
 }
 
 function generate() {
-  const files = walk(srcDir).filter(f => !f.endsWith('.d.ts'));
+  const files = walk(srcDir).filter((f) => !f.endsWith('.d.ts'));
   ensureOutDir();
 
   // Heavily mocked modules to avoid pulling large/native deps during import.
   const heavyMocks = [
     'three',
     'postprocessing',
-    'pixi.js',
     'puppeteer',
     'playwright',
     '@dimforge/rapier3d-compat',
@@ -67,30 +66,32 @@ function generate() {
     'idb-keyval',
   ];
 
-  const imports = files.map(f => toImportPath(f));
+  const imports = files.map((f) => toImportPath(f));
 
-  const content = "import { describe, it, expect, vi } from 'vitest';\n\n" +
-    "// Auto-generated smoke test. Tries to import many project modules to increase\n" +
+  const content =
+    "import { describe, it, expect, vi } from 'vitest';\n\n" +
+    '// Auto-generated smoke test. Tries to import many project modules to increase\n' +
     "// coverage. We mock heavy external libs above so imports don't fail.\n\n" +
-    "// Mock heavy external deps at the top level\n" +
-    heavyMocks.map(m => `vi.mock('${m}', () => ({}));`).join('\n') + '\n\n' +
+    '// Mock heavy external deps at the top level\n' +
+    heavyMocks.map((m) => `vi.mock('${m}', () => ({}));`).join('\n') +
+    '\n\n' +
     `const modules = ${JSON.stringify(imports, null, 2)};\n\n` +
     "describe('smoke imports', () => {\n" +
-    "  for (const m of modules) {\n" +
+    '  for (const m of modules) {\n' +
     "    it('imports ' + m, async () => {\n" +
-    "      // dynamic import so mocking can be applied first\n" +
-    "      let ok = true;\n" +
-    "      try {\n" +
-    "        const mod = await import(m);\n" +
-    "        expect(mod).toBeTruthy();\n" +
-    "      } catch (err) {\n" +
-    "        ok = false;\n" +
+    '      // dynamic import so mocking can be applied first\n' +
+    '      let ok = true;\n' +
+    '      try {\n' +
+    '        const mod = await import(m);\n' +
+    '        expect(mod).toBeTruthy();\n' +
+    '      } catch (err) {\n' +
+    '        ok = false;\n' +
     "        console.warn('smoke import failed', m, err && err.message ? err.message : err);\n" +
-    "      }\n" +
-    "      expect(ok).toBe(true);\n" +
-    "    });\n" +
-    "  }\n" +
-    "});\n";
+    '      }\n' +
+    '      expect(ok).toBe(true);\n' +
+    '    });\n' +
+    '  }\n' +
+    '});\n';
 
   fs.writeFileSync(outFile, content, 'utf8');
   console.log('Wrote', outFile, `(${imports.length} modules)`);

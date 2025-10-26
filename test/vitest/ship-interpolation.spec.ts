@@ -56,9 +56,9 @@ function createTestEntity(): ShipEntity {
 
 function createSmoothingConfig(): SmoothingConfig {
   return {
-    positionLerp: 0.18,
-    rotationSlerp: 0.25,
-    bankLerp: 0.15,
+    positionK: 12,
+    rotationK: 30,
+    bankK: 18,
     teleportThresholdSq: 900,
     bankFactor: 18,
     maxBankDeg: 32,

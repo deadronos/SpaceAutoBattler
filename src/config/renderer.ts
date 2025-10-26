@@ -1,12 +1,12 @@
 import type { MotionStats, ShipHull } from '../types/index.js';
 
 export interface RendererMotionConfig {
-  /** Linear interpolation factor applied every render frame (0..1). */
-  positionLerp: number;
-  /** Spherical interpolation factor for rotation (0..1). */
-  rotationSlerp: number;
-  /** Low-pass filter factor for banking (0..1). */
-  bankLerp: number;
+  /** Position smoothing time-constant used as a fallback when hull config omits one. */
+  positionK: number;
+  /** Rotation smoothing time-constant used as a fallback when hull config omits one. */
+  rotationK: number;
+  /** Banking smoothing time-constant used as a fallback when hull config omits one. */
+  bankK: number;
   /** Maximum bank angle allowed for visuals (degrees). */
   maxBankDeg: number;
   /** Conversion factor from yaw rate (rad/s) to bank degrees. */
@@ -18,9 +18,9 @@ export interface RendererMotionConfig {
 }
 
 export const RENDERER_MOTION_DEFAULTS: RendererMotionConfig = {
-  positionLerp: 0.18,
-  rotationSlerp: 0.25,
-  bankLerp: 0.15,
+  positionK: 12.0,
+  rotationK: 30.0,
+  bankK: 18.0,
   maxBankDeg: 32,
   bankFactor: 18,
   teleportDistance: 30,
@@ -31,50 +31,17 @@ export const RENDERER_MOTION_DEFAULTS: RendererMotionConfig = {
 export const RENDERER_VISUAL_CONFIG = {
   // Master switch: when false, per-ship visual smoothing is disabled.
   enableShipVisualSmoothing: true,
-  // Canonical frame time to approximate legacy per-frame mapping (used only for migration/compat).
-  legacyFrameDt: 1 / 60,
 };
-
-function kToFrameLerp(
-  k: number | undefined,
-  frameDt = RENDERER_VISUAL_CONFIG.legacyFrameDt,
-): number {
-  if (!k || k <= 0) return 0;
-  return 1 - Math.exp(-k * frameDt);
-}
 
 export function resolveRendererMotionConfig(motion?: MotionStats): RendererMotionConfig {
   const visual = motion?.visual;
-  const smoothing = motion?.smoothing;
-
-  if (visual) {
-    // Map time-constant semantics to legacy per-frame factors for current runtime compatibility
-    const posK = visual.position?.k ?? 12.0;
-    const rotK = visual.rotation?.k ?? 30.0;
-    const bankK = visual.bank?.k ?? 18.0;
-
-    return {
-      positionLerp: kToFrameLerp(posK),
-      rotationSlerp: kToFrameLerp(rotK),
-      bankLerp: kToFrameLerp(bankK),
-      maxBankDeg: visual.bank?.maxDeg ?? motion?.maxBankDeg ?? RENDERER_MOTION_DEFAULTS.maxBankDeg,
-      bankFactor: motion?.visualBankFactor ?? RENDERER_MOTION_DEFAULTS.bankFactor,
-      teleportDistance:
-        visual.teleportDistance ??
-        smoothing?.teleportDistance ??
-        RENDERER_MOTION_DEFAULTS.teleportDistance,
-      thrusterIntensity: RENDERER_MOTION_DEFAULTS.thrusterIntensity,
-    };
-  }
-
-  // Legacy behavior: use smoothing block directly
   return {
-    positionLerp: smoothing?.positionLerp ?? RENDERER_MOTION_DEFAULTS.positionLerp,
-    rotationSlerp: smoothing?.rotationSlerp ?? RENDERER_MOTION_DEFAULTS.rotationSlerp,
-    bankLerp: smoothing?.bankLerp ?? RENDERER_MOTION_DEFAULTS.bankLerp,
-    maxBankDeg: motion?.maxBankDeg ?? RENDERER_MOTION_DEFAULTS.maxBankDeg,
+    positionK: visual?.position?.k ?? RENDERER_MOTION_DEFAULTS.positionK,
+    rotationK: visual?.rotation?.k ?? RENDERER_MOTION_DEFAULTS.rotationK,
+    bankK: visual?.bank?.k ?? RENDERER_MOTION_DEFAULTS.bankK,
+    maxBankDeg: visual?.bank?.maxDeg ?? motion?.maxBankDeg ?? RENDERER_MOTION_DEFAULTS.maxBankDeg,
     bankFactor: motion?.visualBankFactor ?? RENDERER_MOTION_DEFAULTS.bankFactor,
-    teleportDistance: smoothing?.teleportDistance ?? RENDERER_MOTION_DEFAULTS.teleportDistance,
+    teleportDistance: visual?.teleportDistance ?? RENDERER_MOTION_DEFAULTS.teleportDistance,
     thrusterIntensity: RENDERER_MOTION_DEFAULTS.thrusterIntensity,
   };
 }
