@@ -1,5 +1,6 @@
 import React from 'react';
+import { explosionSmokePreset } from './materialPresets.js';
 
 export const ExplosionSmokeMaterial: React.FC = () => (
-  <meshStandardMaterial color="#55585c" roughness={0.9} metalness={0} />
+  <meshStandardMaterial {...explosionSmokePreset} />
 );

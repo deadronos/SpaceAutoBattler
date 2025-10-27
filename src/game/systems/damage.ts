@@ -5,7 +5,7 @@ import type {
   ShipEntity,
   ShieldRipple,
 } from '../../types/index.js';
-import { getProjectileConfig, getProjectileCategory } from '../../config/projectiles.js';
+import { resolveProjectileCategory, resolveProjectileInfo } from '../../utils/projectileInfo.js';
 import {
   applySubsystemDamage,
   awardDamageXp,
@@ -77,7 +77,7 @@ export function applyProjectileDamage(
       : ships.find((s) => s.ship.team === projectile.projectile.team);
     if (attackerShip) {
       const projectileCategory =
-        projectile.projectile.category ?? getProjectileCategory(projectile.projectile.bulletType);
+        projectile.projectile.category ?? resolveProjectileCategory(projectile.projectile.bulletType);
       awardDamageXp(
         attackerShip.ship,
         totalDamageDealt,
@@ -193,7 +193,7 @@ export function resolveProjectiles(state: GameState, delta: number): void {
 
   for (const projectile of projectiles) {
     const category: ProjectileCategory =
-      projectile.projectile.category ?? getProjectileCategory(projectile.projectile.bulletType);
+      projectile.projectile.category ?? resolveProjectileCategory(projectile.projectile.bulletType);
 
     if (category === 'beam') {
       handleBeamProjectile(state, projectile, ships, toRemove, delta);
@@ -206,8 +206,9 @@ export function resolveProjectiles(state: GameState, delta: number): void {
       continue;
     }
 
-    const projCfg = getProjectileConfig(projectile.projectile.bulletType);
-    const projRadius = projCfg.colliderRadius ?? Math.max(0.08, projectile.transform.scale * 1.2);
+    const info = resolveProjectileInfo(projectile.projectile.bulletType);
+    const projRadius =
+      info.config.colliderRadius ?? Math.max(0.08, projectile.transform.scale * 1.2);
 
     for (const ship of ships) {
       if (ship.ship.team === projectile.projectile.team) continue;

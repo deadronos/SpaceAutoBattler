@@ -2,7 +2,8 @@ import React, { useRef, useMemo, useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import type { Mesh, Texture } from 'three';
 import { MeshBasicMaterial, ShaderMaterial, Vector3, NoBlending } from 'three';
-import fragmentShader from '../../renderer/shaders/mainsequencestar.glsl';
+import fragmentShaderRaw from '../../renderer/shaders/mainsequencestar.glsl';
+import { COMMON_GLSL } from '../../renderer/shaders/index.js';
 import vertexShader from '../../renderer/shaders/starDisk.vertex.glsl';
 import type { StarLightConfig, CelestialEnvironmentConfig, StarDiskHazeConfig, StarDiskBoundaryConfig } from '../../config/environment.js';
 import { useStarTextures } from '../../hooks/useStarTextures.js';
@@ -149,6 +150,8 @@ export function StarSphere({
     if (appliedMaterial && (appliedMaterial as any).isShaderMaterial) {
       try {
         const shaderMat = appliedMaterial as ShaderMaterial;
+        // Prepend shared GLSL utilities (noise, hash, etc.) to the fragment shader
+        const fragmentShader = COMMON_GLSL + '\n' + fragmentShaderRaw;
         const depthMat = new ShaderMaterial({
           vertexShader,
           fragmentShader,
@@ -189,7 +192,7 @@ export function StarSphere({
       }
       depthMaterialRef.current = null;
     };
-  }, [appliedMaterial, fragmentShader, vertexShader, radius]);
+  }, [appliedMaterial, fragmentShaderRaw, vertexShader, radius]);
 
   // Attempt to enable alpha-to-coverage on the raw GL context and toggle
   // material.alphaToCoverage when supported. This can reduce aliasing on

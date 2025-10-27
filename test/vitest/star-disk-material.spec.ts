@@ -53,6 +53,9 @@ describe('createMainSequenceStarMaterial', () => {
     expect(uniforms.iBoundaryFeather.value.z).toBeCloseTo(0.05, 3);
     expect(uniforms.iBoundaryFeather.value.w).toBe(0);
     expect(material.fragmentShader).toContain('void main()');
+    expect(material.fragmentShader).toContain('float snoise(vec3 uv, float res)');
+    expect(material.fragmentShader).toContain('float hash(float x)');
+    expect(material.fragmentShader).toContain('float hash(vec2 p)');
   });
 
   it('uses deterministic fallback textures when none are provided', () => {

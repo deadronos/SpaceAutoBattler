@@ -13,8 +13,9 @@ import {
   Vector3,
   Vector4,
 } from 'three';
-import fragmentShader from './shaders/mainsequencestar.glsl';
+import fragmentShaderRaw from './shaders/mainsequencestar.glsl';
 import vertexShader from './shaders/starDisk.vertex.glsl';
+import { COMMON_GLSL } from './shaders/index.js';
 
 export interface StarDiskHazeUniformInput {
   taperStrength?: number;
@@ -201,6 +202,9 @@ export function createMainSequenceStarMaterial(
   organicTexture.anisotropy = 16;
   const noiseTexture = resolveTexture(options.noise, FALLBACK_NOISE);
   noiseTexture.anisotropy = 16;
+
+  // Inject common GLSL utilities before the main shader code
+  const fragmentShader = COMMON_GLSL + '\n' + fragmentShaderRaw;
 
   const material = new ShaderMaterial({
     name: 'MainSequenceStarMaterial',
