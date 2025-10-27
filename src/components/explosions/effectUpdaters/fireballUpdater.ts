@@ -1,4 +1,3 @@
-import type { InstancedMesh } from 'three';
 import { clamp01, getCachedColor } from '../derived.js';
 import {
   EMPTY_EFFECT_RESULT,

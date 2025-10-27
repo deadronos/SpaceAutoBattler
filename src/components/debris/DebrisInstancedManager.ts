@@ -1,4 +1,4 @@
-import { InstancedBufferAttribute, Matrix4, Quaternion, Vector3 } from 'three';
+import { InstancedBufferAttribute, Quaternion, Vector3 } from 'three';
 import type { InstancedMesh } from 'three';
 import { DEBRIS_DELAY } from '../explosions/constants.js';
 import { clamp01, getCachedColor } from '../explosions/derived.js';

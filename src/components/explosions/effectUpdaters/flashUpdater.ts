@@ -1,4 +1,3 @@
-import type { InstancedMesh } from 'three';
 import { FLASH_DURATION } from '../constants.js';
 import { clamp01, easeOutQuad, getCachedColor } from '../derived.js';
 import {

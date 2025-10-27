@@ -1,4 +1,3 @@
-import type { InstancedMesh } from 'three';
 import { SPARKS_DELAY } from '../constants.js';
 import { clamp01, getCachedColor } from '../derived.js';
 import {
