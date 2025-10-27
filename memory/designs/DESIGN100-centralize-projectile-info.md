@@ -1,6 +1,6 @@
 # DESIGN100 — Centralize Projectile Info & Beam Helpers
 
-**Status:** Proposed
+**Status:** Implemented
 **Created:** 2025-10-27
 **Authors:** GitHub Copilot (assistant)
 
