@@ -17,6 +17,8 @@ This index tracks active tasks and their memory files. Use the `/memory/tasks` f
 - [TASK302](TASK302-split-progression-modules.md) — Split `src/game/progression.ts` into `xp.ts`, `leveling.ts`, and `events.ts` with an index re-export. (In Progress — design: DESIGN202) (2025-10-27)
 
 - [TASK240](TASK240-rings-bloomOnly.md) — Add `rings.bloomOnly` config flag and create follow-up wiring/tests tasks. (In Progress — wiring & tests remaining) (2025-10-03)
+- [TASK413](TASK413-renderer-config-refactor.md) — Split `src/config/renderer.ts` into `shields/effects/motion/postprocessing` with façade (In Progress — design: DESIGN-RENDERER-REF204) (2025-10-27)
+- [TASK414](TASK414-particle-trails-refactor.md) — Extract particle trail GPU resources and thruster anchor hook (In Progress — design: DESIGN205) (2025-10-27)
 
 ## Completed
 
