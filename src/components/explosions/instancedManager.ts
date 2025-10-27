@@ -1,5 +1,7 @@
 import type { InstancedMesh } from 'three';
 
+import { createInstancedLayerManager } from '../layers/instancedLayer.js';
+import type { InstancedLayerManager } from '../layers/types.js';
 export interface InstancedMeshRefs {
   flash: InstancedMesh | null;
   shockwave: InstancedMesh | null;
@@ -23,7 +25,7 @@ export interface EffectCounts {
 export type EffectKey = keyof EffectCounts;
 
 interface PoolState {
-  mesh: InstancedMesh | null;
+  manager: InstancedLayerManager<any> | null;
   capacity: number;
 }
 
@@ -87,13 +89,18 @@ export class ExplosionsInstancedManager {
   };
 
   constructor(capacities: Partial<Record<EffectKey, number>>) {
-    this.pools = EFFECT_KEYS.reduce<Record<EffectKey, PoolState>>(
-      (acc, key) => {
-        acc[key] = { mesh: null, capacity: sanitizeCapacity(capacities[key]) };
-        return acc;
-      },
-      {} as Record<EffectKey, PoolState>,
-    );
+    // Create a lightweight InstancedLayerManager for each effect. We pass a
+    // meshRef wrapper (with current initially null) so the manager can be
+    // attached later when meshes are available.
+    this.pools = EFFECT_KEYS.reduce<Record<EffectKey, PoolState>>((acc, key) => {
+      const cap = sanitizeCapacity(capacities[key]);
+      // create manager with a null-ref placeholder; it will be initialized
+      // lazily when attach() is called and the real mesh refs are provided.
+      const placeholderRef = { current: null as InstancedMesh | null };
+      const mgr = createInstancedLayerManager(placeholderRef, { capacity: cap });
+      acc[key] = { manager: mgr, capacity: cap };
+      return acc;
+    }, {} as Record<EffectKey, PoolState>);
   }
 
   /**
@@ -104,7 +111,11 @@ export class ExplosionsInstancedManager {
     let ready = true;
     for (const key of EFFECT_KEYS) {
       const mesh = refs[key];
-      this.pools[key].mesh = mesh;
+      const pool = this.pools[key];
+      if (!pool.manager) continue;
+      // bind the real mesh ref to the manager and initialize attributes
+      pool.manager.meshRef.current = mesh;
+      pool.manager.initMesh();
       ready &&= Boolean(mesh);
     }
     return ready;
@@ -114,7 +125,13 @@ export class ExplosionsInstancedManager {
     this.counts = createZeroedCounts();
     for (const key of EFFECT_KEYS) {
       this.saturation[key] = false;
+      const mgr = this.pools[key].manager;
+      if (mgr) mgr.beginFrame();
     }
+  }
+
+  getEffectManager(key: EffectKey): InstancedLayerManager<any> | null {
+    return this.pools[key].manager;
   }
 
   getCapacity(key: EffectKey): number {
@@ -122,7 +139,8 @@ export class ExplosionsInstancedManager {
   }
 
   getMesh(key: EffectKey): InstancedMesh {
-    const mesh = this.pools[key].mesh;
+    const mgr = this.pools[key].manager;
+    const mesh = mgr?.meshRef.current ?? null;
     if (!mesh) {
       throw new Error(`Instanced mesh for effect "${key}" is not attached.`);
     }
@@ -142,15 +160,21 @@ export class ExplosionsInstancedManager {
 
   finalize(): void {
     for (const key of EFFECT_KEYS) {
-      const { mesh, capacity } = this.pools[key];
-      if (!mesh) {
-        continue;
-      }
-      const count = Math.min(this.counts[key], capacity);
+      const { manager, capacity } = this.pools[key];
+      if (!manager) continue;
+      const mesh = manager.meshRef.current;
+      if (!mesh) continue;
+      // finalize the underlying manager and read its summary
+      const summary = manager.endFrame();
+      // Support legacy commit-based counts: prefer explicit committed counts
+      // if present, otherwise fall back to allocator-derived count.
+      const committed = this.counts[key] ?? 0;
+      const count = Math.min(Math.max(summary.count, committed), capacity);
       mesh.count = count;
       mesh.visible = count > 0;
       markMatrixDirty(mesh);
       markColorDirty(mesh);
+      if (summary.saturated) this.saturation[key] = true;
     }
   }
 

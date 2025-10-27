@@ -14,9 +14,8 @@ import {
  */
 export const updateSmoke: EffectUpdater = (
   ctx: EffectUpdateContext,
-  mesh: InstancedMesh,
-  startIndex: number,
-  capacity: number,
+  manager,
+  keyBase: string,
 ): EffectUpdateResult => {
   const { event, time, camera, derived, dummy, tmpVec, color } = ctx;
 
@@ -28,12 +27,16 @@ export const updateSmoke: EffectUpdater = (
   let count = 0;
   let saturated = false;
 
+  let i = 0;
   for (const wisp of derived.smoke) {
     if (smokeT > wisp.lifetime) {
+      i += 1;
       continue;
     }
 
-    if (startIndex + count >= capacity) {
+    const key = `${keyBase}:wisp:${i}`;
+    const idx = manager.allocate(key);
+    if (idx == null) {
       saturated = true;
       break;
     }
@@ -49,14 +52,15 @@ export const updateSmoke: EffectUpdater = (
     dummy.quaternion.copy(camera.quaternion);
     dummy.updateMatrix();
 
-    mesh.setMatrixAt(startIndex + count, dummy.matrix);
+    manager.setMatrixAt(idx, dummy.matrix);
 
     color
       .copy(getCachedColor(event.palette.smoke))
       .multiplyScalar(Math.max(0.2, 0.7 - wispProgress * 0.5));
-    mesh.setColorAt(startIndex + count, color);
+    manager.setColorAt(idx, color);
 
     count += 1;
+    i += 1;
   }
 
   return { count, saturated };

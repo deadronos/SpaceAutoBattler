@@ -7,8 +7,8 @@ import {
   type EffectUpdateContext,
   type EffectUpdateResult,
 } from '../explosions/effectUpdaters/types.js';
+import { HIDDEN_MATRIX } from '../layers/instancedLayer.js';
 
-const HIDDEN_MATRIX = new Matrix4().makeScale(0, 0, 0);
 const TMP_QUAT = new Quaternion();
 const TMP_VEC = new Vector3();
 

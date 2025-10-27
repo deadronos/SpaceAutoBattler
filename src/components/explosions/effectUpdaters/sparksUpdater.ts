@@ -14,9 +14,8 @@ import {
  */
 export const updateSparks: EffectUpdater = (
   ctx: EffectUpdateContext,
-  mesh: InstancedMesh,
-  startIndex: number,
-  capacity: number,
+  manager,
+  keyBase: string,
 ): EffectUpdateResult => {
   const { event, time, camera, derived, dummy, tmpVec, color } = ctx;
 
@@ -28,12 +27,16 @@ export const updateSparks: EffectUpdater = (
   let count = 0;
   let saturated = false;
 
+  let i = 0;
   for (const spark of derived.sparks) {
     if (sparksT > spark.lifetime) {
+      i += 1;
       continue;
     }
 
-    if (startIndex + count >= capacity) {
+    const key = `${keyBase}:spark:${i}`;
+    const idx = manager.allocate(key);
+    if (idx == null) {
       saturated = true;
       break;
     }
@@ -50,14 +53,15 @@ export const updateSparks: EffectUpdater = (
     dummy.quaternion.copy(camera.quaternion);
     dummy.updateMatrix();
 
-    mesh.setMatrixAt(startIndex + count, dummy.matrix);
+    manager.setMatrixAt(idx, dummy.matrix);
 
     color
       .copy(getCachedColor(event.palette.flash))
       .multiplyScalar(Math.max(0.25, 1 - sparkProgress * 0.9));
-    mesh.setColorAt(startIndex + count, color);
+    manager.setColorAt(idx, color);
 
     count += 1;
+    i += 1;
   }
 
   return { count, saturated };

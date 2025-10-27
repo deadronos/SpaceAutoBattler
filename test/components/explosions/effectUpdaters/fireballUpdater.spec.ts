@@ -10,6 +10,7 @@ import {
   MeshBasicMaterial,
 } from 'three';
 import { updateFireball } from '../../../../src/components/explosions/effectUpdaters/fireballUpdater.js';
+import { createInstancedLayerManager } from '../../../../src/components/layers/instancedLayer.js';
 import type { EffectUpdateContext } from '../../../../src/components/explosions/effectUpdaters/types.js';
 import type { ExplosionEvent } from '../../../../src/types/index.js';
 import { getDerived } from '../../../../src/components/explosions/derived.js';
@@ -67,33 +68,43 @@ describe('fireballUpdater', () => {
 
   it('should not create fireball before delay', () => {
     ctx.time = 0.01;
-    const result = updateFireball(ctx, mesh, 0, 10);
+    const mgr = createInstancedLayerManager({ current: mesh }, { capacity: 10, supportsInstanceColor: true });
+    mgr.beginFrame();
+    const result = updateFireball(ctx, mgr, String(event.id));
     expect(result.count).toBe(0);
     expect(result.saturated).toBe(false);
   });
 
   it('should create fireball after delay', () => {
     ctx.time = 0.1;
-    const result = updateFireball(ctx, mesh, 0, 10);
+    const mgr = createInstancedLayerManager({ current: mesh }, { capacity: 10, supportsInstanceColor: true });
+    mgr.beginFrame();
+    const result = updateFireball(ctx, mgr, String(event.id));
     expect(result.count).toBe(1);
     expect(result.saturated).toBe(false);
   });
 
   it('should not create fireball after duration ends', () => {
     ctx.time = 0.7;
-    const result = updateFireball(ctx, mesh, 0, 10);
+    const mgr = createInstancedLayerManager({ current: mesh }, { capacity: 10, supportsInstanceColor: true });
+    mgr.beginFrame();
+    const result = updateFireball(ctx, mgr, String(event.id));
     expect(result.count).toBe(0);
     expect(result.saturated).toBe(false);
   });
 
   it('should transition color from hot to cool', () => {
     ctx.time = 0.1;
-    updateFireball(ctx, mesh, 0, 10);
+    const mgr1 = createInstancedLayerManager({ current: mesh }, { capacity: 10, supportsInstanceColor: true });
+    mgr1.beginFrame();
+    updateFireball(ctx, mgr1, String(event.id));
     const color1 = new Color();
     mesh.getColorAt(0, color1);
 
     ctx.time = 0.5;
-    updateFireball(ctx, mesh, 1, 10);
+    const mgr2 = createInstancedLayerManager({ current: mesh }, { capacity: 10, supportsInstanceColor: true });
+    mgr2.beginFrame();
+    updateFireball(ctx, mgr2, String(event.id));
     const color2 = new Color();
     mesh.getColorAt(1, color2);
 
@@ -103,14 +114,18 @@ describe('fireballUpdater', () => {
 
   it('should shrink fireball over time', () => {
     ctx.time = 0.1;
-    updateFireball(ctx, mesh, 0, 10);
+    const mgr3 = createInstancedLayerManager({ current: mesh }, { capacity: 10, supportsInstanceColor: true });
+    mgr3.beginFrame();
+    updateFireball(ctx, mgr3, String(event.id));
     const dummy1 = new Object3D();
     mesh.getMatrixAt(0, dummy1.matrix);
     dummy1.matrix.decompose(dummy1.position, dummy1.quaternion, dummy1.scale);
     const scale1 = dummy1.scale.x;
 
     ctx.time = 0.5;
-    updateFireball(ctx, mesh, 1, 10);
+    const mgr4 = createInstancedLayerManager({ current: mesh }, { capacity: 10, supportsInstanceColor: true });
+    mgr4.beginFrame();
+    updateFireball(ctx, mgr4, String(event.id));
     const dummy2 = new Object3D();
     mesh.getMatrixAt(1, dummy2.matrix);
     dummy2.matrix.decompose(dummy2.position, dummy2.quaternion, dummy2.scale);
@@ -120,7 +135,13 @@ describe('fireballUpdater', () => {
   });
 
   it('reports saturation when start index exceeds capacity', () => {
-    const result = updateFireball(ctx, mesh, 10, 10);
+    const mgr = createInstancedLayerManager({ current: mesh }, { capacity: 10, supportsInstanceColor: true });
+    mgr.beginFrame();
+    // Fill allocator to force saturation
+    for (let i = 0; i < 10; i += 1) {
+      mgr.allocate(`${event.id}:fill:${i}` as any);
+    }
+    const result = updateFireball(ctx, mgr, String(event.id) + ':overflow');
     expect(result.count).toBe(0);
     expect(result.saturated).toBe(true);
   });
