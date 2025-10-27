@@ -1,6 +1,7 @@
 import type { InstancedMesh } from 'three';
 
-import { createInstancedLayerManager, InstancedLayerManager } from '../layers/instancedLayer.js';
+import { createInstancedLayerManager } from '../layers/instancedLayer.js';
+import type { InstancedLayerManager } from '../layers/types.js';
 export interface InstancedMeshRefs {
   flash: InstancedMesh | null;
   shockwave: InstancedMesh | null;

@@ -11,7 +11,8 @@ import {
   type InstancedMaterialInfo,
 } from '../../renderer/materialRegistry.js';
 import { useBloomRegistration } from '../../renderer/BloomProvider.js';
-import { createInstancedLayerManager, InstancedLayerManager } from './instancedLayer.js';
+import { createInstancedLayerManager } from './instancedLayer.js';
+import type { InstancedLayerManager } from './types.js';
 import { createSaturationWarningState, warnOnSaturation } from './saturationWarning.js';
 
 interface ProjectilesInstancedLayerProps {
@@ -33,7 +34,8 @@ interface ProjectileGroupState {
 }
 
 const DEFAULT_CAPACITY = 512;
-const HIDDEN_MATRIX = new Matrix4().makeScale(0, 0, 0);
+// HIDDEN_MATRIX is exported from `instancedLayer.ts` and used globally to
+// hide released instances. Keeping a single canonical source avoids dupes.
 const TEMP_MATRIX = new Matrix4();
 const TEMP_SCALE = new Vector3();
 const TEMP_POSITION = new Vector3();

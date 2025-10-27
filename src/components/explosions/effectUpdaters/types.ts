@@ -1,5 +1,5 @@
 import type { Camera, Color, InstancedMesh, Object3D, Quaternion, Vector3 } from 'three';
-import type { InstancedLayerManager } from '../../layers/instancedLayer.js';
+import type { InstancedLayerManager } from '../../layers/types.js';
 import type { ExplosionEvent } from '../../../types/index.js';
 import type { DerivedExplosionData } from '../derived.js';
 
