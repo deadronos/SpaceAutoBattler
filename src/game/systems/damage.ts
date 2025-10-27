@@ -6,16 +6,12 @@ import type {
   ShieldRipple,
 } from '../../types/index.js';
 import { resolveProjectileCategory, resolveProjectileInfo } from '../../utils/projectileInfo.js';
-import {
-  applySubsystemDamage,
-  awardDamageXp,
-  awardKillXp,
-  calculateEffectiveDamage,
-} from '../progression.js';
+import { awardDamageXp, awardKillXp } from '../progression.js';
+import { applySubsystemDamage } from '../subsystems.js';
+import { applyDamageResultToShip, calculateEffectiveDamage } from '../combat/damage.js';
 import { emitShipKillExplosion } from '../explosions.js';
 import { destroyEntity } from '../state.js';
 import { AI_CONFIG } from '../config.js';
-import { SeededRng } from '../../utils/rng.js';
 import {
   accumulateInterruptDamage,
   ensureInterruptState,
@@ -38,6 +34,8 @@ export function applyProjectileDamage(
   ship: ShipEntity,
   ships: ShipEntity[],
 ): ProjectileDamageOutcome {
+  const projectileCategory =
+    projectile.projectile.category ?? resolveProjectileCategory(projectile.projectile.bulletType);
   const damageResult = calculateEffectiveDamage(
     projectile.projectile.damage,
     projectile.projectile.damageType,
@@ -45,81 +43,82 @@ export function applyProjectileDamage(
     ship.ship.armor,
   );
 
-  if (damageResult.shieldDamage > 0) {
-    ship.ship.shield -= damageResult.shieldDamage;
-    const dir = TEMP_DIR.copy(projectile.transform.position).sub(ship.transform.position);
-    if (dir.lengthSq() > 1e-5) dir.normalize();
-    else dir.set(0, 0, 1);
-    const strength = Math.min(1, damageResult.shieldDamage / Math.max(1, ship.ship.maxShield));
-    const ripple: ShieldRipple = { dir: dir.clone(), t0: state.time, amp: strength };
-    const list = (ship.shieldRipples ??= []);
-    list.push(ripple);
-    if (list.length > 64) list.shift();
-  }
-
-  if (damageResult.armorDamage > 0) {
-    ship.ship.armor = Math.max(0, ship.ship.armor - damageResult.armorDamage * 0.1);
-  }
-
-  let hullDamage = 0;
-  if (damageResult.hullDamage > 0) {
-    const prevHp = ship.ship.hp;
-    ship.ship.hp -= damageResult.hullDamage;
-    hullDamage = Math.max(0, prevHp - ship.ship.hp);
-    applySubsystemDamage(ship.ship, hullDamage, new SeededRng(projectile.id + state.time));
-  }
-
-  const totalDamageDealt =
-    damageResult.shieldDamage + damageResult.armorDamage + damageResult.hullDamage;
-  if (totalDamageDealt > 0) {
-    const attackerShip = projectile.projectile.sourceId
-      ? ships.find((s) => s.id === projectile.projectile.sourceId)
-      : ships.find((s) => s.ship.team === projectile.projectile.team);
-    if (attackerShip) {
-      const projectileCategory =
-        projectile.projectile.category ?? resolveProjectileCategory(projectile.projectile.bulletType);
-      awardDamageXp(
-        attackerShip.ship,
-        totalDamageDealt,
-        state,
-        attackerShip.id,
-        projectile.projectile.bulletType,
-        projectileCategory,
-      );
-    }
-  }
-
   const manager = state.ai;
-  if (manager && hullDamage > 0) {
-    const totalDamage = accumulateInterruptDamage(manager, ship.id, hullDamage, manager.tickIndex);
-    const maxHp = Math.max(1, ship.ship.maxHp);
-    if (totalDamage / maxHp >= (AI_CONFIG.interruptHpDrop ?? 0.1)) {
-      queueInterrupt(manager, {
-        shipId: ship.id,
-        reason: 'hp-drop',
-        tick: manager.tickIndex,
-        sourceId: projectile.id,
-      });
-    }
-  }
+  const sourceMeta = {
+    id: projectile.projectile.sourceId ?? undefined,
+    team: projectile.projectile.team,
+    bulletType: projectile.projectile.bulletType,
+    category: projectileCategory,
+  };
+  const attackerShip = sourceMeta.id
+    ? ships.find((s) => s.id === sourceMeta.id)
+    : ships.find((s) => s.ship.team === sourceMeta.team);
 
-  const destroyed = ship.ship.hp <= 0;
-  if (destroyed) {
-    if (manager) {
-      queueTargetLossInterrupts(state, ships, ship.id);
-    }
+  const outcome = applyDamageResultToShip({
+    state,
+    ship,
+    damageResult,
+    source: sourceMeta,
+    rngSeed: projectile.id + state.time,
+    callbacks: {
+      emitShieldRipple: ({ strength }) => {
+        const dir = TEMP_DIR.copy(projectile.transform.position).sub(ship.transform.position);
+        if (dir.lengthSq() > 1e-5) {
+          dir.normalize();
+        } else {
+          dir.set(0, 0, 1);
+        }
+        const ripple: ShieldRipple = { dir: dir.clone(), t0: state.time, amp: strength };
+        const list = (ship.shieldRipples ??= []);
+        list.push(ripple);
+        if (list.length > 64) list.shift();
+      },
+      applySubsystemDamage: (component, hullDamage, rng) => {
+        applySubsystemDamage(component, hullDamage, rng);
+      },
+      onDamageApplied: ({ totalDamage, hullDamage }) => {
+        if (totalDamage > 0 && attackerShip) {
+          awardDamageXp(
+            attackerShip.ship,
+            totalDamage,
+            state,
+            attackerShip.id,
+            projectile.projectile.bulletType,
+            projectileCategory,
+          );
+        }
 
-    const killerShip = projectile.projectile.sourceId
-      ? ships.find((s) => s.id === projectile.projectile.sourceId)
-      : ships.find((s) => s.ship.team === projectile.projectile.team);
-    if (killerShip) {
-      awardKillXp(killerShip.ship, ship.ship.maxHp, state, killerShip.id);
-    }
+        if (manager && hullDamage > 0) {
+          const accumulated = accumulateInterruptDamage(
+            manager,
+            ship.id,
+            hullDamage,
+            manager.tickIndex,
+          );
+          const maxHp = Math.max(1, ship.ship.maxHp);
+          if (accumulated / maxHp >= (AI_CONFIG.interruptHpDrop ?? 0.1)) {
+            queueInterrupt(manager, {
+              shipId: ship.id,
+              reason: 'hp-drop',
+              tick: manager.tickIndex,
+              sourceId: projectile.id,
+            });
+          }
+        }
+      },
+      onKill: () => {
+        if (manager) {
+          queueTargetLossInterrupts(state, ships, ship.id);
+        }
+        if (attackerShip) {
+          awardKillXp(attackerShip.ship, ship.ship.maxHp, state, attackerShip.id);
+        }
+        emitShipKillExplosion(state, ship, projectile);
+      },
+    },
+  });
 
-    emitShipKillExplosion(state, ship, projectile);
-  }
-
-  return { totalDamage: totalDamageDealt, hullDamage, destroyed };
+  return outcome;
 }
 
 function isProjectileArmed(projectile: ProjectileEntity, now: number): boolean {
