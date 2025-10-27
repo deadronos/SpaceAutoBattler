@@ -5,21 +5,11 @@
 
 import { AI_CONFIG } from '../src/game/config.js';
 import { SHIP_STATS } from '../src/game/ships.js';
-import { SeededRng } from '../src/utils/rng.js';
+import {
+  adjustProjectileSpeedForHullAndBullet,
+  applyRangeVariance,
+} from '../src/game/utils/rangePolicy.js';
 import type { ShipHull } from '../src/types/index.js';
-
-// Replicate the range variance logic
-function applyRangeVariance(baseRange: number, traitSeed: number, weaponIndex = 0): number {
-  if (AI_CONFIG.rangePolicy !== 'v0.1.1-exp') return baseRange;
-
-  const rangeSeed = Math.abs((traitSeed ^ (weaponIndex * 7919)) >>> 0) || 1;
-  const rng = new SeededRng(rangeSeed);
-
-  const variance = 0.05;
-  const modifier = 1 + (rng.next() * 2 - 1) * variance;
-
-  return Math.round(baseRange * modifier);
-}
 
 function calculateRangeStats(ranges: number[]): {
   min: number;
@@ -90,28 +80,22 @@ console.log('🚀 Projectile Speed Variance');
 console.log('=============================\n');
 
 // Demonstrate projectile speed adjustments
-const speedAdjustments = {
-  fighter: 1.02,
-  corvette: 0.98,
-  frigate: 0.96,
-  destroyer: 1.05,
-  carrier: 1.05,
-};
-
 for (const hull of hulls) {
   const baseSpeed = SHIP_STATS[hull].projectileSpeed;
-  const adjustment = speedAdjustments[hull];
-  const newSpeed = Math.round(baseSpeed * adjustment);
   const bulletType = SHIP_STATS[hull].bulletType;
-
-  let typeAdjustment = 1.0;
-  if (bulletType.includes('laser')) typeAdjustment *= 0.97;
-  if (bulletType.includes('heavy') || bulletType.includes('ion')) typeAdjustment *= 1.03;
-
-  const finalSpeed = Math.round(newSpeed * typeAdjustment);
+  const adjustedSpeed = adjustProjectileSpeedForHullAndBullet(
+    hull,
+    baseSpeed,
+    bulletType,
+    false,
+    AI_CONFIG,
+  );
+  const finalSpeed = Math.round(adjustedSpeed);
 
   console.log(
-    `${hull.padEnd(10)} | Base: ${baseSpeed.toString().padStart(2)} | Hull: ${newSpeed.toString().padStart(2)} | Type: ${finalSpeed.toString().padStart(2)} | ${bulletType}`,
+    `${hull.padEnd(10)} | Base: ${baseSpeed.toString().padStart(2)} | Adjusted: ${finalSpeed
+      .toString()
+      .padStart(2)} | ${bulletType}`,
   );
 }
 

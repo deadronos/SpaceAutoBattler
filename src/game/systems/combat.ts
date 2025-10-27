@@ -5,7 +5,8 @@
 // - damage.ts: projectile resolution, damage application, XP
 // - sync.ts: transform synchronization
 
-export { fireProjectile, advanceProjectiles, FORWARD, TEMP_DIR, TEMP_POS } from './projectiles.js';
+export { fireProjectile, advanceProjectiles, TEMP_POS } from './projectiles.js';
+export { FORWARD } from '../../utils/steering.js';
 
 export { findNearestEnemy, runEmbeddedTurrets, updateTurrets } from './turrets.js';
 
