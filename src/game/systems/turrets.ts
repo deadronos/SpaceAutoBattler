@@ -1,9 +1,11 @@
 import { Vector3 } from 'three';
 import type { GameState, ShipEntity, TurretEntity, TurretState } from '../../types/index.js';
 import { recordShotMetrics } from '../metrics.js';
-import { fireProjectile, TEMP_DIR, TEMP_POS } from './projectiles.js';
+import { fireProjectile, TEMP_POS } from './projectiles.js';
 import type { KinematicBody } from '../physics/safeKinematics.js';
 import { deferSetNextKinematicTranslation } from '../physics/safeKinematics.js';
+
+const TEMP_TURRET_DIR = new Vector3();
 
 export function findNearestEnemy(state: GameState, origin: ShipEntity): ShipEntity | null {
   const ships = state.queries.ships.entities as ShipEntity[];
@@ -33,7 +35,7 @@ export function runEmbeddedTurrets(state: GameState, ship: ShipEntity, target: S
   for (const turret of ship.turrets ?? []) {
     if (turret.cooldown > 0) continue;
     const turretOrigin = getTurretWorldPosition(ship, turret);
-    const toTarget = TEMP_DIR.copy(target.transform.position).sub(turretOrigin);
+    const toTarget = TEMP_TURRET_DIR.copy(target.transform.position).sub(turretOrigin);
     const dist = toTarget.length();
     if (dist > turret.range) continue;
     if (dist > 1e-5) toTarget.divideScalar(dist);
@@ -108,7 +110,7 @@ export function updateTurrets(state: GameState, delta: number): void {
     }
     t.turret.cooldown = Math.max(0, t.turret.cooldown - delta);
     if (!target || t.turret.cooldown > 0) continue;
-    const toTarget = TEMP_DIR.copy(target.transform.position).sub(origin);
+    const toTarget = TEMP_TURRET_DIR.copy(target.transform.position).sub(origin);
     const dist = toTarget.length();
     if (dist > t.turret.range) continue;
     if (dist > 1e-5) toTarget.divideScalar(dist);

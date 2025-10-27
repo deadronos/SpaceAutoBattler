@@ -7,6 +7,7 @@ import {
   deferSetNextKinematicTranslation,
   deferSetNextKinematicRotation,
 } from '../physics/safeKinematics.js';
+import { FORWARD, orientQuaternionFromDirection } from '../../utils/steering.js';
 
 // Reusable temporary objects to avoid per-frame allocations
 const TEMP_FORWARD = new Vector3();
@@ -143,7 +144,7 @@ function updateAngularMotion(ship: ShipEntity, targetHeading: Vector3, dt: numbe
 
   const s = motion.smoothing?.rotationSlerp ?? 0;
   if (s > 0 && !withinSettleBand) {
-    TEMP_ROTATION.setFromUnitVectors(TEMP_RIGHT.set(0, 0, 1), desiredForward);
+    orientQuaternionFromDirection(desiredForward, FORWARD, TEMP_ROTATION);
     currentRotation.slerp(TEMP_ROTATION, Math.min(1, s));
     currentRotation.normalize();
   }

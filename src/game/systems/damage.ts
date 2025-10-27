@@ -1,3 +1,4 @@
+import { Vector3 } from 'three';
 import type {
   GameEntity,
   GameState,
@@ -20,7 +21,9 @@ import {
   queueTargetLossInterrupts,
 } from './decision/interrupts.js';
 import type { ProjectileCategory } from '../../types/combat.js';
-import { TEMP_DIR } from './projectiles.js';
+import { safeNormalize } from '../../utils/steering.js';
+
+const TEMP_RIPPLE_DIR = new Vector3();
 
 export interface ProjectileDamageOutcome {
   totalDamage: number;
@@ -62,13 +65,13 @@ export function applyProjectileDamage(
     rngSeed: projectile.id + state.time,
     callbacks: {
       emitShieldRipple: ({ strength }) => {
-        const dir = TEMP_DIR.copy(projectile.transform.position).sub(ship.transform.position);
-        if (dir.lengthSq() > 1e-5) {
-          dir.normalize();
-        } else {
-          dir.set(0, 0, 1);
-        }
-        const ripple: ShieldRipple = { dir: dir.clone(), t0: state.time, amp: strength };
+        TEMP_RIPPLE_DIR.copy(projectile.transform.position).sub(ship.transform.position);
+        safeNormalize(TEMP_RIPPLE_DIR, TEMP_RIPPLE_DIR);
+        const ripple: ShieldRipple = {
+          dir: TEMP_RIPPLE_DIR.clone(),
+          t0: state.time,
+          amp: strength,
+        };
         const list = (ship.shieldRipples ??= []);
         list.push(ripple);
         if (list.length > 64) list.shift();
