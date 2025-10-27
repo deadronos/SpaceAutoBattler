@@ -98,50 +98,26 @@ export function ExplosionRendererCore(): React.ReactElement {
         color,
       };
 
-      const flashMesh = manager.getMesh('flash');
-      const flashStart = manager.getStartIndex('flash');
-      const flashResult = updateFlash(ctx, flashMesh, flashStart, manager.getCapacity('flash'));
-      manager.commit('flash', flashResult);
+      const flashMgr = manager.getEffectManager('flash');
+      if (flashMgr) updateFlash(ctx, flashMgr, String(event.id));
 
-      const shockwaveMesh = manager.getMesh('shockwave');
-      const shockwaveStart = manager.getStartIndex('shockwave');
-      const shockwaveResult = updateShockwave(
-        ctx,
-        shockwaveMesh,
-        shockwaveStart,
-        manager.getCapacity('shockwave'),
-      );
-      manager.commit('shockwave', shockwaveResult);
+      const shockwaveMgr = manager.getEffectManager('shockwave');
+      if (shockwaveMgr) updateShockwave(ctx, shockwaveMgr, String(event.id));
 
-      const fireballMesh = manager.getMesh('fireball');
-      const fireballStart = manager.getStartIndex('fireball');
-      const fireballResult = updateFireball(
-        ctx,
-        fireballMesh,
-        fireballStart,
-        manager.getCapacity('fireball'),
-      );
-      manager.commit('fireball', fireballResult);
+      const fireballMgr = manager.getEffectManager('fireball');
+      if (fireballMgr) updateFireball(ctx, fireballMgr, String(event.id));
 
-      const debrisMesh = manager.getMesh('debris');
-      const debrisStart = manager.getStartIndex('debris');
-      const debrisResult = updateDebris(ctx, debrisMesh, debrisStart, manager.getCapacity('debris'));
-      manager.commit('debris', debrisResult);
+      const debrisMgr = manager.getEffectManager('debris');
+      if (debrisMgr) updateDebris(ctx, debrisMgr, String(event.id));
 
-      const sparksMesh = manager.getMesh('sparks');
-      const sparksStart = manager.getStartIndex('sparks');
-      const sparksResult = updateSparks(ctx, sparksMesh, sparksStart, manager.getCapacity('sparks'));
-      manager.commit('sparks', sparksResult);
+      const sparksMgr = manager.getEffectManager('sparks');
+      if (sparksMgr) updateSparks(ctx, sparksMgr, String(event.id));
 
-      const plasmaMesh = manager.getMesh('plasma');
-      const plasmaStart = manager.getStartIndex('plasma');
-      const plasmaResult = updatePlasma(ctx, plasmaMesh, plasmaStart, manager.getCapacity('plasma'));
-      manager.commit('plasma', plasmaResult);
+      const plasmaMgr = manager.getEffectManager('plasma');
+      if (plasmaMgr) updatePlasma(ctx, plasmaMgr, String(event.id));
 
-      const smokeMesh = manager.getMesh('smoke');
-      const smokeStart = manager.getStartIndex('smoke');
-      const smokeResult = updateSmoke(ctx, smokeMesh, smokeStart, manager.getCapacity('smoke'));
-      manager.commit('smoke', smokeResult);
+      const smokeMgr = manager.getEffectManager('smoke');
+      if (smokeMgr) updateSmoke(ctx, smokeMgr, String(event.id));
     }
 
     manager.finalize();

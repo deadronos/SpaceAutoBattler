@@ -14,9 +14,8 @@ import {
  */
 export const updatePlasma: EffectUpdater = (
   ctx: EffectUpdateContext,
-  mesh: InstancedMesh,
-  startIndex: number,
-  capacity: number,
+  manager,
+  keyBase: string,
 ): EffectUpdateResult => {
   const { event, time, derived, dummy, tmpQuat, tmpVec, color } = ctx;
 
@@ -28,12 +27,16 @@ export const updatePlasma: EffectUpdater = (
   let count = 0;
   let saturated = false;
 
+  let i = 0;
   for (const plume of derived.plasma) {
     if (plasmaT > plume.lifetime) {
+      i += 1;
       continue;
     }
 
-    if (startIndex + count >= capacity) {
+    const key = `${keyBase}:plume:${i}`;
+    const idx = manager.allocate(key);
+    if (idx == null) {
       saturated = true;
       break;
     }
@@ -51,14 +54,15 @@ export const updatePlasma: EffectUpdater = (
     dummy.quaternion.copy(tmpQuat);
     dummy.updateMatrix();
 
-    mesh.setMatrixAt(startIndex + count, dummy.matrix);
+    manager.setMatrixAt(idx, dummy.matrix);
 
     color
       .copy(getCachedColor(event.palette.shockwave))
       .multiplyScalar(Math.max(0.15, 1 - plumeProgress));
-    mesh.setColorAt(startIndex + count, color);
+    manager.setColorAt(idx, color);
 
     count += 1;
+    i += 1;
   }
 
   return { count, saturated };

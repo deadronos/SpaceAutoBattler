@@ -10,6 +10,7 @@ import {
   MeshBasicMaterial,
 } from 'three';
 import { updateSparks } from '../../../../src/components/explosions/effectUpdaters/sparksUpdater.js';
+import { createInstancedLayerManager } from '../../../../src/components/layers/instancedLayer.js';
 import type { EffectUpdateContext } from '../../../../src/components/explosions/effectUpdaters/types.js';
 import type { ExplosionEvent } from '../../../../src/types/index.js';
 import { getDerived } from '../../../../src/components/explosions/derived.js';
@@ -68,14 +69,18 @@ describe('sparksUpdater', () => {
 
   it('should not create sparks before delay', () => {
     ctx.time = 0.1;
-    const result = updateSparks(ctx, mesh, 0, 100);
+    const mgr = createInstancedLayerManager({ current: mesh }, { capacity: 100, supportsInstanceColor: true });
+    mgr.beginFrame();
+    const result = updateSparks(ctx, mgr, String(event.id));
     expect(result.count).toBe(0);
     expect(result.saturated).toBe(false);
   });
 
   it('should create multiple spark instances', () => {
     ctx.time = 0.3;
-    const result = updateSparks(ctx, mesh, 0, 100);
+    const mgr = createInstancedLayerManager({ current: mesh }, { capacity: 100, supportsInstanceColor: true });
+    mgr.beginFrame();
+    const result = updateSparks(ctx, mgr, String(event.id));
     expect(result.count).toBeGreaterThan(0);
     expect(result.count).toBeLessThanOrEqual(event.particles.sparks);
     expect(result.saturated).toBe(false);
@@ -83,7 +88,9 @@ describe('sparksUpdater', () => {
 
   it('should respect capacity limits', () => {
     ctx.time = 0.3;
-    const result = updateSparks(ctx, mesh, 0, 5);
+    const mgr = createInstancedLayerManager({ current: mesh }, { capacity: 5, supportsInstanceColor: true });
+    mgr.beginFrame();
+    const result = updateSparks(ctx, mgr, String(event.id));
     expect(result.count).toBeLessThanOrEqual(5);
   });
 
@@ -93,7 +100,9 @@ describe('sparksUpdater', () => {
     camera.quaternion.set(0.1, 0.2, 0.3, 0.9);
     camera.quaternion.normalize(); // Ensure valid quaternion
 
-    updateSparks(ctx, mesh, 0, 100);
+    const mgr = createInstancedLayerManager({ current: mesh }, { capacity: 100, supportsInstanceColor: true });
+    mgr.beginFrame();
+    updateSparks(ctx, mgr, String(event.id));
 
     const dummy = new Object3D();
     mesh.getMatrixAt(0, dummy.matrix);
@@ -108,7 +117,9 @@ describe('sparksUpdater', () => {
 
   it('marks saturation when sparks exceed capacity', () => {
     ctx.time = 0.3;
-    const result = updateSparks(ctx, mesh, 0, 1);
+    const mgr = createInstancedLayerManager({ current: mesh }, { capacity: 1, supportsInstanceColor: true });
+    mgr.beginFrame();
+    const result = updateSparks(ctx, mgr, String(event.id));
     expect(result.count).toBeLessThanOrEqual(1);
     expect(result.saturated).toBe(true);
   });

@@ -10,6 +10,7 @@ import {
   MeshBasicMaterial,
 } from 'three';
 import { updateSmoke } from '../../../../src/components/explosions/effectUpdaters/smokeUpdater.js';
+import { createInstancedLayerManager } from '../../../../src/components/layers/instancedLayer.js';
 import type { EffectUpdateContext } from '../../../../src/components/explosions/effectUpdaters/types.js';
 import type { ExplosionEvent } from '../../../../src/types/index.js';
 import { getDerived } from '../../../../src/components/explosions/derived.js';
@@ -68,14 +69,18 @@ describe('smokeUpdater', () => {
 
   it('should not create smoke before delay', () => {
     ctx.time = 0.1;
-    const result = updateSmoke(ctx, mesh, 0, 100);
+    const mgr = createInstancedLayerManager({ current: mesh }, { capacity: 100, supportsInstanceColor: true });
+    mgr.beginFrame();
+    const result = updateSmoke(ctx, mgr, String(event.id));
     expect(result.count).toBe(0);
     expect(result.saturated).toBe(false);
   });
 
   it('should create multiple smoke instances', () => {
     ctx.time = 0.5;
-    const result = updateSmoke(ctx, mesh, 0, 100);
+    const mgr = createInstancedLayerManager({ current: mesh }, { capacity: 100, supportsInstanceColor: true });
+    mgr.beginFrame();
+    const result = updateSmoke(ctx, mgr, String(event.id));
     expect(result.count).toBeGreaterThan(0);
     expect(result.count).toBeLessThanOrEqual(event.particles.smoke);
     expect(result.saturated).toBe(false);
@@ -83,20 +88,26 @@ describe('smokeUpdater', () => {
 
   it('should respect capacity limits', () => {
     ctx.time = 0.5;
-    const result = updateSmoke(ctx, mesh, 0, 5);
+    const mgr = createInstancedLayerManager({ current: mesh }, { capacity: 5, supportsInstanceColor: true });
+    mgr.beginFrame();
+    const result = updateSmoke(ctx, mgr, String(event.id));
     expect(result.count).toBeLessThanOrEqual(5);
   });
 
   it('should drift smoke wisps over time', () => {
     ctx.time = 0.35;
-    updateSmoke(ctx, mesh, 0, 100);
+    const mgr1 = createInstancedLayerManager({ current: mesh }, { capacity: 100, supportsInstanceColor: true });
+    mgr1.beginFrame();
+    updateSmoke(ctx, mgr1, String(event.id));
     const dummy1 = new Object3D();
     mesh.getMatrixAt(0, dummy1.matrix);
     dummy1.matrix.decompose(dummy1.position, dummy1.quaternion, dummy1.scale);
     const pos1 = dummy1.position.clone();
 
     ctx.time = 1.0;
-    updateSmoke(ctx, mesh, 0, 100);
+    const mgr2 = createInstancedLayerManager({ current: mesh }, { capacity: 100, supportsInstanceColor: true });
+    mgr2.beginFrame();
+    updateSmoke(ctx, mgr2, String(event.id));
     const dummy2 = new Object3D();
     mesh.getMatrixAt(0, dummy2.matrix);
     dummy2.matrix.decompose(dummy2.position, dummy2.quaternion, dummy2.scale);
@@ -108,13 +119,17 @@ describe('smokeUpdater', () => {
 
   it('should fade smoke over time', () => {
     ctx.time = 0.35;
-    updateSmoke(ctx, mesh, 0, 100);
+    const mgr3 = createInstancedLayerManager({ current: mesh }, { capacity: 100, supportsInstanceColor: true });
+    mgr3.beginFrame();
+    updateSmoke(ctx, mgr3, String(event.id));
     const color1 = new Color();
     mesh.getColorAt(0, color1);
     const intensity1 = color1.r + color1.g + color1.b;
 
     ctx.time = 1.5;
-    updateSmoke(ctx, mesh, 0, 100);
+    const mgr4 = createInstancedLayerManager({ current: mesh }, { capacity: 100, supportsInstanceColor: true });
+    mgr4.beginFrame();
+    updateSmoke(ctx, mgr4, String(event.id));
     const color2 = new Color();
     mesh.getColorAt(0, color2);
     const intensity2 = color2.r + color2.g + color2.b;
@@ -124,7 +139,9 @@ describe('smokeUpdater', () => {
 
   it('flags saturation when smoke exceeds capacity', () => {
     ctx.time = 0.5;
-    const result = updateSmoke(ctx, mesh, 0, 1);
+    const mgr = createInstancedLayerManager({ current: mesh }, { capacity: 1, supportsInstanceColor: true });
+    mgr.beginFrame();
+    const result = updateSmoke(ctx, mgr, String(event.id));
     expect(result.count).toBeLessThanOrEqual(1);
     expect(result.saturated).toBe(true);
   });

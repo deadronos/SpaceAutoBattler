@@ -15,6 +15,7 @@ import { ThrusterInstancedManager } from '../thrusters/ThrusterInstancedManager.
 import { getInstanceFriendlyMaterial } from '../../renderer/materialRegistry.js';
 import { TEAM_COLORS } from '../../config/renderer.js';
 import { createSaturationWarningState, warnOnSaturation } from '../layers/saturationWarning.js';
+import { createInstancedLayerManager } from '../layers/instancedLayer.js';
 
 export interface ShipLODManagerProps {
   ships: readonly ShipEntity[];
@@ -174,6 +175,11 @@ interface ShipImpostorLayerProps {
 
 function ShipImpostorLayer({ ships, capacity }: ShipImpostorLayerProps): React.ReactElement {
   const meshRef = useRef<InstancedMesh>(null);
+  const managerRef = useRef(createInstancedLayerManager<number>(meshRef, {
+    capacity,
+    supportsInstanceColor: true,
+    baseColor: new Color('#a0a0a0'),
+  }));
   const warningStateRef = useRef(createSaturationWarningState());
   const frameRef = useRef(0);
   const geometry = useMemo(() => new PlaneGeometry(1, 1, 1, 1), []);
@@ -194,22 +200,11 @@ function ShipImpostorLayer({ ships, capacity }: ShipImpostorLayerProps): React.R
   }), []);
 
   useEffect(() => {
-    const mesh = meshRef.current;
-    if (!mesh) return;
-    if (!mesh.instanceColor) {
-      mesh.instanceColor = new InstancedBufferAttribute(new Float32Array(capacity * 3), 3);
-      // Initialize all instance colors to a neutral base color so that
-      // shaders never receive undefined / NaN values for unused indices.
-      const base = new Color('#a0a0a0');
-      for (let i = 0; i < capacity; i += 1) {
-        mesh.setColorAt(i, base);
-      }
-      mesh.instanceColor.needsUpdate = true;
-    }
+    managerRef.current.initMesh();
     return () => {
-      mesh.instanceColor = null;
+      managerRef.current.dispose();
     };
-  }, [capacity]);
+  }, []);
 
   useEffect(() => () => {
     geometry.dispose();
@@ -223,16 +218,29 @@ function ShipImpostorLayer({ ships, capacity }: ShipImpostorLayerProps): React.R
     frameRef.current += 1;
     const frameId = frameRef.current;
 
-    const result = populateImpostorInstances({
-      ships,
-      capacity,
-      cameraQuaternion: camera.quaternion,
-      mesh: meshRef.current,
-      temp,
-    });
+    const manager = managerRef.current;
+    manager.beginFrame();
+
+    for (const ship of ships) {
+      const key = ship.id;
+      const idx = manager.allocate(key);
+      if (idx == null) continue;
+      temp.pos.copy(ship.transform.position);
+      const scale = Math.max(ship.transform.scale * 6, 4);
+      temp.scale.setScalar(scale);
+      temp.quat.copy(camera.quaternion);
+      temp.matrix.compose(temp.pos, temp.quat, temp.scale);
+      manager.setMatrixAt(idx, temp.matrix);
+
+      const teamColor = TEAM_COLORS[ship.ship.team] ?? '#a0a0a0';
+      temp.color.set(teamColor);
+      manager.setColorAt(idx, temp.color);
+    }
+
+    const summary = manager.endFrame();
 
     warnOnSaturation({
-      saturated: result.saturated,
+      saturated: summary.saturated,
       frameId,
       state: warningStateRef.current,
       message: '[ShipImpostorLayer] Capacity saturated, clamping distant ship impostors.',

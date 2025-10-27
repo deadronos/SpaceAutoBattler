@@ -10,6 +10,7 @@ import {
   MeshBasicMaterial,
 } from 'three';
 import { updateDebris } from '../../../../src/components/explosions/effectUpdaters/debrisUpdater.js';
+import { createInstancedLayerManager } from '../../../../src/components/layers/instancedLayer.js';
 import type { EffectUpdateContext } from '../../../../src/components/explosions/effectUpdaters/types.js';
 import type { ExplosionEvent } from '../../../../src/types/index.js';
 import { getDerived } from '../../../../src/components/explosions/derived.js';
@@ -67,14 +68,18 @@ describe('debrisUpdater', () => {
 
   it('should not create debris instances before delay', () => {
     ctx.time = 0.1;
-    const result = updateDebris(ctx, mesh, 0, 100);
+    const mgr = createInstancedLayerManager({ current: mesh }, { capacity: 100, supportsInstanceColor: true });
+    mgr.beginFrame();
+    const result = updateDebris(ctx, mgr, String(event.id));
     expect(result.count).toBe(0);
     expect(result.saturated).toBe(false);
   });
 
   it('should create multiple debris instances after delay', () => {
     ctx.time = 0.3;
-    const result = updateDebris(ctx, mesh, 0, 100);
+    const mgr = createInstancedLayerManager({ current: mesh }, { capacity: 100, supportsInstanceColor: true });
+    mgr.beginFrame();
+    const result = updateDebris(ctx, mgr, String(event.id));
     expect(result.count).toBeGreaterThan(0);
     expect(result.count).toBeLessThanOrEqual(event.debris.count);
     expect(result.saturated).toBe(false);
@@ -82,13 +87,17 @@ describe('debrisUpdater', () => {
 
   it('should respect capacity limits', () => {
     ctx.time = 0.3;
-    const result = updateDebris(ctx, mesh, 0, 5);
+    const mgr = createInstancedLayerManager({ current: mesh }, { capacity: 5, supportsInstanceColor: true });
+    mgr.beginFrame();
+    const result = updateDebris(ctx, mgr, String(event.id));
     expect(result.count).toBeLessThanOrEqual(5);
   });
 
   it('should move debris away from explosion center', () => {
     ctx.time = 0.25;
-    updateDebris(ctx, mesh, 0, 100);
+    const mgr1 = createInstancedLayerManager({ current: mesh }, { capacity: 100, supportsInstanceColor: true });
+    mgr1.beginFrame();
+    updateDebris(ctx, mgr1, String(event.id));
 
     const dummy = new Object3D();
     mesh.getMatrixAt(0, dummy.matrix);
@@ -97,7 +106,9 @@ describe('debrisUpdater', () => {
     const distance1 = dummy.position.length();
 
     ctx.time = 0.5;
-    updateDebris(ctx, mesh, 0, 100);
+    const mgr2 = createInstancedLayerManager({ current: mesh }, { capacity: 100, supportsInstanceColor: true });
+    mgr2.beginFrame();
+    updateDebris(ctx, mgr2, String(event.id));
     mesh.getMatrixAt(0, dummy.matrix);
     dummy.matrix.decompose(dummy.position, dummy.quaternion, dummy.scale);
 
@@ -107,12 +118,16 @@ describe('debrisUpdater', () => {
   });
 
   it('should be deterministic with same seed', () => {
-    const result1 = updateDebris(ctx, mesh, 0, 100);
+    const mgr = createInstancedLayerManager({ current: mesh }, { capacity: 100, supportsInstanceColor: true });
+    mgr.beginFrame();
+    const result1 = updateDebris(ctx, mgr, String(event.id));
 
     const ctx2 = { ...ctx, event: { ...event } };
     ctx2.derived = getDerived(ctx2.event);
     const mesh2 = new InstancedMesh(new SphereGeometry(1), new MeshBasicMaterial(), 100);
-    const result2 = updateDebris(ctx2, mesh2, 0, 100);
+    const mgr2 = createInstancedLayerManager({ current: mesh2 }, { capacity: 100, supportsInstanceColor: true });
+    mgr2.beginFrame();
+    const result2 = updateDebris(ctx2, mgr2, String(event.id));
 
     expect(result1.count).toBe(result2.count);
     expect(result1.saturated).toBe(result2.saturated);
@@ -120,7 +135,9 @@ describe('debrisUpdater', () => {
 
   it('marks saturation when debris exceed capacity', () => {
     ctx.time = 0.3;
-    const result = updateDebris(ctx, mesh, 0, 1);
+    const mgr = createInstancedLayerManager({ current: mesh }, { capacity: 1, supportsInstanceColor: true });
+    mgr.beginFrame();
+    const result = updateDebris(ctx, mgr, String(event.id));
     expect(result.count).toBeLessThanOrEqual(1);
     expect(result.saturated).toBe(true);
   });

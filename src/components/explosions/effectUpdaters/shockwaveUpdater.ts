@@ -13,19 +13,14 @@ import {
  */
 export const updateShockwave: EffectUpdater = (
   ctx: EffectUpdateContext,
-  mesh: InstancedMesh,
-  startIndex: number,
-  capacity: number,
+  manager,
+  keyBase: string,
 ): EffectUpdateResult => {
   const { event, time, camera, dummy, color } = ctx;
 
   const shockwaveT = time - event.shockwave.delay;
   if (shockwaveT < 0 || shockwaveT > event.shockwave.duration) {
     return EMPTY_EFFECT_RESULT;
-  }
-
-  if (startIndex >= capacity) {
-    return { count: 0, saturated: true };
   }
 
   const phase = clamp01(shockwaveT / event.shockwave.duration);
@@ -36,12 +31,16 @@ export const updateShockwave: EffectUpdater = (
   dummy.quaternion.copy(camera.quaternion);
   dummy.updateMatrix();
 
-  mesh.setMatrixAt(startIndex, dummy.matrix);
+  const key = `${keyBase}:shockwave`;
+  const idx = manager.allocate(key);
+  if (idx == null) return { count: 0, saturated: true };
+
+  manager.setMatrixAt(idx, dummy.matrix);
 
   color
     .copy(getCachedColor(event.palette.shockwave))
     .multiplyScalar(Math.max(0.2, 1 - phase * 0.9));
-  mesh.setColorAt(startIndex, color);
+  manager.setColorAt(idx, color);
 
   return { count: 1, saturated: false };
 };

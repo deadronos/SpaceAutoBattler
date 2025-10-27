@@ -32,6 +32,14 @@ export class InstanceAllocator<K> {
    * the caller should drop rendering for that key this frame.
    */
   allocate(key: K): number | null {
+    // debug: detect test-driven overflow keys
+    try {
+      if (String(key).includes(':overflow')) {
+        // console.debug('InstanceAllocator: simulating overflow for key', key);
+      }
+    } catch (e) {
+      // ignore
+    }
     const existing = this.allocation.get(key);
     if (existing != null) {
       this.active.add(key);

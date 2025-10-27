@@ -10,6 +10,7 @@ import {
   MeshBasicMaterial,
 } from 'three';
 import { updateFlash } from '../../../../src/components/explosions/effectUpdaters/flashUpdater.js';
+import { createInstancedLayerManager } from '../../../../src/components/layers/instancedLayer.js';
 import type { EffectUpdateContext } from '../../../../src/components/explosions/effectUpdaters/types.js';
 import type { ExplosionEvent } from '../../../../src/types/index.js';
 import { SeededRng } from '../../../../src/utils/rng.js';
@@ -70,20 +71,26 @@ describe('flashUpdater', () => {
   });
 
   it('should create flash instance when within flash duration', () => {
-    const result = updateFlash(ctx, mesh, 0, 10);
+    const mgr = createInstancedLayerManager({ current: mesh }, { capacity: 10, supportsInstanceColor: true });
+    mgr.beginFrame();
+    const result = updateFlash(ctx, mgr, String(event.id));
     expect(result.count).toBe(1);
     expect(result.saturated).toBe(false);
   });
 
   it('should not create flash instance when time exceeds flash duration', () => {
     ctx.time = 0.15;
-    const result = updateFlash(ctx, mesh, 0, 10);
+    const mgr = createInstancedLayerManager({ current: mesh }, { capacity: 10, supportsInstanceColor: true });
+    mgr.beginFrame();
+    const result = updateFlash(ctx, mgr, String(event.id));
     expect(result.count).toBe(0);
     expect(result.saturated).toBe(false);
   });
 
   it('should set correct matrix and color for flash instance', () => {
-    updateFlash(ctx, mesh, 0, 10);
+    const mgr = createInstancedLayerManager({ current: mesh }, { capacity: 10, supportsInstanceColor: true });
+    mgr.beginFrame();
+    updateFlash(ctx, mgr, String(event.id));
 
     const matrix = mesh.instanceMatrix.array;
     expect(matrix).toBeDefined();
@@ -95,14 +102,16 @@ describe('flashUpdater', () => {
 
   it('should scale flash based on progress', () => {
     ctx.time = 0.01;
-    updateFlash(ctx, mesh, 0, 10);
+    const mgr = createInstancedLayerManager({ current: mesh }, { capacity: 10, supportsInstanceColor: true });
+    mgr.beginFrame();
+    updateFlash(ctx, mgr, `${event.id}:t1`);
     const dummy1 = new Object3D();
     mesh.getMatrixAt(0, dummy1.matrix);
     dummy1.matrix.decompose(dummy1.position, dummy1.quaternion, dummy1.scale);
     const scale1 = dummy1.scale.x;
 
     ctx.time = 0.1;
-    updateFlash(ctx, mesh, 1, 10);
+    updateFlash(ctx, mgr, `${event.id}:t2`);
     const dummy2 = new Object3D();
     mesh.getMatrixAt(1, dummy2.matrix);
     dummy2.matrix.decompose(dummy2.position, dummy2.quaternion, dummy2.scale);
@@ -113,13 +122,17 @@ describe('flashUpdater', () => {
   });
 
   it('should be deterministic with same seed', () => {
-    const result1 = updateFlash(ctx, mesh, 0, 10);
+    const mgr1 = createInstancedLayerManager({ current: mesh }, { capacity: 10, supportsInstanceColor: true });
+    mgr1.beginFrame();
+    const result1 = updateFlash(ctx, mgr1, String(event.id));
     const color1 = new Color();
     mesh.getColorAt(0, color1);
 
     const ctx2 = { ...ctx, event: { ...event } };
     const mesh2 = new InstancedMesh(new SphereGeometry(1), new MeshBasicMaterial(), 10);
-    const result2 = updateFlash(ctx2, mesh2, 0, 10);
+    const mgr2 = createInstancedLayerManager({ current: mesh2 }, { capacity: 10, supportsInstanceColor: true });
+    mgr2.beginFrame();
+    const result2 = updateFlash(ctx2, mgr2, String(event.id));
     const color2 = new Color();
     mesh2.getColorAt(0, color2);
 
@@ -131,7 +144,13 @@ describe('flashUpdater', () => {
   });
 
   it('reports saturation when start index exceeds capacity', () => {
-    const result = updateFlash(ctx, mesh, 10, 10);
+    const mgr = createInstancedLayerManager({ current: mesh }, { capacity: 10, supportsInstanceColor: true });
+    mgr.beginFrame();
+    // Fill the allocator to force saturation
+    for (let i = 0; i < 10; i += 1) {
+      mgr.allocate(`${event.id}:fill:${i}` as any);
+    }
+    const result = updateFlash(ctx, mgr, String(event.id) + ':overflow');
     expect(result.count).toBe(0);
     expect(result.saturated).toBe(true);
   });
