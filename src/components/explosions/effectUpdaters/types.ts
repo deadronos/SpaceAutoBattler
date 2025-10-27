@@ -28,7 +28,7 @@ export interface EffectUpdateResult {
  */
 export type EffectUpdater = (
   ctx: EffectUpdateContext,
-  manager: InstancedLayerManager<any>,
+  manager: InstancedLayerManager<string>,
   keyBase: string,
 ) => EffectUpdateResult;
 

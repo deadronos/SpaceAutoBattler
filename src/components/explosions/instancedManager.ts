@@ -25,7 +25,7 @@ export interface EffectCounts {
 export type EffectKey = keyof EffectCounts;
 
 interface PoolState {
-  manager: InstancedLayerManager<any> | null;
+  manager: InstancedLayerManager<string> | null;
   capacity: number;
 }
 
@@ -130,7 +130,7 @@ export class ExplosionsInstancedManager {
     }
   }
 
-  getEffectManager(key: EffectKey): InstancedLayerManager<any> | null {
+  getEffectManager(key: EffectKey): InstancedLayerManager<string> | null {
     return this.pools[key].manager;
   }
 
