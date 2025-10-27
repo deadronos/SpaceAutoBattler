@@ -1,6 +1,6 @@
 # DESIGN204 — Refactor: Split `src/config/renderer.ts` into focused config modules
 
-Status: Draft
+Status: Implemented
 Date: 2025-10-27
 Related Tasks: TASK413
 

@@ -1,6 +1,6 @@
 # [TASK413] Implement `src/config` module split (renderer config)
 
-**Status:** Not Started
+**Status:** Completed
 **Added:** 2025-10-27
 **Updated:** 2025-10-27
 
@@ -25,13 +25,13 @@ Split `src/config/renderer.ts` into smaller modules (`shields.ts`, `effects.ts`,
 
 ## Subtasks
 
-- [ ] Create `src/config/shields.ts` and copy shield-related code
-- [ ] Create `src/config/effects.ts` and copy effects-related code
-- [ ] Create `src/config/motion.ts` and copy motion code
-- [ ] Create `src/config/postprocessing.ts` and copy postprocessing code
-- [ ] Implement `src/config/renderer.ts` façade
-- [ ] Add/adjust tests and run typecheck
-- [ ] Open PR and request review
+- [x] Create `src/config/shields.ts` and copy shield-related code
+- [x] Create `src/config/effects.ts` and copy effects-related code
+- [x] Create `src/config/motion.ts` and copy motion code
+- [x] Create `src/config/postprocessing.ts` and copy postprocessing code
+- [x] Implement `src/config/renderer.ts` façade
+- [x] Add/adjust tests and run typecheck
+- [x] Open PR and request review
 
 ## Notes
 

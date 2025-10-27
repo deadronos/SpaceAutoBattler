@@ -1,6 +1,6 @@
 # DESIGN205 — Refactor: Extract GPU particle resources and anchor logic from `src/components/ParticleTrails.tsx`
 
-Status: Draft
+Status: Implemented
 Date: 2025-10-27
 Related Tasks: TASK414
 
