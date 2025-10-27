@@ -13,19 +13,14 @@ import {
  */
 export const updateFireball: EffectUpdater = (
   ctx: EffectUpdateContext,
-  mesh: InstancedMesh,
-  startIndex: number,
-  capacity: number,
+  manager,
+  keyBase: string,
 ): EffectUpdateResult => {
   const { event, time, dummy, color } = ctx;
 
   const fireballT = time - event.fireball.delay;
   if (fireballT < 0 || fireballT > event.fireball.duration) {
     return EMPTY_EFFECT_RESULT;
-  }
-
-  if (startIndex >= capacity) {
-    return { count: 0, saturated: true };
   }
 
   const firePhase = clamp01(fireballT / event.fireball.duration);
@@ -36,12 +31,16 @@ export const updateFireball: EffectUpdater = (
   dummy.quaternion.identity();
   dummy.updateMatrix();
 
-  mesh.setMatrixAt(startIndex, dummy.matrix);
+  const key = `${keyBase}:fireball`;
+  const idx = manager.allocate(key);
+  if (idx == null) return { count: 0, saturated: true };
+
+  manager.setMatrixAt(idx, dummy.matrix);
 
   const hotColor = getCachedColor(event.palette.fireballHot);
   const coolColor = getCachedColor(event.palette.smoke);
   color.copy(hotColor).lerp(coolColor, firePhase * 0.65);
-  mesh.setColorAt(startIndex, color);
+  manager.setColorAt(idx, color);
 
   return { count: 1, saturated: false };
 };

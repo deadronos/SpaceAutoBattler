@@ -15,7 +15,7 @@ import { useArchetypeEntities } from '../../hooks/useArchetypeEntities.js';
 import { useGameState } from '../../game/context.js';
 import { useBloomRegistration } from '../../renderer/BloomProvider.js';
 import { getInstanceFriendlyMaterial } from '../../renderer/materialRegistry.js';
-import { InstanceAllocator } from './instanceAllocator.js';
+import { createInstancedLayerManager } from './instancedLayer.js';
 import { computeMuzzleFlashVisuals } from './muzzleFlashMath.js';
 import { createSaturationWarningState, warnOnSaturation } from './saturationWarning.js';
 
@@ -32,7 +32,7 @@ const TEMP_SCALE = new Vector3();
 const TEMP_POS = new Vector3();
 const TEMP_ROT = new Quaternion();
 const TEMP_COLOR = new Color();
-const HIDDEN_MATRIX = new Matrix4().makeScale(0, 0, 0);
+// HIDDEN_MATRIX lifecycle is handled by InstancedLayerManager
 
 const COLOR_MAP: Record<string, Color> = {
   'bullet:heavy': new Color('#ffb36b'),
@@ -52,8 +52,12 @@ export function MuzzleFlashInstancedLayer({
   lifetime = DEFAULT_LIFETIME,
 }: MuzzleFlashInstancedLayerProps): React.ReactElement {
   const turrets = useArchetypeEntities<TurretEntity>(archetype);
-  const allocatorRef = useRef(new InstanceAllocator<MuzzleFlash>(capacity));
   const meshRef = useRef<InstancedMesh>(null);
+  const managerRef = useRef(createInstancedLayerManager<MuzzleFlash>(
+    // meshRef will be attached by React after render; manager init is lazy
+    meshRef,
+    { capacity, supportsInstanceColor: true, baseColor: DEFAULT_COLOR },
+  ));
   const warningStateRef = useRef(createSaturationWarningState());
   const frameRef = useRef(0);
   const state = useGameState();
@@ -67,19 +71,12 @@ export function MuzzleFlashInstancedLayer({
   useBloomRegistration(meshRef, { group: 'muzzleFlashes' });
 
   useEffect(() => {
-    const mesh = meshRef.current;
-    if (!mesh) return;
-    mesh.count = 0;
-    mesh.instanceMatrix.setUsage(DynamicDrawUsage);
-    mesh.instanceMatrix.needsUpdate = true;
-    if (!mesh.instanceColor) {
-      mesh.instanceColor = new InstancedBufferAttribute(new Float32Array(capacity * 3), 3);
-      mesh.instanceColor.needsUpdate = true;
-    }
+    // Ensure manager initializes attributes once the mesh is mounted
+    managerRef.current.initMesh();
     return () => {
-      mesh.instanceColor = null;
+      managerRef.current.dispose();
     };
-  }, [capacity]);
+  }, []);
 
   useEffect(() => () => {
     materialInfo.material.dispose();
@@ -95,8 +92,8 @@ export function MuzzleFlashInstancedLayer({
     const mesh = meshRef.current;
     if (!mesh) return;
 
-    const allocator = allocatorRef.current;
-    allocator.beginFrame();
+    const manager = managerRef.current;
+    manager.beginFrame();
     let maxIndex = -1;
     let saturated = false;
 
@@ -106,7 +103,7 @@ export function MuzzleFlashInstancedLayer({
       TEMP_ROT.copy(turret.transform.rotation);
 
       for (const flash of flashes) {
-        const index = allocator.allocate(flash);
+        const index = manager.allocate(flash);
         if (index == null) {
           saturated = true;
           continue;
@@ -114,11 +111,8 @@ export function MuzzleFlashInstancedLayer({
 
         const elapsed = Math.max(0, state.time - flash.t0);
         if (elapsed > lifetime) {
-          const released = allocator.release(flash);
-          if (released != null) {
-            mesh.setMatrixAt(released, HIDDEN_MATRIX);
-            mesh.setColorAt(released, DEFAULT_COLOR);
-          }
+          // manager.release will hide the index and reset color
+          manager.release(flash);
           continue;
         }
 
@@ -134,33 +128,18 @@ export function MuzzleFlashInstancedLayer({
         });
         TEMP_SCALE.setScalar(visuals.scale);
         TEMP_MATRIX.compose(TEMP_POS, TEMP_ROT, TEMP_SCALE);
-        mesh.setMatrixAt(index, TEMP_MATRIX);
-        mesh.instanceMatrix.needsUpdate = true;
+        manager.setMatrixAt(index, TEMP_MATRIX);
 
         const color = resolveFlashColor(flash.bulletType);
         TEMP_COLOR.copy(color).multiplyScalar(visuals.intensity);
-        mesh.setColorAt(index, TEMP_COLOR);
-        if (mesh.instanceColor) {
-          mesh.instanceColor.needsUpdate = true;
-        }
+        manager.setColorAt(index, TEMP_COLOR);
 
         if (index > maxIndex) maxIndex = index;
       }
     }
 
-    const summary = allocator.endFrame();
+    const summary = manager.endFrame();
     if (summary.saturated) saturated = true;
-    for (const released of summary.released) {
-      mesh.setMatrixAt(released, HIDDEN_MATRIX);
-      mesh.setColorAt(released, DEFAULT_COLOR);
-    }
-    const count = maxIndex >= 0 ? Math.min(maxIndex + 1, capacity) : 0;
-    mesh.count = count;
-    mesh.visible = count > 0;
-    mesh.instanceMatrix.needsUpdate = true;
-    if (mesh.instanceColor) {
-      mesh.instanceColor.needsUpdate = true;
-    }
 
     warnOnSaturation({
       saturated,
