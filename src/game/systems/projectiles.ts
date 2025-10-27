@@ -15,12 +15,20 @@ import {
   deferSetNextKinematicTranslation,
   deferSetNextKinematicRotation,
 } from '../physics/safeKinematics.js';
+import {
+  createKinematicBodyWithCollider,
+  registerColliderHandle,
+} from '../utils/physicsFactory.js';
+import { adjustProjectileSpeedForHullAndBullet } from '../utils/rangePolicy.js';
+import {
+  FORWARD,
+  computeLeadDirection,
+  orientQuaternionFromDirection,
+  steerDirection,
+} from '../../utils/steering.js';
 
-export const FORWARD = new Vector3(0, 0, 1);
-export const TEMP_DIR = new Vector3();
 export const TEMP_POS = new Vector3();
 const TEMP_TARGET = new Vector3();
-const TEMP_LEAD = new Vector3();
 
 interface FireProjectileOverride
   extends Partial<
@@ -53,26 +61,28 @@ function steerProjectileTowardTarget(
   delta: number,
 ): void {
   const currentDir = projectile.direction;
-  const desired = TEMP_TARGET.copy(target.transform.position).sub(projectile.transform.position);
-  if (desired.lengthSq() <= 1e-6) {
+  const separationSq = TEMP_TARGET.copy(target.transform.position)
+    .sub(projectile.transform.position)
+    .lengthSq();
+  if (separationSq <= 1e-6) {
     return;
   }
-  desired.normalize();
 
-  if (homing.lead) {
-    TEMP_LEAD.copy(target.ship.velocity).normalize().multiplyScalar(0.5);
-    desired.add(TEMP_LEAD).normalize();
-  }
+  const desired = computeLeadDirection(
+    target.transform.position,
+    projectile.transform.position,
+    target.ship.velocity,
+    homing.lead ? 0.5 : 0,
+    TEMP_TARGET,
+  );
 
-  const angle = currentDir.angleTo(desired);
+  const { newDir, angle } = steerDirection(currentDir, desired, homing.turnRate, delta, currentDir);
   if (angle < 1e-5) {
     return;
   }
-  const maxTurn = Math.max(0, homing.turnRate) * delta;
-  const t = Math.min(1, angle > 0 ? maxTurn / angle : 1);
-  currentDir.lerp(desired, t).normalize();
-  projectile.direction = currentDir;
-  projectile.transform.rotation.setFromUnitVectors(FORWARD, currentDir);
+
+  projectile.direction = newDir;
+  orientQuaternionFromDirection(newDir, FORWARD, projectile.transform.rotation);
 }
 
 function populateProjectileBehaviour(
@@ -163,26 +173,13 @@ function resolveProjectileSpeed(
   bulletType: string,
   override?: FireProjectileOverride,
 ): number {
-  if (AI_CONFIG.rangePolicy !== 'v0.1.1-exp' || override) {
-    return speed;
-  }
-  let adjusted = speed;
-  if (origin.ship.hull === 'destroyer' || origin.ship.hull === 'carrier') {
-    adjusted *= 1.05;
-  } else if (origin.ship.hull === 'fighter') {
-    adjusted *= 1.02;
-  } else if (origin.ship.hull === 'corvette') {
-    adjusted *= 0.98;
-  } else if (origin.ship.hull === 'frigate') {
-    adjusted *= 0.96;
-  }
-
-  if (bulletType.includes('laser')) {
-    adjusted *= 0.97;
-  } else if (bulletType.includes('heavy') || bulletType.includes('ion')) {
-    adjusted *= 1.03;
-  }
-  return adjusted;
+  return adjustProjectileSpeedForHullAndBullet(
+    origin.ship.hull,
+    speed,
+    bulletType,
+    Boolean(override),
+    AI_CONFIG,
+  );
 }
 
 function createBeamHitInfo(
@@ -219,7 +216,7 @@ export function fireProjectile(
   const startPosition = opts?.originPosition
     ? opts.originPosition.clone()
     : origin.transform.position.clone().addScaledVector(direction, muzzleOffset);
-  const rotation = new Quaternion().setFromUnitVectors(FORWARD, direction);
+  const rotation = orientQuaternionFromDirection(direction);
 
   const bulletKey = opts?.override?.bulletType ?? origin.ship.bulletType;
   const info = resolveProjectileInfo(bulletKey);
@@ -256,15 +253,11 @@ export function fireProjectile(
   };
 
   enqueuePostPhysicsMutation(state, () => {
-    const bodyDesc = state.rapier.RigidBodyDesc.kinematicPositionBased()
-      .setTranslation(positionComponents.x, positionComponents.y, positionComponents.z)
-      .setRotation(rotationComponents);
-    const body = state.physicsWorld.createRigidBody(bodyDesc);
-
-    const colliderDesc = state.rapier.ColliderDesc.ball(colliderRadius)
-      .setActiveEvents(state.rapier.ActiveEvents.COLLISION_EVENTS)
-      .setActiveCollisionTypes(state.rapier.ActiveCollisionTypes.ALL);
-    const collider = state.physicsWorld.createCollider(colliderDesc, body);
+    const { body, collider } = createKinematicBodyWithCollider(state, {
+      position: startPosition,
+      rotation,
+      collider: { type: 'ball', radius: colliderRadius },
+    });
 
     const projectile = state.world.add({
       id: state.nextEntityId++,
@@ -306,8 +299,6 @@ export function fireProjectile(
 
     populateProjectileBehaviour(projectile, info, category, opts?.override, state, targetId);
 
-    if (collider?.handle != null) {
-      state.colliderLookup.set(collider.handle, projectile);
-    }
+    registerColliderHandle(state, collider, projectile);
   });
 }

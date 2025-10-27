@@ -10,46 +10,22 @@ import { SHIP_STATS } from '../data/shipStats.js';
 import { createInitialAIState } from './aiState.js';
 import { registerTurret } from './turretRegistry.js';
 import { CARRIER_LAUNCH_CONFIG } from '../config/carriers.js';
-import { AI_CONFIG } from './config.js';
-import { SeededRng } from '../utils/rng.js';
 import { calculateXpForLevel } from '../config/progression.js';
 import { generateCaptain, createSubsystems, createLevelBonusState } from './progression.js';
-
-/**
- * Apply range variance based on range policy and ship's trait seed.
- * Provides ±5% variance to weapon ranges when rangePolicy is 'v0.1.1-exp'.
- */
-function applyRangeVariance(baseRange: number, traitSeed: number, weaponIndex = 0): number {
-  if (AI_CONFIG.rangePolicy !== 'v0.1.1-exp') return baseRange;
-
-  // Create a deterministic seed combining traitSeed and weapon index for consistency
-  const rangeSeed = Math.abs((traitSeed ^ (weaponIndex * 7919)) >>> 0) || 1;
-  const rng = new SeededRng(rangeSeed);
-
-  // Apply ±5% variance
-  const variance = 0.05;
-  const modifier = 1 + (rng.next() * 2 - 1) * variance;
-
-  return Math.round(baseRange * modifier);
-}
+import { createKinematicBodyWithCollider, registerColliderHandle } from './utils/physicsFactory.js';
+import { applyRangeVariance } from './utils/rangePolicy.js';
 
 export function spawnShip(state: GameState, blueprint: ShipBlueprint): ShipEntity {
   const stats = SHIP_STATS[blueprint.hull];
   const rotation = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), blueprint.heading);
   const position = blueprint.position.clone();
 
-  const bodyDesc = state.rapier.RigidBodyDesc.kinematicPositionBased()
-    .setTranslation(position.x, position.y, position.z)
-    .setRotation({ x: rotation.x, y: rotation.y, z: rotation.z, w: rotation.w });
-  if (stats.motion.visual?.enableCcd) {
-    bodyDesc.setCcdEnabled(true);
-  }
-  const body = state.physicsWorld.createRigidBody(bodyDesc);
-
-  const colliderDesc = state.rapier.ColliderDesc.capsule(0.8, 0.6)
-    .setActiveEvents(state.rapier.ActiveEvents.COLLISION_EVENTS)
-    .setActiveCollisionTypes(state.rapier.ActiveCollisionTypes.ALL);
-  const collider = state.physicsWorld.createCollider(colliderDesc, body);
+  const { body, collider } = createKinematicBodyWithCollider(state, {
+    position,
+    rotation,
+    collider: { type: 'capsule', halfHeight: 0.8, radius: 0.6 },
+    ccd: stats.motion.visual?.enableCcd ?? false,
+  });
 
   const aiState = createInitialAIState(state, blueprint.hull);
 
@@ -119,19 +95,16 @@ export function spawnShip(state: GameState, blueprint: ShipBlueprint): ShipEntit
   }
 
   const registered = state.world.add(entity) as ShipEntity;
-  state.colliderLookup.set(collider.handle, registered);
+  registerColliderHandle(state, collider, registered);
 
   const turretSpecs = stats.turrets ?? [];
   turretSpecs.forEach((spec, idx) => {
-    const tBodyDesc = state.rapier.RigidBodyDesc.kinematicPositionBased()
-      .setTranslation(position.x, position.y, position.z)
-      .setRotation({ x: rotation.x, y: rotation.y, z: rotation.z, w: rotation.w });
-    const tBody = state.physicsWorld.createRigidBody(tBodyDesc);
-    const tColliderDesc = state.rapier.ColliderDesc.ball(0.05)
-      .setActiveEvents(state.rapier.ActiveEvents.COLLISION_EVENTS)
-      .setActiveCollisionTypes(state.rapier.ActiveCollisionTypes.ALL)
-      .setSensor(true as unknown as boolean);
-    const tCollider = state.physicsWorld.createCollider(tColliderDesc, tBody);
+    const { body: tBody, collider: tCollider } = createKinematicBodyWithCollider(state, {
+      position,
+      rotation,
+      collider: { type: 'ball', radius: 0.05 },
+      sensor: true,
+    });
 
     const turretEntity = state.world.add({
       id: state.nextEntityId++,
@@ -161,7 +134,7 @@ export function spawnShip(state: GameState, blueprint: ShipBlueprint): ShipEntit
         priority: spec.priority ?? 'any',
       },
     }) as TurretEntity;
-    state.colliderLookup.set(tCollider.handle, turretEntity);
+    registerColliderHandle(state, tCollider, turretEntity);
     try {
       registerTurret(state, registered.id, turretEntity);
     } catch {

@@ -1,4 +1,5 @@
 import { Quaternion, Vector3 } from 'three';
+import { orientQuaternionFromDirection } from '../utils/steering.js';
 
 export interface Vector3Like {
   x: number;
@@ -30,10 +31,7 @@ export function computeStarDiskQuaternion(direction: Vector3Like): Quaternion {
   ) {
     return new Quaternion();
   }
-  vector.normalize();
-  const quaternion = new Quaternion();
-  quaternion.setFromUnitVectors(new Vector3(0, 0, 1), vector);
-  return quaternion;
+  return orientQuaternionFromDirection(vector);
 }
 
 export function createViewAlignmentScratch(): ViewAlignmentScratch {
