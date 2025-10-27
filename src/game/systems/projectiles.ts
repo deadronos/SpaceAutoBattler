@@ -2,12 +2,11 @@ import { Quaternion, Vector3 } from 'three';
 import type { GameState, ShipEntity, ProjectileEntity } from '../../types/index.js';
 import type { ProjectileCategory, ProjectileHomingConfig } from '../../types/combat.js';
 import {
-  getProjectileConfig,
-  getProjectileCategory,
-  type ProjectileConfigItem,
-  type ProjectileBeamConfig,
-  DEFAULT_PROJECTILE_CONFIG,
-} from '../../config/projectiles.js';
+  resolveProjectileCategory,
+  resolveProjectileInfo,
+  type ResolvedProjectileInfo,
+} from '../../utils/projectileInfo.js';
+import { type ProjectileBeamConfig } from '../../config/projectiles.js';
 import { clampToWorld, AI_CONFIG } from '../config.js';
 import { getEffectiveStats } from '../progression.js';
 import { enqueuePostPhysicsMutation } from '../simulationQueue.js';
@@ -78,7 +77,7 @@ function steerProjectileTowardTarget(
 
 function populateProjectileBehaviour(
   projectile: ProjectileEntity,
-  config: ProjectileConfigItem,
+  info: ResolvedProjectileInfo,
   category: ProjectileCategory,
   override: FireProjectileOverride | undefined,
   state: GameState,
@@ -86,9 +85,9 @@ function populateProjectileBehaviour(
 ): void {
   projectile.projectile.category = category;
   projectile.projectile.spawnTime = state.time;
-  projectile.projectile.armingTime = override?.armingTime ?? config.armingTime;
-  projectile.projectile.aoeRadius = override?.aoeRadius ?? config.aoeRadius;
-  const homing = override?.homing ?? config.homing;
+  projectile.projectile.armingTime = override?.armingTime ?? info.config.armingTime;
+  projectile.projectile.aoeRadius = override?.aoeRadius ?? info.config.aoeRadius;
+  const homing = override?.homing ?? info.config.homing;
   if (homing) {
     projectile.projectile.homing = homing;
     projectile.projectile.targetId = override?.targetId ?? targetId;
@@ -96,7 +95,7 @@ function populateProjectileBehaviour(
     projectile.projectile.targetId = targetId;
   }
   if (category === 'beam') {
-    const beamConfig = override?.beam ?? config.beam;
+    const beamConfig = override?.beam ?? info.beamConfig;
     if (beamConfig) {
       const runtime = projectile.projectile.beam ?? {
         ttl: beamConfig.ttl,
@@ -120,7 +119,7 @@ export function advanceProjectiles(state: GameState, delta: number): void {
   const projectiles = state.queries.projectiles.entities as ProjectileEntity[];
   for (const projectile of projectiles) {
     const category =
-      projectile.projectile.category ?? getProjectileCategory(projectile.projectile.bulletType);
+      projectile.projectile.category ?? resolveProjectileCategory(projectile.projectile.bulletType);
     if (category === 'beam') {
       continue;
     }
@@ -222,19 +221,19 @@ export function fireProjectile(
     : origin.transform.position.clone().addScaledVector(direction, muzzleOffset);
   const rotation = new Quaternion().setFromUnitVectors(FORWARD, direction);
 
-  const bulletKey = opts?.override?.bulletType ?? origin.ship.bulletType ?? '';
-  const cfg = getProjectileConfig(bulletKey);
-  const category = opts?.override?.projectileCategory ?? cfg.category ?? 'bullet';
-  const visualScale = cfg.visualScale ?? DEFAULT_PROJECTILE_CONFIG.visualScale;
-  const colliderRadius = cfg.colliderRadius ?? Math.max(0.08, visualScale * 1.2);
+  const bulletKey = opts?.override?.bulletType ?? origin.ship.bulletType;
+  const info = resolveProjectileInfo(bulletKey);
+  const category = opts?.override?.projectileCategory ?? info.category;
+  const visualScale = info.visualScale;
+  const colliderRadius = info.colliderRadius;
 
   let speed = opts?.override?.projectileSpeed ?? origin.ship.projectileSpeed;
-  speed = resolveProjectileSpeed(origin, speed, bulletKey, opts?.override);
+  speed = resolveProjectileSpeed(origin, speed, info.key, opts?.override);
   const damage =
     (opts?.override?.damage ?? origin.ship.damage) *
     getEffectiveStats(origin.ship).damageMultiplier;
   const range = opts?.override?.range ?? origin.ship.range;
-  const lifetime = speed > 0 ? Math.min(range / speed, 30) : (cfg.beam?.ttl ?? 0.4);
+  const lifetime = speed > 0 ? Math.min(range / speed, 30) : (info.beamConfig?.ttl ?? 0.4);
 
   const spawnDirection = direction.clone();
   const rotationComponents = { x: rotation.x, y: rotation.y, z: rotation.z, w: rotation.w };
@@ -249,8 +248,8 @@ export function fireProjectile(
   const projectileData = {
     team: origin.ship.team,
     damage,
-    ttl: category === 'beam' ? (cfg.beam?.ttl ?? lifetime) : lifetime,
-    speed: category === 'beam' ? range / Math.max(cfg.beam?.ttl ?? lifetime, 0.001) : speed,
+    ttl: category === 'beam' ? (info.beamConfig?.ttl ?? lifetime) : lifetime,
+    speed: category === 'beam' ? range / Math.max(info.beamConfig?.ttl ?? lifetime, 0.001) : speed,
     bulletType: opts?.override?.bulletType ?? origin.ship.bulletType,
     damageType,
     sourceId: origin.id,
@@ -299,13 +298,13 @@ export function fireProjectile(
       projectile.projectile.beam = {
         ttl: projectileData.ttl,
         maxLength: beamInfo.distance,
-        width: cfg.beam?.width,
+        width: info.beamConfig?.width,
         hitPoint: beamInfo.hitPoint.clone(),
         applied: false,
       };
     }
 
-    populateProjectileBehaviour(projectile, cfg, category, opts?.override, state, targetId);
+    populateProjectileBehaviour(projectile, info, category, opts?.override, state, targetId);
 
     if (collider?.handle != null) {
       state.colliderLookup.set(collider.handle, projectile);

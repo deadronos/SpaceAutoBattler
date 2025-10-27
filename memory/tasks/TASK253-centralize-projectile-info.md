@@ -1,6 +1,6 @@
 # TASK253 - Centralize Projectile Info & Beam Helpers
 
-**Status:** Not Started
+**Status:** Completed
 **Added:** 2025-10-27
 **Owner:** TBD
 
@@ -24,17 +24,22 @@ This task implements the design described in `memory/designs/DESIGN100-centraliz
 
 | ID  | Description | Status | Updated | Notes |
 | --- | ----------- | ------ | ------- | ----- |
-| 1.1 | Create `src/utils/projectileInfo.ts` | Not Started | - | Core helper module |
-| 1.2 | Add unit tests | Not Started | - | `test/utils/projectileInfo.spec.ts` |
-| 1.3 | Update `projectiles.ts` | Not Started | - | Use resolver & computeBeamTransform |
-| 1.4 | Update `ProjectilesInstancedLayer.tsx` | Not Started | - | Use computeBeamTransform for beam matrix |
-| 1.5 | Update `damage.ts` | Not Started | - | Use resolveProjectileCategory |
-| 1.6 | Run checks & tests | Not Started | - | Fix issues found |
+| 1.1 | Create `src/utils/projectileInfo.ts` | Complete | 2025-10-27 | Core helper module |
+| 1.2 | Add unit tests | Complete | 2025-10-27 | `test/utils/projectileInfo.spec.ts` |
+| 1.3 | Update `projectiles.ts` | Complete | 2025-10-27 | Use resolver & computeBeamTransform |
+| 1.4 | Update `ProjectilesInstancedLayer.tsx` | Complete | 2025-10-27 | Use computeBeamTransform for beam matrix |
+| 1.5 | Update `damage.ts` | Complete | 2025-10-27 | Use resolveProjectileCategory |
+| 1.6 | Run checks & tests | Complete | 2025-10-27 | Fix issues found |
 
 ## Progress Log
 
 ### 2025-10-27
 - Task created and design added to memory.
+
+### 2025-10-27 (Implementation)
+- Implemented `src/utils/projectileInfo.ts` with shared projectile resolvers.
+- Updated simulation and renderer layers to consume the helpers.
+- Added Vitest coverage for info resolution and beam transforms; checks pass locally.
 
 ## Acceptance Criteria
 - `npx tsc --noEmit` passes
