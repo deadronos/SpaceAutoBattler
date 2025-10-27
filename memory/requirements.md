@@ -1,3 +1,12 @@
+# Requirements
+
+## 2025-10-27 — Renderer Large File Refactor Planning (TASK412)
+
+1. **WHEN** the repository undergoes a renderer refactor planning pass, **THE SYSTEM SHALL** identify at least three TypeScript modules under `src/` exceeding 400 lines that merit decomposition, recording their paths and line counts. _(Acceptance: planning report enumerates ≥3 qualifying files with measured line totals sourced from an automated scan.)_
+2. **WHEN** the planning report highlights a large module, **THE SYSTEM SHALL** document the module's primary responsibilities and delineate at least one proposed extraction target with a clear responsibility boundary. _(Acceptance: each highlighted file includes a written summary plus ≥1 suggested split describing the new module's focus.)_
+3. **WHEN** proposing module splits, **THE SYSTEM SHALL** note shared dependencies, stateful interactions, and potential refactor risks so downstream implementation tasks can budget for mitigation. _(Acceptance: each file's plan lists dependencies or risks such as shared refs, debug globals, or circular import concerns.)_
+4. **WHEN** the analysis concludes, **THE SYSTEM SHALL** persist the recommendations inside the Memory Bank (design/task artifacts) so future implementers can follow the documented plan. _(Acceptance: new design and task markdown files exist referencing the recommendations and linking back to the requirements.)_
+
 ## 2025-10-06 — Thruster Trail GPU Migration (TASK246)
 
 1. **WHEN** the `ParticleTrails` component initialises with GPU buffers enabled, **THE SYSTEM SHALL** allocate an `InstancedBufferGeometry` populated with spawn position, velocity, lifetime, and scale attributes sized to `PARTICLE_TRAILS_CONFIG.maxParticles`. _(Acceptance: `test/vitest/particle-trails-gpu.spec.tsx` mounts the component with injected resources and asserts each instanced attribute exists with the configured length.)_
@@ -17,7 +26,7 @@
 2. **WHEN** the default battle camera loads at startup, **THE SYSTEM SHALL** classify the closest fleet elements as near ships so GLTF hulls render immediately without user interaction. _(Acceptance: unit coverage asserts ships spawned at ±300 units fall into the near set under the default distance threshold constants.)_
 3. **WHEN** distant ships render via instanced impostors, **THE SYSTEM SHALL** keep the impostor mesh visible and billboarded toward the camera while updating per-instance transforms and colors each frame. _(Acceptance: `test/components/lod/ShipLODManager.spec.ts` exercises the impostor helper with a stubbed mesh and asserts visible, count, and quaternion values after an update call.)_
 
-# Requirements — Star Disk Shader Integration
+## Requirements — Star Disk Shader Integration
 
 ## 2025-10-02 — Rapier WASM Panic Diagnostics (TASK236)
 
