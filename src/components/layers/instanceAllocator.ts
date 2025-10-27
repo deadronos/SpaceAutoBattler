@@ -37,7 +37,7 @@ export class InstanceAllocator<K> {
       if (String(key).includes(':overflow')) {
         // console.debug('InstanceAllocator: simulating overflow for key', key);
       }
-    } catch (e) {
+    } catch {
       // ignore
     }
     const existing = this.allocation.get(key);

@@ -1,4 +1,4 @@
-import type { Camera, Color, InstancedMesh, Object3D, Quaternion, Vector3 } from 'three';
+import type { Camera, Color, Object3D, Quaternion, Vector3 } from 'three';
 import type { InstancedLayerManager } from '../../layers/types.js';
 import type { ExplosionEvent } from '../../../types/index.js';
 import type { DerivedExplosionData } from '../derived.js';
@@ -28,7 +28,7 @@ export interface EffectUpdateResult {
  */
 export type EffectUpdater = (
   ctx: EffectUpdateContext,
-  manager: InstancedLayerManager<any>,
+  manager: InstancedLayerManager<string>,
   keyBase: string,
 ) => EffectUpdateResult;
 
