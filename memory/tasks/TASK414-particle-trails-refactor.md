@@ -1,6 +1,6 @@
 # TASK414 — Extract particle trail resources & anchors from `src/components/ParticleTrails.tsx`
 
-**Status:** Not Started
+**Status:** Completed
 **Added:** 2025-10-27
 **Updated:** 2025-10-27
 
@@ -31,11 +31,11 @@ Refactor `src/components/ParticleTrails.tsx` to extract GPU resource allocation 
 
 ## Subtasks
 
-- [ ] Create `src/renderer/particles/trailResources.ts` with factory + dispose helpers
-- [ ] Create `src/renderer/particles/useThrusterAnchors.ts` hook that returns locals
-- [ ] Update `src/components/ParticleTrails.tsx` to use factories/hooks and accept injected resources
-- [ ] Add unit and integration tests and run full test suite
-- [ ] Open PR and link to `memory/designs/DESIGN205-particle-trails-refactor.md`
+- [x] Create `src/renderer/particles/trailResources.ts` with factory + dispose helpers
+- [x] Create `src/renderer/particles/useThrusterAnchors.ts` hook that returns locals
+- [x] Update `src/components/ParticleTrails.tsx` to use factories/hooks and accept injected resources
+- [x] Add unit and integration tests and run full test suite
+- [x] Open PR and link to `memory/designs/DESIGN205-particle-trails-refactor.md`
 
 ## Notes
 

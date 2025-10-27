@@ -21,8 +21,8 @@ describe('Thruster glow enhancement', () => {
     expect(txt).toContain('fallbackGlowMeshesRef');
   });
 
-  it('has thruster glow configuration in renderer.ts', () => {
-    const file = path.resolve(__dirname, '../../src/config/renderer.ts');
+  it('has thruster glow configuration in effects config', () => {
+    const file = path.resolve(__dirname, '../../src/config/effects.ts');
     const txt = fs.readFileSync(file, 'utf-8');
 
     // Check for thruster glow config
@@ -68,11 +68,16 @@ describe('Thruster glow enhancement', () => {
 
     // Check for particle system functionality
     expect(txt).toContain('ParticleTrails');
-    expect(txt).toContain('createParticleTrailResources');
+    expect(txt).toContain('useThrusterAnchors');
     expect(txt).toContain('InstancedBufferGeometry');
     expect(txt).toContain('ShaderMaterial');
-    expect(txt).toContain('computeThrusterAnchorsWorld');
+    expect(txt).toContain('resolveThrusterAnchorsWorld');
     expect(txt).toContain('throttle');
+
+    const resourcesFile = path.resolve(__dirname, '../../src/renderer/particles/trailResources.ts');
+    const resourcesTxt = fs.readFileSync(resourcesFile, 'utf-8');
+    expect(resourcesTxt).toContain('createParticleTrailResources');
+    expect(resourcesTxt).toContain('ParticleTrailResources');
 
     // Check it's integrated in Battlefield
     const battlefieldFile = path.resolve(__dirname, '../../src/components/Battlefield.tsx');
