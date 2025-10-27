@@ -12,6 +12,10 @@ This index tracks active tasks and their memory files. Use the `/memory/tasks` f
 - [TASK248](TASK248-update-memory-bank.md) — Quick memory sync: inspect `src/components/PostprocessingLazy.tsx`, record findings, and update memory bank entries. (In Progress — documentation/update) (2025-10-18)
 - [TASK249](TASK249-update-environment-memory.md) — Expand memory notes for `src/components/environment/*` with component summaries and engineering guidance. (In Progress — documentation) (2025-10-18)
 
+- [TASK300](TASK300-refactor-damage-calculation.md) — Centralize damage math into `src/game/combat/damage.ts` and provide a thin adapter for applying results. (In Progress — design: DESIGN200) (2025-10-27)
+- [TASK301](TASK301-extract-subsystems-module.md) — Extract subsystem lifecycle and repair logic into `src/game/subsystems.ts` and add deterministic tests. (In Progress — design: DESIGN201) (2025-10-27)
+- [TASK302](TASK302-split-progression-modules.md) — Split `src/game/progression.ts` into `xp.ts`, `leveling.ts`, and `events.ts` with an index re-export. (In Progress — design: DESIGN202) (2025-10-27)
+
 - [TASK240](TASK240-rings-bloomOnly.md) — Add `rings.bloomOnly` config flag and create follow-up wiring/tests tasks. (In Progress — wiring & tests remaining) (2025-10-03)
 
 ## Completed
