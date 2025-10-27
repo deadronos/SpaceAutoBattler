@@ -1,7 +1,8 @@
 # TASK255 - Extract Shared GLSL Common (noise/hash)
 
-**Status:** Not Started
+**Status:** Completed
 **Added:** 2025-10-27
+**Completed:** 2025-10-27
 
 ## Original Request
 Centralize shared GLSL utilities (hash, snoise, helpers) into `src/renderer/shaders/common.glsl` and provide a runtime import mechanism.
@@ -18,10 +19,10 @@ Centralize shared GLSL utilities (hash, snoise, helpers) into `src/renderer/shad
 
 | ID | Description | Status |
 | --- | ----------- | ------ |
-| 3.1 | Add `common.glsl` | Not Started |
-| 3.2 | Add `shaders/index.ts` | Not Started |
-| 3.3 | Update `starDisk.fragment.glsl` to use injection | Not Started |
-| 3.4 | Verify visual parity & tests | Not Started |
+| 3.1 | Add `common.glsl` | Complete |
+| 3.2 | Add `shaders/index.ts` | Complete |
+| 3.3 | Update `starDisk.fragment.glsl` to use injection | Complete |
+| 3.4 | Verify visual parity & tests | Complete |
 
 ## Acceptance Criteria
 - Shader string concatenation compiles without errors
@@ -31,4 +32,12 @@ Centralize shared GLSL utilities (hash, snoise, helpers) into `src/renderer/shad
 
 ### 2025-10-27
 - Task and design created in memory.
+- Created `src/renderer/shaders/common.glsl` with canonical `snoise` and `hash` implementations
+- Created `src/renderer/shaders/index.ts` that exports `COMMON_GLSL` string
+- Updated `starDiskMaterial.ts` to inject `COMMON_GLSL` before fragment shader via string concatenation
+- Removed duplicate `snoise` function from `mainsequencestar.glsl`
+- Removed duplicate `snoise` function from `starDisk.fragment.glsl`
+- Verified all 561 tests still pass
+- Verified TypeScript compilation succeeds
+- Task completed successfully with no regressions
 
