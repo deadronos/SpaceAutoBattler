@@ -55,24 +55,18 @@ Planned actions
 - Capture perf/QA results (screenshot set, frame-time notes) once parallax billboards default decision is finalised.
 - Ensure `core-systems.md` stays aligned when system ordering or AI budgets change alongside renderer updates.
 
-- Last audited: 2025-09-30
-- 2025-09-27: TASK135 follow-up — applied ID mappings to resolve collisions: TASK102→TASK136 and TASK110→TASK137. Marked original files as superseded and created new files under `memory/tasks/COMPLETED/`.
 
-- 2025-10-18: Quick memory sync (TASK248) — Inspected `src/components/PostprocessingLazy.tsx` and recorded findings in `memory/activeContext.md`. Confirmed lazy import pattern (`React.lazy` + `Suspense`) with `Postprocessing.js` and a forwarded `enabled` prop. Created task record `memory/tasks/TASK248-update-memory-bank.md` and updated `memory/tasks/_index.md` to include TASK248 under In Progress.
 
+## 2025-10-28 — Memory bank update
+
+- 2025-10-28: Per request, validated and updated core memory files to follow `.github/instructions/memory-bank.instructions.md`. Confirmed presence of required core memory files (`projectbrief.md`, `productContext.md`, `activeContext.md`, `systemPatterns.md`, `techContext.md`, `progress.md`, `tasks/_index.md`) and refreshed audit timestamps in `memory/_index.md` and `memory/activeContext.md` to reflect this alignment. No code changes were made; documents updated only. (Validated by repository inspection.)
 - 2025-10-18: Environment memory expansion (TASK249) — Read environment components under `src/components/environment/*` and summarised their roles, APIs, and key implementation notes (skysphere, star disk/sphere, star light, planet body, rim shell, rings, parallax billboards). Updated `memory/activeContext.md` with the summaries and created `memory/tasks/TASK249-update-environment-memory.md`.
-
 - 2025-09-29: Completed TASK135 cross-reference reconciliation and ran markdown/link linting across `memory/` and `memory/tasks/`. Updated `memory/tasks/_index.md` to reflect final mappings and removed superseded references.
 
 Memory audit: 2025-09-30 — updated several per-file memories to reflect source changes in `src/game/*`, `src/utils/*`, and renderer asset mappings.
 
 ## 2025-10-03 — Memory alignment
-
-- Updated core memory files in `memory/` to match current `src/` implementations (GameState shape, seeded RNG usage, deferred mutation queues, Rapier diagnostics, AI harness shapes, and system ordering). Verified references to `createGameState`, `SeededRng`, `simulationQueue`, and AI harness exports.
 - Follow-up: consider running markdown linting across the memory folder and normalising list styles (bullets) where inconsistencies remain.
 
 ## 2025-10-16 — Memory bank source audit
-
-- Inspected `src/types/*` (notably `simulation.ts`, `core.ts`, `gameplay.ts`, `ship.ts`, `ai.ts`) and `src/game/state.ts` plus `src/utils/rng.ts` to align the Memory Bank with authoritative implementations.
-- Updated `memory/projectbrief.md`, `memory/techContext.md`, `memory/systemPatterns.md`, and `memory/activeContext.md` to record concrete implementation details: `SeededRng` API surface, `createGameState()` defaults and Rapier init behaviour, `state.simulation` clock defaults (`step = 1/20`, `maxSubSteps = 5`), `state.turretsByShip` usage, and shape of `rapierDiagnostics`.
 - Next validation: run `npx tsc --noEmit` and `npm test` locally to confirm no breakages after docs-only edits (no code changes expected). If any CI or test failures appear, record results and follow-up with corrective edits.
