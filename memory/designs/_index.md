@@ -2,5 +2,28 @@
 
 This folder contains canonical design documents named using the pattern `DESIGNNN-topic.md` (zero-padded three-digit IDs starting at 001).
 
-The normalization process archived the original files to `ARCHIVE/` and produced a mapping file `RENAME_MAPPING.md` listing old → new file names. If you need to review or revert any change, consult those files.
+
+
+## In Progress
+
+- [DESIGN048](DESIGN048-renderer-large-file-plan.md) — Plan to split large renderer files into focused modules with clear test boundaries and a migration plan. (In Progress — implementation planning) (2025-10-27)
+- [DESIGN049](DESIGN049-renderer-config-refactor.md) — Refactor renderer config into smaller focused modules and add a façade for parity tests. (In Progress — design review) (2025-10-27)
+- [DESIGN050](DESIGN050-particle-trails-refactor.md) — Extract particle trail resources and anchors into reusable modules for instancing and testing. (In Progress — implementation PR pending) (2025-10-27)
+- [DESIGN045](DESIGN045-refactor-damage-calculation.md) — Centralize damage math and provide thin adapters to simulation systems (design linked to TASK021). (In Progress — design published) (2025-10-27)
+- [DESIGN046](DESIGN046-refactor-subsystems.md) — Refactor subsystem lifecycle and repair logic into a subsystem module (design linked to TASK022). (In Progress) (2025-10-27)
+
+## Completed
+
+- [DESIGN035](DESIGN035-star-disk-material.md) — Star disk material design and shader notes; baseline implementation validated in tests. (2025-10-27)
+- [DESIGN042](DESIGN042-centralize-projectile-info.md) — Centralized projectile metadata and helpers; reduced duplication across projectile systems. (2025-10-27)
+- [DESIGN043](DESIGN043-materials-presets-and-factory.md) — Material presets and factory pattern for consistent material creation and testing. (2025-10-27)
+- [DESIGN031](DESIGN031-thruster-trails-gpu.md) — GPU-managed thruster trails and instancing plan; prototype validated. (2025-10-06)
+- [DESIGN001](DESIGN001-safekinematics.md) — Safe-kinematics guardrails and numeric stability notes. (2025-10-02)
+
+## Pending
+
+- [DESIGN028](DESIGN028-ship-lod-visibility.md) — Ship LOD visibility rules and impostor integration. (Pending) (2025-10-05)
+- [DESIGN020](DESIGN020-star-disk-view-compensation.md) — Star disk view compensation follow-ups and tuning tasks. (Pending) (2025-10-07)
+
+If you want a different ordering or to promote a design into the In Progress list, tell me which files to prioritize and I will update this index.
 
