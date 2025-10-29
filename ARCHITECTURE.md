@@ -581,7 +581,7 @@ npm run bench:projectiles # Projectile stress benchmark
 - **Motion Spec**: `spec/spec-physical-movement.md` - Movement system specification
 - **README**: `README.md` - Quick start and development workflow
 - **Memory Bank**: `memory/` - Design decisions, context, task tracking
-- **AI System**: `docs/ai-v2-overview.md` - AI decision system details (if exists)
+- **AI System**: `docs/ai-v2-overview.md` - AI decision system details
 
 ## Version History
 
