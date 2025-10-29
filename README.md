@@ -28,11 +28,11 @@ npm run serve:root
 
 Open the local server at http://localhost:8080 (or the URL printed by the serve script).
 
-Developer reference: a short, up-to-date layout of the `src/` directory is available at `spec/src-structure.md` in this repository. It lists the key entry points (`src/main.tsx`, `src/App.tsx`), the `src/game/` pure logic folder, and where to find types and utilities.
+### Documentation
 
-### Motion system specification
-
-- Deterministic ship movement, renderer interpolation, and banking behaviour are defined in [`spec/spec-physical-movement.md`](spec/spec-physical-movement.md). The spec details canonical motion stats, the simulation loop expectations, and renderer smoothing guidance for implementers.
+- **Architecture Overview**: [`ARCHITECTURE.md`](ARCHITECTURE.md) — High-level system design, architectural principles, directory structure, core concepts, and data flow patterns
+- **Source Structure**: [`spec/src-structure.md`](spec/src-structure.md) — Detailed file-by-file breakdown of the `src/` directory
+- **Motion System**: [`spec/spec-physical-movement.md`](spec/spec-physical-movement.md) — Deterministic ship movement, renderer interpolation, and banking behavior specifications
 
 ## Project layout
 
