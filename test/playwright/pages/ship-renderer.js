@@ -1,6 +1,6 @@
 /**
  * Ship Renderer Test Page
- * 
+ *
  * Minimal Three.js scene for rendering ship GLTF models in a deterministic test environment.
  * Exposes window.__TEST__ API for Playwright coordination.
  */
@@ -65,10 +65,10 @@ directionalLight.position.set(5, 5, 5);
 scene.add(directionalLight);
 
 // Renderer setup
-const renderer = new THREE.WebGLRenderer({ 
-  canvas, 
+const renderer = new THREE.WebGLRenderer({
+  canvas,
   antialias: true,
-  alpha: false 
+  alpha: false,
 });
 renderer.setSize(width, height);
 renderer.setPixelRatio(1); // Fixed pixel ratio for deterministic rendering
@@ -113,7 +113,9 @@ async function findModelFile(hull) {
     try {
       const r = await fetch(fbPath, { method: 'HEAD' });
       if (r.ok) return fbPath;
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }
 
   return null;
@@ -154,8 +156,8 @@ function getSceneSummary() {
         visible: node.visible,
         boundingBox: {
           min: { x: box.min.x, y: box.min.y, z: box.min.z },
-          max: { x: box.max.x, y: box.max.y, z: box.max.z }
-        }
+          max: { x: box.max.x, y: box.max.y, z: box.max.z },
+        },
       });
 
       if (node.material) {
@@ -163,7 +165,7 @@ function getSceneSummary() {
         const matInfo = {
           name: mat.name,
           type: mat.type,
-          visible: node.visible
+          visible: node.visible,
         };
 
         // Capture key properties
@@ -183,7 +185,7 @@ function getSceneSummary() {
 
         // Capture shader uniforms if available
         if (mat.uniforms) {
-          Object.keys(mat.uniforms).forEach(key => {
+          Object.keys(mat.uniforms).forEach((key) => {
             const uniform = mat.uniforms[key];
             if (uniform && uniform.value !== undefined) {
               // Store primitive values only
@@ -207,7 +209,7 @@ function getSceneSummary() {
     meshCount: meshes.length,
     meshes,
     materials,
-    uniforms
+    uniforms,
   };
 }
 
@@ -219,7 +221,7 @@ async function loadShip() {
 
   // Attempt to locate the correct model file (handles webpackized names)
   // Honor explicit model path passed from the test runner first
-  let modelPath = explicitModelPath || SHIP_MODEL_PATHS[hullId] ?? null;
+  let modelPath = explicitModelPath || (SHIP_MODEL_PATHS[hullId] ?? null);
   if (!explicitModelPath) {
     try {
       const discovered = await findModelFile(hullId);
@@ -239,17 +241,17 @@ async function loadShip() {
       (gltf) => {
         shipModel = gltf.scene;
         scene.add(shipModel);
-        
+
         // Center the model
         const box = new THREE.Box3().setFromObject(shipModel);
         const center = box.getCenter(new THREE.Vector3());
         shipModel.position.sub(center);
-        
+
         updateStatus(`Loaded ${hullId}`);
         resolve();
       },
       (progress) => {
-        const percent = (progress.loaded / progress.total * 100).toFixed(0);
+        const percent = ((progress.loaded / progress.total) * 100).toFixed(0);
         updateStatus(`Loading ${hullId}... ${percent}%`);
       },
       (error) => {
@@ -259,7 +261,7 @@ async function loadShip() {
           const placeholder = new THREE.Group();
           const body = new THREE.Mesh(
             new THREE.BoxGeometry(1.6, 0.6, 3.0),
-            new THREE.MeshStandardMaterial({ color: 0x777777 })
+            new THREE.MeshStandardMaterial({ color: 0x777777 }),
           );
           body.name = `${hullId}-placeholder-body`;
           placeholder.add(body);
@@ -267,7 +269,12 @@ async function loadShip() {
           if (shieldEnabled) {
             const shield = new THREE.Mesh(
               new THREE.SphereGeometry(2.0, 32, 32),
-              new THREE.MeshBasicMaterial({ color: 0x4fc3ff, transparent: true, opacity: 0.35, side: THREE.DoubleSide })
+              new THREE.MeshBasicMaterial({
+                color: 0x4fc3ff,
+                transparent: true,
+                opacity: 0.35,
+                side: THREE.DoubleSide,
+              }),
             );
             shield.name = `${hullId}-placeholder-shield`;
             placeholder.add(shield);
@@ -284,9 +291,9 @@ async function loadShip() {
         } catch /*err*/ {
           reject(new Error(`Failed to load ${hullId}: ${error.message}`));
         }
-       }
-     );
-   });
+      },
+    );
+  });
 }
 
 /**
@@ -304,10 +311,10 @@ function renderFrame() {
 async function initInternal() {
   try {
     await loadShip();
-    
+
     // Render the target frame
     renderFrame();
-    
+
     isReady = true;
     updateStatus('Ready');
   } catch (error) {
@@ -344,13 +351,25 @@ function drawOverlay() {
     // Draw a large translucent circle and label to represent shield
     overlayCtx.fillStyle = 'rgba(79,195,255,0.12)';
     overlayCtx.beginPath();
-    overlayCtx.arc(overlay.width / 2, overlay.height / 2, Math.min(overlay.width, overlay.height) * 0.35, 0, Math.PI * 2);
+    overlayCtx.arc(
+      overlay.width / 2,
+      overlay.height / 2,
+      Math.min(overlay.width, overlay.height) * 0.35,
+      0,
+      Math.PI * 2,
+    );
     overlayCtx.fill();
 
     overlayCtx.strokeStyle = 'rgba(79,195,255,0.9)';
     overlayCtx.lineWidth = 6;
     overlayCtx.beginPath();
-    overlayCtx.arc(overlay.width / 2, overlay.height / 2, Math.min(overlay.width, overlay.height) * 0.35, 0, Math.PI * 2);
+    overlayCtx.arc(
+      overlay.width / 2,
+      overlay.height / 2,
+      Math.min(overlay.width, overlay.height) * 0.35,
+      0,
+      Math.PI * 2,
+    );
     overlayCtx.stroke();
 
     overlayCtx.fillStyle = 'rgba(79,195,255,0.9)';
@@ -376,7 +395,7 @@ window.__TEST__ = {
     if (isReady && renderComplete) {
       return { frameRendered: frame };
     }
-    
+
     return new Promise((resolve) => {
       const checkReady = setInterval(() => {
         if (isReady && renderComplete) {
@@ -384,7 +403,7 @@ window.__TEST__ = {
           resolve({ frameRendered: frame });
         }
       }, 100);
-      
+
       // Timeout after 30 seconds
       setTimeout(() => {
         clearInterval(checkReady);
@@ -407,5 +426,5 @@ window.__TEST__ = {
     // TODO: Implement dynamic option changes
     console.log('setOptions called:', options);
     return { success: true };
-  }
+  },
 };
