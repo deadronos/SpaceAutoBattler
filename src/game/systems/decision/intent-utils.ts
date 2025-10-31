@@ -7,9 +7,10 @@ import type {
   ShipEntity,
   Team,
 } from '../../../types/index.js';
-import { AI_CONFIG } from '../../config.js';
+import { AI_CONFIG, getEffectiveAIConfig } from '../../config.js';
 import { SeededRng } from '../../../utils/rng.js';
 import { hashToInt } from './utils.js';
+import { computeEffectiveDesiredRange } from './hysteresis.js';
 
 export const TEMP_DIR = new Vector3();
 export const TEMP_POS = new Vector3();
@@ -26,6 +27,29 @@ export const TEMP_RNG = new SeededRng(1);
  */
 export function resetTempRng(seed?: number): void {
   TEMP_RNG.reset(seed ?? 1);
+}
+
+/**
+ * Helper function to get effective desired range, applying hysteresis if enabled.
+ * Returns [desiredMin, desiredMax] tuple.
+ */
+export function getEffectiveRange(
+  ship: ShipEntity,
+  profile: BehaviorProfile,
+  distance: number,
+  tickIndex: number,
+): [number, number] {
+  let desiredMin = profile.desiredRange[0];
+  let desiredMax = profile.desiredRange[1];
+  if (getEffectiveAIConfig().hysteresisEnabled && ship.ai) {
+    [desiredMin, desiredMax] = computeEffectiveDesiredRange(
+      ship.ai,
+      profile,
+      distance,
+      tickIndex,
+    );
+  }
+  return [desiredMin, desiredMax];
 }
 
 export interface IntentCandidate {
