@@ -31,7 +31,7 @@ export function filterSignificantRipples(
   ripples: readonly ScaledRipple[],
   minAmp: number,
 ): ScaledRipple[] {
-  // Compact in-place filtering for better performance
+  // Manual filtering loop for better performance than filter()
   const result: ScaledRipple[] = [];
   for (let i = 0; i < ripples.length; i++) {
     if (ripples[i].scaledAmp >= minAmp) {

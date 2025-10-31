@@ -92,18 +92,20 @@ export function updateTurrets(state: GameState, delta: number): void {
       for (const s of ships) {
         if (s.ship.team === ship.ship.team) continue;
         const dSq = s.transform.position.distanceToSquared(origin);
+        // Bonus scaling: multiply by typical distance magnitude to maintain
+        // relative weighting when using squared distances
+        const bonusScale = 100;
         const bonus = preferSmall
           ? SMALL_HULLS.has(s.ship.hull)
-            ? -10
+            ? -10 * bonusScale
             : LARGE_HULLS.has(s.ship.hull)
-              ? +5
+              ? +5 * bonusScale
               : 0
           : LARGE_HULLS.has(s.ship.hull)
-            ? -10
+            ? -10 * bonusScale
             : SMALL_HULLS.has(s.ship.hull)
-              ? +5
+              ? +5 * bonusScale
               : 0;
-        // Note: bonus is small compared to distance, so squaring distance is fine
         const score = dSq + bonus;
         if (score < bestScore) {
           bestScore = score;

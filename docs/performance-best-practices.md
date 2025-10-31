@@ -96,10 +96,10 @@ for (const source of ships) {
 
 ## Performance Metrics
 
-### Current Performance
+### Current Performance (as of 2025-10-31, v0.1.x)
 
-- **AI Decision System**: 1.500ms average per tick (300 ships, budget: 2.500ms)
-- **Improvement from optimizations**: 5.4% reduction (1.586ms → 1.500ms)
+- **AI Decision System**: ~1.5ms average per tick (300 ships, budget: 2.500ms)
+- **Improvement from optimizations**: ~5% reduction from baseline
 
 ### Testing Performance
 
@@ -109,10 +109,10 @@ Run the AI budget test to validate optimizations:
 npm run perf:ai-budget
 ```
 
-Expected output:
+Expected output (values will vary):
 ```
-[ai-budget] ships=300 ticks=160 avgTick=1.500ms budget=2.500ms
-[ai-budget] PASS: average AI tick 1.500ms within budget 2.500ms
+[ai-budget] ships=300 ticks=160 avgTick=~1.5ms budget=2.500ms
+[ai-budget] PASS: average AI tick ~1.5ms within budget 2.500ms
 ```
 
 ## Common Pitfalls
