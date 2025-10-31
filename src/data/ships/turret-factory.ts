@@ -107,3 +107,64 @@ export function createBeamTurret(
     ...options,
   };
 }
+
+export function createIonTurret(
+  offset: Vector3,
+  options: Partial<TurretSpec> = {},
+): TurretSpec {
+  return {
+    offset,
+    damage: 9,
+    fireRate: 1.3,
+    projectileSpeed: 67,
+    range: 460,
+    bulletType: 'bullet:ion',
+    minYaw: -Math.PI * 0.5,
+    maxYaw: Math.PI * 0.5,
+    minPitch: -Math.PI * 0.2,
+    maxPitch: Math.PI * 0.45,
+    priority: 'antiCapital',
+    ...options,
+  };
+}
+
+export function createHeavyTurret(
+  offset: Vector3,
+  options: Partial<TurretSpec> = {},
+): TurretSpec {
+  return {
+    offset,
+    damage: 10,
+    fireRate: 1.4,
+    projectileSpeed: 67,
+    range: 580,
+    bulletType: 'bullet:plasma',
+    minYaw: -Math.PI * 0.6,
+    maxYaw: Math.PI * 0.6,
+    minPitch: -Math.PI * 0.2,
+    maxPitch: Math.PI * 0.4,
+    priority: 'antiCapital',
+    ...options,
+  };
+}
+
+export function createTorpedoTurret(
+  offset: Vector3,
+  options: Partial<TurretSpec> = {},
+): TurretSpec {
+  return {
+    offset,
+    damage: 42,
+    fireRate: 5.0,
+    projectileSpeed: 55,
+    range: 680,
+    bulletType: 'torpedo:standard',
+    projectileCategory: 'torpedo',
+    minYaw: -Math.PI * 0.35,
+    maxYaw: Math.PI * 0.35,
+    minPitch: -Math.PI * 0.2,
+    maxPitch: Math.PI * 0.3,
+    priority: 'antiCapital',
+    ...options,
+  };
+}
