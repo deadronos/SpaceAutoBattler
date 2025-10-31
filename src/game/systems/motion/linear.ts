@@ -1,12 +1,13 @@
 import type { AICommand, ShipEntity } from '../../../types/index.js';
 import { getEffectiveStats } from '../../progression.js';
 import { TEMP_FORWARD, TEMP_RIGHT, TEMP_VELOCITY_CHANGE } from './sharedTemps.js';
+import { getForwardFromQuaternion, getRightFromQuaternion } from '../../../utils/vector.js';
 
 export function updateLinearMotion(ship: ShipEntity, command: AICommand, dt: number): void {
   const motion = ship.ship.motion;
   const velocity = ship.ship.velocity;
 
-  TEMP_FORWARD.set(0, 0, 1).applyQuaternion(ship.transform.rotation);
+  getForwardFromQuaternion(ship.transform.rotation, TEMP_FORWARD);
 
   const clampedThrust = Math.max(-1, Math.min(1, command.thrust));
   const forwardAccel = clampedThrust * motion.linearAcceleration;
@@ -19,7 +20,7 @@ export function updateLinearMotion(ship: ShipEntity, command: AICommand, dt: num
     const strafeInput = Math.max(-1, Math.min(1, command.strafe ?? 0));
     if (Math.abs(strafeInput) > 1e-4) {
       lateralAccel = strafeInput * maxStrafe;
-      TEMP_RIGHT.set(1, 0, 0).applyQuaternion(ship.transform.rotation);
+      getRightFromQuaternion(ship.transform.rotation, TEMP_RIGHT);
       TEMP_VELOCITY_CHANGE.copy(TEMP_RIGHT).multiplyScalar(lateralAccel * dt);
       velocity.add(TEMP_VELOCITY_CHANGE);
     }

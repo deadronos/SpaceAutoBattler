@@ -8,6 +8,7 @@ import type {
 } from '../../../types/index.js';
 import { hashToInt } from './utils.js';
 import { computeInterceptHeadingVector, TEMP_REL_POS, TEMP_POS, getEffectiveRange } from './intent-utils.js';
+import { getForwardFromQuaternion } from '../../../utils/vector.js';
 
 export interface CommandResult {
   thrust: number;
@@ -28,7 +29,7 @@ function setHeadingToward(
 ): void {
   heading.copy(targetPos).sub(shipPos);
   if (heading.lengthSq() < 1e-5) {
-    heading.set(0, 0, 1).applyQuaternion(shipRotation);
+    getForwardFromQuaternion(shipRotation, heading);
   } else {
     heading.normalize();
   }
@@ -51,7 +52,7 @@ export function computeInterceptCommand(
       distanceToTarget: distance,
     };
   } else {
-    heading.set(0, 0, 1).applyQuaternion(ship.transform.rotation);
+    getForwardFromQuaternion(ship.transform.rotation, heading);
     return {
       thrust: 0.8,
       firePrimary: false,
@@ -81,7 +82,7 @@ export function computeRepositionCommand(
         heading.multiplyScalar(0.6).addScaledVector(tangent, 0.4).normalize();
       }
     } else {
-      heading.set(0, 0, 1).applyQuaternion(ship.transform.rotation);
+      getForwardFromQuaternion(ship.transform.rotation, heading);
       distance = 0;
     }
     const distanceToTarget = ship.transform.position.distanceTo(target.transform.position);
@@ -154,7 +155,7 @@ export function computeEscortCommand(
       : escortTarget.transform.position;
     setHeadingToward(heading, targetPos, ship.transform.position, ship.transform.rotation);
   } else {
-    heading.set(0, 0, 1).applyQuaternion(ship.transform.rotation);
+    getForwardFromQuaternion(ship.transform.rotation, heading);
   }
   return {
     thrust: 0.8,
@@ -181,7 +182,7 @@ export function computeKiteCommand(
       distanceToTarget,
     };
   } else {
-    heading.set(0, 0, 1).applyQuaternion(ship.transform.rotation);
+    getForwardFromQuaternion(ship.transform.rotation, heading);
     return {
       thrust: 1,
       firePrimary: false,
@@ -234,7 +235,7 @@ export function computeAttackCommand(
       distanceToTarget: dist,
     };
   } else {
-    heading.set(0, 0, 1).applyQuaternion(ship.transform.rotation);
+    getForwardFromQuaternion(ship.transform.rotation, heading);
     return {
       thrust: 0,
       firePrimary: false,

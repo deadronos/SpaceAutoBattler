@@ -1,13 +1,11 @@
 import { Vector3 } from 'three';
-import { SeededRng } from '../../../../utils/rng.js';
 import { hashToInt } from '../utils.js';
+import { TEMP_RNG, resetTempRng } from '../sharedRng.js';
 
 const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
-const TEMP_RNG = new SeededRng(1);
 
-export const resetTempRng = (seed?: number): void => {
-  TEMP_RNG.reset(seed ?? 1);
-};
+// Re-export for backward compatibility
+export { resetTempRng } from '../sharedRng.js';
 
 export const computeEscortShellOffset = (
   vipId: number,
