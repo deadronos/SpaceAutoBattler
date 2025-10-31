@@ -2,16 +2,12 @@ import { Vector3 } from 'three';
 import type { AIState, BehaviorProfile, GameState, ShipEntity } from '../../../types/index.js';
 import { AI_CONFIG, getEffectiveAIConfig } from '../../config.js';
 import { computeVerticalClamp } from '../../utils/ai-vertical.js';
-import { SeededRng } from '../../../utils/rng.js';
 import { hashToInt } from './utils.js';
 import { dampVerticalAmplitude } from './hysteresis.js';
+import { TEMP_RNG, resetTempRng } from './sharedRng.js';
 
-const TEMP_RNG = new SeededRng(1);
-
-/** Reset module-level RNG used for vertical maneuvers. */
-export function resetTempRng(seed?: number): void {
-  TEMP_RNG.reset(seed ?? 1);
-}
+// Re-export for backward compatibility
+export { resetTempRng } from './sharedRng.js';
 
 export function applyVerticalPerturbation(
   state: GameState,

@@ -2,10 +2,7 @@ import type { GameState } from '../types/index.js';
 import { updateCarrierLaunchSystem } from './systems/carriers.js';
 import { updateMotionSystem } from './systems/motion.js';
 import { updateExplosions } from './explosions.js';
-import {
-  updateDecisionSystem,
-  runDecisionTick as runDecisionTickInternal,
-} from './systems/decision/manager.js';
+import { updateDecisionSystem } from './systems/decision/manager.js';
 import { refreshBlackboard, assignTeamRoles } from './systems/decision/blackboard.js';
 import {
   selectIntent,
@@ -36,8 +33,12 @@ import { safeSnapshot } from './safeSnapshot.js';
 
 export { updateDecisionSystem, fireProjectile, findNearestEnemy };
 
+/**
+ * Run a single decision tick for all AI-controlled ships.
+ * Alias for updateDecisionSystem, provided for test compatibility.
+ */
 export function runDecisionTick(state: GameState, delta: number): void {
-  runDecisionTickInternal(state, delta);
+  updateDecisionSystem(state, delta);
 }
 
 export function updateGame(state: GameState, delta: number): void {

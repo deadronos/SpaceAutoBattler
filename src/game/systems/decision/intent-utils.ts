@@ -8,9 +8,9 @@ import type {
   Team,
 } from '../../../types/index.js';
 import { AI_CONFIG, getEffectiveAIConfig } from '../../config.js';
-import { SeededRng } from '../../../utils/rng.js';
 import { hashToInt } from './utils.js';
 import { computeEffectiveDesiredRange } from './hysteresis.js';
+import { TEMP_RNG, resetTempRng } from './sharedRng.js';
 
 export const TEMP_DIR = new Vector3();
 export const TEMP_POS = new Vector3();
@@ -18,16 +18,9 @@ export const TEMP_REL_POS = new Vector3();
 export const TEMP_TARGET_VEL = new Vector3();
 export const TEMP_SHIP_VEL = new Vector3();
 export const TEMP_REL_VEL = new Vector3();
-export const TEMP_RNG = new SeededRng(1);
 
-/**
- * Reset the module-level temporary RNG used for incidental randomness in
- * decision utilities. Tests and harnesses can call this to ensure runs are
- * independent from previous test ordering.
- */
-export function resetTempRng(seed?: number): void {
-  TEMP_RNG.reset(seed ?? 1);
-}
+// Re-export for backward compatibility
+export { TEMP_RNG, resetTempRng } from './sharedRng.js';
 
 /**
  * Helper function to get effective desired range, applying hysteresis if enabled.
