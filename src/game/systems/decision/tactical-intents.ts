@@ -12,9 +12,8 @@ import {
   computeBandPreferenceBonus,
   computeThreatBonus,
   getSpeedMagnitude,
+  getEffectiveRange,
 } from './intent-utils.js';
-import { computeEffectiveDesiredRange } from './hysteresis.js';
-import { getEffectiveAIConfig } from '../../config.js';
 
 export function scoreInterceptIntent(
   state: GameState,
@@ -32,17 +31,7 @@ export function scoreInterceptIntent(
   }
 
   const distance = ship.transform.position.distanceTo(target.transform.position);
-  const aiState = ship.ai;
-  let desiredMin = profile.desiredRange[0];
-  let desiredMax = profile.desiredRange[1];
-  if (getEffectiveAIConfig().hysteresisEnabled && aiState) {
-    [desiredMin, desiredMax] = computeEffectiveDesiredRange(
-      aiState,
-      profile,
-      distance,
-      state.ai.tickIndex,
-    );
-  }
+  const [desiredMin, desiredMax] = getEffectiveRange(ship, profile, distance, state.ai.tickIndex);
   const bandPressure = Math.max(0, distance - desiredMax);
 
   const targetSpeed = getSpeedMagnitude(target);
@@ -102,17 +91,7 @@ export function scoreRepositionIntent(
   }
 
   const distance = ship.transform.position.distanceTo(target.transform.position);
-  const aiState = ship.ai;
-  let desiredMin = profile.desiredRange[0];
-  let desiredMax = profile.desiredRange[1];
-  if (getEffectiveAIConfig().hysteresisEnabled && aiState) {
-    [desiredMin, desiredMax] = computeEffectiveDesiredRange(
-      aiState,
-      profile,
-      distance,
-      state.ai.tickIndex,
-    );
-  }
+  const [desiredMin, desiredMax] = getEffectiveRange(ship, profile, distance, state.ai.tickIndex);
   const below = Math.max(0, desiredMin - distance);
   const above = Math.max(0, distance - desiredMax);
   let bandError = Math.abs(distance - (desiredMin + desiredMax) * 0.5);
