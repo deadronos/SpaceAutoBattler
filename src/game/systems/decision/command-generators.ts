@@ -18,6 +18,47 @@ export interface CommandResult {
   distanceToTarget: number | null;
 }
 
+/**
+ * Helper function to set heading toward a target position with fallback to ship's forward direction.
+ * Modifies the heading vector in-place.
+ */
+function setHeadingToward(
+  heading: Vector3,
+  targetPos: Vector3,
+  shipPos: Vector3,
+  shipRotation: { x: number; y: number; z: number; w: number },
+): void {
+  heading.copy(targetPos).sub(shipPos);
+  if (heading.lengthSq() < 1e-5) {
+    heading.set(0, 0, 1).applyQuaternion(shipRotation);
+  } else {
+    heading.normalize();
+  }
+}
+
+/**
+ * Helper function to get effective desired range, applying hysteresis if enabled.
+ * Returns [desiredMin, desiredMax] tuple.
+ */
+function getDesiredRange(
+  ship: ShipEntity,
+  profile: BehaviorProfile,
+  distance: number,
+  tickIndex: number,
+): [number, number] {
+  let desiredMin = profile.desiredRange[0];
+  let desiredMax = profile.desiredRange[1];
+  if (getEffectiveAIConfig().hysteresisEnabled && ship.ai) {
+    [desiredMin, desiredMax] = computeEffectiveDesiredRange(
+      ship.ai,
+      profile,
+      distance,
+      tickIndex,
+    );
+  }
+  return [desiredMin, desiredMax];
+}
+
 export function computeInterceptCommand(
   state: GameState,
   ship: ShipEntity,
@@ -69,17 +110,7 @@ export function computeRepositionCommand(
       distance = 0;
     }
     const distanceToTarget = ship.transform.position.distanceTo(target.transform.position);
-    let desiredMin = profile.desiredRange[0];
-    let desiredMax = profile.desiredRange[1];
-    if (getEffectiveAIConfig().hysteresisEnabled && ship.ai) {
-      const aiState = ship.ai;
-      [desiredMin, desiredMax] = computeEffectiveDesiredRange(
-        aiState,
-        profile,
-        distanceToTarget,
-        state.ai.tickIndex,
-      );
-    }
+    const [desiredMin, desiredMax] = getDesiredRange(ship, profile, distanceToTarget, state.ai.tickIndex);
     // desiredMin/desiredMax are computed above using hysteresis when possible
     let shouldFire = distance <= ship.ship.range;
     let thrust: number;
@@ -104,12 +135,7 @@ export function computeRepositionCommand(
     };
   } else {
     const centroid = state.blackboard.allyCentroid[ship.ship.team];
-    heading.copy(centroid).sub(ship.transform.position);
-    if (heading.lengthSq() < 1e-5) {
-      heading.set(0, 0, 1).applyQuaternion(ship.transform.rotation);
-    } else {
-      heading.normalize();
-    }
+    setHeadingToward(heading, centroid, ship.transform.position, ship.transform.rotation);
     return {
       thrust: 0.55,
       firePrimary: false,
@@ -126,12 +152,7 @@ export function computeRegroupCommand(
   heading: Vector3,
 ): CommandResult {
   const centroid = state.blackboard.allyCentroid[ship.ship.team];
-  heading.copy(centroid).sub(ship.transform.position);
-  if (heading.lengthSq() < 1e-5) {
-    heading.set(0, 0, 1).applyQuaternion(ship.transform.rotation);
-  } else {
-    heading.normalize();
-  }
+  setHeadingToward(heading, centroid, ship.transform.position, ship.transform.rotation);
   const hpRatio = ship.ship.hp / Math.max(1, ship.ship.maxHp);
   const urgency = 1 + Math.max(0, 1 - hpRatio) * 0.5;
   const posture = state.blackboard.teamPosture[ship.ship.team];
@@ -153,17 +174,10 @@ export function computeEscortCommand(
   heading: Vector3,
 ): CommandResult {
   if (escortTarget) {
-    if (escortAssignment) {
-      const desired = TEMP_POS.copy(escortTarget.transform.position).add(escortAssignment.offset);
-      heading.copy(desired).sub(ship.transform.position);
-    } else {
-      heading.copy(escortTarget.transform.position).sub(ship.transform.position);
-    }
-    if (heading.lengthSq() < 1e-5) {
-      heading.set(0, 0, 1).applyQuaternion(ship.transform.rotation);
-    } else {
-      heading.normalize();
-    }
+    const targetPos = escortAssignment
+      ? TEMP_POS.copy(escortTarget.transform.position).add(escortAssignment.offset)
+      : escortTarget.transform.position;
+    setHeadingToward(heading, targetPos, ship.transform.position, ship.transform.rotation);
   } else {
     heading.set(0, 0, 1).applyQuaternion(ship.transform.rotation);
   }
@@ -209,12 +223,7 @@ export function computeFleeCommand(
   heading: Vector3,
 ): CommandResult {
   const allyCentroid = state.blackboard.allyCentroid[ship.ship.team];
-  heading.copy(allyCentroid).sub(ship.transform.position);
-  if (heading.lengthSq() < 1e-5) {
-    heading.set(0, 0, 1).applyQuaternion(ship.transform.rotation);
-  } else {
-    heading.normalize();
-  }
+  setHeadingToward(heading, allyCentroid, ship.transform.position, ship.transform.rotation);
   return {
     thrust: 1,
     firePrimary: false,
@@ -233,17 +242,7 @@ export function computeAttackCommand(
   if (target) {
     heading.copy(target.transform.position).sub(ship.transform.position).normalize();
     const dist = ship.transform.position.distanceTo(target.transform.position);
-    let desiredMin = profile.desiredRange[0];
-    let desiredMax = profile.desiredRange[1];
-    if (getEffectiveAIConfig().hysteresisEnabled && ship.ai) {
-      const aiState = ship.ai;
-      [desiredMin, desiredMax] = computeEffectiveDesiredRange(
-        aiState,
-        profile,
-        dist,
-        state.ai.tickIndex,
-      );
-    }
+    const [desiredMin, desiredMax] = getDesiredRange(ship, profile, dist, state.ai.tickIndex);
     let thrust: number;
     if (dist > desiredMax) {
       thrust = 1;
