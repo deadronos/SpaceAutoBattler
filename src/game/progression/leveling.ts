@@ -35,6 +35,20 @@ function recoverBaseStat(current: number, previousBonus: number): number {
   return current / divisor;
 }
 
+/**
+ * Apply a stat bonus using the standard pattern:
+ * recover base stat, apply new bonus, update levelBonuses
+ */
+function applyStatBonus(
+  currentValue: number,
+  newBonus: number,
+  previousBonus: number,
+): number {
+  const normalisedPrevious = normaliseBonus(previousBonus);
+  const baseStat = recoverBaseStat(currentValue, normalisedPrevious);
+  return baseStat * (1 + newBonus);
+}
+
 export function applyLevelUpBonuses(ship: ShipComponent): void {
   const levelBonuses = ensureLevelBonuses(ship);
 
@@ -45,40 +59,33 @@ export function applyLevelUpBonuses(ship: ShipComponent): void {
   const repairBonus = normaliseBonus(calculateLevelBonus('repairRate', ship.level));
   const fireRateBonus = normaliseBonus(calculateLevelBonus('fireRate', ship.level));
 
-  const previousHullBonus = normaliseBonus(levelBonuses.hull);
+  // Hull: special case - also updates hp with healing
   const previousMaxHp = ship.maxHp;
-  const baseMaxHp = recoverBaseStat(previousMaxHp, previousHullBonus);
-  const newMaxHp = baseMaxHp * (1 + hullBonus);
+  const newMaxHp = applyStatBonus(previousMaxHp, hullBonus, levelBonuses.hull);
   ship.maxHp = newMaxHp;
   ship.hp = Math.min(newMaxHp, ship.hp + (newMaxHp - previousMaxHp));
   levelBonuses.hull = hullBonus;
 
-  const previousShieldBonus = normaliseBonus(levelBonuses.shield);
-  const baseMaxShield = recoverBaseStat(ship.maxShield, previousShieldBonus);
-  ship.maxShield = baseMaxShield * (1 + shieldBonus);
+  // Shield
+  ship.maxShield = applyStatBonus(ship.maxShield, shieldBonus, levelBonuses.shield);
   levelBonuses.shield = shieldBonus;
 
-  const previousDamageBonus = normaliseBonus(levelBonuses.damage);
-  const baseDamage = recoverBaseStat(ship.damage, previousDamageBonus);
-  ship.damage = baseDamage * (1 + damageBonus);
+  // Damage
+  ship.damage = applyStatBonus(ship.damage, damageBonus, levelBonuses.damage);
   levelBonuses.damage = damageBonus;
 
-  const previousShieldRegenBonus = normaliseBonus(levelBonuses.shieldRegen);
-  const baseShieldRegen = recoverBaseStat(ship.shieldRegen ?? 0, previousShieldRegenBonus);
-  const updatedShieldRegen = baseShieldRegen * (1 + shieldRegenBonus);
-  ship.shieldRegen = updatedShieldRegen;
+  // Shield Regen
+  ship.shieldRegen = applyStatBonus(ship.shieldRegen ?? 0, shieldRegenBonus, levelBonuses.shieldRegen);
   levelBonuses.shieldRegen = shieldRegenBonus;
 
-  const previousFireRateBonus = normaliseBonus(levelBonuses.fireRate);
-  const baseFireRate = recoverBaseStat(ship.fireRate, previousFireRateBonus);
-  ship.fireRate = baseFireRate * (1 + fireRateBonus);
+  // Fire Rate
+  ship.fireRate = applyStatBonus(ship.fireRate, fireRateBonus, levelBonuses.fireRate);
   levelBonuses.fireRate = fireRateBonus;
 
-  const previousRepairBonus = normaliseBonus(levelBonuses.repairRate);
+  // Repair Rate: special case - applies to all subsystems
   for (const subsystem of Object.values(ship.subsystems)) {
     if (!subsystem) continue;
-    const baseRepairRate = recoverBaseStat(subsystem.repairRate, previousRepairBonus);
-    subsystem.repairRate = baseRepairRate * (1 + repairBonus);
+    subsystem.repairRate = applyStatBonus(subsystem.repairRate, repairBonus, levelBonuses.repairRate);
   }
   levelBonuses.repairRate = repairBonus;
 }
