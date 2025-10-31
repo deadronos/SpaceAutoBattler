@@ -3,6 +3,7 @@ import type { GameState, ShipEntity } from '../../../types/index.js';
 import { recordBandSample } from '../../metrics.js';
 import { TEMP_DIR, TEMP_POS, TEMP_QUAT, TEMP_REL_POS } from './sharedTemps.js';
 import { handleMissingAi } from './aiSafety.js';
+import { getForwardFromQuaternion } from '../../../utils/vector.js';
 
 export interface ShipDecision {
   heading: Vector3;
@@ -36,7 +37,7 @@ export function executeShipAi(state: GameState, ship: ShipEntity, delta: number)
 
   const heading = command.heading;
   if (heading.lengthSq() < 1e-5) {
-    heading.set(0, 0, 1).applyQuaternion(ship.transform.rotation);
+    getForwardFromQuaternion(ship.transform.rotation, heading);
   } else {
     heading.normalize();
   }
@@ -46,7 +47,7 @@ export function executeShipAi(state: GameState, ship: ShipEntity, delta: number)
     const tickHz = state.ai && state.ai.tickInterval > 0 ? 1 / state.ai.tickInterval : 10;
     const perTick = 1 / tickHz;
     const maxAngle = Math.max(0.05, motion.maxTurnRate * Math.max(perTick, delta));
-    const currentForward = TEMP_DIR.set(0, 0, 1).applyQuaternion(ship.transform.rotation);
+    const currentForward = getForwardFromQuaternion(ship.transform.rotation, TEMP_DIR);
     if (currentForward.lengthSq() > 1e-6) {
       currentForward.normalize();
       const dot = Math.max(-1, Math.min(1, currentForward.dot(heading)));
