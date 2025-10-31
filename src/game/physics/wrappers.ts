@@ -4,7 +4,7 @@ import { withDeferredEnqueue, withPostEnqueue } from './mutationHelpers.js';
 
 /**
  * Generic physics wrapper factory
- * 
+ *
  * This module provides a generic way to create both deferred and post-physics mutation wrappers,
  * eliminating code duplication between deferWrappers.ts and postWrappers.ts.
  */
