@@ -1,6 +1,7 @@
 import { Color, Vector3 } from 'three';
 import type { ExplosionEvent } from '../../types/index.js';
 import { SeededRng } from '../../utils/rng.js';
+import { clamp01 } from '../../utils/math.js';
 import {
   MAX_DEBRIS,
   MAX_PLASMA,
@@ -143,8 +144,4 @@ export function getDerived(event: ExplosionEvent): DerivedExplosionData {
 
 export function easeOutQuad(t: number): number {
   return 1 - (1 - t) * (1 - t);
-}
-
-export function clamp01(value: number): number {
-  return Math.min(1, Math.max(0, value));
 }
