@@ -9,6 +9,7 @@ import type { StarLightConfig, CelestialEnvironmentConfig, StarDiskHazeConfig, S
 import { useStarTextures } from '../../hooks/useStarTextures.js';
 import { useStarMaterial } from '../../hooks/useStarMaterial.js';
 import { updateMainSequenceStarUniforms } from '../../renderer/starDiskMaterial.js';
+import { isCopilotDebugEnabled } from '../../utils/copilotDebug.js';
 
 interface StarSphereProps {
   config?: StarLightConfig;
@@ -76,8 +77,7 @@ export function StarSphere({
   const noise = noiseOverride ?? loadedNoise ?? null;
 
   const debugEnabled = useMemo(() => {
-    if (typeof window === 'undefined') return false;
-    return /[?&]copilot_debug=1/.test(window.location.search);
+    return isCopilotDebugEnabled();
   }, []);
 
   const createdMaterial = useStarMaterial(debugEnabled);

@@ -13,6 +13,7 @@ import {
   RENDER_ORDER_OPAQUE_CORE,
   RENDER_ORDER_TRANSLUCENT_ADDITIVE,
 } from '../../renderer/sceneLayerOrder.js';
+import { isCopilotDebugEnabled } from '../../utils/copilotDebug.js';
 
 interface StarDiskMeshProps {
   /** Reference to the mesh element */
@@ -49,7 +50,7 @@ export function StarDiskMesh({
 
   // Expose debug helper so we can adjust halo renderOrder from the console
   try {
-    if (typeof window !== 'undefined' && /[?&]copilot_debug=1/.test(window.location.search)) {
+    if (isCopilotDebugEnabled()) {
       try {
         (window as any).__copilot_setStarHaloRenderOrder = (v: any) => {
           try {

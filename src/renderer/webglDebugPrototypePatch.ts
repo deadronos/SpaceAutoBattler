@@ -1,3 +1,5 @@
+import { isCopilotDebugEnabled } from '../utils/copilotDebug.js';
+
 // Patch WebGL prototype methods early to capture shader compile/link logs.
 // This file should be imported at application entry before any WebGL context is created.
 if (typeof window !== 'undefined') {
@@ -5,7 +7,7 @@ if (typeof window !== 'undefined') {
   const win = window as Window & { __copilot_glLogs?: Array<GlLog> & { __installed?: boolean } };
   const debugEnabled =
     (typeof process !== 'undefined' && process.env && process.env.NODE_ENV !== 'production') ||
-    (typeof win.location === 'object' && String(win.location.search).includes('copilot_debug=1'));
+    isCopilotDebugEnabled();
   if (debugEnabled) {
     try {
       win.__copilot_glLogs = win.__copilot_glLogs || [];
