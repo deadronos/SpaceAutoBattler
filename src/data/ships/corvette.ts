@@ -1,6 +1,12 @@
 import { Vector3 } from 'three';
 import type { ShipStats } from '../../types/index.js';
 import { HULL_DAMAGE_TYPES, HULL_ARMOR_VALUES } from '../../config/progression.js';
+import {
+  createLaserTurret,
+  createPointDefenseTurret,
+  createMissileTurret,
+  createBeamTurret,
+} from './turret-factory.js';
 
 export const CORVETTE_STATS: ShipStats = {
   hull: 'corvette',
@@ -50,72 +56,42 @@ export const CORVETTE_STATS: ShipStats = {
   stealth: 0.1,
   sensorSignature: 1.05,
   turrets: [
-    {
-      offset: new Vector3(0.9, 0.2, 0.1),
+    createLaserTurret(new Vector3(0.9, 0.2, 0.1), {
       damage: 6,
       fireRate: 1.0,
-      projectileSpeed: 107,
       range: 220,
-      bulletType: 'bullet:laser',
       minYaw: -Math.PI * 0.6,
       maxYaw: Math.PI * 0.6,
       minPitch: -Math.PI * 0.2,
       maxPitch: Math.PI * 0.4,
-      priority: 'antiFighter',
-    },
-    {
-      offset: new Vector3(-0.9, 0.2, 0.1),
+    }),
+    createLaserTurret(new Vector3(-0.9, 0.2, 0.1), {
       damage: 6,
       fireRate: 1.0,
-      projectileSpeed: 107,
       range: 220,
-      bulletType: 'bullet:laser',
       minYaw: -Math.PI * 0.6,
       maxYaw: Math.PI * 0.6,
       minPitch: -Math.PI * 0.2,
       maxPitch: Math.PI * 0.4,
-      priority: 'antiFighter',
-    },
-    {
-      offset: new Vector3(0, 0.38, 0.4),
+    }),
+    createPointDefenseTurret(new Vector3(0, 0.38, 0.4), {
       damage: 4,
-      fireRate: 0.35,
-      projectileSpeed: 240,
       range: 240,
-      bulletType: 'bullet:laser',
       minYaw: -Math.PI * 0.75,
       maxYaw: Math.PI * 0.75,
-      minPitch: -Math.PI * 0.35,
-      maxPitch: Math.PI * 0.55,
-      priority: 'antiFighter',
-    },
-    {
-      offset: new Vector3(0, 0.22, -1.05),
+    }),
+    createMissileTurret(new Vector3(0, 0.22, -1.05), {
       damage: 18,
       fireRate: 2.6,
       projectileSpeed: 92,
       range: 520,
-      bulletType: 'missile:light',
-      projectileCategory: 'missile',
       minYaw: -Math.PI * 0.5,
       maxYaw: Math.PI * 0.5,
-      minPitch: -Math.PI * 0.25,
-      maxPitch: Math.PI * 0.35,
-      priority: 'any',
-    },
-    {
-      offset: new Vector3(0, 0.25, 0.95),
+    }),
+    createBeamTurret(new Vector3(0, 0.25, 0.95), {
       damage: 14,
       fireRate: 2.0,
-      projectileSpeed: 0,
       range: 280,
-      bulletType: 'beam:laser',
-      projectileCategory: 'beam',
-      minYaw: -Math.PI * 0.6,
-      maxYaw: Math.PI * 0.6,
-      minPitch: -Math.PI * 0.3,
-      maxPitch: Math.PI * 0.5,
-      priority: 'antiFighter',
-    },
+    }),
   ],
 };
