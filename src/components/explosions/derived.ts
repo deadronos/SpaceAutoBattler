@@ -1,7 +1,6 @@
 import { Color, Vector3 } from 'three';
 import type { ExplosionEvent } from '../../types/index.js';
 import { SeededRng } from '../../utils/rng.js';
-import { clamp01 } from '../../utils/math.js';
 import {
   MAX_DEBRIS,
   MAX_PLASMA,
