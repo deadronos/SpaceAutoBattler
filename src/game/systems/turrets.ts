@@ -11,6 +11,27 @@ const TEMP_TURRET_DIR = new Vector3();
 const SMALL_HULLS = new Set(['fighter', 'corvette']);
 const LARGE_HULLS = new Set(['frigate', 'destroyer', 'carrier']);
 
+/**
+ * Helper function to record shot metrics if metrics tracking is enabled.
+ */
+function recordShotIfMetrics(
+  state: GameState,
+  ship: ShipEntity,
+  target: ShipEntity,
+  dist: number,
+): void {
+  const metrics = state.ai?.metrics;
+  if (metrics) {
+    recordShotMetrics(metrics, {
+      shipId: ship.id,
+      hull: ship.ship.hull,
+      time: state.time,
+      distance: dist,
+      deltaY: target.transform.position.y - ship.transform.position.y,
+    });
+  }
+}
+
 export function findNearestEnemy(state: GameState, origin: ShipEntity): ShipEntity | null {
   const ships = state.queries.ships.entities as ShipEntity[];
   let closest: ShipEntity | null = null;
@@ -44,16 +65,7 @@ export function runEmbeddedTurrets(state: GameState, ship: ShipEntity, target: S
     if (dist > turret.range) continue;
     if (dist > 1e-5) toTarget.divideScalar(dist);
     else toTarget.set(0, 0, 1);
-    const metrics = state.ai?.metrics;
-    if (metrics) {
-      recordShotMetrics(metrics, {
-        shipId: ship.id,
-        hull: ship.ship.hull,
-        time: state.time,
-        distance: dist,
-        deltaY: target.transform.position.y - ship.transform.position.y,
-      });
-    }
+    recordShotIfMetrics(state, ship, target, dist);
     fireProjectile(state, ship, toTarget, {
       originPosition: turretOrigin,
       override: {
@@ -130,16 +142,7 @@ export function updateTurrets(state: GameState, delta: number): void {
     const minPitch = t.turret.minPitch ?? -Math.PI / 2;
     const maxPitch = t.turret.maxPitch ?? Math.PI / 2;
     if (yaw < minYaw || yaw > maxYaw || pitch < minPitch || pitch > maxPitch) continue;
-    const metrics = state.ai?.metrics;
-    if (metrics) {
-      recordShotMetrics(metrics, {
-        shipId: ship.id,
-        hull: ship.ship.hull,
-        time: state.time,
-        distance: dist,
-        deltaY: target.transform.position.y - ship.transform.position.y,
-      });
-    }
+    recordShotIfMetrics(state, ship, target, dist);
     fireProjectile(state, ship, toTarget, {
       originPosition: origin,
       override: {
