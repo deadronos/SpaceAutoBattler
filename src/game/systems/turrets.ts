@@ -81,13 +81,14 @@ export function updateTurrets(state: GameState, delta: number): void {
     let target = findNearestEnemy(state, ship);
     if (t.turret.priority && t.turret.priority !== 'any') {
       const ships = state.queries.ships.entities as ShipEntity[];
-      const candidates = ships.filter((s) => s.ship.team !== ship.ship.team);
       const small = new Set(['fighter', 'corvette']);
       const large = new Set(['frigate', 'destroyer', 'carrier']);
       const preferSmall = t.turret.priority === 'antiFighter';
       let bestScore = Number.POSITIVE_INFINITY;
       let best: ShipEntity | null = null;
-      for (const s of candidates) {
+      // Avoid filter: iterate directly and skip same-team ships
+      for (const s of ships) {
+        if (s.ship.team === ship.ship.team) continue;
         const d = s.transform.position.distanceTo(origin);
         const bonus = preferSmall
           ? small.has(s.ship.hull)
