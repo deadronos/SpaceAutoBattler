@@ -5,8 +5,7 @@ import type {
   ShipEntity,
   TeamPosture,
 } from '../../../types/index.js';
-import { quantizeScore, computeBandPreferenceBonus, computeThreatBonus } from './intent-utils.js';
-import { computeEffectiveDesiredRange } from './hysteresis.js';
+import { quantizeScore, computeBandPreferenceBonus, computeThreatBonus, getEffectiveRange } from './intent-utils.js';
 import { getEffectiveAIConfig } from '../../config.js';
 
 export function scoreAttackIntent(
@@ -19,17 +18,7 @@ export function scoreAttackIntent(
 ): number {
   if (!target) return 0;
   const dist = ship.transform.position.distanceTo(target.transform.position);
-  const aiState = ship.ai;
-  let desiredMin = profile.desiredRange[0];
-  let desiredMax = profile.desiredRange[1];
-  if (getEffectiveAIConfig().hysteresisEnabled && aiState) {
-    [desiredMin, desiredMax] = computeEffectiveDesiredRange(
-      aiState,
-      profile,
-      dist,
-      state.ai.tickIndex,
-    );
-  }
+  const [desiredMin, desiredMax] = getEffectiveRange(ship, profile, dist, state.ai.tickIndex);
   const mid = (desiredMin + desiredMax) * 0.5;
   const bandError = Math.abs(dist - mid);
   const hpRatio = ship.ship.hp / Math.max(1, ship.ship.maxHp);

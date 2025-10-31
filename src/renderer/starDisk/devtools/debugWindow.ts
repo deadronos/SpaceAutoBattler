@@ -1,4 +1,4 @@
-export type StarDebugWindow = Window & {
+interface StarDebugProperties {
   __copilot_forceStarOpaque?: boolean;
   __copilot_star_forcedOpaque?: boolean;
   __STAR_COMPILED?: boolean;
@@ -7,19 +7,12 @@ export type StarDebugWindow = Window & {
   __copilot_star_forceOnTop?: boolean;
   __copilot_forceStarOpaqueReset?: () => void;
   __copilot_star_compile_dispose?: Array<() => void>;
-};
+}
+
+export type StarDebugWindow = Window & StarDebugProperties;
 
 declare global {
-  interface Window {
-    __copilot_forceStarOpaque?: boolean;
-    __copilot_star_forcedOpaque?: boolean;
-    __STAR_COMPILED?: boolean;
-    __copilot_starUniforms?: Array<unknown>;
-    __copilot_glLogs?: Array<unknown>;
-    __copilot_star_forceOnTop?: boolean;
-    __copilot_forceStarOpaqueReset?: () => void;
-    __copilot_star_compile_dispose?: Array<() => void>;
-  }
+  interface Window extends StarDebugProperties {}
 }
 
 export const getStarDebugWindow = (): StarDebugWindow | undefined => {
