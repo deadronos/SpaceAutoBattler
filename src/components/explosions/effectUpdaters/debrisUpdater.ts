@@ -2,7 +2,7 @@ import type { EffectUpdateContext, EffectUpdater, EffectUpdateResult } from './t
 import { DEBRIS_DELAY } from '../constants.js';
 import { getCachedColor } from '../derived.js';
 import { clamp01 } from '../../../utils/math.js';
-import { EMPTY_EFFECT_RESULT } from './types.js';
+import { processParticleArray } from './particleLoopHelper.js';
 
 /**
  * Updates debris effect instances using the allocator model.
@@ -14,51 +14,39 @@ export const updateDebris: EffectUpdater = (
   manager,
   keyBase: string,
 ): EffectUpdateResult => {
-  const { event, time, derived, dummy, tmpQuat: _tmpQuat, tmpVec: _tmpVec, color } = ctx;
+  const { event, time, derived, dummy, tmpQuat, tmpVec, color } = ctx;
 
   const debrisT = time - DEBRIS_DELAY;
-  if (debrisT < 0) return EMPTY_EFFECT_RESULT;
 
-  let count = 0;
-  let saturated = false;
+  return processParticleArray(
+    derived.debris,
+    debrisT,
+    manager,
+    keyBase,
+    'shard',
+    (shard) => shard.lifetime,
+    (shard, idx, debrisTime) => {
+      const shardProgress = clamp01(debrisTime / shard.lifetime);
+      const distance = shard.speed * debrisTime;
 
-  let i = 0;
-  for (const shard of derived.debris) {
-    if (debrisT > shard.lifetime) {
-      i += 1;
-      continue;
-    }
+      tmpVec.copy(shard.direction).multiplyScalar(distance).add(event.position);
+      dummy.position.copy(tmpVec);
 
-    const key = `${keyBase}:shard:${i}`;
-    const idx = manager.allocate(key);
-    if (idx == null) {
-      saturated = true;
-      break;
-    }
+      const shardScale = Math.max(event.radius * 0.05 * shard.scale * (1 - shardProgress), 0.04);
+      dummy.scale.setScalar(shardScale);
 
-    const shardProgress = clamp01(debrisT / shard.lifetime);
-    const distance = shard.speed * debrisT;
+      tmpQuat.setFromAxisAngle(shard.axis, shard.spin * debrisTime);
+      dummy.quaternion.copy(tmpQuat);
+      dummy.updateMatrix();
 
-    _tmpVec.copy(shard.direction).multiplyScalar(distance).add(event.position);
-    dummy.position.copy(_tmpVec);
+      manager.setMatrixAt(idx, dummy.matrix);
 
-    const shardScale = Math.max(event.radius * 0.05 * shard.scale * (1 - shardProgress), 0.04);
-    dummy.scale.setScalar(shardScale);
+      color
+        .copy(getCachedColor(event.palette.fireballHot))
+        .multiplyScalar(Math.max(0.2, 1 - shardProgress * 0.8));
+      manager.setColorAt(idx, color);
 
-    _tmpQuat.setFromAxisAngle(shard.axis, shard.spin * debrisT);
-    dummy.quaternion.copy(_tmpQuat);
-    dummy.updateMatrix();
-
-    manager.setMatrixAt(idx, dummy.matrix);
-
-    color
-      .copy(getCachedColor(event.palette.fireballHot))
-      .multiplyScalar(Math.max(0.2, 1 - shardProgress * 0.8));
-    manager.setColorAt(idx, color);
-
-    count += 1;
-    i += 1;
-  }
-
-  return { count, saturated };
+      return true;
+    },
+  );
 };

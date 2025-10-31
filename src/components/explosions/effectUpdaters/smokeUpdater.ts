@@ -2,11 +2,11 @@ import { SMOKE_DELAY } from '../constants.js';
 import { getCachedColor } from '../derived.js';
 import { clamp01 } from '../../../utils/math.js';
 import {
-  EMPTY_EFFECT_RESULT,
   type EffectUpdateContext,
   type EffectUpdater,
   type EffectUpdateResult,
 } from './types.js';
+import { processParticleArray } from './particleLoopHelper.js';
 
 /**
  * Updates smoke effect instances.
@@ -20,48 +20,34 @@ export const updateSmoke: EffectUpdater = (
   const { event, time, camera, derived, dummy, tmpVec, color } = ctx;
 
   const smokeT = time - SMOKE_DELAY;
-  if (smokeT < 0) {
-    return EMPTY_EFFECT_RESULT;
-  }
 
-  let count = 0;
-  let saturated = false;
+  return processParticleArray(
+    derived.smoke,
+    smokeT,
+    manager,
+    keyBase,
+    'wisp',
+    (wisp) => wisp.lifetime,
+    (wisp, idx, smokeTime) => {
+      const wispProgress = clamp01(smokeTime / wisp.lifetime);
 
-  let i = 0;
-  for (const wisp of derived.smoke) {
-    if (smokeT > wisp.lifetime) {
-      i += 1;
-      continue;
-    }
+      tmpVec.copy(wisp.offset).add(event.position).addScaledVector(wisp.drift, smokeTime);
+      dummy.position.copy(tmpVec);
 
-    const key = `${keyBase}:wisp:${i}`;
-    const idx = manager.allocate(key);
-    if (idx == null) {
-      saturated = true;
-      break;
-    }
+      const scale = event.radius * 0.6 * wisp.scale * (1 - wispProgress * 0.4);
+      dummy.scale.setScalar(scale);
 
-    const wispProgress = clamp01(smokeT / wisp.lifetime);
+      dummy.quaternion.copy(camera.quaternion);
+      dummy.updateMatrix();
 
-    tmpVec.copy(wisp.offset).add(event.position).addScaledVector(wisp.drift, smokeT);
-    dummy.position.copy(tmpVec);
+      manager.setMatrixAt(idx, dummy.matrix);
 
-    const scale = event.radius * 0.6 * wisp.scale * (1 - wispProgress * 0.4);
-    dummy.scale.setScalar(scale);
+      color
+        .copy(getCachedColor(event.palette.smoke))
+        .multiplyScalar(Math.max(0.2, 0.7 - wispProgress * 0.5));
+      manager.setColorAt(idx, color);
 
-    dummy.quaternion.copy(camera.quaternion);
-    dummy.updateMatrix();
-
-    manager.setMatrixAt(idx, dummy.matrix);
-
-    color
-      .copy(getCachedColor(event.palette.smoke))
-      .multiplyScalar(Math.max(0.2, 0.7 - wispProgress * 0.5));
-    manager.setColorAt(idx, color);
-
-    count += 1;
-    i += 1;
-  }
-
-  return { count, saturated };
+      return true;
+    },
+  );
 };
