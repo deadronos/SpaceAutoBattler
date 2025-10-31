@@ -10,14 +10,14 @@ const TEMP_TURRET_DIR = new Vector3();
 export function findNearestEnemy(state: GameState, origin: ShipEntity): ShipEntity | null {
   const ships = state.queries.ships.entities as ShipEntity[];
   let closest: ShipEntity | null = null;
-  let shortest = Number.POSITIVE_INFINITY;
+  let shortestSq = Number.POSITIVE_INFINITY;
 
   for (const ship of ships) {
     if (ship === origin) continue;
     if (ship.ship.team === origin.ship.team) continue;
-    const distance = origin.transform.position.distanceTo(ship.transform.position);
-    if (distance < shortest) {
-      shortest = distance;
+    const distanceSq = origin.transform.position.distanceToSquared(ship.transform.position);
+    if (distanceSq < shortestSq) {
+      shortestSq = distanceSq;
       closest = ship;
     }
   }
