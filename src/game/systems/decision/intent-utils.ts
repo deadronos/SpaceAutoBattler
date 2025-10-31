@@ -10,7 +10,8 @@ import type {
 import { AI_CONFIG, getEffectiveAIConfig } from '../../config.js';
 import { hashToInt } from './utils.js';
 import { computeEffectiveDesiredRange } from './hysteresis.js';
-import { TEMP_RNG, resetTempRng } from './sharedRng.js';
+// TEMP_RNG and resetTempRng are re-exported below for backward compatibility.
+// Avoid importing them here to prevent unused-variable lint errors.
 import { getForwardFromQuaternion } from '../../../utils/vector.js';
 
 export const TEMP_DIR = new Vector3();
@@ -21,6 +22,9 @@ export const TEMP_SHIP_VEL = new Vector3();
 export const TEMP_REL_VEL = new Vector3();
 
 // Re-export for backward compatibility
+// The re-exported symbols are intended for backward compatibility and may not
+// be referenced locally in this module — silence the unused-var lint rule.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export { TEMP_RNG, resetTempRng } from './sharedRng.js';
 
 /**

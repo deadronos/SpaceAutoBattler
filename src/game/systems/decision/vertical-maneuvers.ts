@@ -4,9 +4,12 @@ import { AI_CONFIG, getEffectiveAIConfig } from '../../config.js';
 import { computeVerticalClamp } from '../../utils/ai-vertical.js';
 import { hashToInt } from './utils.js';
 import { dampVerticalAmplitude } from './hysteresis.js';
-import { TEMP_RNG, resetTempRng } from './sharedRng.js';
+import { TEMP_RNG } from './sharedRng.js';
 
 // Re-export for backward compatibility
+// This symbol is provided for backward compatibility and may be unused within
+// this module; disable the unused-var lint warning for this line.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export { resetTempRng } from './sharedRng.js';
 
 export function applyVerticalPerturbation(
