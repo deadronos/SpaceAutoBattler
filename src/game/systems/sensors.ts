@@ -7,6 +7,7 @@ import type {
   Team,
 } from '../../types/index.js';
 import { ensureDoctrineState, getDoctrineSensorModifiers } from '../aiDoctrine.js';
+import { getForwardFromQuaternion } from '../../utils/vector.js';
 
 const TMP_FORWARD = new Vector3();
 const TMP_VECTOR = new Vector3();
@@ -120,7 +121,7 @@ export function updateSensorSystem(state: GameState, ships: ShipEntity[]): void 
     const trackingRange = sensor.trackingRange * teamDetectionMultiplier;
     const coneCos = Math.cos(sensor.coneAngle * 0.5);
 
-    TMP_FORWARD.set(0, 0, 1).applyQuaternion(source.transform.rotation).normalize();
+    getForwardFromQuaternion(source.transform.rotation, TMP_FORWARD).normalize();
 
     for (const target of ships) {
       if (target === source) continue;

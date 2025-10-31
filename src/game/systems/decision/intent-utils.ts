@@ -11,6 +11,7 @@ import { AI_CONFIG, getEffectiveAIConfig } from '../../config.js';
 import { hashToInt } from './utils.js';
 import { computeEffectiveDesiredRange } from './hysteresis.js';
 import { TEMP_RNG, resetTempRng } from './sharedRng.js';
+import { getForwardFromQuaternion } from '../../../utils/vector.js';
 
 export const TEMP_DIR = new Vector3();
 export const TEMP_POS = new Vector3();
@@ -191,7 +192,7 @@ export function computeInterceptHeadingVector(
     out.copy(future);
   }
   if (out.lengthSq() < 1e-5) {
-    out.set(0, 0, 1).applyQuaternion(ship.transform.rotation);
+    getForwardFromQuaternion(ship.transform.rotation, out);
   } else {
     out.normalize();
   }

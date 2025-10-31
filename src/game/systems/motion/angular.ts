@@ -16,6 +16,7 @@ import {
   TEMP_TARGET_DIR,
   TEMP_UP,
 } from './sharedTemps.js';
+import { getForwardFromQuaternion } from '../../../utils/vector.js';
 
 export function updateAngularMotion(ship: ShipEntity, targetHeading: Vector3, dt: number): void {
   const motion = ship.ship.motion;
@@ -36,7 +37,7 @@ export function updateAngularMotion(ship: ShipEntity, targetHeading: Vector3, dt
   desiredForward.normalize();
 
   const currentRotation = ship.transform.rotation;
-  const currentForward = TEMP_FORWARD.set(0, 0, 1).applyQuaternion(currentRotation);
+  const currentForward = getForwardFromQuaternion(currentRotation, TEMP_FORWARD);
   if (currentForward.lengthSq() < 1e-8) currentForward.set(0, 0, 1);
   currentForward.normalize();
 
@@ -95,7 +96,7 @@ export function updateAngularMotion(ship: ShipEntity, targetHeading: Vector3, dt
     currentRotation.multiplyQuaternions(TEMP_ROTATION, currentRotation);
     currentRotation.normalize();
   } else if (withinSettleBand && angle > 1e-4) {
-    const updatedForward = TEMP_FORWARD.set(0, 0, 1).applyQuaternion(currentRotation);
+    const updatedForward = getForwardFromQuaternion(currentRotation, TEMP_FORWARD);
     if (updatedForward.lengthSq() < 1e-8) updatedForward.set(0, 0, 1);
     updatedForward.normalize();
     const correction = TEMP_ROTATION.setFromUnitVectors(updatedForward, desiredForward);
