@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import './debugPanel.css';
+import { isCopilotDebugEnabled } from '../utils/copilotDebug.js';
 
 // Minimal dev-only overlay for tweaking ring shadow and penumbra.
 // Automatically reads/writes values from `window.__copilot_ringMaterial` if available.
 export default function RingDebugPanel(): React.ReactElement | null {
   // Only render when copilot_debug=1 is present or in non-production
-  const search = typeof window !== 'undefined' ? window.location.search : '';
-  const enabled = typeof search === 'string' && /[?&]copilot_debug=1/.test(search);
+  const enabled = isCopilotDebugEnabled();
   if (!enabled) return null;
 
   const mat: any = (typeof window !== 'undefined' ? (window as any).__copilot_ringMaterial : null);
