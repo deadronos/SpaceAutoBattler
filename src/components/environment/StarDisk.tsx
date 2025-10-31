@@ -1,33 +1,28 @@
 import { useMemo, useRef, useEffect } from 'react';
 import type { Mesh } from 'three';
-import {
-  Vector3,
-  ShaderMaterial,
-  Quaternion,
-  MeshBasicMaterial,
-  DoubleSide,
-} from 'three';
-import { useFrame, useThree } from '@react-three/fiber';
-import type { StarLightConfig, CelestialEnvironmentConfig, StarDiskHazeConfig, StarDiskBoundaryConfig } from '../../config/environment.js';
+import { Vector3, ShaderMaterial, Quaternion } from 'three';
+import { useThree } from '@react-three/fiber';
+import type {
+  StarLightConfig,
+  CelestialEnvironmentConfig,
+  StarDiskHazeConfig,
+  StarDiskBoundaryConfig,
+} from '../../config/environment.js';
 import { useOptionalGameState } from '../../game/context.js';
-import {
-  createMainSequenceStarMaterial,
-  updateMainSequenceStarUniforms,
-  type MainSequenceStarUniformUpdate,
-} from '../../renderer/starDiskMaterial.js';
+import { type MainSequenceStarUniformUpdate } from '../../renderer/starDiskMaterial.js';
 import {
   computeStarDiskQuaternion,
   createViewAlignmentScratch,
-  computeViewAlignment,
   type ViewAlignment,
 } from '../../renderer/starDiskOrientation.js';
-import { wrapStarTime, isCopilotDebugEnabled, STAR_TIME_WRAP_SECONDS } from '../../utils/starDisk.js';
 import { useStarTextures } from '../../hooks/useStarTextures.js';
 import { useStarMaterial } from '../../hooks/useStarMaterial.js';
 import { useStarBloom } from '../../hooks/useStarBloom.js';
 import { useDevShaderCompile } from '../../hooks/useDevShaderCompile.js';
 import { useStarDebug, useDebugOverlayCleanup } from '../../hooks/useStarDebug.js';
 import { StarDiskMesh } from './StarDiskMesh.js';
+import { useStarDiskFrameLoop } from './starDisk/useStarDiskFrameLoop.js';
+import { useStarDiskDebugCleanup } from './starDisk/useStarDiskDebugCleanup.js';
 
 interface StarDiskProps {
   config: StarLightConfig;
@@ -45,9 +40,18 @@ interface StarDiskProps {
   boundary?: StarDiskBoundaryConfig;
 }
 
-export function StarDisk({ config, size, opacity, distanceMultiplier, enabled = true, haze, boundary }: StarDiskProps): React.ReactElement | null {
+export function StarDisk({
+  config,
+  size,
+  opacity,
+  distanceMultiplier,
+  enabled = true,
+  haze,
+  boundary,
+}: StarDiskProps): React.ReactElement | null {
   // Allow defaults to be supplied via the environment config when not passed explicitly
-  const env = (globalThis as unknown as { __CELESTIAL__?: CelestialEnvironmentConfig }).__CELESTIAL__;
+  const env = (globalThis as unknown as { __CELESTIAL__?: CelestialEnvironmentConfig })
+    .__CELESTIAL__;
   const defaultSize = size ?? env?.starDisk?.size ?? 800;
   const defaultOpacity = opacity ?? env?.starDisk?.opacity ?? 0.12;
   const defaultDistanceMultiplier = distanceMultiplier ?? env?.starDisk?.distanceMultiplier ?? 0.8;
@@ -55,14 +59,10 @@ export function StarDisk({ config, size, opacity, distanceMultiplier, enabled = 
   const fallbackBoundary = env?.starDisk?.boundary;
   const meshRef = useRef<Mesh>(null);
   const aspectWarnedRef = useRef(false);
-  const fallbackTimeRef = useRef(0);
-  const lastUniformTimeRef = useRef(0);
-  const previousUniformTimeRef = useRef(0);
-  const baseQuaternion = useMemo<Quaternion>(() => computeStarDiskQuaternion(config.direction), [
-    config.direction.x,
-    config.direction.y,
-    config.direction.z,
-  ]);
+  const baseQuaternion = useMemo<Quaternion>(
+    () => computeStarDiskQuaternion(config.direction),
+    [config.direction.x, config.direction.y, config.direction.z],
+  );
   const meshWorldPosition = useMemo(() => new Vector3(), []);
   const viewScratch = useMemo(() => createViewAlignmentScratch(), []);
   const viewAlignmentRef = useRef<ViewAlignment>({ x: 0, y: 0, z: 1 });
@@ -120,9 +120,9 @@ export function StarDisk({ config, size, opacity, distanceMultiplier, enabled = 
   useEffect(() => {
     shaderMaterialRef.current = shaderMaterial;
   }, [shaderMaterial]);
-  
+
   const removeDebugOverlay = useDebugOverlayCleanup();
-  
+
   useEffect(() => {
     const mesh = meshRef.current;
     if (!mesh || typeof (mesh.quaternion as unknown as { copy?: unknown })?.copy !== 'function') {
@@ -133,10 +133,20 @@ export function StarDisk({ config, size, opacity, distanceMultiplier, enabled = 
 
   // Local offset from the parent (StarLight group's origin). When parented, this is the disk's local position.
   const localOffset = useMemo(() => {
-    const direction = new Vector3(config.direction.x, config.direction.y, config.direction.z).normalize();
+    const direction = new Vector3(
+      config.direction.x,
+      config.direction.y,
+      config.direction.z,
+    ).normalize();
     const distance = Math.max(config.distance * defaultDistanceMultiplier, 8000);
     return direction.multiplyScalar(-distance).toArray();
-  }, [config.direction.x, config.direction.y, config.direction.z, config.distance, defaultDistanceMultiplier]);
+  }, [
+    config.direction.x,
+    config.direction.y,
+    config.direction.z,
+    config.distance,
+    defaultDistanceMultiplier,
+  ]);
 
   // Ensure the shader material is explicitly assigned to the mesh when
   // available. This guards against render-order or attach timing issues
@@ -150,7 +160,9 @@ export function StarDisk({ config, size, opacity, distanceMultiplier, enabled = 
         if (mesh.material !== (mat as any)) {
           mesh.material = mat as any;
           // mark needsUpdate to ensure renderer picks up any shader swap
-          try { (mat as any).needsUpdate = true; } catch {
+          try {
+            (mat as any).needsUpdate = true;
+          } catch {
             /* ignore */
           }
         }
@@ -166,646 +178,23 @@ export function StarDisk({ config, size, opacity, distanceMultiplier, enabled = 
 
   useStarBloom(meshRef, enabled, shaderMaterial);
 
-  // Make the disk always face the camera (billboard behavior)
-  useFrame((state, delta) => {
-    if (!enabled) {
-      return;
-    }
-    const debugWin = debugEnabled && typeof window !== 'undefined' ? (window as any) : undefined;
-
-    // DEV: handle force-opaque requests early so they apply even if the
-    // shader material hasn't been created yet. This sets a global flag and
-    // triggers `needsUpdate` once the material exists.
-    if (debugWin && debugWin.__copilot_forceStarOpaqueRequest) {
-      try {
-        debugWin.__copilot_forceStarOpaque = true;
-      } catch {
-        /* ignore */
-      }
-      const pendingMat = shaderMaterialRef.current;
-      if (pendingMat) {
-        try {
-          pendingMat.needsUpdate = true;
-        } catch {
-          /* ignore */
-        }
-        try {
-          debugWin.__copilot_forceStarOpaqueApplied = Date.now();
-        } catch {
-          /* ignore */
-        }
-        try {
-          debugWin.__copilot_forceStarOpaqueRequest = false;
-        } catch {
-          /* ignore */
-        }
-      }
-    }
-
-    const mat = shaderMaterialRef.current;
-    if (!mat) {
-      return;
-    }
-
-    // DEV: unconditional per-frame mesh status for automation (runs before
-    // material checks so it captures presence/visibility early each frame)
-    if (debugWin) {
-      const meshLocal = meshRef.current;
-      if (meshLocal) {
-        try {
-          const matAny: any = (meshLocal.material as any) || null;
-          const wp = meshLocal.getWorldPosition ? meshLocal.getWorldPosition(new Vector3()) : meshLocal.position;
-          debugWin.__copilot_starMeshStatus = {
-            present: true,
-            visible: !!meshLocal.visible,
-            renderOrder: Number(meshLocal.renderOrder || 0),
-            materialType: matAny ? (matAny.type || null) : null,
-            materialTransparent: matAny ? !!matAny.transparent : false,
-            materialOpacity: matAny && typeof matAny.opacity === 'number' ? matAny.opacity : null,
-            userDataKeys: Object.keys(meshLocal.userData || {}),
-            worldPosition: { x: wp.x, y: wp.y, z: wp.z },
-            timestamp: Date.now(),
-          };
-        } catch {
-          /* ignore */
-        }
-      } else {
-        try {
-          debugWin.__copilot_starMeshStatus = { present: false, timestamp: Date.now() };
-        } catch {
-          /* ignore */
-        }
-      }
-    }
-
-    const { camera, viewport } = state;
-    // DEV: allow external automation to request a small camera rotation by
-    // setting `window.__copilot_rotateCameraDeltaDeg = <degrees>`. We apply
-    // the rotation here (in the render loop) so the page evaluation does not
-    // need to serialize functions or reach into React internals.
-    if (debugWin && debugWin.__copilot_rotateCameraDeltaDeg !== undefined && debugWin.__copilot_rotateCameraDeltaDeg !== null) {
-      const deg = Number(debugWin.__copilot_rotateCameraDeltaDeg);
-      if (Number.isFinite(deg)) {
-        camera.rotation.y += deg * Math.PI / 180;
-        try {
-          debugWin.__copilot_rotateAppliedAt = Date.now();
-        } catch {
-          /* ignore */
-        }
-      }
-      try {
-        debugWin.__copilot_rotateCameraDeltaDeg = null;
-      } catch {
-        /* ignore */
-      }
-    }
-
-    const mesh = meshRef.current;
-    const meshQuaternion = mesh?.quaternion ?? null;
-    const sim = gameState?.simulation;
-    const deltaSeconds = Number.isFinite(delta) && delta > 0 ? delta : 0;
-    const simTime = sim ? sim.lastTickStart + sim.alpha * sim.step : undefined;
-    const hasSimTime = typeof simTime === 'number' && Number.isFinite(simTime);
-    const renderClock = (state as { clock?: { getElapsedTime?: () => number; elapsedTime?: number } }).clock;
-    let renderTime: number | undefined;
-    if (renderClock) {
-      if (typeof renderClock.getElapsedTime === 'function') {
-        renderTime = renderClock.getElapsedTime();
-      } else if (Number.isFinite(renderClock.elapsedTime ?? NaN)) {
-        renderTime = renderClock.elapsedTime as number;
-      }
-    }
-    if (typeof renderTime !== 'number' || !Number.isFinite(renderTime)) {
-      renderTime = undefined;
-    }
-
-    const EPSILON = 1e-6;
-    const fallbackStep = deltaSeconds > 0 ? deltaSeconds : 1 / 60;
-    let candidateTime = Number.NEGATIVE_INFINITY;
-    if (hasSimTime) {
-      candidateTime = Math.max(candidateTime, simTime as number);
-    }
-    if (typeof renderTime === 'number') {
-      candidateTime = Math.max(candidateTime, renderTime);
-    }
-
-    const previousRawTime = lastUniformTimeRef.current;
-    let rawElapsed: number;
-    const usedFallback = !(Number.isFinite(candidateTime) && candidateTime > previousRawTime + EPSILON);
-    if (!usedFallback) {
-      rawElapsed = candidateTime;
-      fallbackTimeRef.current = rawElapsed;
-    } else {
-      const base = Math.max(previousRawTime, fallbackTimeRef.current);
-      fallbackTimeRef.current = base + fallbackStep;
-      rawElapsed = fallbackTimeRef.current;
-    }
-
-    lastUniformTimeRef.current = rawElapsed;
-    const { wrapped: wrappedElapsed, cycles: wrapCycles } = wrapStarTime(rawElapsed);
-
-    // DEV: publish StarDisk uniform telemetry for debugging and correlation with Rapier diagnostics
-    if (isCopilotDebugEnabled()) {
-      const now = Date.now();
-      const deltaTime = rawElapsed - previousUniformTimeRef.current;
-      const isProgressing = deltaTime > 0;
-      const rapierDiagnostics = gameState?.simulation?.rapierDiagnostics;
-
-      try {
-        const debugWin = window as Window & {
-          __copilot_starDiskTelemetry?: {
-            iTime: number;
-            rawTime?: number;
-            wrapCycle?: number;
-            deltaTime: number;
-            isProgressing: boolean;
-            timestamp: number;
-            frameCount: number;
-            simTime?: number;
-            renderTime?: number;
-            usedFallback: boolean;
-            rapierPanicCount?: number;
-            lastRapierPanicTick?: number;
-            ticksSinceLastPanic?: number;
-          };
-        };
-
-        const prevTelemetry = debugWin.__copilot_starDiskTelemetry;
-        const frameCount = (prevTelemetry?.frameCount ?? 0) + 1;
-
-        debugWin.__copilot_starDiskTelemetry = {
-          iTime: wrappedElapsed,
-          rawTime: rawElapsed,
-          wrapCycle: wrapCycles,
-          deltaTime,
-          isProgressing,
-          timestamp: now,
-          frameCount,
-          simTime: hasSimTime ? simTime as number : undefined,
-          renderTime,
-          usedFallback,
-          rapierPanicCount: rapierDiagnostics?.stepPanics,
-          lastRapierPanicTick: rapierDiagnostics?.lastStepPanicTick !== -1 ? rapierDiagnostics?.lastStepPanicTick : undefined,
-          ticksSinceLastPanic: rapierDiagnostics && rapierDiagnostics.lastStepPanicTick !== -1
-            ? (sim?.lastTickIndex ?? 0) - rapierDiagnostics.lastStepPanicTick
-            : undefined,
-        };
-      } catch {
-        // ignore telemetry publishing errors
-      }
-
-      previousUniformTimeRef.current = rawElapsed;
-    }
-
-    const rawAspect = viewport.aspect;
-    const safeAspect = Number.isFinite(rawAspect) && rawAspect > 0 ? rawAspect : 1;
-    if (safeAspect > 8 && !aspectWarnedRef.current) {
-      console.warn(`[StarDisk] Unusually high viewport aspect detected: ${safeAspect.toFixed(2)}.`);
-      aspectWarnedRef.current = true;
-    }
-    const { width, height } = state.size;
-    const uniformUpdate: MainSequenceStarUniformUpdate = {
-      time: wrappedElapsed,
-      resolution: {
-        width: Number.isFinite(width) && width > 0 ? width : 1,
-        height: Number.isFinite(height) && height > 0 ? height : 1,
-      },
-    };
-
-    const alignment = viewAlignmentRef.current;
-    alignment.x = 0;
-    alignment.y = 0;
-    alignment.z = 1;
-    const cameraPosition = (camera as { position?: Vector3 }).position;
-    if (
-      mesh &&
-      meshQuaternion &&
-      cameraPosition &&
-      Number.isFinite(cameraPosition.x) &&
-      Number.isFinite(cameraPosition.y) &&
-      Number.isFinite(cameraPosition.z)
-    ) {
-      mesh.updateMatrixWorld();
-      meshWorldPosition.setFromMatrixPosition(mesh.matrixWorld);
-      computeViewAlignment(meshQuaternion, meshWorldPosition, cameraPosition, viewScratch, alignment);
-
-      // DEV: when debug overlay is enabled, compute screen projection and
-      // write a DOM marker so we can sample the canvas at the star's
-      // actual on-screen location.
-      if (debugEnabled) {
-        try {
-          const pos = meshWorldPosition.clone();
-          const proj = pos.project(camera);
-          const ndcX = proj.x; const ndcY = proj.y; const ndcZ = proj.z;
-          const pxX = Math.round((ndcX * 0.5 + 0.5) * width);
-          const pxY = Math.round((-ndcY * 0.5 + 0.5) * height);
-          try {
-            let el = document.getElementById('copilot-star-screen-indicator');
-            if (!el) {
-              el = document.createElement('div');
-              el.id = 'copilot-star-screen-indicator';
-              el.style.position = 'fixed';
-              el.style.pointerEvents = 'none';
-              el.style.width = '12px';
-              el.style.height = '12px';
-              el.style.borderRadius = '50%';
-              el.style.background = 'rgba(255,0,0,0.9)';
-              el.style.zIndex = '2147483647';
-              el.style.transform = 'translate(-50%, -50%)';
-              document.body.appendChild(el);
-            }
-            el.style.left = pxX + 'px';
-            el.style.top = pxY + 'px';
-            el.setAttribute('data-copilot-screen-pos', `${pxX},${pxY}`);
-          } catch {
-            // swallow overlay errors
-          }
-        } catch {
-          // ignore projection errors in environments without window/camera
-        }
-      }
-    }
-
-    uniformUpdate.viewAlignment = alignment;
-    if (hazeConfig) {
-      uniformUpdate.haze = hazeConfig;
-    }
-    uniformUpdate.boundary = boundaryConfig;
-
-    const roll = (camera as any).rotation?.z as number | undefined;
-    if (typeof roll === 'number' && Number.isFinite(roll)) {
-      uniformUpdate.cameraRoll = roll;
-    } else {
-      uniformUpdate.cameraRoll = 0;
-    }
-    uniformUpdate.starNorth = 0;
-    if (organicTexture) {
-      uniformUpdate.organic = organicTexture;
-    }
-    if (noiseTexture) {
-      uniformUpdate.noise = noiseTexture;
-    }
-    updateMainSequenceStarUniforms(mat, uniformUpdate);
-
-    // DEV: diagnostic dump & forced apply — when debug automation sets
-    // `window.__copilot_dumpStarDebug = true` we'll log state and ensure
-    // the shader material is actually assigned to the mesh. This helps
-    // diagnose cases where iTime increases but the disk appears static.
-    if (debugEnabled && debugWin && (debugWin.__copilot_dumpStarDebug === true)) {
-      try {
-        const meshLocal = meshRef.current;
-        const matCurrent = shaderMaterialRef.current;
-        const applied = !!(meshLocal && matCurrent && meshLocal.material === matCurrent);
-        // Lightweight console summary for quick inspection
-        // eslint-disable-next-line no-console
-        console.info('[StarDisk][DBG] dumpStarDebug', { iTime: uniformUpdate.time, applied, materialType: meshLocal ? (meshLocal.material as any)?.type : null, starCompiled: (window as any).__STAR_COMPILED });
-
-        // Try to reassign material if it wasn't applied
-        if (!applied && meshLocal && matCurrent) {
-          try {
-            meshLocal.material = matCurrent as any;
-            matCurrent.needsUpdate = true;
-            // eslint-disable-next-line no-console
-            console.info('[StarDisk][DBG] Reassigned shader material to mesh and flagged needsUpdate');
-          } catch (e) {
-            // eslint-disable-next-line no-console
-            console.warn('[StarDisk][DBG] failed to reassign material', e);
-          }
-        }
-
-        // Publish a small diagnostics snapshot for automation to inspect
-        try {
-          const win = window as any;
-          win.__copilot_starDiskDiagnostics = win.__copilot_starDiskDiagnostics || [];
-          win.__copilot_starDiskDiagnostics.push({ time: Date.now(), iTime: uniformUpdate.time, applied, materialType: meshLocal ? (meshLocal.material as any)?.type : null, starCompiled: (window as any).__STAR_COMPILED });
-          if (win.__copilot_starDiskDiagnostics.length > 20) win.__copilot_starDiskDiagnostics.shift();
-        } catch {
-          /* ignore */
-        }
-      } catch {
-        /* ignore */
-      }
-      try { debugWin.__copilot_dumpStarDebug = false; } catch { /* ignore */ }
-    }
-
-    // DEV: allow automation to request the StarDisk be forced on-top at
-    // runtime — only when explicit debug mode is enabled via URL.
-    if (debugEnabled && debugWin && debugWin.__copilot_forceStarOnTopRequest) {
-      try {
-        const meshLocal = meshRef.current;
-        if (meshLocal) {
-          meshLocal.renderOrder = 99999;
-        }
-      } catch {
-        /* ignore */
-      }
-      const matImmediate = shaderMaterialRef.current;
-      if (matImmediate) {
-        try {
-          (matImmediate as any).depthTest = false;
-          matImmediate.depthWrite = false;
-        } catch {
-          /* ignore */
-        }
-      }
-      try {
-        debugWin.__copilot_star_forceOnTop = true;
-      } catch {
-        /* ignore */
-      }
-      try {
-        debugWin.__copilot_forceStarOnTopRequest = false;
-      } catch {
-        /* ignore */
-      }
-    }
-
-    // DEV: allow automation to request the shader be forced opaque white — only in
-    // explicit debug mode.
-    if (debugEnabled && debugWin && debugWin.__copilot_forceStarOpaqueRequest) {
-      const matImmediate = shaderMaterialRef.current;
-      if (matImmediate) {
-        try {
-          debugWin.__copilot_forceStarOpaque = true;
-        } catch {
-          /* ignore */
-        }
-        try {
-          matImmediate.needsUpdate = true;
-        } catch {
-          /* ignore */
-        }
-        try {
-          debugWin.__copilot_forceStarOpaqueRequest = false;
-        } catch {
-          /* ignore */
-        }
-        try {
-          debugWin.__copilot_forceStarOpaqueApplied = Date.now();
-        } catch {
-          /* ignore */
-        }
-      }
-    }
-
-    // DEV: allow automation to replace the disk material at runtime for diagnostics
-    // — only when explicit debug mode is enabled.
-    if (debugEnabled && debugWin) {
-      if (debugWin.__copilot_forceBasicMaterialRequest) {
-        const meshLocal = meshRef.current;
-        if (meshLocal) {
-          try {
-            if (!meshLocal.userData.__copilot_origMaterial) {
-              meshLocal.userData.__copilot_origMaterial = meshLocal.material;
-            }
-          } catch {
-            /* ignore */
-          }
-          try {
-            const basic = new MeshBasicMaterial({ color: '#ffffff', depthTest: false, depthWrite: false, side: DoubleSide });
-            meshLocal.material = basic;
-            try {
-              debugWin.__copilot_forceBasicMaterialApplied = Date.now();
-            } catch {
-              /* ignore */
-            }
-          } catch {
-            /* ignore */
-          }
-        }
-        try {
-          debugWin.__copilot_forceBasicMaterialRequest = false;
-        } catch {
-          /* ignore */
-        }
-      }
-      if (debugWin.__copilot_restoreOriginalStarMaterial) {
-        const meshLocal = meshRef.current;
-        if (meshLocal && meshLocal.userData && meshLocal.userData.__copilot_origMaterial) {
-          try {
-            if (!Array.isArray(meshLocal.material)) {
-              (meshLocal.material as any).dispose();
-            }
-          } catch {
-            /* ignore */
-          }
-          try {
-            meshLocal.material = meshLocal.userData.__copilot_origMaterial;
-          } catch {
-            /* ignore */
-          }
-          try {
-            delete meshLocal.userData.__copilot_origMaterial;
-          } catch {
-            /* ignore */
-          }
-          try {
-            debugWin.__copilot_restoreOriginalStarMaterialApplied = Date.now();
-          } catch {
-            /* ignore */
-          }
-        }
-        try {
-          debugWin.__copilot_restoreOriginalStarMaterial = false;
-        } catch {
-          /* ignore */
-        }
-      }
-    }
-
-    // DEV: ensure Playwright can always access helper APIs once the mesh exists
-    if (debugEnabled && debugWin && mesh) {
-      if (!debugWin.__copilot_setStarBasicMaterial) {
-        debugWin.__copilot_setStarBasicMaterial = (opts: any = {}) => {
-          try {
-            const meshLocal = meshRef.current;
-            if (!meshLocal) return { applied: false, reason: 'no-mesh' };
-            if (!meshLocal.userData.__copilot_origMaterial) meshLocal.userData.__copilot_origMaterial = meshLocal.material;
-            const color = typeof opts.color === 'string' ? opts.color : '#ffffff';
-            if (!meshLocal.userData.__copilot_forcedMaterial) {
-              meshLocal.userData.__copilot_forcedMaterial = new MeshBasicMaterial({ color, depthTest: false, depthWrite: false, side: DoubleSide });
-            } else {
-              try {
-                meshLocal.userData.__copilot_forcedMaterial.color.set(color);
-              } catch {
-                /* ignore */
-              }
-            }
-            meshLocal.material = meshLocal.userData.__copilot_forcedMaterial;
-            try {
-              debugWin.__copilot_forceBasicMaterialActive = true;
-            } catch {
-              /* ignore */
-            }
-            try {
-              debugWin.__copilot_forceBasicMaterialColor = color;
-            } catch {
-              /* ignore */
-            }
-            try {
-              debugWin.__copilot_forceBasicMaterialApplied = Date.now();
-            } catch {
-              /* ignore */
-            }
-            return { applied: true };
-          } catch (e) {
-            return { applied: false, reason: String(e) };
-          }
-        };
-      }
-
-      if (!debugWin.__copilot_restoreStarMaterial) {
-        debugWin.__copilot_restoreStarMaterial = () => {
-          try {
-            const meshLocal = meshRef.current;
-            if (!meshLocal) return { restored: false, reason: 'no-mesh' };
-            if (meshLocal.userData && meshLocal.userData.__copilot_origMaterial) {
-              try {
-                if (!Array.isArray(meshLocal.material)) {
-                  (meshLocal.material as any).dispose();
-                }
-              } catch {
-                /* ignore */
-              }
-              try {
-                meshLocal.material = meshLocal.userData.__copilot_origMaterial;
-              } catch {
-                /* ignore */
-              }
-              try {
-                delete meshLocal.userData.__copilot_origMaterial;
-              } catch {
-                /* ignore */
-              }
-              try {
-                debugWin.__copilot_restoreOriginalStarMaterialApplied = Date.now();
-              } catch {
-                /* ignore */
-              }
-              return { restored: true };
-            }
-            return { restored: false, reason: 'no-orig' };
-          } catch (e) {
-            return { restored: false, reason: String(e) };
-          }
-        };
-      }
-
-      if (!mesh.userData) mesh.userData = {};
-      if (!mesh.userData.__copilot_origLayerMask) {
-        try {
-          mesh.userData.__copilot_origLayerMask = (mesh.layers as any).mask;
-        } catch {
-          mesh.userData.__copilot_origLayerMask = 1;
-        }
-      }
-
-      if (!debugWin.__copilot_setStarLayer) {
-        debugWin.__copilot_setStarLayer = (layerIndex: any = 0) => {
-          try {
-            const meshLocal = meshRef.current;
-            if (!meshLocal) return { set: false, reason: 'no-mesh' };
-            const n = Number(layerIndex);
-            const idx = Number.isFinite(n) ? Math.max(0, Math.min(Math.floor(n), 31)) : 0;
-            meshLocal.layers.set(idx);
-            try {
-              debugWin.__copilot_starLayerSetAt = Date.now();
-            } catch {
-              /* ignore */
-            }
-            return { set: true, layer: idx };
-          } catch (e) {
-            return { set: false, reason: String(e) };
-          }
-        };
-      }
-
-      if (!debugWin.__copilot_resetStarLayer) {
-        debugWin.__copilot_resetStarLayer = () => {
-          try {
-            const meshLocal = meshRef.current;
-            if (!meshLocal) return { reset: false, reason: 'no-mesh' };
-            const orig = meshLocal.userData && meshLocal.userData.__copilot_origLayerMask;
-            if (typeof orig === 'number') {
-              try {
-                (meshLocal.layers as any).mask = orig;
-              } catch {
-                meshLocal.layers.set(0);
-              }
-            } else {
-              meshLocal.layers.set(0);
-            }
-            try {
-              debugWin.__copilot_starLayerResetAt = Date.now();
-            } catch {
-              /* ignore */
-            }
-            return { reset: true };
-          } catch (e) {
-            return { reset: false, reason: String(e) };
-          }
-        };
-      }
-    }
-
-    // DEV: persistent forced basic material enforcement (active until cleared)
-    // Only enforce when explicit debug mode is enabled.
-    if (debugEnabled && debugWin && debugWin.__copilot_forceBasicMaterialActive) {
-      const meshLocal = meshRef.current;
-      if (meshLocal) {
-        if (!meshLocal.userData.__copilot_origMaterial) meshLocal.userData.__copilot_origMaterial = meshLocal.material;
-        if (!meshLocal.userData.__copilot_forcedMaterial) {
-          const color = typeof debugWin.__copilot_forceBasicMaterialColor === 'string' ? debugWin.__copilot_forceBasicMaterialColor : '#ffffff';
-          meshLocal.userData.__copilot_forcedMaterial = new MeshBasicMaterial({ color, depthTest: false, depthWrite: false, side: DoubleSide });
-        } else if (typeof debugWin.__copilot_forceBasicMaterialColor === 'string') {
-          try {
-            meshLocal.userData.__copilot_forcedMaterial.color.set(debugWin.__copilot_forceBasicMaterialColor);
-          } catch {
-            /* ignore */
-          }
-        }
-        if (meshLocal.material !== meshLocal.userData.__copilot_forcedMaterial) {
-          meshLocal.material = meshLocal.userData.__copilot_forcedMaterial;
-        }
-        try {
-          debugWin.__copilot_forceBasicMaterialApplied = debugWin.__copilot_forceBasicMaterialApplied || Date.now();
-        } catch {
-          /* ignore */
-        }
-      }
-    }
+  useStarDiskFrameLoop({
+    enabled,
+    debugEnabled,
+    meshRef,
+    shaderMaterialRef,
+    gameState,
+    hazeConfig,
+    boundaryConfig,
+    organicTexture,
+    noiseTexture,
+    viewAlignmentRef,
+    meshWorldPosition,
+    viewScratch,
+    aspectWarnedRef,
   });
 
-  // Cleanup / restore when not in explicit debug mode. Minimal and
-  // well-formed: revert forced debug artifacts if debug is not enabled.
-  useEffect(() => {
-    if (debugEnabled) {
-      return;
-    }
-    const mesh = meshRef.current;
-    if (!mesh) return;
-
-    // restore original material if present
-    try {
-      const orig = mesh.userData && mesh.userData.__copilot_origMaterial;
-      if (orig && mesh.material !== orig) {
-        try { if (!(Array.isArray(mesh.material))) { (mesh.material as any).dispose(); } } catch { /* ignore */ }
-        try { mesh.material = orig; } catch { /* ignore */ }
-        try { delete mesh.userData.__copilot_forcedMaterial; } catch { /* ignore */ }
-        try { delete mesh.userData.__copilot_origMaterial; } catch { /* ignore */ }
-      }
-    } catch { /* ignore */ }
-
-    try { if (typeof mesh.renderOrder === 'number') mesh.renderOrder = 0; } catch { /* ignore */ }
-    try {
-      const mat: any = mesh.material as any;
-      if (mat) {
-        try { if (typeof mat.depthTest === 'boolean') mat.depthTest = true; } catch { /* ignore */ }
-        try { if (typeof mat.depthWrite === 'boolean') mat.depthWrite = true; } catch { /* ignore */ }
-      }
-    } catch { /* ignore */ }
-    removeDebugOverlay();
-  }, [debugEnabled, removeDebugOverlay]);
+  useStarDiskDebugCleanup({ debugEnabled, meshRef, removeDebugOverlay });
 
   if (!enabled) return null;
 
