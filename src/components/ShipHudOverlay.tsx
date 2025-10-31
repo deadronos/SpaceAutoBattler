@@ -3,6 +3,7 @@ import type React from 'react';
 import type { HudHealthOverlayConfig } from '../config/hudHealth.js';
 import { lerpBySeed } from '../utils/deterministicLerp.js';
 import { usePrefersReducedMotion } from '../hooks/usePrefersReducedMotion.js';
+import { clampRatio } from '../utils/math.js';
 import type { OverlayLayoutResult, StatusEffectViewModel } from './HudHealthLayer.js';
 
 interface ShipHudOverlayProps {
@@ -130,9 +131,4 @@ function StatusOverflowBadge({ count }: { count: number }): React.ReactElement {
       +{count}
     </span>
   );
-}
-
-function clampRatio(value: number): number {
-  if (!Number.isFinite(value)) return 0;
-  return Math.min(Math.max(value, 0), 1);
 }

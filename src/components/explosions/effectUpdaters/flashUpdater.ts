@@ -1,5 +1,6 @@
 import { FLASH_DURATION } from '../constants.js';
-import { clamp01, easeOutQuad, getCachedColor } from '../derived.js';
+import { easeOutQuad, getCachedColor } from '../derived.js';
+import { clamp01 } from '../../../utils/math.js';
 import {
   EMPTY_EFFECT_RESULT,
   type EffectUpdateContext,

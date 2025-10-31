@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { Vector3 } from 'three';
 import {
-  clamp01,
   easeOutQuad,
   getCachedColor,
   getDerived,
   randomUnitVector,
 } from '../../../src/components/explosions/derived.js';
+import { clamp01 } from '../../../src/utils/math.js';
 import type { ExplosionEvent } from '../../../src/types/index.js';
 import { SeededRng } from '../../../src/utils/rng.js';
 
