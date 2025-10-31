@@ -103,8 +103,8 @@ export function checkLevelUp(
     ship.xp -= ship.xpToNext;
     ship.xpToNext = calculateXpForLevel(ship.level + 1) - calculateXpForLevel(ship.level);
 
-    if (shouldLogProgressionEvent(state, shipId)) {
-      addProgressionEvent(state, shipId!, {
+    if (shouldLogProgressionEvent(state, shipId) && shipId !== undefined) {
+      addProgressionEvent(state, shipId, {
         type: 'levelup',
         details: `Level ${oldLevel} → ${ship.level}`,
       });

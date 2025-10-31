@@ -15,7 +15,7 @@ export function awardDamageXp(
   const xpGained = damageDealt * XP_CONFIG.damageXpMultiplier;
   ship.xp += xpGained;
 
-  if (shouldLogProgressionEvent(state, shipId)) {
+  if (shouldLogProgressionEvent(state, shipId) && shipId !== undefined) {
     const weaponLabel = weaponKey ?? undefined;
     const categoryLabel = weaponCategory ?? undefined;
     const detailSuffix = weaponLabel
@@ -24,7 +24,7 @@ export function awardDamageXp(
         : ` with ${weaponLabel}`
       : '';
 
-    addProgressionEvent(state, shipId!, {
+    addProgressionEvent(state, shipId, {
       type: 'damage',
       deltaXp: xpGained,
       source: weaponLabel,
@@ -44,8 +44,8 @@ export function awardKillXp(
   const xpGained = targetMaxHp * XP_CONFIG.killXpMultiplier;
   ship.xp += xpGained;
 
-  if (shouldLogProgressionEvent(state, shipId)) {
-    addProgressionEvent(state, shipId!, {
+  if (shouldLogProgressionEvent(state, shipId) && shipId !== undefined) {
+    addProgressionEvent(state, shipId, {
       type: 'kill',
       deltaXp: xpGained,
       details: `Enemy destroyed (${targetMaxHp.toFixed(0)} HP)`,
