@@ -1,7 +1,8 @@
 import { InstancedBufferAttribute, Quaternion, Vector3 } from 'three';
 import type { InstancedMesh } from 'three';
 import { DEBRIS_DELAY } from '../explosions/constants.js';
-import { clamp01, getCachedColor } from '../explosions/derived.js';
+import { getCachedColor } from '../explosions/derived.js';
+import { clamp01 } from '../../utils/math.js';
 import {
   EMPTY_EFFECT_RESULT,
   type EffectUpdateContext,

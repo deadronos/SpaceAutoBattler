@@ -144,7 +144,3 @@ export function getDerived(event: ExplosionEvent): DerivedExplosionData {
 export function easeOutQuad(t: number): number {
   return 1 - (1 - t) * (1 - t);
 }
-
-export function clamp01(value: number): number {
-  return Math.min(1, Math.max(0, value));
-}

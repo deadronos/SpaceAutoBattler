@@ -1,6 +1,7 @@
 import { Vector3 } from 'three';
 import type { ShipStats } from '../../types/index.js';
 import { HULL_DAMAGE_TYPES, HULL_ARMOR_VALUES } from '../../config/progression.js';
+import { createBeamTurret } from './turret-factory.js';
 
 export const FIGHTER_STATS: ShipStats = {
   hull: 'fighter',
@@ -31,20 +32,15 @@ export const FIGHTER_STATS: ShipStats = {
       maxPitch: Math.PI * 0.35,
       priority: 'antiCapital',
     },
-    {
-      offset: new Vector3(0, 0.12, 0.55),
+    createBeamTurret(new Vector3(0, 0.12, 0.55), {
       damage: 11,
       fireRate: 1.8,
-      projectileSpeed: 0,
       range: 240,
-      bulletType: 'beam:laser',
-      projectileCategory: 'beam',
       minYaw: -Math.PI * 0.55,
       maxYaw: Math.PI * 0.55,
       minPitch: -Math.PI * 0.25,
       maxPitch: Math.PI * 0.5,
-      priority: 'antiFighter',
-    },
+    }),
   ],
   motion: {
     mass: 1.0,

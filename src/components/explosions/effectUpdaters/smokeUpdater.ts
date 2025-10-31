@@ -1,5 +1,6 @@
 import { SMOKE_DELAY } from '../constants.js';
-import { clamp01, getCachedColor } from '../derived.js';
+import { getCachedColor } from '../derived.js';
+import { clamp01 } from '../../../utils/math.js';
 import {
   EMPTY_EFFECT_RESULT,
   type EffectUpdateContext,
