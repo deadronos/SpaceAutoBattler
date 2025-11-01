@@ -1,4 +1,4 @@
-# [TASK152] - Ship Progression Test Hardening
+# TASK080 - Ship Progression Test Hardening
 
 **Status:** Completed  
 **Added:** 2025-09-29  

@@ -1,4 +1,4 @@
-# [TASK243] - Restore thruster glow regression coverage
+# TASK097 - Restore thruster glow regression coverage
 
 **Status:** Completed  
 **Added:** 2025-10-04  

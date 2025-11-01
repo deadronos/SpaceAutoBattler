@@ -1,4 +1,4 @@
-# [TASK116] - Deterministic Rotation Safeguards
+# TASK044 - Deterministic Rotation Safeguards
 
 **Status:** Complete  
 **Added:** 2025-09-24  

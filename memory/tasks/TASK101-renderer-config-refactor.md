@@ -1,4 +1,4 @@
-# [TASK413] Implement `src/config` module split (renderer config)
+# TASK101 - Implement `src/config` module split (renderer config)
 
 **Status:** Completed
 **Added:** 2025-10-27

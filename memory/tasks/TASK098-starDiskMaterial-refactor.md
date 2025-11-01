@@ -1,4 +1,4 @@
-# [TASK410] Refactor `src/renderer/starDiskMaterial.ts` into focused modules
+# TASK098 - Refactor `src/renderer/starDiskMaterial.ts` into focused modules
 
 **Status:** Completed
 **Added:** 2025-10-27

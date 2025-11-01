@@ -1,4 +1,4 @@
-# [TASK240] - Add `rings.bloomOnly` config flag
+# TASK007 - Add `rings.bloomOnly` config flag
 
 **Status:** In Progress  
 **Added:** 2025-10-03  

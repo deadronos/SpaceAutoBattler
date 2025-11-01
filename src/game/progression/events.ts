@@ -1,4 +1,5 @@
 import type { GameState, ProgressionEvent } from '../../types/index.js';
+import { appendCappedImmutable } from '../../utils/cappedBuffer.js';
 
 export const DEFAULT_MAX_PROGRESSION_EVENTS = 20;
 
@@ -7,12 +8,7 @@ export function appendCappedHistory(
   event: ProgressionEvent,
   cap = DEFAULT_MAX_PROGRESSION_EVENTS,
 ): ProgressionEvent[] {
-  const next = events.slice();
-  next.push(event);
-  if (next.length > cap) {
-    next.splice(0, next.length - cap);
-  }
-  return next;
+  return appendCappedImmutable(events, event, cap);
 }
 
 export interface AddProgressionEventOptions {

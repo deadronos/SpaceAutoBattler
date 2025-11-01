@@ -2,6 +2,7 @@
 
 Current focuses (short-term):
 
+- Land shared capped-buffer helpers (`appendCappedMutable`/`appendCappedImmutable`) across diagnostics, shield ripples, metrics, and progression events (TASK415); unblock Vitest run by addressing missing optional `@rollup` native binary.
 - Refine AI motion PD tuning (TASK241) to eliminate bobbing and document hull-specific gains (spec/motion-tuning.md).
 - Monitor StarDisk uniform telemetry (`window.__copilot_starDiskTelemetry`) alongside Rapier diagnostics to verify iTime progression after addressing WASM faults (TASK237 complete)
 - Validate Playwright ship hull rendering tests (TASK154) with local build + serve cycle and generate initial baselines

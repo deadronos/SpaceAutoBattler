@@ -1,5 +1,6 @@
 import type { GameState, DeferredMutation } from '../types/index.js';
 import { isCopilotDebugEnabled } from '../utils/copilotDebug.js';
+import { appendCappedMutable } from '../utils/cappedBuffer.js';
 
 export interface RapierStepPanicSnapshot {
   tickIndex: number;
@@ -27,10 +28,7 @@ export function publishRapierPanicSnapshot(snapshot: RapierStepPanicSnapshot): v
   try {
     const win = window as Window & { __copilot_rapierPanics?: RapierStepPanicSnapshot[] };
     const buffer = win.__copilot_rapierPanics ?? [];
-    buffer.push(snapshot);
-    while (buffer.length > MAX_RAPIER_PANIC_SNAPSHOTS) {
-      buffer.shift();
-    }
+    appendCappedMutable(buffer, snapshot, MAX_RAPIER_PANIC_SNAPSHOTS);
     win.__copilot_rapierPanics = buffer;
   } catch {
     /* ignore debug exposure errors */

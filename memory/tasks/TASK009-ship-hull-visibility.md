@@ -1,4 +1,4 @@
-# [TASK245] - Ship hull visibility regression
+# TASK009 - Ship hull visibility regression
 
 **Status:** In Progress  
 **Added:** 2025-10-05  

@@ -1,4 +1,4 @@
-# TASK249 - Expand environment component memory notes
+# TASK013 - Expand environment component memory notes
 
 **Status:** Completed  
 **Added:** 2025-10-18  

@@ -12,8 +12,8 @@ import {
 export const FRIGATE_STATS: ShipStats = {
   hull: 'frigate',
   maxHp: 120,
-  maxShield: 72,
-  shieldRegen: 7.0,
+  maxShield: 123,
+  shieldRegen: 12.0,
   damage: 16,
   fireRate: 1.5,
   projectileSpeed: 107,

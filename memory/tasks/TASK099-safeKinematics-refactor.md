@@ -1,4 +1,4 @@
-# [TASK411] Refactor `src/game/physics/safeKinematics.ts` into smaller modules
+# TASK099 - Refactor `src/game/physics/safeKinematics.ts` into smaller modules
 
 **Status:** Pending
 **Added:** 2025-10-27

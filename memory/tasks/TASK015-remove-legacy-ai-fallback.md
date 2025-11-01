@@ -1,4 +1,4 @@
-# TASK251 - Remove legacy AI fallback path
+# TASK015 - Remove legacy AI fallback path
 
 **Status:** Completed
 **Added:** 2025-10-26

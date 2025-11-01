@@ -1,4 +1,4 @@
-# TASK302 - Split Progression into XP / Leveling / Events modules
+# TASK023 - Split Progression into XP / Leveling / Events modules
 
 **Status:** Completed
 **Added:** 2025-10-27

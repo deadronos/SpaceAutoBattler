@@ -1,4 +1,4 @@
-# [TASK242] - Restore lint compliance across config, hooks, and effect updaters
+# TASK096 - Restore lint compliance across config, hooks, and effect updaters
 
 **Status:** Completed  
 **Added:** 2025-10-03  

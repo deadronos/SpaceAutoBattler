@@ -1,4 +1,4 @@
-# [TASK151] - Ship Progression System Implementation
+# TASK079 - Ship Progression System Implementation
 
 **Status:** Completed  
 **Added:** 2025-01-27  

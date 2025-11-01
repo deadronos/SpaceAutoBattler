@@ -1,4 +1,4 @@
-# TASK252 - AI Harness Modernization & Legacy Cleanup
+# TASK017 - AI Harness Modernization & Legacy Cleanup
 
 **Status:** Completed
 **Added:** 2025-10-26

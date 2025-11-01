@@ -1,4 +1,4 @@
-# [TASK123] - Selective Bloom Contrast Fix
+# TASK051 - Selective Bloom Contrast Fix
 
 **Status:** Completed
 **Added:** 2025-09-24

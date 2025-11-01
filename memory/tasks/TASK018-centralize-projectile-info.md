@@ -1,4 +1,4 @@
-# TASK253 - Centralize Projectile Info & Beam Helpers
+# TASK018 - Centralize Projectile Info & Beam Helpers
 
 **Status:** Completed
 **Added:** 2025-10-27

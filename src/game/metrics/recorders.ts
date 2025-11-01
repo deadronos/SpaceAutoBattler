@@ -1,6 +1,7 @@
 import type { AIIntent, AIMetrics, ShipHull } from '../../types/index.js';
 import { MAX_INTENT_TIMELINE_ENTRIES } from './constants.js';
 import { addToHistogram } from './factories.js';
+import { appendCappedMutable } from '../../utils/cappedBuffer.js';
 
 export function recordIntentMetrics(
   metrics: AIMetrics,
@@ -13,10 +14,7 @@ export function recordIntentMetrics(
   let snapshot = metrics.intentTimeline.at(-1) ?? null;
   if (!snapshot || snapshot.tick !== tick) {
     snapshot = { tick, time, counts: {}, total: 0 };
-    metrics.intentTimeline.push(snapshot);
-    if (metrics.intentTimeline.length > MAX_INTENT_TIMELINE_ENTRIES) {
-      metrics.intentTimeline.shift();
-    }
+    appendCappedMutable(metrics.intentTimeline, snapshot, MAX_INTENT_TIMELINE_ENTRIES);
   }
 
   snapshot.total += 1;

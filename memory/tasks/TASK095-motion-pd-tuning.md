@@ -1,4 +1,4 @@
-# [TASK241] - Reduce AI Bobbing via Motion PD Tuning
+# TASK095 - Reduce AI Bobbing via Motion PD Tuning
 
 **Status:** Completed  
 **Added:** 2025-10-03  
