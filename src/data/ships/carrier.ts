@@ -11,8 +11,8 @@ import {
 export const CARRIER_STATS: ShipStats = {
   hull: 'carrier',
   maxHp: 320,
-  maxShield: 200,
-  shieldRegen: 10.0,
+  maxShield: 255,
+  shieldRegen: 13.0,
   damage: 28,
   fireRate: 2.2,
   projectileSpeed: 67,

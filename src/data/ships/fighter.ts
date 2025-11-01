@@ -6,8 +6,8 @@ import { createBeamTurret } from './turret-factory.js';
 export const FIGHTER_STATS: ShipStats = {
   hull: 'fighter',
   maxHp: 40,
-  maxShield: 24,
-  shieldRegen: 4.0,
+  maxShield: 43,
+  shieldRegen: 7.0,
   damage: 8,
   fireRate: 0.9,
   projectileSpeed: 107,
