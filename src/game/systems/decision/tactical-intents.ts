@@ -13,6 +13,12 @@ import {
   computeThreatBonus,
   getSpeedMagnitude,
   getEffectiveRange,
+  getDistanceBetween,
+  getEffectiveAggression,
+  getEffectivePatience,
+  getOpeningSalvoMultiplier,
+  getFocusFireLoad,
+  getPriorityRank,
 } from './intent-utils.js';
 
 export function scoreInterceptIntent(
@@ -30,18 +36,16 @@ export function scoreInterceptIntent(
     return quantizeScore(180);
   }
 
-  const distance = ship.transform.position.distanceTo(target.transform.position);
+  const distance = getDistanceBetween(ship, target);
   const [desiredMin, desiredMax] = getEffectiveRange(ship, profile, distance, state.ai.tickIndex);
   const bandPressure = Math.max(0, distance - desiredMax);
 
   const targetSpeed = getSpeedMagnitude(target);
   const threatBonus = computeThreatBonus(state, ship.ship.team, target.id);
   const escortBonus = escortAssignment && escortAssignment.threatId === target.id ? 80 : 0;
-  const aggression = profile.aggression * traits.aggression;
+  const aggression = getEffectiveAggression(profile, traits);
 
-  const isOpeningSalvo =
-    AI_CONFIG.engagementBoostEnabled && state.time < AI_CONFIG.openingSalvoDuration;
-  const aggressionMultiplier = isOpeningSalvo ? AI_CONFIG.openingSalvoAggressionBoost : 1.0;
+  const aggressionMultiplier = getOpeningSalvoMultiplier(state);
 
   let score =
     480 +
@@ -53,16 +57,12 @@ export function scoreInterceptIntent(
   if (posture === 'aggressive') score += 100 * aggressionMultiplier;
   if (posture === 'retreat') score -= 110;
   score += computeBandPreferenceBonus(distance, desiredMin, desiredMax, profile.bandPreference);
-  const interceptIndex = state.blackboard.priorityIndex?.[ship.ship.team];
-  if (interceptIndex) {
-    const interceptRank = interceptIndex.get(target.id);
-    if (interceptRank != null && Number.isFinite(interceptRank)) {
-      score += Math.max(0, 120 - interceptRank * 10);
-    }
+  const rank = getPriorityRank(state, ship.ship.team, target.id);
+  if (rank !== null) {
+    score += Math.max(0, 120 - rank * 10);
   }
-  const focusMap = state.blackboard.focusFire?.[ship.ship.team];
-  const interceptFocusLoad = focusMap ? (focusMap.get(target.id) ?? 0) : 0;
-  score += Math.max(-70, 28 - interceptFocusLoad * 24);
+  const focusLoad = getFocusFireLoad(state, ship.ship.team, target.id);
+  score += Math.max(-70, 28 - focusLoad * 24);
   if (AI_CONFIG.engagementBoostEnabled && profile.engagementBias) {
     score += profile.engagementBias;
   }
@@ -78,7 +78,7 @@ export function scoreRepositionIntent(
   traits: AITraits,
   posture: TeamPosture,
 ): number {
-  const patience = profile.patience * traits.patience;
+  const patience = getEffectivePatience(profile, traits);
   const centroid = state.blackboard.allyCentroid[ship.ship.team];
   if (!target) {
     const centroidDist = ship.transform.position.distanceTo(centroid);
@@ -90,7 +90,7 @@ export function scoreRepositionIntent(
     return quantizeScore(base);
   }
 
-  const distance = ship.transform.position.distanceTo(target.transform.position);
+  const distance = getDistanceBetween(ship, target);
   const [desiredMin, desiredMax] = getEffectiveRange(ship, profile, distance, state.ai.tickIndex);
   const below = Math.max(0, desiredMin - distance);
   const above = Math.max(0, distance - desiredMax);

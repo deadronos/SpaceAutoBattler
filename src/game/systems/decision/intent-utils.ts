@@ -2,6 +2,7 @@ import { Vector3 } from 'three';
 import type {
   AIState,
   AIMetrics,
+  AITraits,
   BehaviorProfile,
   GameState,
   ShipEntity,
@@ -259,4 +260,62 @@ export function tieBreak(
   }
 
   return winner;
+}
+
+/**
+ * Get the distance between two ships' positions.
+ */
+export function getDistanceBetween(ship: ShipEntity, target: ShipEntity): number {
+  return ship.transform.position.distanceTo(target.transform.position);
+}
+
+/**
+ * Get the HP ratio of a ship (0.0 to 1.0).
+ */
+export function getHpRatio(ship: ShipEntity): number {
+  return ship.ship.hp / Math.max(1, ship.ship.maxHp);
+}
+
+/**
+ * Get the effective aggression value combining profile and traits.
+ */
+export function getEffectiveAggression(profile: BehaviorProfile, traits: AITraits): number {
+  return profile.aggression * traits.aggression;
+}
+
+/**
+ * Get the effective patience value combining profile and traits.
+ */
+export function getEffectivePatience(profile: BehaviorProfile, traits: AITraits): number {
+  return profile.patience * traits.patience;
+}
+
+/**
+ * Get the aggression multiplier for opening salvo phase.
+ * Returns a multiplier based on whether the game is in the opening salvo period.
+ */
+export function getOpeningSalvoMultiplier(state: GameState): number {
+  const cfg = getEffectiveAIConfig();
+  const isOpeningSalvo = cfg.engagementBoostEnabled && state.time < cfg.openingSalvoDuration;
+  return isOpeningSalvo ? cfg.openingSalvoAggressionBoost : 1.0;
+}
+
+/**
+ * Get the focus fire load for a target on a given team.
+ * Returns the number of ships currently focusing this target.
+ */
+export function getFocusFireLoad(state: GameState, team: Team, targetId: number): number {
+  const focusMap = state.blackboard.focusFire?.[team];
+  return focusMap ? (focusMap.get(targetId) ?? 0) : 0;
+}
+
+/**
+ * Get the priority rank for a target on a given team.
+ * Returns the rank if available, otherwise returns null.
+ */
+export function getPriorityRank(state: GameState, team: Team, targetId: number): number | null {
+  const priorityIndex = state.blackboard.priorityIndex?.[team];
+  if (!priorityIndex) return null;
+  const rank = priorityIndex.get(targetId);
+  return rank != null && Number.isFinite(rank) ? rank : null;
 }
