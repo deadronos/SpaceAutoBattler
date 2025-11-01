@@ -1,4 +1,4 @@
-# [TASK412] Renderer large-file refactor planning
+# TASK100 - Renderer large-file refactor planning
 
 **Status:** Completed  
 **Added:** 2025-10-27  

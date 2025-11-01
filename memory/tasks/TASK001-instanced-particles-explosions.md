@@ -1,4 +1,4 @@
-# [TASK006] - Instanced Particles & Explosions
+# TASK001 - Instanced Particles & Explosions
 
 **Status:** Completed
 **Added:** 2025-10-05

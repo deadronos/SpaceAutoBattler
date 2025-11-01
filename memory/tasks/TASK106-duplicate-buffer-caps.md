@@ -1,4 +1,4 @@
-# TASK415 — Unify capped history helpers
+# TASK106 - Unify capped history helpers
 
 **Status:** In Progress  
 **Added:** 2025-10-29  

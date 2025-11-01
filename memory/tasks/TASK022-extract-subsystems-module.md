@@ -1,4 +1,4 @@
-# TASK301 - Extract Subsystem Management Module
+# TASK022 - Extract Subsystem Management Module
 
 **Status:** Completed
 **Added:** 2025-10-27

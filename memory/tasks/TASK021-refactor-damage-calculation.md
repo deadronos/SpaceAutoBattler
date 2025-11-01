@@ -1,4 +1,4 @@
-# TASK300 - Refactor: Centralize damage calculation and application
+# TASK021 - Refactor: Centralize damage calculation and application
 
 **Status:** Completed
 **Added:** 2025-10-27

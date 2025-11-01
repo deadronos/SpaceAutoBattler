@@ -1,4 +1,4 @@
-# [TASK244] - Visual smoothing and local visual offsets for ships
+# TASK008 - Visual smoothing and local visual offsets for ships
 
 **Status:** Completed
 **Added:** 2025-10-04

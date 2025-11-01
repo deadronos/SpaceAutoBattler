@@ -1,4 +1,4 @@
-# [TASK246] - Thruster trail GPU buffer migration
+# TASK010 - Thruster trail GPU buffer migration
 
 **Status:** In Progress
 **Added:** 2025-10-06

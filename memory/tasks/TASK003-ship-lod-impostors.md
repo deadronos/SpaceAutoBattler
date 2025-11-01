@@ -1,4 +1,4 @@
-# [TASK008] - Ship LOD Impostors & Instanced Distant-Ship Rendering
+# TASK003 - Ship LOD Impostors & Instanced Distant-Ship Rendering
 
 **Status:** Completed
 **Added:** 2025-10-05

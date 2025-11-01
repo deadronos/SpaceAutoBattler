@@ -1,4 +1,4 @@
-# [TASK010] - Material & Texture Atlas for Instance-Friendly Materials
+# TASK005 - Material & Texture Atlas for Instance-Friendly Materials
 
 **Status:** Completed
 **Added:** 2025-10-05

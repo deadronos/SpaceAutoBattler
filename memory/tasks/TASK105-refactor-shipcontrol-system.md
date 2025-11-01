@@ -1,4 +1,4 @@
-# [TASK105] Refactor Ship Control / AI Execution
+# TASK105 - Refactor Ship Control / AI Execution
 
 **Status:** In Progress
 **Added:** 2025-10-28

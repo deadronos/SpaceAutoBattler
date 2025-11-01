@@ -1,4 +1,4 @@
-# TASK248 - Update memory bank with recent component inspection
+# TASK012 - Update memory bank with recent component inspection
 
 **Status:** In Progress  
 **Added:** 2025-10-18  

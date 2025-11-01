@@ -1,4 +1,4 @@
-# [TASK007] - Thruster & Muzzle Instancing + Bloom Registration
+# TASK002 - Thruster & Muzzle Instancing + Bloom Registration
 
 **Status:** Completed
 **Added:** 2025-10-05

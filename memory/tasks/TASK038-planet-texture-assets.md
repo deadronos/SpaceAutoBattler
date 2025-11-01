@@ -1,4 +1,4 @@
-# [TASK110] - Planet Texture Asset Naming
+# TASK038 - Planet Texture Asset Naming
 
 **Status:** Complete  
 **Added:** 2025-09-24  

@@ -1,4 +1,4 @@
-# [TASK103] Refactor Motion System (split motion.ts)
+# TASK103 - Refactor Motion System (split motion.ts)
 
 **Status:** In Progress
 **Added:** 2025-10-28

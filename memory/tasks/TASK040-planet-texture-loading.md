@@ -1,4 +1,4 @@
-# [TASK112] - Planet Texture Loading & Caching
+# TASK040 - Planet Texture Loading & Caching
 
 **Status:** Complete  
 **Added:** 2025-09-24  

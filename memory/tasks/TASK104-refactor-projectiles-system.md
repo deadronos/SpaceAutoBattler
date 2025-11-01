@@ -1,4 +1,4 @@
-# [TASK104] Refactor Projectiles System (split projectiles.ts)
+# TASK104 - Refactor Projectiles System (split projectiles.ts)
 
 **Status:** In Progress
 **Added:** 2025-10-28
