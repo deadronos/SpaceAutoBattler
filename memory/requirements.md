@@ -1,5 +1,12 @@
 # Requirements
 
+## 2025-10-29 — Debug History Capping Unification (TASK415)
+
+1. **WHEN** a debug, telemetry, or metrics buffer records a new entry, **THE SYSTEM SHALL** append via a shared capped-buffer helper that enforces the configured maximum length. _(Acceptance: `test/utils/cappedArray.spec.ts` appends beyond the cap and asserts the tail length equals the limit.)_
+2. **WHEN** capped-buffer trimming occurs, **THE SYSTEM SHALL** discard the oldest entries while preserving FIFO ordering of the remaining records. _(Acceptance: the same unit test verifies the retained elements match the most recent inputs in order.)_
+3. **WHEN** progression event histories are updated, **THE SYSTEM SHALL** return a fresh array instance so callers relying on immutability do not observe in-place mutation. _(Acceptance: unit coverage asserts the helper returns a new reference while carrying through capped contents.)_
+4. **WHEN** the capped-buffer helper receives a non-positive capacity, **THE SYSTEM SHALL** return an empty history without throwing to keep debug tooling resilient. _(Acceptance: unit coverage drives a zero-capacity call and checks the empty result.)_
+
 ## 2025-10-27 — Renderer Large File Refactor Planning (TASK412)
 
 1. **WHEN** the repository undergoes a renderer refactor planning pass, **THE SYSTEM SHALL** identify at least three TypeScript modules under `src/` exceeding 400 lines that merit decomposition, recording their paths and line counts. _(Acceptance: planning report enumerates ≥3 qualifying files with measured line totals sourced from an automated scan.)_

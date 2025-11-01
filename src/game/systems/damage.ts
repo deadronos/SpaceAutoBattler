@@ -22,6 +22,7 @@ import {
 } from './decision/interrupts.js';
 import type { ProjectileCategory } from '../../types/combat.js';
 import { safeNormalize } from '../../utils/steering.js';
+import { appendCappedMutable } from '../../utils/cappedBuffer.js';
 
 const TEMP_RIPPLE_DIR = new Vector3();
 
@@ -73,8 +74,7 @@ export function applyProjectileDamage(
           amp: strength,
         };
         const list = (ship.shieldRipples ??= []);
-        list.push(ripple);
-        if (list.length > 64) list.shift();
+        appendCappedMutable(list, ripple, 64);
       },
       applySubsystemDamage: (component, hullDamage, rng) => {
         applySubsystemDamage(component, hullDamage, rng);

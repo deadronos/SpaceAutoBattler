@@ -20,6 +20,7 @@ import {
   type ViewAlignmentScratch,
 } from '../../../renderer/starDiskOrientation.js';
 import { wrapStarTime, isCopilotDebugEnabled } from '../../../utils/starDisk.js';
+import { appendCappedMutable } from '../../../utils/cappedBuffer.js';
 
 interface CopilotStarMeshStatus {
   present: boolean;
@@ -481,17 +482,14 @@ export function useStarDiskFrameLoop({
 
         try {
           const win = globalThis as unknown as CopilotDebugWindow;
-          win.__copilot_starDiskDiagnostics = win.__copilot_starDiskDiagnostics || [];
-          win.__copilot_starDiskDiagnostics.push({
+          const diagnosticsBuffer = (win.__copilot_starDiskDiagnostics ??= []);
+          appendCappedMutable(diagnosticsBuffer, {
             time: Date.now(),
             iTime: uniformUpdate.time,
             applied,
             materialType: diagnosticsMaterial?.type ?? null,
             starCompiled,
-          });
-          if (win.__copilot_starDiskDiagnostics.length > 20) {
-            win.__copilot_starDiskDiagnostics.shift();
-          }
+          }, 20);
         } catch {
           /* ignore */
         }

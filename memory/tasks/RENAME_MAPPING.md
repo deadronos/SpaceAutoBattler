@@ -104,3 +104,4 @@
 - TASK412-renderer-large-file-plan.md -> TASK100-renderer-large-file-plan.md (renamed)
 - TASK413-renderer-config-refactor.md -> TASK101-renderer-config-refactor.md (renamed)
 - TASK414-particle-trails-refactor.md -> TASK102-particle-trails-refactor.md (renamed)
+- TASK415-duplicate-buffer-caps.md -> TASK106-duplicate-buffer-caps.md (renamed)
