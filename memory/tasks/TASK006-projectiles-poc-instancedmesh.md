@@ -1,4 +1,4 @@
-# [TASK001] - Implement grouped ProjectilesInstancedLayer & MuzzleFlashInstancedLayer (Full Implementation)
+# TASK006 - Implement grouped ProjectilesInstancedLayer & MuzzleFlashInstancedLayer (Full Implementation)
 
 **Status:** Completed
 **Added:** 2025-10-04

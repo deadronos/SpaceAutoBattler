@@ -1,4 +1,4 @@
-# [TASK225] - Fix Missing Shield Bubble Rendering
+# TASK083 - Fix Missing Shield Bubble Rendering
 
 **Status:** Completed
 **Added:** 2025-02-14

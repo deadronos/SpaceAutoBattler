@@ -1,5 +1,5 @@
 ```markdown
-# [TASK100] - Memory-bank summary entry
+# TASK024 - Memory-bank summary entry
 
 **Status:** Pending  
 **Added:** 2025-09-04  
