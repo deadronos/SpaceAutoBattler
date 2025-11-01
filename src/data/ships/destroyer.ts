@@ -12,8 +12,8 @@ import {
 export const DESTROYER_STATS: ShipStats = {
   hull: 'destroyer',
   maxHp: 250,
-  maxShield: 180,
-  shieldRegen: 10.0,
+  maxShield: 433,
+  shieldRegen: 24.0,
   damage: 30,
   fireRate: 1.8,
   projectileSpeed: 67,

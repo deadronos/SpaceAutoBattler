@@ -11,8 +11,8 @@ import {
 export const CORVETTE_STATS: ShipStats = {
   hull: 'corvette',
   maxHp: 75,
-  maxShield: 45,
-  shieldRegen: 5.0,
+  maxShield: 104,
+  shieldRegen: 11.5,
   damage: 12,
   fireRate: 1.2,
   projectileSpeed: 107,
