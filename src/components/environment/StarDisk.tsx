@@ -23,6 +23,7 @@ import { useStarDebug, useDebugOverlayCleanup } from '../../hooks/useStarDebug.j
 import { StarDiskMesh } from './StarDiskMesh.js';
 import { useStarDiskFrameLoop } from './starDisk/useStarDiskFrameLoop.js';
 import { useStarDiskDebugCleanup } from './starDisk/useStarDiskDebugCleanup.js';
+import { isCopilotDebugEnabled } from '../../utils/copilotDebug.js';
 
 interface StarDiskProps {
   config: StarLightConfig;
@@ -108,10 +109,7 @@ export function StarDisk({
   const { gl, scene, camera } = useThree();
   const { organic: organicTexture, noise: noiseTexture } = useStarTextures();
   const debugEnabled = useMemo(() => {
-    if (typeof window === 'undefined') {
-      return false;
-    }
-    return /[?&]copilot_debug=1/.test(window.location.search);
+    return isCopilotDebugEnabled();
   }, []);
   const shaderMaterial = useStarMaterial(debugEnabled);
   const shaderMaterialRef = useRef<ShaderMaterial | null>(shaderMaterial);

@@ -7,7 +7,14 @@ import type {
   EntityId,
 } from '../../../types/index.js';
 import { hashToInt } from './utils.js';
-import { computeInterceptHeadingVector, TEMP_REL_POS, TEMP_POS, getEffectiveRange } from './intent-utils.js';
+import {
+  computeInterceptHeadingVector,
+  TEMP_REL_POS,
+  TEMP_POS,
+  getEffectiveRange,
+  getDistanceBetween,
+  getHpRatio,
+} from './intent-utils.js';
 import { getForwardFromQuaternion } from '../../../utils/vector.js';
 
 export interface CommandResult {
@@ -44,7 +51,7 @@ export function computeInterceptCommand(
 ): CommandResult {
   if (target) {
     computeInterceptHeadingVector(ship, target, heading);
-    const distance = ship.transform.position.distanceTo(target.transform.position);
+    const distance = getDistanceBetween(ship, target);
     return {
       thrust: 1,
       firePrimary: distance <= ship.ship.range * 1.15,
@@ -85,7 +92,7 @@ export function computeRepositionCommand(
       getForwardFromQuaternion(ship.transform.rotation, heading);
       distance = 0;
     }
-    const distanceToTarget = ship.transform.position.distanceTo(target.transform.position);
+    const distanceToTarget = getDistanceBetween(ship, target);
     const [desiredMin, desiredMax] = getEffectiveRange(ship, profile, distanceToTarget, state.ai.tickIndex);
     // desiredMin/desiredMax are computed above using hysteresis when possible
     let shouldFire = distance <= ship.ship.range;
@@ -129,7 +136,7 @@ export function computeRegroupCommand(
 ): CommandResult {
   const centroid = state.blackboard.allyCentroid[ship.ship.team];
   setHeadingToward(heading, centroid, ship.transform.position, ship.transform.rotation);
-  const hpRatio = ship.ship.hp / Math.max(1, ship.ship.maxHp);
+  const hpRatio = getHpRatio(ship);
   const urgency = 1 + Math.max(0, 1 - hpRatio) * 0.5;
   const posture = state.blackboard.teamPosture[ship.ship.team];
   const base = posture === 'retreat' ? 0.95 : 0.75;
@@ -174,7 +181,7 @@ export function computeKiteCommand(
 ): CommandResult {
   if (target) {
     heading.copy(ship.transform.position).sub(target.transform.position).normalize();
-    const distanceToTarget = ship.transform.position.distanceTo(target.transform.position);
+    const distanceToTarget = getDistanceBetween(ship, target);
     return {
       thrust: 1,
       firePrimary: true,
@@ -217,7 +224,7 @@ export function computeAttackCommand(
 ): CommandResult {
   if (target) {
     heading.copy(target.transform.position).sub(ship.transform.position).normalize();
-    const dist = ship.transform.position.distanceTo(target.transform.position);
+    const dist = getDistanceBetween(ship, target);
     const [desiredMin, desiredMax] = getEffectiveRange(ship, profile, dist, state.ai.tickIndex);
     let thrust: number;
     if (dist > desiredMax) {

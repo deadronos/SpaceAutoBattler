@@ -12,6 +12,7 @@ import type {
   ShipEntity,
   Team,
 } from '../types/index.js';
+import { clamp01 } from '../utils/math.js';
 
 const DEFAULT_CARD: DoctrineCardId = 'elasticDefense';
 
@@ -184,11 +185,6 @@ export function updateDoctrineTimers(state: GameState): void {
       runtime.lastSwitchTick = tick;
     }
   }
-}
-
-function clamp01(value: number): number {
-  if (Number.isNaN(value)) return 0;
-  return Math.min(1.2, Math.max(0, value));
 }
 
 function clampRange(min: number, max: number): readonly [number, number] {

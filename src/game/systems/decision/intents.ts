@@ -11,6 +11,7 @@ import {
   getIntentPriority,
   tieBreak,
   type IntentCandidate,
+  getDistanceBetween,
 } from './intent-utils.js';
 import { scoreAttackIntent, scoreKiteIntent, scoreFleeIntent } from './combat-intents.js';
 import { scoreInterceptIntent, scoreRepositionIntent } from './tactical-intents.js';
@@ -157,7 +158,7 @@ export function computeLod(
 ): 0 | 1 | 2 {
   if (!target) return 2;
   if (ship.ship.hull === 'carrier' || ship.ship.hull === 'destroyer') return 0;
-  const dist = ship.transform.position.distanceTo(target.transform.position);
+  const dist = getDistanceBetween(ship, target);
   const active = Math.max(profile.desiredRange[1], AI_CONFIG.lod.activeDistance);
   if (dist <= active) return 0;
   if (dist <= AI_CONFIG.lod.idleDistance) return 1;

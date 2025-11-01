@@ -1,4 +1,5 @@
 import type { WebGLRenderer } from 'three';
+import { isCopilotDebugEnabled } from '../utils/copilotDebug.js';
 
 // Install lightweight dev-only WebGL hooks that capture shader compile/link logs
 // and GL errors into a window-global array for later automated inspection.
@@ -10,7 +11,7 @@ export function installWebGLDebugHooks(renderer: WebGLRenderer): void {
   // Enable if NODE_ENV !== 'production' OR ?copilot_debug=1 in URL
   const debugEnabled =
     (typeof process !== 'undefined' && process.env && process.env.NODE_ENV !== 'production') ||
-    (typeof win.location === 'object' && String(win.location.search).includes('copilot_debug=1'));
+    isCopilotDebugEnabled();
   if (!debugEnabled) return;
 
   // Avoid double-install

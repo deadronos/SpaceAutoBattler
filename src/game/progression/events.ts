@@ -35,3 +35,14 @@ export function addProgressionEvent(
   const updated = appendCappedHistory(events, nextEvent, maxEvents);
   state.progressionEvents.set(shipId, updated);
 }
+
+/**
+ * Check if progression events should be logged.
+ * Events are logged when both state and shipId are valid.
+ */
+export function shouldLogProgressionEvent(
+  state?: GameState | null,
+  shipId?: number,
+): boolean {
+  return state != null && shipId !== undefined;
+}

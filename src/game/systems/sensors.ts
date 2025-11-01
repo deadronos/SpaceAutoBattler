@@ -8,6 +8,7 @@ import type {
 } from '../../types/index.js';
 import { ensureDoctrineState, getDoctrineSensorModifiers } from '../aiDoctrine.js';
 import { getForwardFromQuaternion } from '../../utils/vector.js';
+import { clamp } from '../../utils/math.js';
 
 const TMP_FORWARD = new Vector3();
 const TMP_VECTOR = new Vector3();
@@ -63,11 +64,6 @@ function computeOccluded(
     }
   }
   return false;
-}
-
-function clampStrength(value: number): number {
-  if (Number.isNaN(value)) return 0;
-  return Math.max(0, Math.min(1.5, value));
 }
 
 function decayContacts(
@@ -165,8 +161,10 @@ export function updateSensorSystem(state: GameState, ships: ShipEntity[]): void 
         signature * (1 - (intrinsicStealth + targetDoctrineStealth)),
       );
 
-      const strength = clampStrength(
+      const strength = clamp(
         distanceFactor * angleFactor * stealthFactor * occlusionFactor,
+        0,
+        1.5,
       );
       if (strength <= sensorState.threshold) continue;
 
