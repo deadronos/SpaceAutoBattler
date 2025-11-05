@@ -8,6 +8,7 @@ import parser from '@typescript-eslint/parser';
 import json from '@eslint/json';
 import markdown from '@eslint/markdown';
 import css from '@eslint/css';
+import type { Linter } from 'eslint';
 import { defineConfig } from 'eslint/config';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
@@ -282,10 +283,10 @@ export default defineConfig([
       '@typescript-eslint/no-redeclare': 'off',
     },
   },
-  { files: ['**/*.json'], plugins: { json }, language: 'json/json', extends: ['json/recommended'] },
+  { files: ['**/*.json'], plugins: { json: json as unknown as any }, language: 'json/json', extends: ['json/recommended'] },
   {
     files: ['**/*.jsonc'],
-    plugins: { json },
+    plugins: { json: json as unknown as any },
     language: 'json/jsonc',
     extends: ['json/recommended'],
   },
@@ -294,7 +295,7 @@ export default defineConfig([
   // trip strict JSON rules. We still lint all developer-authored JSON files.
   {
     files: ['package-lock.json'],
-    plugins: { json },
+    plugins: { json: json as unknown as any },
     language: 'json/json',
     rules: {
       'json/no-empty-keys': 'off',
@@ -302,13 +303,13 @@ export default defineConfig([
   },
   {
     files: ['**/*.json5'],
-    plugins: { json },
+    plugins: { json: json as unknown as any },
     language: 'json/json5',
     extends: ['json/recommended'],
   },
   {
     files: ['**/*.md'],
-    plugins: { markdown },
+    plugins: { markdown: markdown as unknown as any },
     language: 'markdown/gfm',
     extends: ['markdown/recommended'],
   },
