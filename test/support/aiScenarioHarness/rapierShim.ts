@@ -49,7 +49,7 @@ export function createPhysicsWorldShim() {
       setAngvel: () => undefined,
     }),
     createCollider: (desc: { radius?: number }, body: unknown) => ({
-      handle: Math.random(),
+      handle: 1,
       radius: desc.radius ?? 0,
       body,
     }),
