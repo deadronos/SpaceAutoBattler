@@ -1,17 +1,22 @@
 import { useFrame } from '@react-three/fiber';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import type { InstancedMesh } from 'three';
-import { Color, DynamicDrawUsage, InstancedBufferAttribute, Matrix4, Vector3 } from 'three';
+import { Color, Matrix4, Vector3 } from 'three';
 import type { Archetype, GameEntity, ProjectileEntity } from '../../types/index.js';
 import { useArchetypeEntities } from '../../hooks/useArchetypeEntities.js';
-import { getProjectileConfig } from '../../config/projectiles.js';
 import { getProjectileGeometry } from '../../utils/projectileGeometries.js';
+import {
+  computeBeamTransform,
+  resolveProjectileInfo,
+  type ResolvedProjectileInfo,
+} from '../../utils/projectileInfo.js';
 import {
   createInstancedMaterial,
   type InstancedMaterialInfo,
 } from '../../renderer/materialRegistry.js';
 import { useBloomRegistration } from '../../renderer/BloomProvider.js';
-import { InstanceAllocator } from './instanceAllocator.js';
+import { createInstancedLayerManager } from './instancedLayer.js';
+import type { InstancedLayerManager } from './types.js';
 import { createSaturationWarningState, warnOnSaturation } from './saturationWarning.js';
 
 interface ProjectilesInstancedLayerProps {
@@ -24,46 +29,32 @@ interface ProjectilesInstancedLayerProps {
 interface ProjectileGroupState {
   key: string;
   capacity: number;
-  allocator: InstanceAllocator<number>;
+  manager: InstancedLayerManager<number>;
   meshRef: React.MutableRefObject<InstancedMesh | null>;
   materialInfo: InstancedMaterialInfo;
   geometry: ReturnType<typeof getProjectileGeometry>;
   baseColor: Color;
   maxIndex: number;
+  info: ResolvedProjectileInfo;
 }
 
 const DEFAULT_CAPACITY = 512;
-const HIDDEN_MATRIX = new Matrix4().makeScale(0, 0, 0);
+// HIDDEN_MATRIX is exported from `instancedLayer.ts` and used globally to
+// hide released instances. Keeping a single canonical source avoids dupes.
 const TEMP_MATRIX = new Matrix4();
 const TEMP_SCALE = new Vector3();
 const TEMP_POSITION = new Vector3();
-
-interface ProjectileGeometryMetadata {
-  category?: string;
-  baseRadius?: number;
-  baseWidth?: number;
-  baseLength?: number;
-}
 
 function ProjectileGroupMesh({ group }: { group: ProjectileGroupState }): React.ReactElement {
   const { meshRef, materialInfo, geometry, capacity, baseColor } = group;
   useBloomRegistration(meshRef, { group: 'projectiles' });
 
   useEffect(() => {
-    const mesh = meshRef.current;
-    if (!mesh) return;
-    mesh.count = 0;
-    mesh.instanceMatrix.setUsage(DynamicDrawUsage);
-    mesh.instanceMatrix.needsUpdate = true;
-    if (materialInfo.supportsInstanceColor && !mesh.instanceColor) {
-      mesh.instanceColor = new InstancedBufferAttribute(new Float32Array(capacity * 3), 3);
-      for (let i = 0; i < capacity; i += 1) {
-        mesh.setColorAt(i, baseColor);
-      }
-      mesh.instanceColor.needsUpdate = true;
-    }
+    // Initialize mesh attributes via the group's manager (if attached)
+    group.manager.initMesh();
     return () => {
-      if (mesh.instanceColor) {
+      const mesh = meshRef.current;
+      if (mesh && mesh.instanceColor) {
         mesh.instanceColor = null;
       }
     };
@@ -105,19 +96,25 @@ export function ProjectilesInstancedLayer({
       if (existing) return existing;
       const resolvedCapacity = Math.max(1, capacityByType?.[key] ?? defaultCapacity);
       const geometry = getProjectileGeometry(key);
+      const info = resolveProjectileInfo(key);
       const materialInfo = createInstancedMaterial(key);
-      const allocator = new InstanceAllocator<number>(resolvedCapacity);
       const meshRef: React.MutableRefObject<InstancedMesh | null> = { current: null };
       const baseColor = new Color(1, 1, 1);
+      const manager = createInstancedLayerManager<number>(meshRef, {
+        capacity: resolvedCapacity,
+        supportsInstanceColor: materialInfo.supportsInstanceColor,
+        baseColor,
+      });
       const group: ProjectileGroupState = {
         key,
         capacity: resolvedCapacity,
-        allocator,
+        manager,
         meshRef,
         materialInfo,
         geometry,
         baseColor,
         maxIndex: -1,
+        info,
       };
       groupsRef.current.set(key, group);
       forceRender((n) => n + 1);
@@ -144,7 +141,7 @@ export function ProjectilesInstancedLayer({
     let saturated = false;
 
     for (const group of groupsRef.current.values()) {
-      group.allocator.beginFrame();
+      group.manager.beginFrame();
       group.maxIndex = -1;
     }
 
@@ -158,7 +155,7 @@ export function ProjectilesInstancedLayer({
         continue;
       }
 
-      const index = group.allocator.allocate(projectile.id);
+      const index = group.manager.allocate(projectile.id);
       if (index == null) {
         saturated = true;
         continue;
@@ -168,67 +165,35 @@ export function ProjectilesInstancedLayer({
       if (!mesh) continue;
 
       totalAllocated += 1;
-      const cfg = getProjectileConfig(projectile.projectile.bulletType);
-      const visualMultiplier = cfg.visualMultiplier ?? 1;
-      const baseScale = projectile.transform.scale * visualMultiplier;
-      const metadata = (group.geometry.userData.projectile ?? {}) as ProjectileGeometryMetadata;
-      const category =
-        projectile.projectile.category ?? metadata.category ?? cfg.category ?? 'bullet';
+      const info = group.info;
+      const category = projectile.projectile.category ?? info.category;
 
       if (category === 'beam' && projectile.projectile.beam) {
-        const beam = projectile.projectile.beam;
-        const baseLength = metadata.baseLength && metadata.baseLength > 0 ? metadata.baseLength : 1;
-        const widthConfig = beam.width ?? cfg.beam?.width ?? metadata.baseWidth ?? baseScale;
-        const baseWidth =
-          metadata.baseWidth && metadata.baseWidth > 0 ? metadata.baseWidth : baseScale;
-        let beamLength =
-          beam.maxLength ?? projectile.projectile.speed * projectile.projectile.maxTtl;
-
-        if (beam.hitPoint) {
-          TEMP_POSITION.copy(beam.hitPoint).sub(projectile.transform.position);
-          beamLength = TEMP_POSITION.length();
-        }
-
-        beamLength = Math.max(0.1, beamLength);
-        const lengthScale = beamLength / baseLength;
-        const widthScale = baseWidth > 0 ? widthConfig / baseWidth : baseScale;
-        TEMP_SCALE.set(widthScale, widthScale, lengthScale);
-        TEMP_POSITION.copy(projectile.transform.position).addScaledVector(
-          projectile.direction,
-          beamLength / 2,
-        );
-        TEMP_MATRIX.compose(TEMP_POSITION, projectile.transform.rotation, TEMP_SCALE);
+        const result = computeBeamTransform({
+          projectile,
+          info,
+          matrix: TEMP_MATRIX,
+          scratchScale: TEMP_SCALE,
+          scratchPosition: TEMP_POSITION,
+        });
+        group.manager.setMatrixAt(index, result.matrix);
       } else {
+        const baseScale = projectile.transform.scale * info.visualMultiplier;
         TEMP_SCALE.setScalar(baseScale);
         TEMP_MATRIX.compose(
           projectile.transform.position,
           projectile.transform.rotation,
           TEMP_SCALE,
         );
+        group.manager.setMatrixAt(index, TEMP_MATRIX);
       }
-      mesh.setMatrixAt(index, TEMP_MATRIX);
-      mesh.instanceMatrix.needsUpdate = true;
-      group.maxIndex = Math.max(group.maxIndex, index);
     }
 
     for (const group of groupsRef.current.values()) {
       const mesh = group.meshRef.current;
       if (!mesh) continue;
-      const summary = group.allocator.endFrame();
+      const summary = group.manager.endFrame();
       if (summary.saturated) saturated = true;
-
-      for (const released of summary.released) {
-        mesh.setMatrixAt(released, HIDDEN_MATRIX);
-      }
-
-      const maxIndex = Math.max(group.maxIndex, summary.maxIndex);
-      const count = maxIndex >= 0 ? Math.min(maxIndex + 1, group.capacity) : 0;
-      mesh.count = count;
-      mesh.visible = count > 0;
-      mesh.instanceMatrix.needsUpdate = true;
-      if (mesh.instanceColor) {
-        mesh.instanceColor.needsUpdate = true;
-      }
     }
 
     warnOnSaturation({

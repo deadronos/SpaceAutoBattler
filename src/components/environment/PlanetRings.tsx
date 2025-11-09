@@ -5,6 +5,7 @@ import { useFrame } from '@react-three/fiber';
 import { colorFromConfig } from '../../utils/color.js';
 import { RENDER_ORDER_TRANSLUCENT_ADDITIVE } from '../../renderer/sceneLayerOrder.js';
 import { useUiStore } from '../../game/uiStore.js';
+import { isCopilotDebugEnabled } from '../../utils/copilotDebug.js';
 
 interface PlanetRingsProps {
   /** Inner radius of the rings */
@@ -351,7 +352,7 @@ export function PlanetRings({
   // Attach debug helpers once the material exists so we can adjust uniforms
   // and render order from the console during interactive debugging.
   try {
-    if (typeof window !== 'undefined' && /[?&]copilot_debug=1/.test(window.location.search)) {
+    if (isCopilotDebugEnabled()) {
       try {
         // Use a lightweight effect-like attachment without requiring React's useEffect
         (window as any).__copilot_ringMaterial = materialToUse;

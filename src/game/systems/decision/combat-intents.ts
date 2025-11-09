@@ -5,8 +5,19 @@ import type {
   ShipEntity,
   TeamPosture,
 } from '../../../types/index.js';
-import { quantizeScore, computeBandPreferenceBonus, computeThreatBonus } from './intent-utils.js';
-import { computeEffectiveDesiredRange } from './hysteresis.js';
+import {
+  quantizeScore,
+  computeBandPreferenceBonus,
+  computeThreatBonus,
+  getEffectiveRange,
+  getDistanceBetween,
+  getHpRatio,
+  getEffectiveAggression,
+  getEffectivePatience,
+  getOpeningSalvoMultiplier,
+  getFocusFireLoad,
+  getPriorityRank,
+} from './intent-utils.js';
 import { getEffectiveAIConfig } from '../../config.js';
 
 export function scoreAttackIntent(
@@ -18,27 +29,14 @@ export function scoreAttackIntent(
   traits: AITraits,
 ): number {
   if (!target) return 0;
-  const dist = ship.transform.position.distanceTo(target.transform.position);
-  const aiState = ship.ai;
-  let desiredMin = profile.desiredRange[0];
-  let desiredMax = profile.desiredRange[1];
-  if (getEffectiveAIConfig().hysteresisEnabled && aiState) {
-    [desiredMin, desiredMax] = computeEffectiveDesiredRange(
-      aiState,
-      profile,
-      dist,
-      state.ai.tickIndex,
-    );
-  }
+  const dist = getDistanceBetween(ship, target);
+  const [desiredMin, desiredMax] = getEffectiveRange(ship, profile, dist, state.ai.tickIndex);
   const mid = (desiredMin + desiredMax) * 0.5;
   const bandError = Math.abs(dist - mid);
-  const hpRatio = ship.ship.hp / Math.max(1, ship.ship.maxHp);
-  const aggression = profile.aggression * traits.aggression;
+  const hpRatio = getHpRatio(ship);
+  const aggression = getEffectiveAggression(profile, traits);
 
-  const effectiveCfg = getEffectiveAIConfig();
-  const isOpeningSalvo =
-    effectiveCfg.engagementBoostEnabled && state.time < effectiveCfg.openingSalvoDuration;
-  const aggressionMultiplier = isOpeningSalvo ? effectiveCfg.openingSalvoAggressionBoost : 1.0;
+  const aggressionMultiplier = getOpeningSalvoMultiplier(state);
 
   let score = 1000 - bandError * 4.6 + aggression * 120 * aggressionMultiplier;
   score += hpRatio * 80;
@@ -47,18 +45,15 @@ export function scoreAttackIntent(
   const bias = profile.classBias[target.ship.hull] ?? 0;
   score += bias;
   score += computeBandPreferenceBonus(dist, desiredMin, desiredMax, profile.bandPreference);
-  const priorityIndex = state.blackboard.priorityIndex?.[ship.ship.team];
-  if (priorityIndex) {
-    const rank = priorityIndex.get(target.id);
-    if (rank != null && Number.isFinite(rank)) {
-      score += Math.max(0, 140 - rank * 12);
-    }
+  const rank = getPriorityRank(state, ship.ship.team, target.id);
+  if (rank !== null) {
+    score += Math.max(0, 140 - rank * 12);
   }
   score += computeThreatBonus(state, ship.ship.team, target.id);
-  const focusMap = state.blackboard.focusFire?.[ship.ship.team];
-  const focusLoad = focusMap ? (focusMap.get(target.id) ?? 0) : 0;
+  const focusLoad = getFocusFireLoad(state, ship.ship.team, target.id);
   const focusBias = focusLoad === 0 ? 40 : Math.max(-80, 35 - focusLoad * 30);
   score += focusBias;
+  const effectiveCfg = getEffectiveAIConfig();
   if (effectiveCfg.engagementBoostEnabled && profile.engagementBias) {
     score += profile.engagementBias;
   }
@@ -73,11 +68,11 @@ export function scoreKiteIntent(
   traits: AITraits,
 ): number {
   if (!target) return 100;
-  const distance = ship.transform.position.distanceTo(target.transform.position);
+  const distance = getDistanceBetween(ship, target);
   const desiredMin = profile.desiredRange[0];
   const desiredMax = profile.desiredRange[1];
-  const aggression = profile.aggression * traits.aggression;
-  const hpRatio = ship.ship.hp / Math.max(1, ship.ship.maxHp);
+  const aggression = getEffectiveAggression(profile, traits);
+  const hpRatio = getHpRatio(ship);
   let score = 320 + (distance - desiredMin) * 1.4 + aggression * 70;
   if (distance < desiredMin) score -= 120;
   if (distance > desiredMax * 1.25) score -= 90;
@@ -94,13 +89,11 @@ export function scoreFleeIntent(
   posture: TeamPosture,
   traits: AITraits,
 ): number {
-  const hpRatio = ship.ship.hp / Math.max(1, ship.ship.maxHp);
+  const hpRatio = getHpRatio(ship);
   const gate = profile.gates?.hpRetreatPct ?? 0.2;
-  const patience = profile.patience * traits.patience;
+  const patience = getEffectivePatience(profile, traits);
   if (hpRatio > gate && posture !== 'retreat') return quantizeScore(150 - patience * 40);
-  const threat = target
-    ? ship.transform.position.distanceTo(target.transform.position)
-    : profile.desiredRange[1];
+  const threat = target ? getDistanceBetween(ship, target) : profile.desiredRange[1];
   const nerve = 1 - Math.min(0.6, patience * 0.3);
   const dodge = 1 + (traits.dodge - 1) * 0.5;
   const base = 400 + (gate - hpRatio) * 400 * (1 + patience * 0.1);

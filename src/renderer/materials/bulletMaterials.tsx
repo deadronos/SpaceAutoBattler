@@ -1,106 +1,60 @@
 import React from 'react';
 import { MeshStandardMaterial } from 'three';
+import {
+  laserPreset,
+  plasmaPreset,
+  ionPreset,
+  heavyPreset,
+  missilePreset,
+  torpedoPreset,
+  beamPreset,
+} from './materialPresets.js';
+import { createStandardMaterial } from './materialFactory.js';
 
-const laserProps = {
-  color: '#ffd089',
-  emissive: '#ff962f',
-  emissiveIntensity: 1.8,
-};
+export const BulletLaserMaterial: React.FC = () => <meshStandardMaterial {...laserPreset} />;
 
-const plasmaProps = {
-  color: '#c78bff',
-  emissive: '#a04bff',
-  emissiveIntensity: 2.2,
-  roughness: 0.2,
-  metalness: 0.1,
-};
+export const BulletPlasmaMaterial: React.FC = () => <meshStandardMaterial {...plasmaPreset} />;
 
-const ionProps = {
-  color: '#bfe9ff',
-  emissive: '#6fe8ff',
-  emissiveIntensity: 3.0,
-  roughness: 0.05,
-  metalness: 0.0,
-};
+export const BulletIonMaterial: React.FC = () => <meshStandardMaterial {...ionPreset} />;
 
-const heavyProps = {
-  color: '#ffd6b3',
-  emissive: '#ffb36b',
-  emissiveIntensity: 1.2,
-  roughness: 0.6,
-  metalness: 0.2,
-};
+export const BulletHeavyMaterial: React.FC = () => <meshStandardMaterial {...heavyPreset} />;
 
-const missileProps = {
-  color: '#f3ffba',
-  emissive: '#d7ff63',
-  emissiveIntensity: 2.4,
-  roughness: 0.3,
-  metalness: 0.15,
-};
+export const MissileLightMaterial: React.FC = () => <meshStandardMaterial {...missilePreset} />;
 
-const torpedoProps = {
-  color: '#ffcf9f',
-  emissive: '#ff8e3c',
-  emissiveIntensity: 2.0,
-  roughness: 0.45,
-  metalness: 0.25,
-};
-
-const beamProps = {
-  color: '#9bd7ff',
-  emissive: '#6fb3ff',
-  emissiveIntensity: 3.5,
-  roughness: 0.1,
-  metalness: 0.05,
-  transparent: true,
-  opacity: 0.9,
-};
-
-export const BulletLaserMaterial: React.FC = () => <meshStandardMaterial {...laserProps} />;
-
-export const BulletPlasmaMaterial: React.FC = () => <meshStandardMaterial {...plasmaProps} />;
-
-export const BulletIonMaterial: React.FC = () => <meshStandardMaterial {...ionProps} />;
-
-export const BulletHeavyMaterial: React.FC = () => <meshStandardMaterial {...heavyProps} />;
-
-export const MissileLightMaterial: React.FC = () => <meshStandardMaterial {...missileProps} />;
-
-export const TorpedoStandardMaterial: React.FC = () => <meshStandardMaterial {...torpedoProps} />;
+export const TorpedoStandardMaterial: React.FC = () => <meshStandardMaterial {...torpedoPreset} />;
 
 export const BeamLaserMaterial: React.FC = () => (
-  <meshStandardMaterial {...beamProps} userData={{ __copilot_forceColorWrite: true }} />
+  <meshStandardMaterial {...beamPreset} userData={{ __copilot_forceColorWrite: true }} />
 );
 
 export function createBulletLaserMaterial(): MeshStandardMaterial {
-  return new MeshStandardMaterial(laserProps);
+  return createStandardMaterial(laserPreset);
 }
 
 export function createBulletPlasmaMaterial(): MeshStandardMaterial {
-  return new MeshStandardMaterial(plasmaProps);
+  return createStandardMaterial(plasmaPreset);
 }
 
 export function createBulletIonMaterial(): MeshStandardMaterial {
-  return new MeshStandardMaterial(ionProps);
+  return createStandardMaterial(ionPreset);
 }
 
 export function createBulletHeavyMaterial(): MeshStandardMaterial {
-  return new MeshStandardMaterial(heavyProps);
+  return createStandardMaterial(heavyPreset);
 }
 
 export function createMissileLightMaterial(): MeshStandardMaterial {
-  return new MeshStandardMaterial(missileProps);
+  return createStandardMaterial(missilePreset);
 }
 
 export function createTorpedoStandardMaterial(): MeshStandardMaterial {
-  return new MeshStandardMaterial(torpedoProps);
+  return createStandardMaterial(torpedoPreset);
 }
 
 export function createBeamLaserMaterial(): MeshStandardMaterial {
-  const material = new MeshStandardMaterial(beamProps);
+  const material = createStandardMaterial(beamPreset);
   material.transparent = true;
-  material.opacity = beamProps.opacity;
+  material.opacity = beamPreset.opacity ?? 0.9;
   if (!material.userData) {
     material.userData = {};
   }

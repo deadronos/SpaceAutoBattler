@@ -3,13 +3,18 @@ import React from 'react';
 import { render, cleanup } from '@testing-library/react';
 import { Vector3, Quaternion } from 'three';
 import type { ShipEntity } from '../../src/types/index.js';
-import { ParticleTrails, createParticleTrailResources } from '../../src/components/ParticleTrails.js';
-import { PARTICLE_TRAILS_CONFIG } from '../../src/config/renderer.js';
+import { ParticleTrails } from '../../src/components/ParticleTrails.js';
+import { createParticleTrailResources } from '../../src/renderer/particles/trailResources.js';
+import { PARTICLE_TRAILS_CONFIG } from '../../src/config/effects.js';
 
-const frameCallbacks: Array<(state: { clock: { getElapsedTime: () => number } }, delta: number) => void> = [];
+const frameCallbacks: Array<
+  (state: { clock: { getElapsedTime: () => number } }, delta: number) => void
+> = [];
 
 vi.mock('@react-three/fiber', () => ({
-  useFrame: (callback: (state: { clock: { getElapsedTime: () => number } }, delta: number) => void) => {
+  useFrame: (
+    callback: (state: { clock: { getElapsedTime: () => number } }, delta: number) => void,
+  ) => {
     frameCallbacks.push(callback);
   },
 }));

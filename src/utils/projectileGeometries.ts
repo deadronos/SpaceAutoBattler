@@ -9,7 +9,7 @@ import {
 
 const geometryCache = new Map<string, BufferGeometry>();
 
-interface ProjectileGeometryMetadata {
+export interface ProjectileGeometryMetadata {
   category: string;
   baseRadius?: number;
   baseWidth?: number;

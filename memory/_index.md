@@ -33,4 +33,4 @@ This index lists the short searchable memory summaries generated for the `src/` 
 - Link to relevant config files and note key tunables where appropriate.
 - Prefer short examples and references to where the file is used (e.g., `main.tsx` or `systems.ts`).
 
-Audited on 2025-10-03 by Copilot agent.
+Audited on 2025-10-28 by Copilot agent.

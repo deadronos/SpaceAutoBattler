@@ -21,18 +21,41 @@ export const FOG_DEFAULTS: readonly [string, number, number] = [
 ];
 
 // AI configuration
-function readBooleanEnv(name: string, defaultValue = false): boolean {
+function readEnv<T extends string | boolean>(
+  name: string,
+  defaultValue: T,
+  parser?: (raw: string) => T,
+): T {
   try {
     const source = globalThis as unknown as {
       process?: { env?: Record<string, string | undefined> };
     };
     const raw = source.process?.env?.[name];
     if (!raw) return defaultValue;
-    const normalized = raw.toLowerCase();
-    return normalized === '1' || normalized === 'true' || normalized === 'on';
+    
+    if (parser) {
+      return parser(raw);
+    }
+    
+    // Boolean parsing if default is boolean
+    if (typeof defaultValue === 'boolean') {
+      const normalized = raw.toLowerCase();
+      return (normalized === '1' || normalized === 'true' || normalized === 'on') as T;
+    }
+    
+    // String return
+    return raw as T;
   } catch {
     return defaultValue;
   }
+}
+
+function readBooleanEnv(name: string, defaultValue = false): boolean {
+  return readEnv(name, defaultValue);
+}
+
+function readStringEnv(name: string, defaultValue: string): string {
+  return readEnv(name, defaultValue);
 }
 
 // Helper to read URL query parameters for runtime configuration
@@ -98,18 +121,6 @@ const ENGAGEMENT_BOOST_DEFAULT = ENGAGEMENT_BOOST_FORCE_OFF
 const ENGAGEMENT_BOOST_ENABLED = readBooleanParam('ai_engagement', ENGAGEMENT_BOOST_DEFAULT);
 
 // Range policy experiment flags
-function readStringEnv(name: string, defaultValue: string): string {
-  try {
-    const source = globalThis as unknown as {
-      process?: { env?: Record<string, string | undefined> };
-    };
-    const raw = source.process?.env?.[name];
-    return raw || defaultValue;
-  } catch {
-    return defaultValue;
-  }
-}
-
 const RANGE_POLICY_OVERRIDE = readStringEnv('AI_RANGE_POLICY', '');
 const RANGE_POLICY_DEFAULT = RANGE_POLICY_OVERRIDE
   ? RANGE_POLICY_OVERRIDE

@@ -131,10 +131,6 @@ export function updateDecisionSystem(state: GameState, delta: number): void {
   aggregateKpis(manager.metrics, manager.tickIndex);
 }
 
-export function runDecisionTick(state: GameState, delta: number): void {
-  updateDecisionSystem(state, delta);
-}
-
 export const __decisionInternals = {
   getEffectiveProfile,
   runShipDecisions,

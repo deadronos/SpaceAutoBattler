@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { runAIScenario } from '../../src/game/aiScenarioHarness.js';
+import { runAIScenario } from '../support/aiScenarioHarness.js';
 import { useUiStore } from '../../src/game/uiStore.js';
-import type { AIScenarioConfig, AIScenarioLog } from '../../src/game/aiScenarioHarness.js';
+import type { AIScenarioConfig, AIScenarioLog } from '../support/aiScenarioHarness.js';
 import escortScenario from './fixtures/ai-escort-scenario.json';
 import bomberInterceptScenario from './fixtures/ai-bomber-intercept-scenario.json';
 import artilleryRetreatScenario from './fixtures/ai-artillery-retreat-scenario.json';

@@ -6,7 +6,7 @@ import { flushPostPhysicsMutations } from '../../src/game/simulationQueue.js';
 import {
   createRapierShim,
   createPhysicsWorldShim,
-} from '../../src/game/aiScenarioHarness/rapierShim.js';
+} from '../support/aiScenarioHarness/rapierShim.js';
 
 describe('fireProjectile bulletType propagation', () => {
   it('attaches bulletType from fighter to projectile', () => {

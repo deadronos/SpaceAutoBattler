@@ -31,7 +31,14 @@ export function filterSignificantRipples(
   ripples: readonly ScaledRipple[],
   minAmp: number,
 ): ScaledRipple[] {
-  return ripples.filter((r) => r.scaledAmp >= minAmp);
+  // Manual filtering loop for better performance than filter()
+  const result: ScaledRipple[] = [];
+  for (let i = 0; i < ripples.length; i++) {
+    if (ripples[i].scaledAmp >= minAmp) {
+      result.push(ripples[i]);
+    }
+  }
+  return result;
 }
 
 export function coalesceRipples(

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type React from 'react';
 import { Perf } from 'r3f-perf';
 import { useUiStore } from '../game/uiStore.js';
+import { clamp } from '../utils/math.js';
 
 const PANEL_CLASS = 'hud-perf-monitor';
 const PANEL_MARGIN = 8;
@@ -14,10 +15,6 @@ type DragState = {
   start: Point;
   size: Point;
 };
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(Math.max(value, min), max);
-}
 
 export function PerfMonitorOverlay(): React.ReactElement | null {
   const enabled = useUiStore((state) => state.perfMonitorEnabled);

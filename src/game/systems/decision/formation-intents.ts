@@ -6,7 +6,12 @@ import type {
   ShipEntity,
   TeamPosture,
 } from '../../../types/index.js';
-import { quantizeScore } from './intent-utils.js';
+import {
+  quantizeScore,
+  getDistanceBetween,
+  getHpRatio,
+  getEffectivePatience,
+} from './intent-utils.js';
 
 export function scoreRegroupIntent(
   state: GameState,
@@ -17,9 +22,9 @@ export function scoreRegroupIntent(
 ): number {
   const centroid = state.blackboard.allyCentroid[ship.ship.team];
   const distance = ship.transform.position.distanceTo(centroid);
-  const hpRatio = ship.ship.hp / Math.max(1, ship.ship.maxHp);
+  const hpRatio = getHpRatio(ship);
   const gate = profile.gates?.hpRetreatPct ?? 0.3;
-  const patience = profile.patience * traits.patience;
+  const patience = getEffectivePatience(profile, traits);
 
   if (posture === 'retreat' || hpRatio <= gate + 0.05) {
     let score = 420 + distance * 1.1 + (1 - hpRatio) * 260 + patience * 90;
@@ -42,12 +47,12 @@ export function scoreEscortIntent(
   traits: AITraits,
   escortAssignment: EscortAssignment | null,
 ): number {
-  const dist = ship.transform.position.distanceTo(escortTarget.transform.position);
+  const dist = getDistanceBetween(ship, escortTarget);
   const threatId = escortAssignment?.threatId ?? state.blackboard.threatToVip.get(escortTarget.id);
   const threatWeight = threatId != null ? 220 : 0;
   const desiredRadius = escortAssignment?.offset.length() ?? profile.desiredRange[0];
   const bandError = Math.abs(dist - desiredRadius);
-  const patience = profile.patience * traits.patience;
+  const patience = getEffectivePatience(profile, traits);
   const assignmentBonus = escortAssignment ? 120 : 0;
   return quantizeScore(700 - bandError * 2 + patience * 90 + threatWeight + assignmentBonus);
 }

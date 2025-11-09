@@ -1,21 +1,48 @@
 import { Vector3 } from 'three';
 import type { GameState, ShipEntity, TurretEntity, TurretState } from '../../types/index.js';
 import { recordShotMetrics } from '../metrics.js';
-import { fireProjectile, TEMP_DIR, TEMP_POS } from './projectiles.js';
+import { fireProjectile, TEMP_POS } from './projectiles.js';
 import type { KinematicBody } from '../physics/safeKinematics.js';
 import { deferSetNextKinematicTranslation } from '../physics/safeKinematics.js';
+
+const TEMP_TURRET_DIR = new Vector3();
+
+// Hull size classification for turret priority targeting
+const SMALL_HULLS = new Set(['fighter', 'corvette']);
+const LARGE_HULLS = new Set(['frigate', 'destroyer', 'carrier']);
+
+/**
+ * Helper function to record shot metrics if metrics tracking is enabled.
+ */
+function recordShotIfMetrics(
+  state: GameState,
+  ship: ShipEntity,
+  target: ShipEntity,
+  dist: number,
+): void {
+  const metrics = state.ai?.metrics;
+  if (metrics) {
+    recordShotMetrics(metrics, {
+      shipId: ship.id,
+      hull: ship.ship.hull,
+      time: state.time,
+      distance: dist,
+      deltaY: target.transform.position.y - ship.transform.position.y,
+    });
+  }
+}
 
 export function findNearestEnemy(state: GameState, origin: ShipEntity): ShipEntity | null {
   const ships = state.queries.ships.entities as ShipEntity[];
   let closest: ShipEntity | null = null;
-  let shortest = Number.POSITIVE_INFINITY;
+  let shortestSq = Number.POSITIVE_INFINITY;
 
   for (const ship of ships) {
     if (ship === origin) continue;
     if (ship.ship.team === origin.ship.team) continue;
-    const distance = origin.transform.position.distanceTo(ship.transform.position);
-    if (distance < shortest) {
-      shortest = distance;
+    const distanceSq = origin.transform.position.distanceToSquared(ship.transform.position);
+    if (distanceSq < shortestSq) {
+      shortestSq = distanceSq;
       closest = ship;
     }
   }
@@ -33,21 +60,12 @@ export function runEmbeddedTurrets(state: GameState, ship: ShipEntity, target: S
   for (const turret of ship.turrets ?? []) {
     if (turret.cooldown > 0) continue;
     const turretOrigin = getTurretWorldPosition(ship, turret);
-    const toTarget = TEMP_DIR.copy(target.transform.position).sub(turretOrigin);
+    const toTarget = TEMP_TURRET_DIR.copy(target.transform.position).sub(turretOrigin);
     const dist = toTarget.length();
     if (dist > turret.range) continue;
     if (dist > 1e-5) toTarget.divideScalar(dist);
     else toTarget.set(0, 0, 1);
-    const metrics = state.ai?.metrics;
-    if (metrics) {
-      recordShotMetrics(metrics, {
-        shipId: ship.id,
-        hull: ship.ship.hull,
-        time: state.time,
-        distance: dist,
-        deltaY: target.transform.position.y - ship.transform.position.y,
-      });
-    }
+    recordShotIfMetrics(state, ship, target, dist);
     fireProjectile(state, ship, toTarget, {
       originPosition: turretOrigin,
       override: {
@@ -79,26 +97,28 @@ export function updateTurrets(state: GameState, delta: number): void {
     let target = findNearestEnemy(state, ship);
     if (t.turret.priority && t.turret.priority !== 'any') {
       const ships = state.queries.ships.entities as ShipEntity[];
-      const candidates = ships.filter((s) => s.ship.team !== ship.ship.team);
-      const small = new Set(['fighter', 'corvette']);
-      const large = new Set(['frigate', 'destroyer', 'carrier']);
       const preferSmall = t.turret.priority === 'antiFighter';
       let bestScore = Number.POSITIVE_INFINITY;
       let best: ShipEntity | null = null;
-      for (const s of candidates) {
-        const d = s.transform.position.distanceTo(origin);
+      // Avoid filter: iterate directly and skip same-team ships
+      for (const s of ships) {
+        if (s.ship.team === ship.ship.team) continue;
+        const dSq = s.transform.position.distanceToSquared(origin);
+        // Bonus scaling: multiply by typical distance magnitude to maintain
+        // relative weighting when using squared distances
+        const bonusScale = 100;
         const bonus = preferSmall
-          ? small.has(s.ship.hull)
-            ? -10
-            : large.has(s.ship.hull)
-              ? +5
+          ? SMALL_HULLS.has(s.ship.hull)
+            ? -10 * bonusScale
+            : LARGE_HULLS.has(s.ship.hull)
+              ? +5 * bonusScale
               : 0
-          : large.has(s.ship.hull)
-            ? -10
-            : small.has(s.ship.hull)
-              ? +5
+          : LARGE_HULLS.has(s.ship.hull)
+            ? -10 * bonusScale
+            : SMALL_HULLS.has(s.ship.hull)
+              ? +5 * bonusScale
               : 0;
-        const score = d + bonus;
+        const score = dSq + bonus;
         if (score < bestScore) {
           bestScore = score;
           best = s;
@@ -108,7 +128,7 @@ export function updateTurrets(state: GameState, delta: number): void {
     }
     t.turret.cooldown = Math.max(0, t.turret.cooldown - delta);
     if (!target || t.turret.cooldown > 0) continue;
-    const toTarget = TEMP_DIR.copy(target.transform.position).sub(origin);
+    const toTarget = TEMP_TURRET_DIR.copy(target.transform.position).sub(origin);
     const dist = toTarget.length();
     if (dist > t.turret.range) continue;
     if (dist > 1e-5) toTarget.divideScalar(dist);
@@ -122,16 +142,7 @@ export function updateTurrets(state: GameState, delta: number): void {
     const minPitch = t.turret.minPitch ?? -Math.PI / 2;
     const maxPitch = t.turret.maxPitch ?? Math.PI / 2;
     if (yaw < minYaw || yaw > maxYaw || pitch < minPitch || pitch > maxPitch) continue;
-    const metrics = state.ai?.metrics;
-    if (metrics) {
-      recordShotMetrics(metrics, {
-        shipId: ship.id,
-        hull: ship.ship.hull,
-        time: state.time,
-        distance: dist,
-        deltaY: target.transform.position.y - ship.transform.position.y,
-      });
-    }
+    recordShotIfMetrics(state, ship, target, dist);
     fireProjectile(state, ship, toTarget, {
       originPosition: origin,
       override: {

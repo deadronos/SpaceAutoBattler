@@ -10,6 +10,7 @@ import {
   MeshBasicMaterial,
 } from 'three';
 import { updatePlasma } from '../../../../src/components/explosions/effectUpdaters/plasmaUpdater.js';
+import { createInstancedLayerManager } from '../../../../src/components/layers/instancedLayer.js';
 import type { EffectUpdateContext } from '../../../../src/components/explosions/effectUpdaters/types.js';
 import type { ExplosionEvent } from '../../../../src/types/index.js';
 import { getDerived } from '../../../../src/components/explosions/derived.js';
@@ -67,14 +68,18 @@ describe('plasmaUpdater', () => {
 
   it('should not create plasma before delay', () => {
     ctx.time = 0.1;
-    const result = updatePlasma(ctx, mesh, 0, 100);
+    const mgr = createInstancedLayerManager({ current: mesh }, { capacity: 100, supportsInstanceColor: true });
+    mgr.beginFrame();
+    const result = updatePlasma(ctx, mgr, String(event.id));
     expect(result.count).toBe(0);
     expect(result.saturated).toBe(false);
   });
 
   it('should create multiple plasma instances', () => {
     ctx.time = 0.4;
-    const result = updatePlasma(ctx, mesh, 0, 100);
+    const mgr = createInstancedLayerManager({ current: mesh }, { capacity: 100, supportsInstanceColor: true });
+    mgr.beginFrame();
+    const result = updatePlasma(ctx, mgr, String(event.id));
     expect(result.count).toBeGreaterThan(0);
     expect(result.count).toBeLessThanOrEqual(event.particles.plasma);
     expect(result.saturated).toBe(false);
@@ -82,20 +87,26 @@ describe('plasmaUpdater', () => {
 
   it('should respect capacity limits', () => {
     ctx.time = 0.4;
-    const result = updatePlasma(ctx, mesh, 0, 5);
+    const mgr = createInstancedLayerManager({ current: mesh }, { capacity: 5, supportsInstanceColor: true });
+    mgr.beginFrame();
+    const result = updatePlasma(ctx, mgr, String(event.id));
     expect(result.count).toBeLessThanOrEqual(5);
   });
 
   it('should move plasma plumes outward', () => {
     ctx.time = 0.3;
-    updatePlasma(ctx, mesh, 0, 100);
+    const mgr1 = createInstancedLayerManager({ current: mesh }, { capacity: 100, supportsInstanceColor: true });
+    mgr1.beginFrame();
+    updatePlasma(ctx, mgr1, String(event.id));
     const dummy1 = new Object3D();
     mesh.getMatrixAt(0, dummy1.matrix);
     dummy1.matrix.decompose(dummy1.position, dummy1.quaternion, dummy1.scale);
     const distance1 = dummy1.position.length();
 
     ctx.time = 0.6;
-    updatePlasma(ctx, mesh, 0, 100);
+    const mgr2 = createInstancedLayerManager({ current: mesh }, { capacity: 100, supportsInstanceColor: true });
+    mgr2.beginFrame();
+    updatePlasma(ctx, mgr2, String(event.id));
     const dummy2 = new Object3D();
     mesh.getMatrixAt(0, dummy2.matrix);
     dummy2.matrix.decompose(dummy2.position, dummy2.quaternion, dummy2.scale);
@@ -105,12 +116,16 @@ describe('plasmaUpdater', () => {
   });
 
   it('should be deterministic with same seed', () => {
-    const result1 = updatePlasma(ctx, mesh, 0, 100);
+    const mgr = createInstancedLayerManager({ current: mesh }, { capacity: 100, supportsInstanceColor: true });
+    mgr.beginFrame();
+    const result1 = updatePlasma(ctx, mgr, String(event.id));
 
     const ctx2 = { ...ctx, event: { ...event } };
     ctx2.derived = getDerived(ctx2.event);
     const mesh2 = new InstancedMesh(new SphereGeometry(1), new MeshBasicMaterial(), 100);
-    const result2 = updatePlasma(ctx2, mesh2, 0, 100);
+    const mgr2 = createInstancedLayerManager({ current: mesh2 }, { capacity: 100, supportsInstanceColor: true });
+    mgr2.beginFrame();
+    const result2 = updatePlasma(ctx2, mgr2, String(event.id));
 
     expect(result1.count).toBe(result2.count);
     expect(result1.saturated).toBe(result2.saturated);
@@ -118,7 +133,9 @@ describe('plasmaUpdater', () => {
 
   it('flags saturation when plasma count exceeds capacity', () => {
     ctx.time = 0.4;
-    const result = updatePlasma(ctx, mesh, 0, 1);
+    const mgr = createInstancedLayerManager({ current: mesh }, { capacity: 1, supportsInstanceColor: true });
+    mgr.beginFrame();
+    const result = updatePlasma(ctx, mgr, String(event.id));
     expect(result.count).toBeLessThanOrEqual(1);
     expect(result.saturated).toBe(true);
   });

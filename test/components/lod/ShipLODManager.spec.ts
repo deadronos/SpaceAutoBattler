@@ -14,10 +14,10 @@ import {
   partitionShipsByDistance,
   computeLodPartition,
   partitionsEqual,
-  populateImpostorInstances,
   DEFAULT_DISTANCE_THRESHOLD,
   DEFAULT_HYSTERESIS,
-} from '../../../src/components/lod/ShipLODManager.js';
+} from '../../../src/components/lod/shipLodPartition.js';
+import { populateImpostorInstances } from '../../../src/components/lod/ShipImpostorLayer.js';
 
 function createShip(
   id: number,

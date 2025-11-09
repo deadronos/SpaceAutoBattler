@@ -14,6 +14,7 @@ import { THRUSTER_GLOW_CONFIG } from '../../config/renderer.js';
 import { useBloomRegistration } from '../../renderer/BloomProvider.js';
 import { getInstanceFriendlyMaterial } from '../../renderer/materialRegistry.js';
 import { createSaturationWarningState, warnOnSaturation } from '../layers/saturationWarning.js';
+import { createInstancedLayerManager } from '../layers/instancedLayer.js';
 
 interface ThrusterInstancedManagerProps {
   ships: readonly ShipEntity[];
@@ -93,22 +94,21 @@ export function ThrusterInstancedManager({
   const tempQuat = useMemo(() => new Quaternion(), []);
   const tempColor = useMemo(() => new Color(THRUSTER_GLOW_CONFIG.defaultEmissiveColor), []);
   const baseColor = useMemo(() => new Color(THRUSTER_GLOW_CONFIG.defaultEmissiveColor), []);
+  const managerRef = useRef(createInstancedLayerManager<string>(meshRef, {
+    capacity,
+    supportsInstanceColor: true,
+    baseColor: baseColor,
+  }));
 
   useBloomRegistration(meshRef, { group: 'engines' });
 
   useEffect(() => {
-    const mesh = meshRef.current;
-    if (!mesh) return;
-    mesh.count = 0;
-    mesh.instanceMatrix.needsUpdate = true;
-    if (!mesh.instanceColor) {
-      mesh.instanceColor = new InstancedBufferAttribute(new Float32Array(capacity * 3), 3);
-      mesh.instanceColor.needsUpdate = true;
-    }
+    // initialize attributes once mesh mounted
+    managerRef.current.initMesh();
     return () => {
-      mesh.instanceColor = null;
+      managerRef.current.dispose();
     };
-  }, [capacity]);
+  }, []);
 
   useEffect(() => () => {
     geometry.dispose();
@@ -124,7 +124,7 @@ export function ThrusterInstancedManager({
     const mesh = meshRef.current;
     if (!mesh) return;
 
-    let index = 0;
+    managerRef.current.beginFrame();
     let saturated = false;
 
     for (const ship of ships) {
@@ -135,8 +135,11 @@ export function ThrusterInstancedManager({
 
       tempQuat.copy(ship.transform.rotation);
 
-      for (const local of anchors) {
-        if (index >= capacity) {
+      for (let ai = 0; ai < anchors.length; ai += 1) {
+        const local = anchors[ai];
+        const key = `${ship.id}:${ai}`;
+        const idx = managerRef.current.allocate(key);
+        if (idx == null) {
           saturated = true;
           break;
         }
@@ -150,22 +153,16 @@ export function ThrusterInstancedManager({
         const scaleValue = baseScale * (1 + throttle * 1.8);
         tempScale.setScalar(scaleValue);
         tempMatrix.compose(tempPos, tempQuat, tempScale);
-        mesh.setMatrixAt(index, tempMatrix);
+        managerRef.current.setMatrixAt(idx, tempMatrix);
 
         tempColor.copy(baseColor).multiplyScalar(intensityBase + intensityRange * throttle);
-        mesh.setColorAt(index, tempColor);
-
-        index += 1;
+        managerRef.current.setColorAt(idx, tempColor);
       }
       if (saturated) break;
     }
 
-    mesh.count = index;
-    mesh.visible = index > 0;
-    mesh.instanceMatrix.needsUpdate = true;
-    if (mesh.instanceColor) {
-      mesh.instanceColor.needsUpdate = true;
-    }
+    const summary = managerRef.current.endFrame();
+    if (summary.saturated) saturated = true;
 
     warnOnSaturation({
       saturated,

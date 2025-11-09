@@ -1,0 +1,67 @@
+import { Vector3 } from 'three';
+import type { ShipStats } from '../../types/index.js';
+import { HULL_DAMAGE_TYPES, HULL_ARMOR_VALUES } from '../../config/progression.js';
+import {
+  createPlasmaTurret,
+  createLaserTurret,
+  createPointDefenseTurret,
+  createMissileTurret,
+  createBeamTurret,
+} from './turret-factory.js';
+
+export const FRIGATE_STATS: ShipStats = {
+  hull: 'frigate',
+  maxHp: 120,
+  maxShield: 123,
+  shieldRegen: 12.0,
+  damage: 16,
+  fireRate: 1.5,
+  projectileSpeed: 107,
+  range: 260,
+  speed: 12,
+  scale: 1,
+  bulletType: 'bullet:plasma',
+  damageType: HULL_DAMAGE_TYPES.frigate,
+  armor: HULL_ARMOR_VALUES.frigate,
+  motion: {
+    mass: 2.5,
+    maxSpeed: 12,
+    maxReverseSpeed: 3,
+    linearAcceleration: 15,
+    linearDamping: 2.0,
+    maxTurnRate: Math.PI * 0.9,
+    angularAcceleration: Math.PI * 2.4,
+    angularDamping: 5.0,
+    turnKp: 4.2,
+    turnKd: 1.0,
+    angularSettlingRate: 0.009,
+    angularSettleToleranceDeg: 4,
+    maxLateralAcceleration: 6,
+    visualBankFactor: 12,
+    maxBankDeg: 26,
+    visual: {
+      enabled: true,
+      position: { k: 12.0 },
+      rotation: { k: 30.0 },
+      bank: { k: 16.0, maxDeg: 26, useCriticallyDamped: true },
+      teleportDistance: 40,
+      bob: { enabled: false, baseAmp: 0.08, freq: 1.0, speedScale: 1.0, maxAmp: 0.3 },
+    },
+  },
+  sensor: {
+    detectionRange: 700,
+    trackingRange: 860,
+    coneAngle: Math.PI * 0.65,
+    falloff: 0.65,
+  },
+  stealth: 0.05,
+  sensorSignature: 1.2,
+  turrets: [
+    createPlasmaTurret(new Vector3(1.2, 0.25, 0.0)),
+    createPlasmaTurret(new Vector3(-1.2, 0.25, 0.0)),
+    createLaserTurret(new Vector3(0.0, 0.25, -0.8)),
+    createPointDefenseTurret(new Vector3(0, 0.42, 0.7)),
+    createMissileTurret(new Vector3(0, 0.28, -1.4)),
+    createBeamTurret(new Vector3(0, 0.3, 0.2)),
+  ],
+};

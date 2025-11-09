@@ -1,14 +1,15 @@
-import { InstancedBufferAttribute, Matrix4, Quaternion, Vector3 } from 'three';
+import { InstancedBufferAttribute, Quaternion, Vector3 } from 'three';
 import type { InstancedMesh } from 'three';
 import { DEBRIS_DELAY } from '../explosions/constants.js';
-import { clamp01, getCachedColor } from '../explosions/derived.js';
+import { getCachedColor } from '../explosions/derived.js';
+import { clamp01 } from '../../utils/math.js';
 import {
   EMPTY_EFFECT_RESULT,
   type EffectUpdateContext,
   type EffectUpdateResult,
 } from '../explosions/effectUpdaters/types.js';
+import { HIDDEN_MATRIX } from '../layers/instancedLayer.js';
 
-const HIDDEN_MATRIX = new Matrix4().makeScale(0, 0, 0);
 const TMP_QUAT = new Quaternion();
 const TMP_VEC = new Vector3();
 

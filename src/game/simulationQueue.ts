@@ -1,4 +1,6 @@
 import type { GameState, DeferredMutation } from '../types/index.js';
+import { isCopilotDebugEnabled } from '../utils/copilotDebug.js';
+import { appendCappedMutable } from '../utils/cappedBuffer.js';
 
 export interface RapierStepPanicSnapshot {
   tickIndex: number;
@@ -16,22 +18,6 @@ export interface RapierStepPanicSnapshot {
 
 const MAX_RAPIER_PANIC_SNAPSHOTS = 20;
 
-function isCopilotDebugEnabled(): boolean {
-  if (typeof window === 'undefined') {
-    return false;
-  }
-  try {
-    const win = window as Window & { __copilotDebugForce?: boolean };
-    if (win.__copilotDebugForce) {
-      return true;
-    }
-    const search = typeof win.location?.search === 'string' ? win.location.search : '';
-    return /[?&]copilot_debug=1/.test(search);
-  } catch {
-    return false;
-  }
-}
-
 export function publishRapierPanicSnapshot(snapshot: RapierStepPanicSnapshot): void {
   if (!isCopilotDebugEnabled()) {
     return;
@@ -42,10 +28,7 @@ export function publishRapierPanicSnapshot(snapshot: RapierStepPanicSnapshot): v
   try {
     const win = window as Window & { __copilot_rapierPanics?: RapierStepPanicSnapshot[] };
     const buffer = win.__copilot_rapierPanics ?? [];
-    buffer.push(snapshot);
-    while (buffer.length > MAX_RAPIER_PANIC_SNAPSHOTS) {
-      buffer.shift();
-    }
+    appendCappedMutable(buffer, snapshot, MAX_RAPIER_PANIC_SNAPSHOTS);
     win.__copilot_rapierPanics = buffer;
   } catch {
     /* ignore debug exposure errors */
