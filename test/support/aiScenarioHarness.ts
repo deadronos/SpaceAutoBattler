@@ -56,9 +56,10 @@
  *
  * ## Diagnostics
  *
- * For known diagnostic seeds (777, 2029, 4041), the harness writes per-ship trait and
- * trait-seed info to `tmp/ai-initial-{seed}.log` before the scenario runs. Use this
- * to verify trait generation across runs.
+ * For known diagnostic seeds (777, 2029, 4041), the harness may write per-ship trait and
+ * trait-seed info to `tmp/ai-initial-{seed}.log` and per-tick diagnostics to
+ * `tmp/ai-diagnostic-{seed}.log` for local analysis. These artifacts are optional and
+ * must not affect deterministic log comparisons.
  *
  * @see memory/core-aiScenarioHarness.md — Architectural overview
  * @see memory/guides/TEST_HARNESS_PATTERNS.md — Writing effective AI tests
