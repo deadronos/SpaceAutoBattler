@@ -12,6 +12,11 @@ This folder contains canonical design documents named using the pattern `DESIGNN
 - [DESIGN050](DESIGN050-particle-trails-refactor.md) — Extract particle trail resources and anchors into reusable modules for instancing and testing. (In Progress — implementation PR pending) (2025-10-27)
 - [DESIGN045](DESIGN045-refactor-damage-calculation.md) — Centralize damage math and provide thin adapters to simulation systems (design linked to TASK021). (In Progress — design published) (2025-10-27)
 - [DESIGN046](DESIGN046-refactor-subsystems.md) — Refactor subsystem lifecycle and repair logic into a subsystem module (design linked to TASK022). (In Progress) (2025-10-27)
+- [DESIGN056](DESIGN056-main-simulation-loop-perf.md) — Main simulation loop profiling and guard tuning for `updateGame`. (Proposed) (2025-11-16)
+- [DESIGN057](DESIGN057-motion-system-hotpath-tuning.md) — Motion system hotpath tuning for per-ship updates. (Proposed) (2025-11-16)
+- [DESIGN058](DESIGN058-projectile-advance-perf.md) — Projectile advance hotpath performance improvements. (Proposed) (2025-11-16)
+- [DESIGN059](DESIGN059-projectile-instancing-perf.md) — Projectile instancing and instanced layer performance improvements. (Proposed) (2025-11-16)
+- [DESIGN060](DESIGN060-ship-interpolation-perf.md) — Ship interpolation and visual smoothing performance modes. (Proposed) (2025-11-16)
 
 ## Completed
 
