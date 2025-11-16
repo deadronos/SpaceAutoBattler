@@ -48,7 +48,7 @@
     "@types/three": "^0.180.0",
     "@typescript-eslint/eslint-plugin": "^8.46.3",
     "@typescript-eslint/parser": "^8.46.3",
-    "@vitest/browser": "^4.0.8",
+    "@vitest/browser": "^4.0.9",
     "@vitest/coverage-v8": "^4.0.8",
     "babel-plugin-react-compiler": "^1.0.0",
     "c8": "^10.1.3",
