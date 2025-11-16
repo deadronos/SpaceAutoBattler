@@ -13,7 +13,7 @@ This folder contains canonical task documents named using the pattern `TASKNNN-t
 
 ## Pending
 
-
+- [TASK107](TASK107-hotpath-main-simulation-loop.md) — Configurable profiling/guard gating and max-substep clamping for the main simulation hotpath (DESIGN056). (Pending — implementation pending) (2025-11-16)
 
 ## Completed
 
