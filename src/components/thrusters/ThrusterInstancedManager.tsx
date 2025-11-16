@@ -26,6 +26,8 @@ interface ThrusterInstancedManagerProps {
 const DEFAULT_CAPACITY = 512;
 const DEFAULT_INTENSITY_BASE = 0.75;
 const DEFAULT_INTENSITY_RANGE = 1.5;
+const HIGH_DENSITY_THRESHOLD = 120;
+const HIGH_DENSITY_UPDATE_INTERVAL = 2;
 
 const HULL_SIZE_HINTS: Record<ShipHull, Vector3> = {
   fighter: new Vector3(1.4, 0.7, 2.8),
@@ -123,6 +125,10 @@ export function ThrusterInstancedManager({
     const frameId = frameRef.current;
     const mesh = meshRef.current;
     if (!mesh) return;
+
+    if (ships.length >= HIGH_DENSITY_THRESHOLD && frameId % HIGH_DENSITY_UPDATE_INTERVAL === 0) {
+      return;
+    }
 
     managerRef.current.beginFrame();
     let saturated = false;

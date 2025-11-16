@@ -49,6 +49,16 @@ export function updateGame(state: GameState, delta: number): void {
 
   state.time += delta;
 
+  const timings =
+    sim.subsystemTimings ??
+    (sim.subsystemTimings = {
+      durations: {},
+      lastTickIndex: -1,
+      lastTickTime: 0,
+    });
+  timings.lastTickIndex = sim.lastTickIndex;
+  timings.lastTickTime = state.time;
+
   const runSafely = (name: string, fn: () => void) => {
     try {
       fn();
@@ -68,16 +78,23 @@ export function updateGame(state: GameState, delta: number): void {
     }
   };
 
-  runSafely('updateDecisionSystem', () => updateDecisionSystem(state, delta));
+  const measureSubsystem = (name: string, fn: () => void) => {
+    const start = performance.now();
+    runSafely(name, fn);
+    timings.durations[name] = performance.now() - start;
+  };
 
-  runSafely('prepareShips', () => prepareShips(state, delta));
-  runSafely('updateCarrierLaunchSystem', () => updateCarrierLaunchSystem(state, delta));
-  runSafely('updateTurrets', () => updateTurrets(state, delta));
-  runSafely('updateMotionSystem', () => updateMotionSystem(state, delta));
-  runSafely('advanceProjectiles', () => advanceProjectiles(state, delta));
+  measureSubsystem('updateDecisionSystem', () => updateDecisionSystem(state, delta));
 
-  runSafely('flushDeferredMutations', () => flushDeferredMutations(state));
+  measureSubsystem('prepareShips', () => prepareShips(state, delta));
+  measureSubsystem('updateCarrierLaunchSystem', () => updateCarrierLaunchSystem(state, delta));
+  measureSubsystem('updateTurrets', () => updateTurrets(state, delta));
+  measureSubsystem('updateMotionSystem', () => updateMotionSystem(state, delta));
+  measureSubsystem('advanceProjectiles', () => advanceProjectiles(state, delta));
 
+  measureSubsystem('flushDeferredMutations', () => flushDeferredMutations(state));
+
+  const physicsStart = performance.now();
   try {
     // EventQueue created with { auto: true } is managed internally by Rapier.
     // Passing it explicitly to step() causes "recursive use" errors.
@@ -87,13 +104,15 @@ export function updateGame(state: GameState, delta: number): void {
     // upstream code can still handle a fatal physics panic if necessary.
     recordRapierStepPanic(state, error);
     throw error;
+  } finally {
+    timings.durations.physicsStep = performance.now() - physicsStart;
   }
 
-  runSafely('flushPostPhysicsMutations', () => flushPostPhysicsMutations(state));
+  measureSubsystem('flushPostPhysicsMutations', () => flushPostPhysicsMutations(state));
 
-  runSafely('syncTransforms', () => syncTransforms(state));
-  runSafely('resolveProjectiles', () => resolveProjectiles(state, delta));
-  runSafely('updateExplosions', () => updateExplosions(state, delta));
+  measureSubsystem('syncTransforms', () => syncTransforms(state));
+  measureSubsystem('resolveProjectiles', () => resolveProjectiles(state, delta));
+  measureSubsystem('updateExplosions', () => updateExplosions(state, delta));
 }
 
 export const __aiTestHooks = {
