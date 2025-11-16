@@ -5,7 +5,9 @@ Files: `test/support/aiScenarioHarness.ts`, `test/support/aiScenarioHarness/*` (
 Summary
 
 - Provides a deterministic harness for running AI scenarios headlessly and producing normalized logs and KPI snapshots suitable for golden fixtures and fast regression testing.
-- **Important:** This harness is test-only and does not ship with the runtime. Use `updateGame()` ticks for production simulation.
+- Harness is stabilized and intentionally minimal; only `runAIScenario`, `collectTestMetrics`, and exported types form the supported surface.
+- **Important:** This harness is strictly test-only and does not ship with the runtime. Use `updateGame()` ticks for production simulation. No imports from `test/support/aiScenarioHarness` are allowed under `src/**`.
+- A dedicated Vitest guard spec asserts that no `test/support/aiScenarioHarness` imports appear in runtime modules.
 
 Primary responsibilities
 

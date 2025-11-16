@@ -68,6 +68,11 @@ export async function createGameState(): Promise<GameState> {
         lastSubsystemFailureStack: undefined,
         lastSubsystemFailureTimestamp: 0,
       },
+      subsystemTimings: {
+        durations: {},
+        lastTickIndex: -1,
+        lastTickTime: 0,
+      },
     },
     ai: {
       enabled: AI_CONFIG.v2Enabled,

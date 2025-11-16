@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { runAIScenario } from '../support/aiScenarioHarness.js';
+import { runAIScenario, collectTestMetrics } from '../support/aiScenarioHarness.js';
 import { useUiStore } from '../../src/game/uiStore.js';
 import type { AIScenarioConfig, AIScenarioLog } from '../support/aiScenarioHarness.js';
 import escortScenario from './fixtures/ai-escort-scenario.json';
@@ -217,14 +217,50 @@ describe('AI scenario harness', () => {
     const normalized = normalizeLog(log);
     // Diagnostic: print all entries so we can see intent/thrust differences
     // for the failing scenario when running locally.
-    // eslint-disable-next-line no-console
-    console.log('ARTILLERY ACTUAL ENTRIES:', JSON.stringify(normalized.entries, null, 2));
-    // eslint-disable-next-line no-console
-    console.log(
-      'ARTILLERY EXPECTED ENTRIES:',
-      JSON.stringify(artilleryRetreatScenario.entries, null, 2),
-    );
+    // console.log('ARTILLERY ACTUAL ENTRIES:', JSON.stringify(normalized.entries, null, 2));
+    // console.log(
+    //   'ARTILLERY EXPECTED ENTRIES:',
+    //   JSON.stringify(artilleryRetreatScenario.entries, null, 2),
+    // );
     expectLogsApproximatelyEqual(normalized, artilleryRetreatScenario);
+  });
+});
+
+describe('aiScenarioHarness public surface', () => {
+  it('exports runAIScenario and collectTestMetrics as callables', () => {
+    expect(typeof runAIScenario).toBe('function');
+    expect(typeof collectTestMetrics).toBe('function');
+  });
+
+  it('runAIScenario returns an AIScenarioLog-shaped object and metrics can be collected', () => {
+    const log = runAIScenario({
+      name: 'smoke-public-api',
+      ticks: 1,
+      tickInterval: 0.1,
+      seed: 123,
+      ships: [
+        {
+          id: 1,
+          team: 'blue',
+          hull: 'fighter',
+          position: [0, 0, 0],
+          profileId: 'escort',
+          hp: 30,
+          maxHp: 60,
+        },
+      ],
+    } as any);
+
+    expect(log).toBeTruthy();
+    expect(log.name).toBe('smoke-public-api');
+    expect(Array.isArray(log.entries)).toBe(true);
+    expect(log.entries.length).toBe(1);
+    expect(log.entries[0]?.commands).toBeDefined();
+
+    const metrics = collectTestMetrics(log as any);
+    expect(metrics).toBeTruthy();
+    expect(typeof metrics).toBe('object');
+    expect(metrics.timeToFirstShot).toBeDefined();
   });
 });
 
