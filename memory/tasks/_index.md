@@ -16,6 +16,8 @@ This folder contains canonical task documents named using the pattern `TASKNNN-t
 
 ## Completed
 
+- [TASK108](TASK108-debug-ui-simulation-settings.md) — Added debug toggles for subsystem profiling/guards plus a sample-rate control and reworked the drawer into a two-column grid layout. (2025-11-16)
+
 - [TASK107](TASK107-hotpath-main-simulation-loop.md) — Configured subsystem-profiling sampling, guard toggles, and clamped max-substep usage to tame the `updateGame` hot path (DESIGN056). (2025-11-16)
 
 - [TASK101](TASK101-renderer-config-refactor.md) — Split `src/config/renderer.ts` into focused modules with façade and parity tests. (2025-10-27)

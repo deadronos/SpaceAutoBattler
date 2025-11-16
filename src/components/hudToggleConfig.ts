@@ -80,6 +80,24 @@ export const DEBUG_TOGGLES: HudToggleDefinition[] = [
     },
   },
   {
+    id: 'profile-subsystems',
+    label: 'Profile Subsystems',
+    description: 'Capture subsystem timings on sampled ticks',
+    select: (state) => state.simProfileSubsystems,
+    toggle: () => {
+      useUiStore.getState().toggleSimProfileSubsystems();
+    },
+  },
+  {
+    id: 'subsystem-guards',
+    label: 'Subsystem Guards',
+    description: 'Wrap subsystem updates with safety guards + diagnostics',
+    select: (state) => state.simEnableSubsystemGuards,
+    toggle: () => {
+      useUiStore.getState().toggleSimEnableSubsystemGuards();
+    },
+  },
+  {
     id: 'ai-vertical',
     label: 'AI Vertical',
     description: 'Enable 3D vertical maneuvering',
