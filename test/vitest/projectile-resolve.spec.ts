@@ -159,6 +159,11 @@ function makeStateStub(): GameState {
         lastSubsystemFailureStack: undefined,
         lastSubsystemFailureTimestamp: 0,
       },
+      subsystemTimings: {
+        durations: {},
+        lastTickIndex: -1,
+        lastTickTime: 0,
+      },
     },
   } as GameState;
 }

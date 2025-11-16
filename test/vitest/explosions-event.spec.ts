@@ -64,6 +64,11 @@ function makeState(rngValue = 0.42): GameState {
         lastSubsystemFailureStack: undefined,
         lastSubsystemFailureTimestamp: 0,
       },
+      subsystemTimings: {
+        durations: {},
+        lastTickIndex: -1,
+        lastTickTime: 0,
+      },
     },
     ai: undefined as any,
     blackboard: undefined as any,

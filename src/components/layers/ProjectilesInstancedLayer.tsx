@@ -39,6 +39,8 @@ interface ProjectileGroupState {
 }
 
 const DEFAULT_CAPACITY = 512;
+const HIGH_DENSITY_UPDATE_INTERVAL = 2;
+const HIGH_DENSITY_THRESHOLD = 300;
 // HIDDEN_MATRIX is exported from `instancedLayer.ts` and used globally to
 // hide released instances. Keeping a single canonical source avoids dupes.
 const TEMP_MATRIX = new Matrix4();
@@ -137,6 +139,10 @@ export function ProjectilesInstancedLayer({
   useFrame(() => {
     frameRef.current += 1;
     const frameId = frameRef.current;
+
+    if (projectiles.length >= HIGH_DENSITY_THRESHOLD && frameId % HIGH_DENSITY_UPDATE_INTERVAL === 0) {
+      return;
+    }
     let totalAllocated = 0;
     let saturated = false;
 

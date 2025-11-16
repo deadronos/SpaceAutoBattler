@@ -81,6 +81,11 @@ function createState(): GameState {
         lastSubsystemFailureStack: undefined,
         lastSubsystemFailureTimestamp: 0,
       },
+      subsystemTimings: {
+        durations: {},
+        lastTickIndex: -1,
+        lastTickTime: 0,
+      },
     },
     uiFlags: { hudHealthBars: false },
     explosions: [],

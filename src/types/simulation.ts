@@ -44,6 +44,15 @@ export interface RapierDiagnostics {
   lastSubsystemFailureTimestamp: number;
 }
 
+export interface SubsystemTimings {
+  /** Wall-clock durations (ms) for the latest tick keyed by subsystem name. */
+  durations: Record<string, number>;
+  /** Last simulation tick index where timings were recorded. */
+  lastTickIndex: number;
+  /** Simulation time when timings were captured. */
+  lastTickTime: number;
+}
+
 export interface SimulationClock {
   /** Fixed step size in seconds for simulation updates. */
   step: number;
@@ -65,6 +74,8 @@ export interface SimulationClock {
   postStepMutations: DeferredMutation[];
   /** Aggregated diagnostics capturing Rapier guard trips and deferred failures. */
   rapierDiagnostics: RapierDiagnostics;
+  /** Per-subsystem timing diagnostics captured each tick. */
+  subsystemTimings: SubsystemTimings;
 }
 
 export interface HudUiFlags {
