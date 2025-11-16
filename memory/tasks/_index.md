@@ -13,9 +13,10 @@ This folder contains canonical task documents named using the pattern `TASKNNN-t
 
 ## Pending
 
-- [TASK107](TASK107-hotpath-main-simulation-loop.md) — Configurable profiling/guard gating and max-substep clamping for the main simulation hotpath (DESIGN056). (Pending — implementation pending) (2025-11-16)
 
 ## Completed
+
+- [TASK107](TASK107-hotpath-main-simulation-loop.md) — Configured subsystem-profiling sampling, guard toggles, and clamped max-substep usage to tame the `updateGame` hot path (DESIGN056). (2025-11-16)
 
 - [TASK101](TASK101-renderer-config-refactor.md) — Split `src/config/renderer.ts` into focused modules with façade and parity tests. (2025-10-27)
 - [TASK102](TASK102-particle-trails-refactor.md) — Extracted trail resources + anchors modules and updated component/tests. (2025-10-27)

@@ -4,6 +4,13 @@ import { useGameState } from '../game/context.js';
 import { updateGame } from '../game/systems.js';
 import { useUiStore } from '../game/uiStore.js';
 
+export const MAX_ALLOWED_SIMULATION_SUBSTEPS = 5;
+
+export function clampSimulationSubsteps(value: number): number {
+  const normalized = Number.isFinite(value) ? Math.max(1, Math.floor(value)) : 1;
+  return Math.min(MAX_ALLOWED_SIMULATION_SUBSTEPS, normalized);
+}
+
 export function BattlefieldSystems(): React.ReactElement {
   const state = useGameState();
   const paused = useUiStore((s) => s.paused);
@@ -20,7 +27,7 @@ export function BattlefieldSystems(): React.ReactElement {
 
     const sim = state.simulation;
     const step = sim.step;
-    const maxSteps = Math.max(1, sim.maxSubSteps);
+    const maxSteps = clampSimulationSubsteps(sim.maxSubSteps);
     const scaled = Math.max(0, delta * Math.max(timeScale, 0));
 
     if (step <= 0) {

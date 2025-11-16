@@ -1,6 +1,6 @@
 # TASK107 — Hotpath main simulation loop improvements
 
-**Status:** Pending  
+**Status:** Completed  
 **Added:** 2025-11-16  
 **Updated:** 2025-11-16
 
@@ -25,10 +25,11 @@ Look at `DESIGN056` about hotpaths in the main simulation loop and create a `/me
 | --- | ----------- | ------ | ------- | ----- |
 | 1.1 | Review DESIGN056 requirements about profiling, guards, and substep bounds. | Complete | 2025-11-16 | Reference doc located at `/memory/designs/DESIGN056...`. |
 | 1.2 | Draft this task plan and record dependencies (design, tests, docs). | Complete | 2025-11-16 | Task created to track follow-up work. |
-| 1.3 | Implement config flags, conditionally profile/guard subsystems, clamp `maxSubSteps`, and add validation tests/docs. | Not Started | - | Pending coding effort. |
+| 1.3 | Implement config flags, conditionally profile/guard subsystems, clamp `maxSubSteps`, and add validation tests/docs. | Completed | 2025-11-16 | Implemented profiling/guard flags, clamp helper, and Vitest coverage (update-game-profiling.spec.ts + simulation-substeps.spec.ts). |
 
 ## Progress Log
 ### 2025-11-16
 - Captured the user request, referenced DESIGN056, and confirmed that the hot path needs configurable profiling/guards plus substep clamping.
 - Drafted this task file to sequence the remaining work, including configuration, updateGame refactor, and validation tests.
-- Marked implementation as pending; the next step is to execute the code changes and test coverage outlined above.
+- Implemented the profiling toggle/sampling, guard gating, and substep clamp features across `createGameState`, `systems.ts`, and `BattlefieldSystems`; wired defaults and helper exports plus matching Vitest coverage (`update-game-profiling.spec.ts`, `simulation-substeps.spec.ts`).
+- Ran `npm test -- test/vitest/update-game-profiling.spec.ts test/vitest/simulation-substeps.spec.ts` and verified both suites pass.

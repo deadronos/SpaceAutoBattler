@@ -78,9 +78,25 @@ export function updateGame(state: GameState, delta: number): void {
     }
   };
 
+  const runSubsystem = (name: string, fn: () => void) => {
+    if (sim.enableSubsystemGuards) {
+      runSafely(name, fn);
+      return;
+    }
+    fn();
+  };
+
+  const profileSampleRate = Math.max(1, sim.profileSampleRate ?? 1);
+  const profileThisTick = Boolean(sim.profileSubsystems && sim.lastTickIndex % profileSampleRate === 0);
+
   const measureSubsystem = (name: string, fn: () => void) => {
+    if (!profileThisTick) {
+      runSubsystem(name, fn);
+      return;
+    }
+
     const start = performance.now();
-    runSafely(name, fn);
+    runSubsystem(name, fn);
     timings.durations[name] = performance.now() - start;
   };
 

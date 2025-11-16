@@ -60,6 +60,12 @@ export interface SimulationClock {
   accumulator: number;
   /** Safety bound to avoid spiralling when frames are very long. */
   maxSubSteps: number;
+  /** Enable per-subsystem profiling in the simulation loop. */
+  profileSubsystems: boolean;
+  /** Sample rate (every Nth tick) used when profiling is enabled. */
+  profileSampleRate: number;
+  /** Toggle defensive guards around each subsystem. */
+  enableSubsystemGuards: boolean;
   /** Normalised interpolation factor (0..1) between last and next sim states. */
   alpha: number;
   /** Monotonic tick counter incremented after each simulation step. */
