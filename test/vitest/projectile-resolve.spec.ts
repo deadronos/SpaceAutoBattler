@@ -38,30 +38,39 @@ function makeStateStub(): GameState {
     projectiles: { entities: [] as any[] },
     turrets: { entities: [] as any[] },
   } as any;
+  const shipById = new Map<number, ShipEntity>();
   const world = {
     entities,
     createEntity(obj: any) {
       entities.push(obj);
       // keep queries lists roughly in sync for systems to iterate
       if (obj.projectile) (queries.projectiles.entities as any[]).push(obj);
-      if (obj.ship) (queries.ships.entities as any[]).push(obj);
+      if (obj.ship) {
+        (queries.ships.entities as any[]).push(obj);
+        shipById.set(obj.id, obj);
+      }
       if (obj.turret) (queries.turrets.entities as any[]).push(obj);
       return obj;
     },
     add(obj: any) {
       entities.push(obj);
       if (obj.projectile) (queries.projectiles.entities as any[]).push(obj);
-      if (obj.ship) (queries.ships.entities as any[]).push(obj);
+      if (obj.ship) {
+        (queries.ships.entities as any[]).push(obj);
+        shipById.set(obj.id, obj);
+      }
       if (obj.turret) (queries.turrets.entities as any[]).push(obj);
       return obj;
     },
     destroyEntity(obj: any) {
       const i = entities.indexOf(obj);
       if (i >= 0) entities.splice(i, 1);
+      if (obj.ship) shipById.delete(obj.id);
     },
     remove(obj: any) {
       const i = entities.indexOf(obj);
       if (i >= 0) entities.splice(i, 1);
+      if (obj.ship) shipById.delete(obj.id);
     },
   } as any;
 
@@ -110,6 +119,7 @@ function makeStateStub(): GameState {
     eventQueue: {} as any,
     world: world as any,
     colliderLookup: new Map(),
+    shipById,
     nextEntityId: 1,
     nextExplosionId: 1,
     time: 0,
@@ -134,6 +144,9 @@ function makeStateStub(): GameState {
       step: 1 / 20,
       accumulator: 0,
       maxSubSteps: 5,
+      profileSubsystems: false,
+      profileSampleRate: 1,
+      enableSubsystemGuards: true,
       alpha: 0,
       lastTickIndex: 0,
       lastTickStart: 0,
@@ -214,6 +227,8 @@ describe('projectile resolution', () => {
     const attacker = makeShip(1, 'blue', new Vector3(0, 0, 0));
     const target = makeShip(2, 'red', new Vector3(0, 0, 0.5), 10, 4); // inside impact radius
     (state.queries.ships as any).entities = [attacker, target];
+    state.shipById.set(attacker.id, attacker);
+    state.shipById.set(target.id, target);
     // Prevent auto-fire from prepareShips for both sides
     attacker.ship.cooldown = 999;
     target.ship.cooldown = 999;
@@ -243,6 +258,8 @@ describe('projectile resolution', () => {
     const attacker = makeShip(1, 'blue', new Vector3(0, 0, 0));
     const target = makeShip(2, 'red', new Vector3(0, 0, 0.3), 2, 0);
     (state.queries.ships as any).entities = [attacker, target];
+    state.shipById.set(attacker.id, attacker);
+    state.shipById.set(target.id, target);
     attacker.ship.cooldown = 999;
     target.ship.cooldown = 999;
 
@@ -269,6 +286,8 @@ describe('projectile resolution', () => {
     const attacker = makeShip(1, 'blue', new Vector3(0, 0, 0));
     const farEnemy = makeShip(2, 'red', new Vector3(1000, 0, 0));
     (state.queries.ships as any).entities = [attacker, farEnemy];
+    state.shipById.set(attacker.id, attacker);
+    state.shipById.set(farEnemy.id, farEnemy);
     attacker.ship.cooldown = 999;
     farEnemy.ship.cooldown = 999;
 

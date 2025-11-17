@@ -5,25 +5,26 @@ import {
   deferSetNextKinematicRotation,
   deferSetNextKinematicTranslation,
 } from '../../physics/safeKinematics.js';
+import { TEMP_NEXT_POS } from './sharedTemps.js';
 
 export function applyVelocityToPhysics(state: GameState, ship: ShipEntity, dt: number): void {
   const velocity = ship.ship.velocity;
   const currentPos = ship.transform.position;
 
-  const nextPos = {
-    x: currentPos.x + velocity.x * dt,
-    y: currentPos.y + velocity.y * dt,
-    z: currentPos.z + velocity.z * dt,
-  };
+  TEMP_NEXT_POS.set(
+    currentPos.x + velocity.x * dt,
+    currentPos.y + velocity.y * dt,
+    currentPos.z + velocity.z * dt,
+  );
 
-  clampToWorld(nextPos);
+  clampToWorld(TEMP_NEXT_POS);
 
   deferSetNextKinematicTranslation(
     state,
     ship.rigidBody as unknown as KinematicBody,
-    nextPos.x,
-    nextPos.y,
-    nextPos.z,
+    TEMP_NEXT_POS.x,
+    TEMP_NEXT_POS.y,
+    TEMP_NEXT_POS.z,
   );
   deferSetNextKinematicRotation(
     state,

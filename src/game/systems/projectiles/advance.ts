@@ -5,15 +5,13 @@ import {
   deferSetNextKinematicRotation,
   deferSetNextKinematicTranslation,
 } from '../../physics/safeKinematics.js';
-import { resolveProjectileCategory } from '../../../utils/projectileInfo.js';
 import { TEMP_POS } from './sharedTemps.js';
 import { findShipById, steerProjectileTowardTarget } from './homing.js';
 
 export function advanceProjectiles(state: GameState, delta: number): void {
   const projectiles = state.queries.projectiles.entities as ProjectileEntity[];
   for (const projectile of projectiles) {
-    const category =
-      projectile.projectile.category ?? resolveProjectileCategory(projectile.projectile.bulletType);
+    const category = projectile.projectile.category ?? 'bullet';
     if (category === 'beam') {
       continue;
     }
@@ -32,7 +30,6 @@ export function advanceProjectiles(state: GameState, delta: number): void {
     clampToWorld(next);
 
     projectile.transform.position.copy(next);
-    const rotation = projectile.transform.rotation;
     deferSetNextKinematicTranslation(
       state,
       projectile.rigidBody as unknown as KinematicBody,
@@ -40,13 +37,16 @@ export function advanceProjectiles(state: GameState, delta: number): void {
       next.y,
       next.z,
     );
-    deferSetNextKinematicRotation(
-      state,
-      projectile.rigidBody as unknown as KinematicBody,
-      rotation.x,
-      rotation.y,
-      rotation.z,
-      rotation.w,
-    );
+    if (projectile.projectile.homing) {
+      const rotation = projectile.transform.rotation;
+      deferSetNextKinematicRotation(
+        state,
+        projectile.rigidBody as unknown as KinematicBody,
+        rotation.x,
+        rotation.y,
+        rotation.z,
+        rotation.w,
+      );
+    }
   }
 }

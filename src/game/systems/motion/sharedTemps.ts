@@ -9,6 +9,8 @@ export const TEMP_AXIS = new Vector3();
 export const TEMP_DESIRED_AV = new Vector3();
 export const TEMP_AV_DELTA = new Vector3();
 export const TEMP_UP = new Vector3(0, 1, 0);
+export const TEMP_HEADING = new Vector3();
+export const TEMP_NEXT_POS = new Vector3();
 
 export const DEFAULT_TURN_KP = 4.0;
 export const DEFAULT_TURN_KD = 0.6;

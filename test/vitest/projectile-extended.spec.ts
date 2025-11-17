@@ -154,6 +154,7 @@ describe('extended projectile behaviours', () => {
   it('applies aoe damage to nearby enemies', () => {
     const nearby = createTestShip(3, 'red', new Vector3(3, 0, 0));
     state.queries.ships.entities.push(nearby);
+    state.shipById.set(nearby.id, nearby);
 
     const projectile = createProjectileEntity({
       id: 101,
@@ -212,6 +213,39 @@ describe('extended projectile behaviours', () => {
     expect(projectile.transform.position.z).toBeGreaterThan(0);
   });
 
+  it('uses shipById map for homing lookup even when queries lack target', () => {
+    const mappedTarget = createTestShip(5, 'red', new Vector3(8, 0, 8));
+    state.shipById.set(mappedTarget.id, mappedTarget);
+    // simulate missing from queries list to force map usage
+    state.queries.ships.entities = [];
+
+    const projectile = createProjectileEntity({
+      id: 201,
+      transform: {
+        position: new Vector3(0, 0, 0),
+        rotation: new Quaternion(),
+        scale: 0.5,
+      },
+      direction: new Vector3(0, 0, 1),
+      projectile: {
+        team: attacker.ship.team,
+        damage: 10,
+        ttl: 5,
+        maxTtl: 5,
+        speed: 10,
+        bulletType: 'missile:light',
+        damageType: attacker.ship.damageType,
+        sourceId: attacker.id,
+        homing: { turnRate: Math.PI },
+        targetId: mappedTarget.id,
+      },
+    });
+    (state.queries.projectiles.entities as ProjectileEntity[]).push(projectile);
+
+    advanceProjectiles(state, 0.5);
+    expect(projectile.direction.x).toBeGreaterThan(0.1);
+  });
+
   it('beam projectile deals damage once and expires after ttl', () => {
     const beam = createProjectileEntity({
       id: 300,
@@ -255,6 +289,7 @@ describe('extended projectile behaviours', () => {
   it('fireProjectile populates beam runtime using raycast hit', () => {
     const hitShip = createTestShip(4, 'red', new Vector3(0, 0, 15));
     state.queries.ships.entities.push(hitShip);
+    state.shipById.set(hitShip.id, hitShip);
 
     const colliderHandle = 1234;
     state.colliderLookup.set(colliderHandle, hitShip as any);
