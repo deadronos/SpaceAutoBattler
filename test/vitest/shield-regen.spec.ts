@@ -37,29 +37,38 @@ function makeStateStub(): GameState {
     projectiles: { entities: [] as any[] },
     turrets: { entities: [] as any[] },
   } as any;
+  const shipById = new Map<number, ShipEntity>();
   const world = {
     entities,
     createEntity(obj: any) {
       entities.push(obj);
       if (obj.projectile) (queries.projectiles.entities as any[]).push(obj);
-      if (obj.ship) (queries.ships.entities as any[]).push(obj);
+      if (obj.ship) {
+        (queries.ships.entities as any[]).push(obj);
+        shipById.set(obj.id, obj);
+      }
       if (obj.turret) (queries.turrets.entities as any[]).push(obj);
       return obj;
     },
     add(obj: any) {
       entities.push(obj);
       if (obj.projectile) (queries.projectiles.entities as any[]).push(obj);
-      if (obj.ship) (queries.ships.entities as any[]).push(obj);
+      if (obj.ship) {
+        (queries.ships.entities as any[]).push(obj);
+        shipById.set(obj.id, obj);
+      }
       if (obj.turret) (queries.turrets.entities as any[]).push(obj);
       return obj;
     },
     destroyEntity(obj: any) {
       const i = entities.indexOf(obj);
       if (i >= 0) entities.splice(i, 1);
+      if (obj.ship) shipById.delete(obj.id);
     },
     remove(obj: any) {
       const i = entities.indexOf(obj);
       if (i >= 0) entities.splice(i, 1);
+      if (obj.ship) shipById.delete(obj.id);
     },
   } as any;
 
@@ -108,6 +117,7 @@ function makeStateStub(): GameState {
     eventQueue: {} as any,
     world: world as any,
     colliderLookup: new Map(),
+    shipById,
     nextEntityId: 1,
     nextExplosionId: 1,
     time: 0,
@@ -132,6 +142,9 @@ function makeStateStub(): GameState {
       step: 1 / 20,
       accumulator: 0,
       maxSubSteps: 5,
+      profileSubsystems: false,
+      profileSampleRate: 1,
+      enableSubsystemGuards: true,
       alpha: 0,
       lastTickIndex: 0,
       lastTickStart: 0,
@@ -214,6 +227,7 @@ describe('shield regeneration', () => {
     const state = makeStateStub();
     const s = makeShip(1, 'blue', new Vector3(0, 0, 0), 10, 10, 20, 2); // regen 2 hp/s
     (state.queries.ships as any).entities = [s];
+    state.shipById.set(s.id, s);
 
     // Advance 1.5 seconds -> expect +3 hp
     updateGame(state, 1.5);
@@ -225,6 +239,7 @@ describe('shield regeneration', () => {
     // start at 19/20 with regen 5 hp/s, advance 1s -> would reach 24 but should clamp to 20
     const s = makeShip(2, 'red', new Vector3(0, 0, 0), 10, 19, 20, 5);
     (state.queries.ships as any).entities = [s];
+    state.shipById.set(s.id, s);
 
     updateGame(state, 1.0);
     expect(s.ship.shield).toBe(20);

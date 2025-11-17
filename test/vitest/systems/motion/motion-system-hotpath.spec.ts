@@ -20,7 +20,8 @@ describe('motion system hot path tuning', () => {
 
     expect(commanded.ship.velocity.length()).toBeGreaterThan(0);
     expect(idle.ship.velocity.length()).toBe(0);
-    expect(state.simulation.deferredMutations.length).toBe(1);
+    // One commanded ship triggers two deferred mutations (translation + rotation sync).
+    expect(state.simulation.deferredMutations.length).toBe(2);
   });
 
   it('early-outs idle commands and avoids physics enqueue', () => {

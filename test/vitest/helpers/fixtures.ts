@@ -1,6 +1,7 @@
 import { Vector3 } from 'three';
 import type { GameState, AIBlackboard, AIState, ShipEntity } from '../../../src/types/index.js';
 import { createDefaultMetrics } from '../../../src/game/metrics.js';
+import { createDefaultMotionStats } from '../../../src/game/ships.js';
 
 /**
  * Create a fully initialized blackboard for tests.
@@ -193,7 +194,7 @@ export function createTestShip(
       velocity: new Vector3(),
       angularVelocity: new Vector3(),
       lateralAcceleration: 0,
-      motion: { desiredHeading: new Vector3(0, 0, 1), speed: 0 },
+      motion: createDefaultMotionStats(),
     },
     model: 'fighter',
     ai: aiOverrides ? createTestAIState(aiOverrides) : createTestAIState(),

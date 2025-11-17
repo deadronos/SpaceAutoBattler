@@ -20,7 +20,7 @@ This folder contains canonical task documents named using the pattern `TASKNNN-t
 
 
 ## Completed
-
+- [TASK113](TASK113-fix-checks-and-motion.md) — Restored test fixtures with `shipById` maps, motion stats, and updated motion hot-path expectations; checks now pass. (2025-11-17)
 - [TASK109](TASK109-motion-system-hotpath-tuning.md) — Narrow motion system hot loop to commanded ships, add idle early-outs, and eliminate per-ship allocations (design: DESIGN057). (2025-11-17)
 
 - [TASK108](TASK108-debug-ui-simulation-settings.md) — Added debug toggles for subsystem profiling/guards plus a sample-rate control and reworked the drawer into a two-column grid layout. (2025-11-16)

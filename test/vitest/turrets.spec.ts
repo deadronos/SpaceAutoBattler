@@ -32,23 +32,43 @@ function makeRigidBodyStub(init?: {
 
 function makeStateStub(): GameState {
   const entities: any[] = [];
+  const queries = {
+    ships: { entities: [] as any[] },
+    projectiles: { entities: [] as any[] },
+    turrets: { entities: [] as any[] },
+  } as any;
+  const shipById = new Map<number, ShipEntity>();
   const world = {
     entities,
     createEntity(obj: any) {
       entities.push(obj);
+      if (obj.ship) {
+        (queries.ships.entities as any[]).push(obj);
+        shipById.set(obj.id, obj);
+      }
+      if (obj.projectile) (queries.projectiles.entities as any[]).push(obj);
+      if (obj.turret) (queries.turrets.entities as any[]).push(obj);
       return obj;
     },
     add(obj: any) {
       entities.push(obj);
+      if (obj.ship) {
+        (queries.ships.entities as any[]).push(obj);
+        shipById.set(obj.id, obj);
+      }
+      if (obj.projectile) (queries.projectiles.entities as any[]).push(obj);
+      if (obj.turret) (queries.turrets.entities as any[]).push(obj);
       return obj;
     },
     destroyEntity(obj: any) {
       const i = entities.indexOf(obj);
       if (i >= 0) entities.splice(i, 1);
+      if (obj.ship) shipById.delete(obj.id);
     },
     remove(obj: any) {
       const i = entities.indexOf(obj);
       if (i >= 0) entities.splice(i, 1);
+      if (obj.ship) shipById.delete(obj.id);
     },
   } as any;
 
@@ -105,14 +125,11 @@ function makeStateStub(): GameState {
     eventQueue: {} as any,
     world: world as any,
     colliderLookup: new Map(),
+    shipById,
     nextEntityId: 1,
     nextExplosionId: 1,
     time: 0,
-    queries: {
-      ships: { entities: [] },
-      projectiles: { entities: [] },
-      turrets: { entities: [] },
-    } as any,
+    queries,
     rng: { next: () => 0.5 } as any,
     paused: false,
     timeScale: 1,
@@ -133,6 +150,9 @@ function makeStateStub(): GameState {
       step: 1 / 20,
       accumulator: 0,
       maxSubSteps: 5,
+      profileSubsystems: false,
+      profileSampleRate: 1,
+      enableSubsystemGuards: true,
       alpha: 0,
       lastTickIndex: 0,
       lastTickStart: 0,
@@ -266,6 +286,8 @@ describe('Turret system', () => {
 
     // Register ships in state queries so systems can iterate
     (state.queries.ships as any).entities = [friendly, enemyShip];
+    state.shipById.set(friendly.id, friendly);
+    state.shipById.set(enemyShip.id, enemyShip);
 
     // Advance a small step to trigger turret fire
     updateGame(state, 0.016);
