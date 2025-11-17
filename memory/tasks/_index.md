@@ -10,6 +10,7 @@ This folder contains canonical task documents named using the pattern `TASKNNN-t
 - [TASK009](TASK009-ship-hull-visibility.md) — Restore ship hull visibility by refreshing LOD partitioning after instancing refactor. (In Progress — requirements/design in flight) (2025-10-05)
 
 - [TASK007](TASK007-rings-bloomOnly.md) — Add `rings.bloomOnly` config flag and create follow-up wiring/tests tasks. (In Progress — wiring & tests remaining) (2025-10-03)
+- [TASK110](TASK110-projectile-advance-performance.md) — Optimize `advanceProjectiles`: cache projectile category at spawn, constant-time homing lookup, and tailored kinematic updates (design: DESIGN058). (In Progress — awaiting perf capture) (2025-11-17)
 
 ## Pending
 

@@ -21,6 +21,7 @@ export async function createGameState(): Promise<GameState> {
     eventQueue,
     world,
     colliderLookup: new Map(),
+    shipById: new Map(),
     turretsByShip: new Map(),
     nextEntityId: 1,
     nextExplosionId: 1,

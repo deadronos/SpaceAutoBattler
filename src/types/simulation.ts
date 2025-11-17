@@ -4,6 +4,7 @@ import type { GameEntity, GameQueries, TurretEntity, ProgressionEvent } from './
 import type { AIManagerState, AIBlackboard, SensorState } from './ai.js';
 import type { ExplosionEvent } from './renderer.js';
 import type { SeededRng } from '../utils/rng.js';
+import type { ShipEntity } from './ship.js';
 
 export type DeferredMutation = () => void;
 
@@ -95,6 +96,8 @@ export interface GameState {
   eventQueue: EventQueue;
   world: ECSWorld<GameEntity>;
   colliderLookup: Map<number, GameEntity>;
+  /** Constant-time lookup table for ships by entity id. */
+  shipById: Map<number, ShipEntity>;
   nextEntityId: number;
   nextExplosionId: number;
   time: number;

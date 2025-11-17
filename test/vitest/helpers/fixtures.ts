@@ -59,6 +59,7 @@ export function createTestGameState(overrides?: Partial<GameState>): GameState {
     physicsWorld: {} as never,
     eventQueue: {} as never,
     colliderLookup: new Map(),
+    shipById: new Map(),
     rapier: {} as never,
     nextEntityId: 1,
     time: 0,
@@ -96,7 +97,15 @@ export function createTestGameState(overrides?: Partial<GameState>): GameState {
     progressionEvents: new Map(),
   } as unknown as GameState;
 
-  return { ...baseState, ...overrides };
+  const state = { ...baseState, ...overrides } as GameState;
+  if (!state.shipById) {
+    state.shipById = new Map();
+  }
+  const shipEntities = (state.queries?.ships?.entities ?? []) as ShipEntity[];
+  for (const ship of shipEntities) {
+    state.shipById.set(ship.id, ship);
+  }
+  return state;
 }
 
 /**

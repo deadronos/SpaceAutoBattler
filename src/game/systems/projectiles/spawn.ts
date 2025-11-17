@@ -132,6 +132,7 @@ export function fireProjectile(
     bulletType: opts?.override?.bulletType ?? origin.ship.bulletType,
     damageType,
     sourceId: origin.id,
+    category,
   };
 
   spawnProjectileEntity(
