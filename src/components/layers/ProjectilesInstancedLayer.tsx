@@ -4,6 +4,7 @@ import type { InstancedMesh } from 'three';
 import { Color, Matrix4, Vector3 } from 'three';
 import type { Archetype, GameEntity, ProjectileEntity } from '../../types/index.js';
 import { useArchetypeEntities } from '../../hooks/useArchetypeEntities.js';
+import { useGameState } from '../../game/context.js';
 import { getProjectileGeometry } from '../../utils/projectileGeometries.js';
 import {
   computeBeamTransform,
@@ -91,6 +92,8 @@ export function ProjectilesInstancedLayer({
   const [, forceRender] = useState(0);
   const warningStateRef = useRef(createSaturationWarningState());
   const frameRef = useRef(0);
+  const lastTickRef = useRef<number | null>(null);
+  const state = useGameState();
 
   const ensureGroup = useCallback(
     (key: string): ProjectileGroupState => {
@@ -128,7 +131,8 @@ export function ProjectilesInstancedLayer({
   useEffect(() => {
     const keys = new Set<string>();
     for (const projectile of projectiles) {
-      const key = projectile.projectile.bulletType ?? 'bullet:laser';
+      const key =
+        projectile.projectile.renderKey ?? projectile.projectile.bulletType ?? 'bullet:laser';
       keys.add(key);
     }
     for (const key of keys) {
@@ -139,6 +143,22 @@ export function ProjectilesInstancedLayer({
   useFrame(() => {
     frameRef.current += 1;
     const frameId = frameRef.current;
+    const simTick = state?.simulation.lastTickIndex ?? null;
+    const tickUnchanged = simTick != null && lastTickRef.current === simTick;
+
+    if (tickUnchanged) {
+      let hasBeam = false;
+      for (const projectile of projectiles) {
+        const projectedCategory =
+          projectile.projectile.category ?? projectile.projectile.renderInfo?.category;
+        if (projectedCategory === 'beam') {
+          hasBeam = true;
+          break;
+        }
+      }
+      if (!hasBeam) return;
+    }
+    lastTickRef.current = simTick;
 
     if (projectiles.length >= HIGH_DENSITY_THRESHOLD && frameId % HIGH_DENSITY_UPDATE_INTERVAL === 0) {
       return;
@@ -152,7 +172,8 @@ export function ProjectilesInstancedLayer({
     }
 
     for (const projectile of projectiles) {
-      const key = projectile.projectile.bulletType ?? 'bullet:laser';
+      const key =
+        projectile.projectile.renderKey ?? projectile.projectile.bulletType ?? 'bullet:laser';
       const group = ensureGroup(key);
       if (!group) continue;
 
@@ -171,7 +192,7 @@ export function ProjectilesInstancedLayer({
       if (!mesh) continue;
 
       totalAllocated += 1;
-      const info = group.info;
+      const info = projectile.projectile.renderInfo ?? group.info;
       const category = projectile.projectile.category ?? info.category;
 
       if (category === 'beam' && projectile.projectile.beam) {

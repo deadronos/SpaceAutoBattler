@@ -1,6 +1,6 @@
 # TASK111 — Projectile instancing performance
 
-**Status:** Pending  
+**Status:** In Progress  
 **Added:** 2025-11-17  
 **Updated:** 2025-11-17
 
@@ -19,17 +19,19 @@ Create a `/memory/tasks` plan for DESIGN059 (projectile instancing performance) 
 - Validation: add targeted tests/benchmarks confirming metadata reuse (no per-frame resolve), allocator efficiency under high projectile counts, and skipped transform writes without visual regressions; capture a perf snapshot before/after.
 
 ## Progress Tracking
-**Overall Status:** Not Started - 0%
+**Overall Status:** In Progress - 40%
 
 ### Subtasks
 | ID  | Description | Status | Updated | Notes |
 | --- | ----------- | ------ | ------- | ----- |
-| 1.1 | Review DESIGN059 and current `ProjectilesInstancedLayer` hot path. | Not Started | 2025-11-17 | |
-| 1.2 | Precompute projectile render metadata at spawn and consume in render layer. | Not Started | 2025-11-17 | |
+| 1.1 | Review DESIGN059 and current `ProjectilesInstancedLayer` hot path. | Complete | 2025-11-17 | |
+| 1.2 | Precompute projectile render metadata at spawn and consume in render layer. | Complete | 2025-11-17 | `renderKey`/`renderInfo` set at spawn and read in layer |
 | 1.3 | Implement low-overhead instance allocation strategy for projectiles. | Not Started | 2025-11-17 | |
-| 1.4 | Gate transform writes by simulation tick and carve out per-frame exceptions. | Not Started | 2025-11-17 | |
+| 1.4 | Gate transform writes by simulation tick and carve out per-frame exceptions. | Complete | 2025-11-17 | Skip frame when sim tick unchanged unless beams present |
 | 1.5 | Add tests/benchmarks for metadata reuse, allocator cost, and transform throttling. | Not Started | 2025-11-17 | |
 
 ## Progress Log
 ### 2025-11-17
 - Created task file from DESIGN059 to track projectile instancing performance plan and validation steps.
+- Implemented render metadata caching at spawn (`renderKey`, `renderInfo`) and switched instanced layer to consume them.
+- Added tick-gated transform updates: render loop skips when simulation tick unchanged unless beams are active.
