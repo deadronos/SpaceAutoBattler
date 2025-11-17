@@ -14,6 +14,8 @@ This folder contains canonical task documents named using the pattern `TASKNNN-t
 
 ## Pending
 
+- [TASK111](TASK111-projectile-instancing-performance.md) — Precompute projectile render metadata, reduce instanced allocation overhead, and throttle transform updates to simulation ticks (design: DESIGN059). (Pending — plan drafted) (2025-11-17)
+
 
 ## Completed
 
@@ -77,8 +79,6 @@ This folder contains canonical task documents named using the pattern `TASKNNN-t
 - [TASK052](TASK052-star-disk-shader.md) — Ported solar corona shader for StarDisk with deterministic uniforms and tests.
 - [TASK063](TASK063-reconcile-task-id-collisions.md) — Reconcile duplicate task IDs and normalise the `tasks/` folder naming and index references (created 2025-09-26).
 
-- [TASK232](TASK232-update-memory-bank-tasks.md) — Updated Memory Bank files to align with current `src/` implementations (types, `createGameState()`, `SeededRng`, and simulation defaults). (2025-10-16)
-
 - [TASK012](TASK012-update-memory-bank.md) — Quick memory sync: inspect `src/components/PostprocessingLazy.tsx`, record findings, and update memory bank entries. (Completed) (2025-10-18)
 - [TASK013](TASK013-update-environment-memory.md) — Expand memory notes for `src/components/environment/*` with component summaries and engineering guidance. (Completed) (2025-10-18)
 - [TASK021](TASK021-refactor-damage-calculation.md) — Centralize damage math into `src/game/combat/damage.ts` and provide a thin adapter for applying results. (Completed) (2025-10-27)
@@ -94,3 +94,4 @@ This folder contains canonical task documents named using the pattern `TASKNNN-t
 ## Abandoned
 
 - _None tracked._
+
