@@ -18,8 +18,18 @@ This document outlines performance best practices for SpaceAutoBattler based on 
 const candidates = ships.filter((s) => s.ship.team !== ship.ship.team);
 for (const s of candidates) {
   // process enemy ships
-}
+  }
 ```
+
+## Simulation Diagnostics & Debug Controls
+
+When investigating the main simulation loop (`BattlefieldSystems` → `updateGame`), use the debug UI controls (Wrench icon drawer) to toggle profiling guards and sampling without rebuilding the app.
+
+- **Profile Subsystems** - Enables `performance.now()` measurements for each subsystem. Sampling defaults to every tick but can be throttled via the “Profiling sample rate” buttons (every 1..5 ticks). Higher values preserve data while reducing instrumentation pressure.
+- **Subsystem Guards** - Wraps each subsystem in `runSafely`, which records diagnostic snapshots (via `safeSnapshot`) when exceptions occur. Leave this on during debugging; turn it off for trusted production runs to eliminate the guard overhead.
+- **Profiling sample rate buttons** - Choose “Every tick” for full fidelity when profiling, or “Every Nth tick” to collect periodic samples while the simulation still runs close to full speed.
+
+These runtime flags are mirrored directly to the simulation clock and do not require a reload. The defaults keep profiling disabled and guards enabled, but you can use the debug drawer to experiment with different sample rates depending on how much overhead you are willing to tolerate. If you need to keep `sim.maxSubSteps` predictable, note the UI-reported `BattlefieldSystems` clamp (1–5 steps per frame) before tweaking `timeScale` or `delta`.
 
 ### ✅ Prefer: Direct iteration with continue
 

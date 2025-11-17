@@ -1,6 +1,7 @@
 import type { Vector3 } from 'three';
 import type { Team } from './gameplay.js';
 import type { DamageType } from './gameplay.js';
+import type { ResolvedProjectileInfo } from '../utils/projectileInfo.js';
 
 export type { DamageType };
 
@@ -35,6 +36,10 @@ export interface ProjectileComponent {
   speed: number;
   /** Material key or type identifier for rendering this projectile (optional) */
   bulletType?: string;
+  /** Precomputed render key resolved at spawn to avoid per-frame lookup. */
+  renderKey?: string;
+  /** Pre-resolved projectile info shared across render path to avoid repeated resolution. */
+  renderInfo?: ResolvedProjectileInfo;
   /** Damage type for effectiveness calculations */
   damageType: DamageType;
   /** Entity ID of the ship that fired this projectile */

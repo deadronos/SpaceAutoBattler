@@ -17,6 +17,19 @@ export interface RendererMotionConfig {
   thrusterIntensity: { base: number; range: number };
 }
 
+export type RendererVisualPerformanceTier = 'high' | 'medium' | 'low';
+
+export interface RendererVisualConfig {
+  // Master switch: when false, per-ship visual smoothing is disabled.
+  enableShipVisualSmoothing: boolean;
+  // Global toggle to allow/deny bobbing offsets.
+  enableShipBob: boolean;
+  // Global toggle to allow/deny visual banking.
+  enableShipBanking: boolean;
+  // Performance tier influences which visual effects are allowed.
+  performanceTier: RendererVisualPerformanceTier;
+}
+
 export const RENDERER_MOTION_DEFAULTS: RendererMotionConfig = {
   positionK: 12.0,
   rotationK: 30.0,
@@ -28,9 +41,11 @@ export const RENDERER_MOTION_DEFAULTS: RendererMotionConfig = {
 };
 
 /** Global renderer visual toggles. */
-export const RENDERER_VISUAL_CONFIG = {
-  // Master switch: when false, per-ship visual smoothing is disabled.
+export const RENDERER_VISUAL_CONFIG: RendererVisualConfig = {
   enableShipVisualSmoothing: true,
+  enableShipBob: true,
+  enableShipBanking: true,
+  performanceTier: 'high',
 };
 
 export function resolveRendererMotionConfig(motion?: MotionStats): RendererMotionConfig {

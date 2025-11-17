@@ -6,6 +6,8 @@ export type ShipHull = 'fighter' | 'corvette' | 'frigate' | 'destroyer' | 'carri
 
 export type StatusEffectTag = 'jammed' | 'shield-down' | 'engine-disrupted' | 'hacked';
 
+export type VisualDetailLevel = 'high' | 'medium' | 'low';
+
 export interface SensorProfile {
   /** Effective range in world units for acquiring new contacts. */
   detectionRange: number;

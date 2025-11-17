@@ -13,6 +13,9 @@ export function findShipById(
   id: number | undefined | null,
 ): ShipEntity | undefined {
   if (id == null) return undefined;
+  const map = state.shipById;
+  const fromMap = map?.get(id);
+  if (fromMap) return fromMap;
   const ships = state.queries.ships.entities as ShipEntity[];
   return ships.find((s) => s.id === id);
 }

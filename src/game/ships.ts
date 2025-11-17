@@ -95,6 +95,7 @@ export function spawnShip(state: GameState, blueprint: ShipBlueprint): ShipEntit
   }
 
   const registered = state.world.add(entity) as ShipEntity;
+  state.shipById.set(registered.id, registered);
   registerColliderHandle(state, collider, registered);
 
   const turretSpecs = stats.turrets ?? [];

@@ -21,6 +21,7 @@ export type {
   DamageType,
   ShipStats,
   SensorProfile,
+  VisualDetailLevel,
 } from './gameplay.js';
 
 // Combat types

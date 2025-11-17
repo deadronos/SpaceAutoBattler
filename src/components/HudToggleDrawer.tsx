@@ -21,6 +21,7 @@ export function DebugDrawer(): React.ReactElement {
       icon={<WrenchIcon />}
       toggles={DEBUG_TOGGLES}
       triggerClassName="hud-toggle-drawer__trigger--secondary"
+      extra={<SimulationDebugSettings />}
     />
   );
 }
@@ -30,9 +31,10 @@ interface HudToggleDrawerProps {
   icon: React.ReactNode;
   toggles: readonly HudToggleDefinition[];
   triggerClassName?: string;
+  extra?: React.ReactNode;
 }
 
-function HudToggleDrawer({ label, icon, toggles, triggerClassName }: HudToggleDrawerProps): React.ReactElement {
+function HudToggleDrawer({ label, icon, toggles, triggerClassName, extra }: HudToggleDrawerProps): React.ReactElement {
   const [open, setOpen] = useState(false);
   const panelId = useId();
 
@@ -73,6 +75,7 @@ function HudToggleDrawer({ label, icon, toggles, triggerClassName }: HudToggleDr
             <ToggleRow key={definition.id} definition={definition} />
           ))}
         </ul>
+        {extra ? <div className="hud-toggle-drawer__extra">{extra}</div> : null}
       </div>
     </div>
   );
@@ -113,6 +116,36 @@ function ToggleRow({ definition }: { definition: HudToggleDefinition }): React.R
         </p>
       ) : null}
     </li>
+  );
+}
+
+const SIMULATION_SAMPLE_RATES = [1, 2, 3, 4, 5];
+
+function SimulationDebugSettings(): React.ReactElement {
+  const sampleRate = useUiStore((state) => state.simProfileSampleRate);
+  const setSampleRate = useUiStore((state) => state.setSimProfileSampleRate);
+
+  return (
+    <div className="hud-toggle-drawer__simulation-settings">
+      <p className="hud-toggle-drawer__simulation-settings-title">Profiling sample rate</p>
+      <div className="hud-toggle-drawer__simulation-settings-grid">
+        {SIMULATION_SAMPLE_RATES.map((value) => (
+          <button
+            key={value}
+            type="button"
+            className={`hud-toggle-drawer__rate-button${
+              value === sampleRate ? ' hud-toggle-drawer__rate-button--active' : ''
+            }`}
+            onClick={() => setSampleRate(value)}
+          >
+            {value === 1 ? 'Every tick' : `Every ${value}th tick`}
+          </button>
+        ))}
+      </div>
+      <p className="hud-toggle-drawer__simulation-settings-note">
+        Profiling occurs once per selected interval. Higher values reduce overhead.
+      </p>
+    </div>
   );
 }
 

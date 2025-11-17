@@ -123,6 +123,7 @@ export function fireProjectile(
   const beamInfo =
     category === 'beam' ? createBeamHitInfo(state, startPosition, direction, range) : null;
 
+  const renderKey = info.key;
   const projectileData: ProjectileComponent = {
     team: origin.ship.team,
     damage,
@@ -130,8 +131,11 @@ export function fireProjectile(
     maxTtl: category === 'beam' ? (info.beamConfig?.ttl ?? lifetime) : lifetime,
     speed: category === 'beam' ? range / Math.max(info.beamConfig?.ttl ?? lifetime, 0.001) : speed,
     bulletType: opts?.override?.bulletType ?? origin.ship.bulletType,
+    renderKey,
+    renderInfo: info,
     damageType,
     sourceId: origin.id,
+    category,
   };
 
   spawnProjectileEntity(

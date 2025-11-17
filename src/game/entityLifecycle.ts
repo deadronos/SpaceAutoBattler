@@ -32,6 +32,7 @@ export function destroyEntity(state: GameState, entity: GameEntity): void {
 
   if ((entity as ShipEntity).ship) {
     try {
+      state.shipById?.delete((entity as ShipEntity).id);
       const map = state.turretsByShip;
       if (map) {
         const set = map.get((entity as ShipEntity).id);

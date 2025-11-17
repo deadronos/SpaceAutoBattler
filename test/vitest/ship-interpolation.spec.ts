@@ -121,15 +121,18 @@ function initialiseState(
 }
 
 describe('useShipInterpolation helpers', () => {
-  let originalToggle: boolean;
+  let originalConfig: typeof RENDERER_VISUAL_CONFIG;
 
   beforeEach(() => {
-    originalToggle = RENDERER_VISUAL_CONFIG.enableShipVisualSmoothing;
+    originalConfig = { ...RENDERER_VISUAL_CONFIG };
     RENDERER_VISUAL_CONFIG.enableShipVisualSmoothing = true;
+    RENDERER_VISUAL_CONFIG.enableShipBob = true;
+    RENDERER_VISUAL_CONFIG.enableShipBanking = true;
+    RENDERER_VISUAL_CONFIG.performanceTier = 'high';
   });
 
   afterEach(() => {
-    RENDERER_VISUAL_CONFIG.enableShipVisualSmoothing = originalToggle;
+    Object.assign(RENDERER_VISUAL_CONFIG, originalConfig);
   });
 
   describe('kToAlpha', () => {
@@ -272,6 +275,110 @@ describe('useShipInterpolation helpers', () => {
       expect(state.visualPosition.equals(state.interpPosition)).toBe(true);
       expect(state.visualRotation.equals(state.interpRotation)).toBe(true);
       expect(state.visualOffset.length()).toBeLessThan(1e-6);
+    });
+
+    it('short-circuits when smoothing, bob, and banking are disabled with extreme alpha', () => {
+      const smoothing = createSmoothingConfig();
+      const entity = createTestEntity();
+      entity.transform.position.set(10, 2, -3);
+
+      const bankValueRef: Ref<number> = { current: 0 };
+      const bankVelocityRef: Ref<number> = { current: 2 };
+      const lastTickIndexRef: Ref<number> = { current: 0 };
+      const state = createInterpolationState(bankValueRef, bankVelocityRef, lastTickIndexRef);
+      initialiseState(state, entity, bankValueRef, bankVelocityRef, lastTickIndexRef);
+
+      RENDERER_VISUAL_CONFIG.enableShipVisualSmoothing = false;
+      RENDERER_VISUAL_CONFIG.enableShipBob = false;
+      RENDERER_VISUAL_CONFIG.enableShipBanking = false;
+      RENDERER_VISUAL_CONFIG.performanceTier = 'low';
+
+      updateInterpolation(
+        entity,
+        state,
+        smoothing,
+        1,
+        1 / 60,
+        1 / 60,
+        1,
+        bankValueRef,
+        bankVelocityRef,
+        lastTickIndexRef,
+      );
+
+      expect(state.visualPosition.equals(entity.transform.position)).toBe(true);
+      expect(state.visualRotation.equals(entity.transform.rotation)).toBe(true);
+      expect(state.visualOffset.length()).toBe(0);
+      expect(bankValueRef.current).toBe(0);
+      expect(bankVelocityRef.current).toBe(0);
+    });
+
+    it('skips bobbing when performance tier is low even if bob is enabled', () => {
+      const smoothing = createSmoothingConfig();
+      const entity = createTestEntity();
+      entity.ship.motion.visual!.bob = {
+        enabled: true,
+        baseAmp: 0.2,
+        maxAmp: 0.4,
+        freq: 1,
+        speedScale: 1,
+      };
+      entity.ship.velocity.set(entity.ship.motion.maxSpeed, 0, 0);
+
+      const bankValueRef: Ref<number> = { current: 0 };
+      const bankVelocityRef: Ref<number> = { current: 0 };
+      const lastTickIndexRef: Ref<number> = { current: 0 };
+      const state = createInterpolationState(bankValueRef, bankVelocityRef, lastTickIndexRef);
+      initialiseState(state, entity, bankValueRef, bankVelocityRef, lastTickIndexRef);
+
+      RENDERER_VISUAL_CONFIG.performanceTier = 'low';
+
+      updateInterpolation(
+        entity,
+        state,
+        smoothing,
+        0.5,
+        1 / 60,
+        1 / 60,
+        0,
+        bankValueRef,
+        bankVelocityRef,
+        lastTickIndexRef,
+      );
+
+      expect(state.visualLocalOffset.length()).toBe(0);
+      expect(state.visualOffset.length()).toBe(0);
+    });
+
+    it('uses the simple banking path for medium detail even when critically damped is requested', () => {
+      const smoothing = createSmoothingConfig();
+      const entity = createTestEntity();
+      entity.ship.motion.visual!.bank = { k: 20, maxDeg: 30, useCriticallyDamped: true };
+      entity.ship.angularVelocity.set(0, 0.6, 0);
+      entity.ship.visualDetailLevel = 'medium';
+
+      const bankValueRef: Ref<number> = { current: 0 };
+      const bankVelocityRef: Ref<number> = { current: 3 };
+      const lastTickIndexRef: Ref<number> = { current: 0 };
+      const state = createInterpolationState(bankValueRef, bankVelocityRef, lastTickIndexRef);
+      initialiseState(state, entity, bankValueRef, bankVelocityRef, lastTickIndexRef);
+
+      RENDERER_VISUAL_CONFIG.performanceTier = 'medium';
+
+      updateInterpolation(
+        entity,
+        state,
+        smoothing,
+        0.5,
+        1 / 30,
+        1 / 30,
+        0,
+        bankValueRef,
+        bankVelocityRef,
+        lastTickIndexRef,
+      );
+
+      expect(bankVelocityRef.current).toBe(0);
     });
 
     it('applies bob offsets scaled by speed and clamped to maximum amplitude', () => {

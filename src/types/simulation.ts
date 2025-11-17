@@ -4,6 +4,7 @@ import type { GameEntity, GameQueries, TurretEntity, ProgressionEvent } from './
 import type { AIManagerState, AIBlackboard, SensorState } from './ai.js';
 import type { ExplosionEvent } from './renderer.js';
 import type { SeededRng } from '../utils/rng.js';
+import type { ShipEntity } from './ship.js';
 
 export type DeferredMutation = () => void;
 
@@ -60,6 +61,12 @@ export interface SimulationClock {
   accumulator: number;
   /** Safety bound to avoid spiralling when frames are very long. */
   maxSubSteps: number;
+  /** Enable per-subsystem profiling in the simulation loop. */
+  profileSubsystems: boolean;
+  /** Sample rate (every Nth tick) used when profiling is enabled. */
+  profileSampleRate: number;
+  /** Toggle defensive guards around each subsystem. */
+  enableSubsystemGuards: boolean;
   /** Normalised interpolation factor (0..1) between last and next sim states. */
   alpha: number;
   /** Monotonic tick counter incremented after each simulation step. */
@@ -89,6 +96,8 @@ export interface GameState {
   eventQueue: EventQueue;
   world: ECSWorld<GameEntity>;
   colliderLookup: Map<number, GameEntity>;
+  /** Constant-time lookup table for ships by entity id. */
+  shipById: Map<number, ShipEntity>;
   nextEntityId: number;
   nextExplosionId: number;
   time: number;

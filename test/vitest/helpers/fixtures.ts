@@ -1,6 +1,7 @@
 import { Vector3 } from 'three';
 import type { GameState, AIBlackboard, AIState, ShipEntity } from '../../../src/types/index.js';
 import { createDefaultMetrics } from '../../../src/game/metrics.js';
+import { createDefaultMotionStats } from '../../../src/game/ships.js';
 
 /**
  * Create a fully initialized blackboard for tests.
@@ -51,6 +52,7 @@ export function createTestGameState(overrides?: Partial<GameState>): GameState {
     blackboard: createTestBlackboard(),
     queries: {
       ships: { entities: ships },
+      shipsWithCommands: { entities: ships },
       projectiles: { entities: [] },
       turrets: { entities: [] },
     },
@@ -58,6 +60,7 @@ export function createTestGameState(overrides?: Partial<GameState>): GameState {
     physicsWorld: {} as never,
     eventQueue: {} as never,
     colliderLookup: new Map(),
+    shipById: new Map(),
     rapier: {} as never,
     nextEntityId: 1,
     time: 0,
@@ -68,6 +71,9 @@ export function createTestGameState(overrides?: Partial<GameState>): GameState {
       step: 1 / 20,
       accumulator: 0,
       maxSubSteps: 5,
+      profileSubsystems: false,
+      profileSampleRate: 1,
+      enableSubsystemGuards: true,
       alpha: 0,
       lastTickIndex: 0,
       lastTickStart: 0,
@@ -92,7 +98,15 @@ export function createTestGameState(overrides?: Partial<GameState>): GameState {
     progressionEvents: new Map(),
   } as unknown as GameState;
 
-  return { ...baseState, ...overrides };
+  const state = { ...baseState, ...overrides } as GameState;
+  if (!state.shipById) {
+    state.shipById = new Map();
+  }
+  const shipEntities = (state.queries?.ships?.entities ?? []) as ShipEntity[];
+  for (const ship of shipEntities) {
+    state.shipById.set(ship.id, ship);
+  }
+  return state;
 }
 
 /**
@@ -180,7 +194,7 @@ export function createTestShip(
       velocity: new Vector3(),
       angularVelocity: new Vector3(),
       lateralAcceleration: 0,
-      motion: { desiredHeading: new Vector3(0, 0, 1), speed: 0 },
+      motion: createDefaultMotionStats(),
     },
     model: 'fighter',
     ai: aiOverrides ? createTestAIState(aiOverrides) : createTestAIState(),

@@ -10,12 +10,22 @@ This folder contains canonical task documents named using the pattern `TASKNNN-t
 - [TASK009](TASK009-ship-hull-visibility.md) — Restore ship hull visibility by refreshing LOD partitioning after instancing refactor. (In Progress — requirements/design in flight) (2025-10-05)
 
 - [TASK007](TASK007-rings-bloomOnly.md) — Add `rings.bloomOnly` config flag and create follow-up wiring/tests tasks. (In Progress — wiring & tests remaining) (2025-10-03)
+- [TASK110](TASK110-projectile-advance-performance.md) — Optimize `advanceProjectiles`: cache projectile category at spawn, constant-time homing lookup, and tailored kinematic updates (design: DESIGN058). (In Progress — awaiting perf capture) (2025-11-17)
+- [TASK111](TASK111-projectile-instancing-performance.md) — Precompute projectile render metadata, reduce instanced allocation overhead, and throttle transform updates to simulation ticks (design: DESIGN059). (In Progress — metadata caching + tick gating done; allocator plan pending) (2025-11-17)
+- [TASK112](TASK112-ship-interpolation-performance.md) — Introduce LOD/performance-tier gating, global bob/bank flags, and early-outs for ship interpolation to cut render hot-path CPU (design: DESIGN060). (In Progress — gated features landed; perf capture pending) (2025-11-17)
 
 ## Pending
 
+## Completed
 
 
 ## Completed
+- [TASK113](TASK113-fix-checks-and-motion.md) — Restored test fixtures with `shipById` maps, motion stats, and updated motion hot-path expectations; checks now pass. (2025-11-17)
+- [TASK109](TASK109-motion-system-hotpath-tuning.md) — Narrow motion system hot loop to commanded ships, add idle early-outs, and eliminate per-ship allocations (design: DESIGN057). (2025-11-17)
+
+- [TASK108](TASK108-debug-ui-simulation-settings.md) — Added debug toggles for subsystem profiling/guards plus a sample-rate control and reworked the drawer into a two-column grid layout. (2025-11-16)
+
+- [TASK107](TASK107-hotpath-main-simulation-loop.md) — Configured subsystem-profiling sampling, guard toggles, and clamped max-substep usage to tame the `updateGame` hot path (DESIGN056). (2025-11-16)
 
 - [TASK101](TASK101-renderer-config-refactor.md) — Split `src/config/renderer.ts` into focused modules with façade and parity tests. (2025-10-27)
 - [TASK102](TASK102-particle-trails-refactor.md) — Extracted trail resources + anchors modules and updated component/tests. (2025-10-27)
@@ -71,8 +81,6 @@ This folder contains canonical task documents named using the pattern `TASKNNN-t
 - [TASK052](TASK052-star-disk-shader.md) — Ported solar corona shader for StarDisk with deterministic uniforms and tests.
 - [TASK063](TASK063-reconcile-task-id-collisions.md) — Reconcile duplicate task IDs and normalise the `tasks/` folder naming and index references (created 2025-09-26).
 
-- [TASK232](TASK232-update-memory-bank-tasks.md) — Updated Memory Bank files to align with current `src/` implementations (types, `createGameState()`, `SeededRng`, and simulation defaults). (2025-10-16)
-
 - [TASK012](TASK012-update-memory-bank.md) — Quick memory sync: inspect `src/components/PostprocessingLazy.tsx`, record findings, and update memory bank entries. (Completed) (2025-10-18)
 - [TASK013](TASK013-update-environment-memory.md) — Expand memory notes for `src/components/environment/*` with component summaries and engineering guidance. (Completed) (2025-10-18)
 - [TASK021](TASK021-refactor-damage-calculation.md) — Centralize damage math into `src/game/combat/damage.ts` and provide a thin adapter for applying results. (Completed) (2025-10-27)
@@ -88,3 +96,4 @@ This folder contains canonical task documents named using the pattern `TASKNNN-t
 ## Abandoned
 
 - _None tracked._
+

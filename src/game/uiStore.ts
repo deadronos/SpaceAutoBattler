@@ -67,6 +67,22 @@ export type UiState = {
   aiVerticalDampingEnabled?: boolean | null;
   toggleAiVerticalDamping?: () => void;
   setAiVerticalDampingEnabled?: (v: boolean | null) => void;
+  /** Runtime control for per-subsystem profiling. */
+  simProfileSubsystems: boolean;
+  /** Toggle for runtime profiling. */
+  toggleSimProfileSubsystems: () => void;
+  /** Set profiler enable for UI store. */
+  setSimProfileSubsystems: (v: boolean) => void;
+  /** Sample rate used when profiling is enabled (every Nth tick). */
+  simProfileSampleRate: number;
+  /** Set the sampling rate for subsystem profiling. */
+  setSimProfileSampleRate: (value: number) => void;
+  /** Enable defensive subsystem guards at runtime. */
+  simEnableSubsystemGuards: boolean;
+  /** Toggle subsystem guard usage. */
+  toggleSimEnableSubsystemGuards: () => void;
+  /** Set the guard flag explicitly. */
+  setSimEnableSubsystemGuards: (value: boolean) => void;
 };
 
 export const useUiStore = create<UiState>((set) => ({
@@ -169,6 +185,16 @@ export const useUiStore = create<UiState>((set) => ({
           : !s.aiVerticalDampingEnabled,
     })),
   setAiVerticalDampingEnabled: (v: boolean | null) => set({ aiVerticalDampingEnabled: v }),
+  simProfileSubsystems: false,
+  toggleSimProfileSubsystems: () => set((s) => ({ simProfileSubsystems: !s.simProfileSubsystems })),
+  setSimProfileSubsystems: (v: boolean) => set({ simProfileSubsystems: v }),
+  simProfileSampleRate: 1,
+  setSimProfileSampleRate: (value: number) =>
+    set({ simProfileSampleRate: Math.max(1, Math.floor(value) || 1) }),
+  simEnableSubsystemGuards: true,
+  toggleSimEnableSubsystemGuards: () =>
+    set((s) => ({ simEnableSubsystemGuards: !s.simEnableSubsystemGuards })),
+  setSimEnableSubsystemGuards: (value: boolean) => set({ simEnableSubsystemGuards: value }),
 }));
 
 const globalWithUiStore = globalThis as { __spaceAutobattlerUiStore?: unknown };

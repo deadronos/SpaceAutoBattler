@@ -33,6 +33,9 @@ export function GameProvider({ children, fallback = null }: GameProviderProps): 
   const timeScale = useUiStore((s) => s.timeScale);
   const aiV2Enabled = useUiStore((s) => s.aiV2Enabled);
   const hudHealthBarsEnabled = useUiStore((s) => s.hudHealthBarsEnabled);
+  const simProfileSubsystems = useUiStore((s) => s.simProfileSubsystems);
+  const simProfileSampleRate = useUiStore((s) => s.simProfileSampleRate);
+  const simEnableSubsystemGuards = useUiStore((s) => s.simEnableSubsystemGuards);
 
   useEffect(() => {
     let cancelled = false;
@@ -162,6 +165,13 @@ export function GameProvider({ children, fallback = null }: GameProviderProps): 
     state.paused = paused;
     state.timeScale = timeScale;
   }, [state, paused, timeScale]);
+
+  useEffect(() => {
+    if (!state) return;
+    state.simulation.profileSubsystems = simProfileSubsystems;
+    state.simulation.profileSampleRate = simProfileSampleRate;
+    state.simulation.enableSubsystemGuards = simEnableSubsystemGuards;
+  }, [state, simProfileSubsystems, simProfileSampleRate, simEnableSubsystemGuards]);
 
   useEffect(() => {
     if (!state?.ai) return;
