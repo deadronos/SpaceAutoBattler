@@ -27,6 +27,7 @@ export async function createGameState(): Promise<GameState> {
     time: 0,
     queries: {
       ships: world.with('ship'),
+      shipsWithCommands: world.with('ship', 'ai'),
       projectiles: world.with('projectile'),
       turrets: world.with('turret'),
     },

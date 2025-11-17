@@ -51,6 +51,7 @@ export function createTestGameState(overrides?: Partial<GameState>): GameState {
     blackboard: createTestBlackboard(),
     queries: {
       ships: { entities: ships },
+      shipsWithCommands: { entities: ships },
       projectiles: { entities: [] },
       turrets: { entities: [] },
     },

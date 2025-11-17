@@ -13,9 +13,10 @@ This folder contains canonical task documents named using the pattern `TASKNNN-t
 
 ## Pending
 
-- [TASK109](TASK109-motion-system-hotpath-tuning.md) — Narrow motion system hot loop to commanded ships, add idle early-outs, and eliminate per-ship allocations (design: DESIGN057). (Pending — plan drafted) (2025-11-17)
 
 ## Completed
+
+- [TASK109](TASK109-motion-system-hotpath-tuning.md) — Narrow motion system hot loop to commanded ships, add idle early-outs, and eliminate per-ship allocations (design: DESIGN057). (2025-11-17)
 
 - [TASK108](TASK108-debug-ui-simulation-settings.md) — Added debug toggles for subsystem profiling/guards plus a sample-rate control and reworked the drawer into a two-column grid layout. (2025-11-16)
 

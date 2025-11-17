@@ -155,6 +155,7 @@ export type TurretEntity = GameEntity & { turret: import('./combat.js').TurretCo
 
 export interface GameQueries {
   ships: import('./core.js').Archetype<GameEntity, ['ship']>;
+  shipsWithCommands?: import('./core.js').Archetype<GameEntity, ['ship', 'ai']>;
   projectiles: import('./core.js').Archetype<GameEntity, ['projectile']>;
   turrets: import('./core.js').Archetype<GameEntity, ['turret']>;
 }
