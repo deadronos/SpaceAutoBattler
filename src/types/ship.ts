@@ -7,6 +7,7 @@ import type {
   TransformComponent,
   MotionStats,
   SensorProfile,
+  VisualDetailLevel,
 } from './gameplay.js';
 import type { DamageType } from './gameplay.js';
 import type {
@@ -89,6 +90,8 @@ export interface ShipComponent {
   stealth?: number;
   /** Relative detection signature (1 = baseline, >1 easier to detect). */
   sensorSignature?: number;
+  /** Optional renderer hint used to gate visual effects (high/medium/low). */
+  visualDetailLevel?: VisualDetailLevel;
 
   // Ship Progression System
   /** Experience points accumulated by this ship */

@@ -12,9 +12,9 @@ This folder contains canonical task documents named using the pattern `TASKNNN-t
 - [TASK007](TASK007-rings-bloomOnly.md) — Add `rings.bloomOnly` config flag and create follow-up wiring/tests tasks. (In Progress — wiring & tests remaining) (2025-10-03)
 - [TASK110](TASK110-projectile-advance-performance.md) — Optimize `advanceProjectiles`: cache projectile category at spawn, constant-time homing lookup, and tailored kinematic updates (design: DESIGN058). (In Progress — awaiting perf capture) (2025-11-17)
 - [TASK111](TASK111-projectile-instancing-performance.md) — Precompute projectile render metadata, reduce instanced allocation overhead, and throttle transform updates to simulation ticks (design: DESIGN059). (In Progress — metadata caching + tick gating done; allocator plan pending) (2025-11-17)
+- [TASK112](TASK112-ship-interpolation-performance.md) — Introduce LOD/performance-tier gating, global bob/bank flags, and early-outs for ship interpolation to cut render hot-path CPU (design: DESIGN060). (In Progress — gated features landed; perf capture pending) (2025-11-17)
 
 ## Pending
-
 
 ## Completed
 

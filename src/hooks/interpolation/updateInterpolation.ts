@@ -2,10 +2,79 @@ import type { MutableRefObject } from 'react';
 import { MathUtils } from 'three';
 import { RENDERER_VISUAL_CONFIG } from '../../config/renderer.js';
 import type { MotionVisualConfig } from '../../types/gameplay.js';
-import type { ShipEntity } from '../../types/index.js';
+import type { ShipEntity, VisualDetailLevel } from '../../types/index.js';
 import type { SmoothingConfig } from './config.js';
 import type { InterpolationState } from './state.js';
 import { kToAlpha } from './math.js';
+
+type BankingMode = 'disabled' | 'simple' | 'criticallyDamped';
+
+const DETAIL_RANK: Record<VisualDetailLevel, number> = {
+  low: 0,
+  medium: 1,
+  high: 2,
+};
+
+function resolvePerformanceTier(): VisualDetailLevel {
+  const tier = RENDERER_VISUAL_CONFIG.performanceTier;
+  return tier === 'medium' || tier === 'low' ? tier : 'high';
+}
+
+function resolveEntityDetailLevel(entity: ShipEntity): VisualDetailLevel {
+  if (entity.ship.visualDetailLevel) {
+    return entity.ship.visualDetailLevel;
+  }
+  const aiLod = entity.ai?.lod;
+  if (aiLod === 2) return 'low';
+  if (aiLod === 1) return 'medium';
+  return 'high';
+}
+
+function pickEffectiveDetailLevel(
+  entityDetail: VisualDetailLevel,
+  performanceTier: VisualDetailLevel,
+): VisualDetailLevel {
+  return DETAIL_RANK[performanceTier] < DETAIL_RANK[entityDetail] ? performanceTier : entityDetail;
+}
+
+function shouldEnableBob(
+  visualCfg: MotionVisualConfig | undefined,
+  detailLevel: VisualDetailLevel,
+): boolean {
+  if (!RENDERER_VISUAL_CONFIG.enableShipBob) return false;
+  if (detailLevel !== 'high') return false;
+  return visualCfg?.bob?.enabled !== false;
+}
+
+function resolveBankingMode(
+  visualCfg: MotionVisualConfig | undefined,
+  detailLevel: VisualDetailLevel,
+): BankingMode {
+  if (!RENDERER_VISUAL_CONFIG.enableShipBanking) return 'disabled';
+  if (!visualCfg?.bank) return 'disabled';
+  if (visualCfg.bank.maxDeg === 0) return 'disabled';
+  if (detailLevel === 'low') return 'disabled';
+  if (visualCfg.bank.useCriticallyDamped && detailLevel === 'high') {
+    return 'criticallyDamped';
+  }
+  return 'simple';
+}
+
+function applyTrivialInterpolation(state: InterpolationState, alpha: number): void {
+  const usePrevious = alpha <= 0;
+  const sourcePosition = usePrevious ? state.prevSimPosition : state.currSimPosition;
+  const sourceRotation = usePrevious ? state.prevSimRotation : state.currSimRotation;
+
+  state.interpPosition.copy(sourcePosition);
+  state.interpRotation.copy(sourceRotation);
+  state.inverseInterpRotation.copy(state.interpRotation).invert();
+  state.visualPosition.copy(sourcePosition);
+  state.visualRotation.copy(sourceRotation);
+  state.targetVisualPosition.copy(sourcePosition);
+  state.visualLocalOffset.set(0, 0, 0);
+  state.visualOffset.set(0, 0, 0);
+  state.finalRotation.copy(state.visualRotation);
+}
 
 export function updateInterpolation(
   entity: ShipEntity,
@@ -29,13 +98,31 @@ export function updateInterpolation(
     lastTickIndexRef,
   );
 
-  applyInterpolatedPose(state, alpha);
-
   const motion = entity.ship.motion;
   const visualCfg = motion.visual;
-  const smoothingEnabled = shouldApplyVisualSmoothing(visualCfg);
+  const performanceTier = resolvePerformanceTier();
+  const entityDetail = resolveEntityDetailLevel(entity);
+  const effectiveDetail = pickEffectiveDetailLevel(entityDetail, performanceTier);
+  const smoothingAllowed = effectiveDetail !== 'low';
+  const smoothingEnabled = smoothingAllowed && shouldApplyVisualSmoothing(visualCfg);
+  const bobEnabled = smoothingEnabled && shouldEnableBob(visualCfg, effectiveDetail);
+  const bankingMode = resolveBankingMode(visualCfg, effectiveDetail);
 
-  updateVisualTargets(state, entity, motion.visual, smoothingEnabled, time);
+  const clampedAlpha = MathUtils.clamp(alpha, 0, 1);
+  const alphaIsExtreme = clampedAlpha <= 0 || clampedAlpha >= 1;
+  const trivialPath =
+    !smoothingEnabled && !bobEnabled && bankingMode === 'disabled' && alphaIsExtreme;
+
+  if (trivialPath) {
+    applyTrivialInterpolation(state, clampedAlpha);
+    bankValueRef.current = 0;
+    bankVelocityRef.current = 0;
+    return;
+  }
+
+  applyInterpolatedPose(state, clampedAlpha);
+
+  updateVisualTargets(state, entity, motion.visual, bobEnabled, time);
 
   if (!smoothingEnabled) {
     state.visualPosition.copy(state.targetVisualPosition);
@@ -45,7 +132,7 @@ export function updateInterpolation(
   } else {
     smoothVisualPosition(state, visualCfg, smoothing, dt);
     smoothVisualRotation(state, visualCfg, smoothing, dt);
-    updateBanking(entity, smoothing, visualCfg, dt, bankValueRef, bankVelocityRef);
+    updateBanking(entity, smoothing, visualCfg, dt, bankingMode, bankValueRef, bankVelocityRef);
   }
 
   finaliseVisualState(state, smoothingEnabled, bankValueRef);
@@ -102,13 +189,13 @@ function updateVisualTargets(
   state: InterpolationState,
   entity: ShipEntity,
   visualCfg: MotionVisualConfig | undefined,
-  smoothingEnabled: boolean,
+  bobEnabled: boolean,
   time: number,
 ): void {
   state.targetVisualPosition.copy(state.interpPosition);
   state.visualLocalOffset.set(0, 0, 0);
 
-  if (!smoothingEnabled || !visualCfg?.bob || visualCfg.bob.enabled === false) {
+  if (!bobEnabled || !visualCfg?.bob || visualCfg.bob.enabled === false) {
     return;
   }
 
@@ -186,9 +273,16 @@ function updateBanking(
   smoothing: SmoothingConfig,
   visualCfg: MotionVisualConfig | undefined,
   dt: number,
+  mode: BankingMode,
   bankValueRef: MutableRefObject<number>,
   bankVelocityRef: MutableRefObject<number>,
 ): void {
+  if (mode === 'disabled') {
+    bankValueRef.current = 0;
+    bankVelocityRef.current = 0;
+    return;
+  }
+
   const motion = entity.ship.motion;
   const bankFactor = motion.visualBankFactor ?? smoothing.bankFactor;
   const maxBankDeg = visualCfg?.bank?.maxDeg ?? motion.maxBankDeg ?? smoothing.maxBankDeg;
@@ -207,7 +301,7 @@ function updateBanking(
   const targetBankRad = MathUtils.degToRad(MathUtils.clamp(bankDeg, -maxBankDeg, maxBankDeg));
   const safeDt = Math.max(dt, 1e-6);
 
-  if (visualCfg?.bank?.useCriticallyDamped && visualCfg.bank.k && visualCfg.bank.k > 0) {
+  if (mode === 'criticallyDamped' && visualCfg?.bank?.k && visualCfg.bank.k > 0) {
     const omega = visualCfg.bank.k;
     const x = bankValueRef.current;
     const v = bankVelocityRef.current;
