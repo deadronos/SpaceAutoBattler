@@ -93,7 +93,7 @@
     "@dimforge/rapier3d-compat": "0.19.3",
     "@react-three/drei": "^10.7.6",
     "@react-three/fiber": "^9.4.0",
-    "glob": "^11.0.3",
+    "glob": "^11.1.0",
     "gsap": "^3.13.0",
     "idb-keyval": "^6.2.2",
     "lodash": "^4.17.21",
