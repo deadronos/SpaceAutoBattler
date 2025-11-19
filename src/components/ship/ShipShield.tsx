@@ -180,7 +180,8 @@ export function ShieldBubble({ entity, radius, hullMaterialsRef }: ShieldBubbleP
   const ripples = entity.shieldRipples ?? [];
   const rippleQueue = processRipplesForRendering(ripples, SHIELD_RIPPLE_TUNING);
 
-  const kind = getShieldVisuals(entity.ship.hull).materialKind;
+  const visuals = getShieldVisuals(entity.ship.hull);
+  const kind = visuals.materialKind;
   const key = `shield:${kind}`;
   const Mat = (getMaterial<{
     hull: ShipEntity['ship']['hull']; team: any; opacity: number; ripple?: any; simTime?: number;
@@ -188,7 +189,7 @@ export function ShieldBubble({ entity, radius, hullMaterialsRef }: ShieldBubbleP
 
   return (
     <mesh ref={meshRef} renderOrder={SHIELD_RENDER_ORDER} frustumCulled={false}>
-      <sphereGeometry args={[1, 64, 64]} />
+      <sphereGeometry args={[1, visuals.geometrySegments, visuals.geometrySegments]} />
       <Mat hull={entity.ship.hull} team={entity.ship.team} opacity={opacity} ripple={rippleQueue} simTime={state?.time ?? 0} />
     </mesh>
   );
