@@ -46,6 +46,7 @@ export function createShieldHexShaderMaterial(hull: ShipHull, team: Team): Shade
       uRippleColorMul: { value: SHIELD_RIPPLE_TUNING.colorMul },
       uRippleStrength: { value: SHIELD_RIPPLE_TUNING.strength },
       uDisplacementScale: { value: SHIELD_RIPPLE_TUNING.displacementScale },
+      uRippleTintMix: { value: SHIELD_RIPPLE_TUNING.tintMix },
     },
     vertexShader: `
       varying vec3 vWorldPos;
@@ -138,6 +139,7 @@ export function createShieldHexShaderMaterial(hull: ShipHull, team: Team): Shade
       uniform float uRippleIgnoreMaxAlpha;
       uniform float uRippleColorMul;
       uniform float uRippleStrength;
+      uniform float uRippleTintMix;
 
       float hash(vec2 p){return fract(sin(dot(p, vec2(127.1,311.7)))*43758.5453);}
       
@@ -235,7 +237,7 @@ export function createShieldHexShaderMaterial(hull: ShipHull, team: Team): Shade
         float rippleGlow = rippleMax * (1.0 + 0.5 * border) * uRippleColorMul;
         
         // Tint the ripple with the team color but keep the chromatic edges
-        vec3 rippleTint = mix(vec3(1.0), uTint, 0.35) * uRippleColorMul;
+        vec3 rippleTint = mix(vec3(1.0), uTint, uRippleTintMix) * uRippleColorMul;
         vec3 finalRippleColor = rippleColor * rippleTint;
 
         float fill = clamp(1.0 - border, 0.0, 1.0);
@@ -327,6 +329,7 @@ export const ShieldHexMaterial: React.FC<ShieldHexMaterialProps> = ({ hull, team
     uniforms.uRippleColorMul.value = SHIELD_RIPPLE_TUNING.colorMul;
     uniforms.uRippleStrength.value = SHIELD_RIPPLE_TUNING.strength;
     uniforms.uDisplacementScale.value = SHIELD_RIPPLE_TUNING.displacementScale;
+    uniforms.uRippleTintMix.value = SHIELD_RIPPLE_TUNING.tintMix;
   }, [ripple, simTime, mat]);
 
   return <primitive object={mat} attach="material" />;

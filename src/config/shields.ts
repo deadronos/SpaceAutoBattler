@@ -160,6 +160,8 @@ export interface ShieldRippleTuning {
   strength: number;
   /** Scale of vertex displacement for ripples. */
   displacementScale: number;
+  /** Mix factor for ripple color (0=white, 1=team color). */
+  tintMix: number;
 }
 
 export const SHIELD_RIPPLE_TUNING: ShieldRippleTuning = {
@@ -175,4 +177,5 @@ export const SHIELD_RIPPLE_TUNING: ShieldRippleTuning = {
   strength: 1.7,
   minRenderAmp: 0.001,
   displacementScale: 0.15,
+  tintMix: 0.65,
 };
