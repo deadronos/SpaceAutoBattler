@@ -11,6 +11,8 @@ export interface ShieldVisualSettings {
   edgeWidth?: number;
   /** Maximum final alpha for shield material (0..1). */
   maxAlpha?: number;
+  /** Number of segments for the shield sphere geometry (width and height). Default 128. */
+  geometrySegments?: number;
   /**
    * Per-axis non-uniform scale applied to the shield mesh. This enables
    * ellipsoidal shields where Y (height) is often smaller than X/Z.
@@ -50,6 +52,7 @@ export const SHIELD_VISUAL_DEFAULTS: Required<ShieldVisualSettings> = {
   hexScale: 12,
   edgeWidth: 0.1,
   maxAlpha: 0.5,
+  geometrySegments: 128,
   shieldScale: { x: 1, y: 0.65, z: 1 },
   materialKind: 'hex',
   meshtransmission: {
@@ -74,6 +77,7 @@ export function getShieldVisuals(hull: ShipHull): Required<ShieldVisualSettings>
     hexScale: cfg.hexScale ?? defaults.hexScale,
     edgeWidth: cfg.edgeWidth ?? defaults.edgeWidth,
     maxAlpha: cfg.maxAlpha ?? defaults.maxAlpha,
+    geometrySegments: cfg.geometrySegments ?? defaults.geometrySegments,
     shieldScale: cfg.shieldScale ?? defaults.shieldScale,
     materialKind: cfg.materialKind ?? defaults.materialKind,
     meshtransmission: {
@@ -154,6 +158,10 @@ export interface ShieldRippleTuning {
   colorMul: number;
   /** Strength scalar applied to ripple contribution when affecting alpha. */
   strength: number;
+  /** Scale of vertex displacement for ripples. */
+  displacementScale: number;
+  /** Mix factor for ripple color (0=white, 1=team color). */
+  tintMix: number;
 }
 
 export const SHIELD_RIPPLE_TUNING: ShieldRippleTuning = {
@@ -168,4 +176,6 @@ export const SHIELD_RIPPLE_TUNING: ShieldRippleTuning = {
   colorMul: 1.5,
   strength: 1.7,
   minRenderAmp: 0.001,
+  displacementScale: 0.15,
+  tintMix: 0.65,
 };

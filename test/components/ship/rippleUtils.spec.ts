@@ -167,6 +167,8 @@ describe('rippleUtils', () => {
       ignoreMaxAlpha: false,
       colorMul: 0.5,
       strength: 0.7,
+      displacementScale: 0.15,
+      tintMix: 0.65,
     };
 
     it('should process empty array', () => {
