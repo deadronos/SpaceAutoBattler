@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { XP_CONFIG } from '../../../src/config/progression';
+import { XP_CONFIG } from '../../../src/config/progression.js';
 
 describe('Progression Config', () => {
   it('should have the correct damage XP multiplier', () => {
