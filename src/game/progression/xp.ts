@@ -13,7 +13,14 @@ export function awardDamageXp(
   weaponCategory?: ProjectileCategory | null,
 ): void {
   const xpGained = damageDealt * XP_CONFIG.damageXpMultiplier;
-  ship.xp += xpGained;
+
+  // If a canonical entity for this ship exists on the GameState, prefer
+  // updating that entity's ShipComponent to ensure the UI (which reads from
+  // state.queries.ships.entities / state.shipById) sees the change.
+  const targetShip = state && shipId !== undefined ? state.shipById?.get(shipId)?.ship ?? ship : ship;
+  targetShip.xp += xpGained;
+
+  // (debug logging removed)
 
   if (shouldLogProgressionEvent(state, shipId) && shipId !== undefined) {
     const weaponLabel = weaponKey ?? undefined;
@@ -32,7 +39,7 @@ export function awardDamageXp(
     });
   }
 
-  checkLevelUp(ship, state, shipId);
+  checkLevelUp(targetShip, state, shipId);
 }
 
 export function awardKillXp(
@@ -42,7 +49,8 @@ export function awardKillXp(
   shipId?: number,
 ): void {
   const xpGained = targetMaxHp * XP_CONFIG.killXpMultiplier;
-  ship.xp += xpGained;
+  const targetShip = state && shipId !== undefined ? state.shipById?.get(shipId)?.ship ?? ship : ship;
+  targetShip.xp += xpGained;
 
   if (shouldLogProgressionEvent(state, shipId) && shipId !== undefined) {
     addProgressionEvent(state, shipId, {
@@ -52,5 +60,7 @@ export function awardKillXp(
     });
   }
 
-  checkLevelUp(ship, state, shipId);
+  // (debug logging removed)
+
+  checkLevelUp(targetShip, state, shipId);
 }

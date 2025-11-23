@@ -105,6 +105,8 @@ export function ProgressionPanel(): React.ReactElement | null {
     for (const ship of ships) {
       // Get events for this ship from GameState
       const events = state.progressionEvents?.get(ship.id) || [];
+
+      // (debug logging removed)
       
       progressionShips.push({
         id: ship.id,
