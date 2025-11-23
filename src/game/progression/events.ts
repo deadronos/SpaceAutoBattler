@@ -30,6 +30,7 @@ export function addProgressionEvent(
   const nextEvent: ProgressionEvent = { ...event, ts: timestamp };
   const updated = appendCappedHistory(events, nextEvent, maxEvents);
   state.progressionEvents.set(shipId, updated);
+  // Progression events appended to GameState (logging removed).
 }
 
 /**

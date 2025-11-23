@@ -96,7 +96,7 @@ export function ProgressionPanel(): React.ReactElement | null {
     };
   }, [enabled, setPosition]);
 
-  const progressionData = useMemo<ProgressionPanelShip[] | null>(() => {
+  const progressionData = (() => {
     if (!enabled || !state) return null;
     
     const ships = state.queries.ships.entities as ShipEntity[];
@@ -125,7 +125,7 @@ export function ProgressionPanel(): React.ReactElement | null {
     });
 
     return progressionShips.slice(0, 50); // Cap at 50 ships for performance
-  }, [state, enabled, refreshTick]);
+  })();
 
   // NOTE: This effect was intentionally placed before the component's early returns
   // so the hook is executed on every render. Moving it after conditional returns
