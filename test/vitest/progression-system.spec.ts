@@ -75,7 +75,7 @@ describe('Ship Progression System', () => {
       const initialXp = testShip.xp;
       awardDamageXp(testShip, 20);
 
-      expect(testShip.xp).toBe(initialXp + 2); // 20 * 0.1 = 2 XP
+      expect(testShip.xp).toBe(initialXp + 10); // 20 * 0.5 = 10 XP
     });
 
     it('should award XP for kills', () => {
@@ -89,7 +89,7 @@ describe('Ship Progression System', () => {
       expect(testShip.level).toBe(1);
 
       // Award enough XP to level up (need 100 XP for level 2)
-      awardDamageXp(testShip, 1000); // 100 XP
+      awardDamageXp(testShip, 200); // 100 XP
 
       expect(testShip.level).toBe(2);
       expect(testShip.xp).toBe(0); // Should reset to 0 after level up
@@ -332,7 +332,7 @@ describe('Ship Progression System', () => {
       expect(testShip.level).toBe(1);
 
       // Award damage XP
-      awardDamageXp(testShip, 500); // 50 XP
+      awardDamageXp(testShip, 100); // 50 XP
 
       // Award kill XP
       awardKillXp(testShip, 100); // 50 XP = 100 total, should level up
