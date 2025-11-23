@@ -12,7 +12,7 @@ import type {
 // XP System Configuration
 export const XP_CONFIG = {
   /** XP multiplier for damage dealt (XP = damage * this value) */
-  damageXpMultiplier: 0.1,
+  damageXpMultiplier: 0.5,
   /** XP bonus for killing an enemy (XP = target.maxHp * this value) */
   killXpMultiplier: 0.5,
   /** Base XP required for level 2 */

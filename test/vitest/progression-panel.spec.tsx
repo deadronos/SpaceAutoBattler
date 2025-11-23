@@ -195,8 +195,8 @@ describe('ProgressionPanel', () => {
     expect(screen.getByText('Lv 1')).to.exist;
 
     // Check for XP display
-    expect(screen.getByText('150 / 50 XP')).to.exist;
-    expect(screen.getByText('75 / 125 XP')).to.exist;
+    expect(screen.getByText('150.0 / 50.0 XP')).to.exist;
+    expect(screen.getByText('75.0 / 125.0 XP')).to.exist;
   });
 
   it('sorts ships by level then XP', () => {
@@ -232,9 +232,9 @@ describe('ProgressionPanel', () => {
     fireEvent.click(expandButtons[0]);
 
     // Check for event details
-    expect(screen.getByText('+10 XP')).to.exist;
+    expect(screen.getByText('+10.0 XP')).to.exist;
     expect(screen.getByText('15.0 damage dealt with bullet:laser [bullet]')).to.exist;
-    expect(screen.getByText('+50 XP')).to.exist;
+    expect(screen.getByText('+50.0 XP')).to.exist;
     expect(screen.getByText('Enemy destroyed (100 HP)')).to.exist;
     expect(screen.getByText('Level 1 → 2')).to.exist;
   });

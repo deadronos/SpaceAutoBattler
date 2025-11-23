@@ -195,7 +195,7 @@ function ShipProgressionCard({ ship }: { ship: ProgressionPanelShip }): React.Re
         </div>
         <div className="ship-progression-card__xp">
           <div className="ship-progression-card__xp-text">
-            {ship.xp.toFixed(0)} / {ship.xpToNext.toFixed(0)} XP
+            {ship.xp.toFixed(1)} / {ship.xpToNext.toFixed(1)} XP
           </div>
           <div className="ship-progression-card__progress-bar">
             <div 
@@ -232,7 +232,7 @@ function ShipProgressionCard({ ship }: { ship: ProgressionPanelShip }): React.Re
 
 function EventRow({ event }: { event: ProgressionEvent }): React.ReactElement {
   const timeAgo = formatTimeAgo(event.ts);
-  const deltaText = event.deltaXp ? `+${event.deltaXp.toFixed(0)} XP` : '';
+  const deltaText = event.deltaXp ? `+${event.deltaXp.toFixed(1)} XP` : '';
   
   const iconClass = `progression-event__icon progression-event__icon--${event.type}`;
   
