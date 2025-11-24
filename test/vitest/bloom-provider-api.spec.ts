@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { render } from '@testing-library/react';
 import React from 'react';
 import { Canvas } from '@react-three/fiber';
-import { BloomProvider, useBloomContext } from '../../src/renderer/BloomProvider.js';
+import { BloomProvider, useBloomContext } from '../../src/renderer/bloom/index.js';
 import { Object3D } from 'three';
 
 function TestConsumer() {

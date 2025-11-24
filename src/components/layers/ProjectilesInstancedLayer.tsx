@@ -15,7 +15,7 @@ import {
   createInstancedMaterial,
   type InstancedMaterialInfo,
 } from '../../renderer/materialRegistry.js';
-import { useBloomRegistration } from '../../renderer/BloomProvider.js';
+import { useBloomRegistration } from '../../renderer/bloom/index.js';
 import { createInstancedLayerManager } from './instancedLayer.js';
 import type { InstancedLayerManager } from './types.js';
 import { createSaturationWarningState, warnOnSaturation } from './saturationWarning.js';

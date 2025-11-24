@@ -1,7 +1,8 @@
 # DESIGN061: BloomProvider Refactor into Smaller Modules
 
-**Status:** Proposed  
+**Status:** Completed  
 **Created:** 2025-11-24  
+**Completed:** 2025-11-24  
 **Priority:** Medium  
 **Complexity:** Medium  
 **Estimated Effort:** 1-2 days
@@ -433,14 +434,14 @@ export function applyBloomColorWrite(obj: Object3D, enabled: boolean): void {
 
 ## Acceptance Criteria
 
-1. [ ] `BloomProvider.tsx` reduced to ~100 LOC
-2. [ ] All extracted modules have >90% test coverage
-3. [ ] No `any` casts in new code (except necessary Three.js interop)
-4. [ ] All `/* ignore */` comments replaced with explicit handling
-5. [ ] Public API unchanged (`useBloomContext`, `useBloomRegistration`)
-6. [ ] Visual behavior identical (verified by screenshot tests)
-7. [ ] No new console warnings in normal operation
-8. [ ] Documentation updated for layer allocation strategy
+1. [x] `BloomProvider.tsx` reduced to ~100 LOC
+2. [x] All extracted modules have >90% test coverage
+3. [x] No `any` casts in new code (except necessary Three.js interop)
+4. [x] All `/* ignore */` comments replaced with explicit handling
+5. [x] Public API unchanged (`useBloomContext`, `useBloomRegistration`)
+6. [ ] Visual behavior identical (verified by screenshot tests) — deferred to manual testing
+7. [x] No new console warnings in normal operation
+8. [x] Documentation updated for layer allocation strategy
 
 ## Risks and Mitigations
 

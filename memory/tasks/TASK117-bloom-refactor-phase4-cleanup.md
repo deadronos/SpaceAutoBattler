@@ -1,7 +1,8 @@
 # TASK117: BloomProvider Refactor Phase 4 — Cleanup and Documentation
 
-**Status:** Pending  
+**Status:** Completed  
 **Created:** 2025-11-24  
+**Completed:** 2025-11-25  
 **Design:** [DESIGN061](../designs/DESIGN061-bloom-provider-refactor.md)  
 **Estimated Effort:** 30 minutes  
 **Priority:** Medium
@@ -72,35 +73,44 @@ This is mostly mechanical cleanup but important for maintaining a clean codebase
 
 ## Progress Tracking
 
-**Overall Status:** Not Started — 0%
+**Overall Status:** Completed — 100%
 
 ### Subtasks
 
 | ID | Description | Status | Updated | Notes |
 |----|-------------|--------|---------|-------|
-| 4.1 | Create `index.ts` with public exports | Not Started | — | — |
-| 4.2 | Update external imports | Not Started | — | — |
-| 4.3 | Move BloomProvider to bloom folder | Not Started | — | — |
-| 4.4 | Remove duplicate code | Not Started | — | — |
-| 4.5 | Update documentation | Not Started | — | — |
-| 4.6 | Update DESIGN061 status | Not Started | — | — |
-| 4.7 | Final validation | Not Started | — | — |
+| 4.1 | Create `index.ts` with public exports | Complete | 2025-11-25 | Clean public API |
+| 4.2 | Update external imports | Complete | 2025-11-25 | 16 files updated |
+| 4.3 | Move BloomProvider to bloom folder | Complete | 2025-11-25 | Relative imports updated |
+| 4.4 | Remove duplicate code | Complete | 2025-11-25 | Old file deleted |
+| 4.5 | Update documentation | Complete | 2025-11-25 | AGENTS.md comprehensive |
+| 4.6 | Update DESIGN061 status | Complete | 2025-11-25 | Marked complete |
+| 4.7 | Final validation | Complete | 2025-11-25 | 751 tests, lint clean |
 
 ## Progress Log
 
-_No progress yet._
+### 2025-11-25
+
+- Created `src/renderer/bloom/index.ts` with public API exports
+- Updated 16 external consumer files to use new `bloom/index.js` import path
+- Moved `BloomProvider.tsx` to `src/renderer/bloom/` with relative imports
+- Deleted old `src/renderer/BloomProvider.tsx`
+- Updated `src/renderer/bloom/AGENTS.md` with comprehensive module documentation
+- Updated `DESIGN061-bloom-provider-refactor.md` status to Completed
+- Updated `memory/designs/_index.md` to move DESIGN061 to Completed section
+- Final validation: `npm run typecheck` passes, 751 tests pass, lint clean
 
 ## Acceptance Criteria
 
-- [ ] `src/renderer/bloom/index.ts` exists with clean public API
-- [ ] All external imports updated to new path
-- [ ] `BloomProvider.tsx` moved to `src/renderer/bloom/`
-- [ ] No duplicate code remaining
-- [ ] Documentation updated with layer allocation strategy
-- [ ] DESIGN061 marked as Completed
-- [ ] `npm run typecheck` passes
-- [ ] `npm test` passes
-- [ ] `npm run lint` passes
+- [x] `src/renderer/bloom/index.ts` exists with clean public API
+- [x] All external imports updated to new path
+- [x] `BloomProvider.tsx` moved to `src/renderer/bloom/`
+- [x] No duplicate code remaining
+- [x] Documentation updated with layer allocation strategy
+- [x] DESIGN061 marked as Completed
+- [x] `npm run typecheck` passes
+- [x] `npm test` passes
+- [x] `npm run lint` passes
 
 ## Files to Create/Modify
 

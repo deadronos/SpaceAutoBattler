@@ -1,19 +1,32 @@
+/**
+ * BloomProvider — React context provider for selective bloom rendering.
+ *
+ * This component manages the bloom registration system, handling:
+ * - Layer allocation for bloom groups
+ * - Object registration/unregistration
+ * - Material colorWrite state management
+ * - Layer mask preservation and restoration
+ */
+
 import React, { createContext, useContext, useMemo, useRef } from 'react';
 import type { Camera, Object3D } from 'three';
-import { POSTPROCESSING_CONFIG } from '../config/renderer.js';
-import type { BloomContextValue, BloomRegistrationOptions, LayerAllocatorState } from './bloom/types.js';
-import { FALLBACK_GROUP, LAYER_START, LAYER_MAX } from './bloom/constants.js';
-import { createAllocatorState, computeLayerMask } from './bloom/layerAllocator.js';
-import { ensureSelectionForGroup, addObjectToSelection, removeObjectFromSelection } from './bloom/selectionManager.js';
-import { saveLayerMasks, restoreLayerMasks, enableMainPassLayer } from './bloom/layerMaskManager.js';
-import { saveColorWriteState, applyBloomColorWrite, restoreColorWriteState, syncColorWriteForObjects } from './bloom/materialManager.js';
+import { POSTPROCESSING_CONFIG } from '../../config/renderer.js';
+import type { BloomContextValue, BloomRegistrationOptions, LayerAllocatorState } from './types.js';
+import { FALLBACK_GROUP, LAYER_START } from './constants.js';
+import { createAllocatorState, computeLayerMask } from './layerAllocator.js';
+import { ensureSelectionForGroup, addObjectToSelection, removeObjectFromSelection } from './selectionManager.js';
+import { saveLayerMasks, restoreLayerMasks, enableMainPassLayer } from './layerMaskManager.js';
+import { saveColorWriteState, applyBloomColorWrite, restoreColorWriteState, syncColorWriteForObjects } from './materialManager.js';
 import type { Selection } from 'postprocessing';
-
-// Re-export types for backward compatibility
-export type { BloomRegistrationOptions } from './bloom/types.js';
 
 const Ctx = createContext<BloomContextValue | null>(null);
 
+/**
+ * Provider component that enables selective bloom rendering for child components.
+ *
+ * @param enabled - Whether bloom postprocessing is active
+ * @param children - Child components that can register for bloom
+ */
 export function BloomProvider({ enabled, children }: { enabled: boolean; children?: React.ReactNode }): React.ReactElement | null {
   const selectionsRef = useRef<Map<string, Selection>>(new Map());
   const objectGroupRef = useRef<Map<Object3D, string>>(new Map());
@@ -110,10 +123,21 @@ export function BloomProvider({ enabled, children }: { enabled: boolean; childre
   return <Ctx.Provider value={value}>{children ?? null}</Ctx.Provider>;
 }
 
+/**
+ * Hook to access the bloom context.
+ *
+ * @returns The bloom context value, or null if not within a BloomProvider
+ */
 export function useBloomContext(): BloomContextValue | null {
   return useContext(Ctx);
 }
 
+/**
+ * Hook to register an object for selective bloom rendering.
+ *
+ * @param ref - React ref to the Object3D to register
+ * @param options - Registration options (group name, active state)
+ */
 export function useBloomRegistration<T extends Object3D>(
   ref: React.RefObject<T | null>,
   options?: BloomRegistrationOptions,

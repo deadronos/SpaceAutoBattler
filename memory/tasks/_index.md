@@ -16,13 +16,14 @@ This folder contains canonical task documents named using the pattern `TASKNNN-t
 
 ## Pending
 
-- [TASK114](TASK114-bloom-refactor-phase1-types-constants.md) — BloomProvider Refactor Phase 1: Extract types and constants into dedicated modules (design: DESIGN061). (2025-11-24)
-- [TASK115](TASK115-bloom-refactor-phase2-pure-logic.md) — BloomProvider Refactor Phase 2: Extract pure logic modules with unit tests (design: DESIGN061). (2025-11-24)
-- [TASK116](TASK116-bloom-refactor-phase3-provider.md) — BloomProvider Refactor Phase 3: Refactor BloomProvider to use extracted modules (design: DESIGN061). (2025-11-24)
-- [TASK117](TASK117-bloom-refactor-phase4-cleanup.md) — BloomProvider Refactor Phase 4: Cleanup, documentation, and final integration (design: DESIGN061). (2025-11-24)
+_None currently pending._
 
 ## Completed
 
+- [TASK117](TASK117-bloom-refactor-phase4-cleanup.md) — BloomProvider Refactor Phase 4: Cleanup, documentation, and final integration (design: DESIGN061). (Completed 2025-11-25)
+- [TASK116](TASK116-bloom-refactor-phase3-provider.md) — BloomProvider Refactor Phase 3: Refactor BloomProvider to use extracted modules (design: DESIGN061). (Completed 2025-11-25)
+- [TASK115](TASK115-bloom-refactor-phase2-pure-logic.md) — BloomProvider Refactor Phase 2: Extract pure logic modules with unit tests (design: DESIGN061). (Completed 2025-11-24)
+- [TASK114](TASK114-bloom-refactor-phase1-types-constants.md) — BloomProvider Refactor Phase 1: Extract types and constants into dedicated modules (design: DESIGN061). (Completed 2025-11-24)
 - [TASK113](TASK113-fix-checks-and-motion.md) — Restored test fixtures with `shipById` maps, motion stats, and updated motion hot-path expectations; checks now pass. (2025-11-17)
 - [TASK109](TASK109-motion-system-hotpath-tuning.md) — Narrow motion system hot loop to commanded ships, add idle early-outs, and eliminate per-ship allocations (design: DESIGN057). (2025-11-17)
 

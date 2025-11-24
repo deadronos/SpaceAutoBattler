@@ -12,7 +12,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { render, act, cleanup } from '@testing-library/react';
 import React from 'react';
 import { Mesh, BoxGeometry, MeshBasicMaterial, Object3D } from 'three';
-import { BloomProvider, useBloomContext, useBloomRegistration } from '../../../../src/renderer/BloomProvider.js';
+import { BloomProvider, useBloomContext, useBloomRegistration } from '../../../../src/renderer/bloom/index.js';
 import { LEGACY_USER_DATA_KEYS } from '../../../../src/renderer/bloom/constants.js';
 
 describe('BloomProvider integration', () => {

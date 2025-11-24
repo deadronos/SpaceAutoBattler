@@ -2,7 +2,7 @@ import React from 'react';
 import { describe, it, expect } from 'vitest';
 import { render } from '@testing-library/react';
 import { Mesh, SphereGeometry } from 'three';
-import { BloomProvider, useBloomRegistration } from '../../src/renderer/BloomProvider.js';
+import { BloomProvider, useBloomRegistration } from '../../src/renderer/bloom/index.js';
 import { createShieldHexShaderMaterial } from '../../src/renderer/materialRegistry.js';
 
 describe('BloomProvider integration with shield materials (TDD)', () => {

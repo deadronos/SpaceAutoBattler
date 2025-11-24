@@ -17,10 +17,10 @@ This folder contains canonical design documents named using the pattern `DESIGNN
 - [DESIGN058](DESIGN058-projectile-advance-perf.md) — Projectile advance hotpath performance improvements. (Proposed) (2025-11-16)
 - [DESIGN059](DESIGN059-projectile-instancing-perf.md) — Projectile instancing and instanced layer performance improvements. (Proposed) (2025-11-16)
 - [DESIGN060](DESIGN060-ship-interpolation-perf.md) — Ship interpolation and visual smoothing performance modes. (Proposed) (2025-11-16)
-- [DESIGN061](DESIGN061-bloom-provider-refactor.md) — Refactor BloomProvider into smaller focused modules for testability and maintainability. (Proposed) (2025-11-24)
 
 ## Completed
 
+- [DESIGN061](DESIGN061-bloom-provider-refactor.md) — Refactor BloomProvider into smaller focused modules for testability and maintainability. (Completed) (2025-11-24)
 - [DESIGN035](DESIGN035-star-disk-material.md) — Star disk material design and shader notes; baseline implementation validated in tests. (2025-10-27)
 - [DESIGN042](DESIGN042-centralize-projectile-info.md) — Centralized projectile metadata and helpers; reduced duplication across projectile systems. (2025-10-27)
 - [DESIGN043](DESIGN043-materials-presets-and-factory.md) — Material presets and factory pattern for consistent material creation and testing. (2025-10-27)
