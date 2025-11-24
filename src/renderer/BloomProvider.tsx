@@ -2,48 +2,22 @@ import React, { createContext, useContext, useMemo, useRef } from 'react';
 import { Selection } from 'postprocessing';
 import type { Camera, Object3D } from 'three';
 import { POSTPROCESSING_CONFIG } from '../config/renderer.js';
+import type { BloomContextValue, BloomRegistrationOptions } from './bloom/types.js';
+import { FALLBACK_GROUP, LAYER_START, LAYER_MAX, LEGACY_USER_DATA_KEYS } from './bloom/constants.js';
 
-export interface BloomRegistrationOptions {
-  /** Optional group name that maps to renderer bloom configuration. */
-  group?: string;
-  /** Whether the object should participate in bloom. */
-  active?: boolean;
-}
+// Re-export types for backward compatibility
+export type { BloomRegistrationOptions } from './bloom/types.js';
 
-type BloomCtx = {
-  enabled: boolean;
-  /** Default group used when components omit explicit configuration. */
-  defaultGroup: string;
-  /** Stable selections per bloom group. */
-  selections: Map<string, Selection>;
-  register: (obj: Object3D | null | undefined, options?: BloomRegistrationOptions) => void;
-  unregister: (obj: Object3D | null | undefined) => void;
-  /**
-   * Compute the union bitmask of all selection layers.
-   * Useful for telling a Camera which layers must be visible to render
-   * selective-bloom objects (e.g. star layer, muzzle flashes, etc.).
-   */
-  getSelectionLayerMask: () => number;
-  /**
-   * Enable all selection layers on a given camera and return the
-   * camera's previous layers.mask so callers can restore it.
-   */
-  enableCameraLayers: (camera: Camera) => number;
-};
-
-const Ctx = createContext<BloomCtx | null>(null);
-
-const FALLBACK_GROUP = 'default';
-const LAYER_START = POSTPROCESSING_CONFIG.bloomLayerStart ?? 11;
+const Ctx = createContext<BloomContextValue | null>(null);
 
 // Helper: ensure a provided layer index is an integer in the valid Three.js
-// range [0..31]. If input is not finite, return a safe fallback (LAYER_START).
+// range [0..LAYER_MAX]. If input is not finite, return a safe fallback (LAYER_START).
 function normalizeLayerIndex(value: unknown): number {
   const n = Number(value);
-  if (!Number.isFinite(n)) return Math.max(0, Math.min(Math.floor(Number(LAYER_START) || 11), 31));
+  if (!Number.isFinite(n)) return Math.max(0, Math.min(Math.floor(Number(LAYER_START) || 11), LAYER_MAX));
   // integer clamp
   const i = Math.floor(n);
-  return Math.max(0, Math.min(i, 31));
+  return Math.max(0, Math.min(i, LAYER_MAX));
 }
 
 export function BloomProvider({ enabled, children }: { enabled: boolean; children?: React.ReactNode }): React.ReactElement | null {
@@ -78,7 +52,7 @@ export function BloomProvider({ enabled, children }: { enabled: boolean; childre
         }
         selection.layer = layer;
         // advance next layer; keep it normalized as well
-        nextLayerRef.current = Math.min(layer + 1, 31);
+        nextLayerRef.current = Math.min(layer + 1, LAYER_MAX);
         map.set(group, selection);
       }
   // Keep selection non-exclusive by default for configured groups.
@@ -127,7 +101,7 @@ export function BloomProvider({ enabled, children }: { enabled: boolean; childre
           console.debug('[BloomProvider] register allocating layer', { group, candidate, layer, LAYER_START });
         }
         selection.layer = layer;
-        nextLayerRef.current = Math.min(layer + 1, 31);
+        nextLayerRef.current = Math.min(layer + 1, LAYER_MAX);
         selectionsRef.current.set(group, selection);
       }
   if (selection && !selection.has(obj)) {
@@ -292,7 +266,7 @@ export function BloomProvider({ enabled, children }: { enabled: boolean; childre
     } catch { /* ignore overall */ }
   }, [enabled]);
 
-  const value = useMemo<BloomCtx>(
+  const value = useMemo<BloomContextValue>(
     () => ({
       enabled,
       defaultGroup,
@@ -308,7 +282,7 @@ export function BloomProvider({ enabled, children }: { enabled: boolean; childre
         let mask = 0;
         for (const sel of selectionsRef.current.values()) {
           const layer = (sel as any).layer;
-          if (typeof layer === 'number' && Number.isFinite(layer) && layer >= 0 && layer <= 31) {
+          if (typeof layer === 'number' && Number.isFinite(layer) && layer >= 0 && layer <= LAYER_MAX) {
             mask |= (1 << layer);
           }
         }
@@ -325,7 +299,7 @@ export function BloomProvider({ enabled, children }: { enabled: boolean; childre
           let m = 0;
           for (const sel of selectionsRef.current.values()) {
             const layer = (sel as any).layer;
-            if (typeof layer === 'number' && Number.isFinite(layer) && layer >= 0 && layer <= 31) {
+            if (typeof layer === 'number' && Number.isFinite(layer) && layer >= 0 && layer <= LAYER_MAX) {
               m |= (1 << layer);
             }
           }
@@ -343,7 +317,7 @@ export function BloomProvider({ enabled, children }: { enabled: boolean; childre
   return <Ctx.Provider value={value}>{children ?? null}</Ctx.Provider>;
 }
 
-export function useBloomContext(): BloomCtx | null {
+export function useBloomContext(): BloomContextValue | null {
   return useContext(Ctx);
 }
 

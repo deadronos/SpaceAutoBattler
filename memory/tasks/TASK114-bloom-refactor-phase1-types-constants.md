@@ -1,7 +1,8 @@
 # TASK114: BloomProvider Refactor Phase 1 — Extract Types and Constants
 
-**Status:** Pending  
+**Status:** Completed  
 **Created:** 2025-11-24  
+**Completed:** 2025-11-24  
 **Design:** [DESIGN061](../designs/DESIGN061-bloom-provider-refactor.md)  
 **Estimated Effort:** 1 hour  
 **Priority:** Medium
@@ -58,30 +59,53 @@ Key considerations:
 
 ## Progress Tracking
 
-**Overall Status:** Not Started — 0%
+**Overall Status:** Completed — 100%
 
 ### Subtasks
 
 | ID | Description | Status | Updated | Notes |
 |----|-------------|--------|---------|-------|
-| 1.1 | Create directory structure | Not Started | — | — |
-| 1.2 | Extract types to `types.ts` | Not Started | — | — |
-| 1.3 | Extract constants to `constants.ts` | Not Started | — | — |
-| 1.4 | Update BloomProvider imports | Not Started | — | — |
-| 1.5 | Validate typecheck and tests | Not Started | — | — |
+| 1.1 | Create directory structure | Complete | 2025-11-24 | Created `src/renderer/bloom/` with `AGENTS.md` |
+| 1.2 | Extract types to `types.ts` | Complete | 2025-11-24 | Extracted `BloomRegistrationOptions`, `BloomContextValue`, `LayerAllocatorState`, `MaterialColorWriteState`, `BloomUserDataKeys` |
+| 1.3 | Extract constants to `constants.ts` | Complete | 2025-11-24 | Extracted `LAYER_START`, `LAYER_MAX`, `LAYER_MIN`, `FALLBACK_GROUP`, `BLOOM_USER_DATA_KEYS`, `LEGACY_USER_DATA_KEYS` |
+| 1.4 | Update BloomProvider imports | Complete | 2025-11-24 | Updated imports and re-exports for backward compatibility |
+| 1.5 | Validate typecheck and tests | Complete | 2025-11-24 | `npm run typecheck` and `npm test` pass (643 tests) |
 
 ## Progress Log
 
-_No progress yet._
+### 2025-11-24
+
+- Created `src/renderer/bloom/` directory structure
+- Created `src/renderer/bloom/AGENTS.md` with module guidelines
+- Created `src/renderer/bloom/types.ts` with:
+  - `BloomRegistrationOptions` interface
+  - `BloomContextValue` interface (renamed from `BloomCtx` for clarity)
+  - `LayerAllocatorState` interface (for Phase 2)
+  - `MaterialColorWriteState` interface (for Phase 2)
+  - `BloomUserDataKeys` interface
+- Created `src/renderer/bloom/constants.ts` with:
+  - `LAYER_START` (from config, defaults to 11)
+  - `LAYER_MAX = 31` (Three.js layer limit)
+  - `LAYER_MIN = 0`
+  - `FALLBACK_GROUP = 'default'`
+  - `BLOOM_USER_DATA_KEYS` (new standardized keys)
+  - `LEGACY_USER_DATA_KEYS` (backward compatibility)
+- Updated `BloomProvider.tsx`:
+  - Import types from `./bloom/types.js`
+  - Import constants from `./bloom/constants.js`
+  - Re-export `BloomRegistrationOptions` for backward compatibility
+  - Updated type annotations to use `BloomContextValue`
+  - Replaced hardcoded `31` with `LAYER_MAX` constant
+- Ran validation: `npm run typecheck` passes, `npm test` passes (643 tests)
 
 ## Acceptance Criteria
 
-- [ ] `src/renderer/bloom/types.ts` exists with all type definitions
-- [ ] `src/renderer/bloom/constants.ts` exists with all constants
-- [ ] `BloomProvider.tsx` imports from new modules
-- [ ] `npm run typecheck` passes
-- [ ] `npm test` passes
-- [ ] No visual regression in bloom behavior
+- [x] `src/renderer/bloom/types.ts` exists with all type definitions
+- [x] `src/renderer/bloom/constants.ts` exists with all constants
+- [x] `BloomProvider.tsx` imports from new modules
+- [x] `npm run typecheck` passes
+- [x] `npm test` passes
+- [x] No visual regression in bloom behavior (verified via test suite)
 
 ## Files to Create/Modify
 
