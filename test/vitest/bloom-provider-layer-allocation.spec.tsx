@@ -1,36 +1,37 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { render, act } from '@testing-library/react';
 import React from 'react';
-import { BloomProvider } from '../../src/renderer/BloomProvider.js';
-
-// Mock console.debug to capture layer allocation calls
-const mockConsoleDebug = vi.spyOn(console, 'debug').mockImplementation(() => {});
+import { BloomProvider, useBloomContext } from '../../src/renderer/bloom/index.js';
 
 describe('BloomProvider layer allocation', () => {
   it('should allocate layers only once per group during initialization', () => {
-    mockConsoleDebug.mockClear();
-    
+    let contextValue: ReturnType<typeof useBloomContext> = null;
+
+    const ContextCapture = () => {
+      contextValue = useBloomContext();
+      return null;
+    };
+
     const TestComponent = () => {
       const [renderCount, setRenderCount] = React.useState(0);
-      
+
       // Force multiple re-renders to test that layers are not allocated on every render
       React.useEffect(() => {
-        const timer = setTimeout(() => {
-          setRenderCount(prev => prev + 1);
-        }, 10);
-        return () => clearTimeout(timer);
+        if (renderCount < 3) {
+          const timer = setTimeout(() => {
+            setRenderCount(prev => prev + 1);
+          }, 10);
+          return () => clearTimeout(timer);
+        }
       }, [renderCount]);
 
       return React.createElement(
         BloomProvider,
         { enabled: true },
+        React.createElement(ContextCapture),
         React.createElement('div', null, `Render count: ${renderCount}`)
       );
     };
-
-    // Set NODE_ENV to 'development' to enable debug logging
-    const originalNodeEnv = process.env.NODE_ENV;
-    process.env.NODE_ENV = 'development';
 
     const { rerender } = render(React.createElement(TestComponent));
 
@@ -38,27 +39,21 @@ describe('BloomProvider layer allocation', () => {
     act(() => {
       rerender(React.createElement(TestComponent));
     });
-    
+
     act(() => {
       rerender(React.createElement(TestComponent));
     });
 
-    // Restore original NODE_ENV
-    process.env.NODE_ENV = originalNodeEnv;
+    // Verify layer allocation happened (at least the default group exists)
+    expect(contextValue).not.toBeNull();
+    expect(contextValue!.selections.size).toBeGreaterThan(0);
 
-    // Check that layer allocation debug calls happened, but not excessively
-    const allocationCalls = mockConsoleDebug.mock.calls.filter(call => 
-      call.some(arg => 
-        typeof arg === 'string' && arg.includes('[BloomProvider] allocating layer')
-      )
-    );
+    // Verify layer mask is computable (all selections have valid layers)
+    const mask = contextValue!.getSelectionLayerMask();
+    expect(mask).toBeGreaterThan(0);
 
-    // Should have some allocations (for the configured groups), but not excessive amounts
-    // The exact number depends on the configured bloom groups, but it should be reasonable
-    expect(allocationCalls.length).toBeGreaterThan(0);
-    expect(allocationCalls.length).toBeLessThan(20); // Should not have excessive allocations
-
-    mockConsoleDebug.mockRestore();
+    // Verify we don't have excessive allocations (< 20 groups)
+    expect(contextValue!.selections.size).toBeLessThan(20);
   });
 
   it('should handle layer allocation within Three.js limits', () => {

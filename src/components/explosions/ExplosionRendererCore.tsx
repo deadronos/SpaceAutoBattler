@@ -1,7 +1,7 @@
 import React, { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Color, InstancedMesh, Object3D, Quaternion, Vector3 } from 'three';
-import { useBloomRegistration } from '../../renderer/BloomProvider.js';
+import { useBloomRegistration } from '../../renderer/bloom/index.js';
 import { useGameState } from '../../game/context.js';
 import { createSaturationWarningState, warnOnSaturation } from '../layers/saturationWarning.js';
 import {

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { render, waitFor } from '@testing-library/react';
 import React from 'react';
-import { BloomProvider, useBloomContext } from '../../src/renderer/BloomProvider.js';
+import { BloomProvider, useBloomContext } from '../../src/renderer/bloom/index.js';
 import { Mesh, MeshBasicMaterial, BoxGeometry, Object3D } from 'three';
 
 function RegisterTest({ setResult }: { setResult: (r: any) => void }) {

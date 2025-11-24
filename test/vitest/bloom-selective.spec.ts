@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { render } from '@testing-library/react';
 import React from 'react';
 import { Canvas } from '@react-three/fiber';
-import { BloomProvider } from '../../src/renderer/BloomProvider.js';
+import { BloomProvider } from '../../src/renderer/bloom/index.js';
 import { Postprocessing } from '../../src/components/Postprocessing.js';
 
 describe('selective bloom effect', () => {

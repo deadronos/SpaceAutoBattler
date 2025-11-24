@@ -6,7 +6,7 @@ import type React from 'react';
 import { useOptionalGameState } from '../game/context.js';
 import { CAMERA_DEFAULTS, FOG_DEFAULTS, WORLD_SIZE } from '../game/config.js';
 import { useUiStore } from '../game/uiStore.js';
-import { BloomProvider } from '../renderer/BloomProvider.js';
+import { BloomProvider } from '../renderer/bloom/index.js';
 import PostprocessingLazy from './PostprocessingLazy.js';
 import { ParticleTrails } from './ParticleTrails.js';
 import { HudOverlayCollector } from './HudOverlayCollector.js';

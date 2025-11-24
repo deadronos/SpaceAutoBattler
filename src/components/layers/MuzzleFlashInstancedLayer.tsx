@@ -13,7 +13,7 @@ import { SphereGeometry } from 'three';
 import type { Archetype, GameEntity, TurretEntity, MuzzleFlash } from '../../types/index.js';
 import { useArchetypeEntities } from '../../hooks/useArchetypeEntities.js';
 import { useGameState } from '../../game/context.js';
-import { useBloomRegistration } from '../../renderer/BloomProvider.js';
+import { useBloomRegistration } from '../../renderer/bloom/index.js';
 import { getInstanceFriendlyMaterial } from '../../renderer/materialRegistry.js';
 import { createInstancedLayerManager } from './instancedLayer.js';
 import { computeMuzzleFlashVisuals } from './muzzleFlashMath.js';
