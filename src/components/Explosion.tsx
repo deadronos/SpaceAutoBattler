@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import type { Mesh } from 'three';
-import { useBloomRegistration } from '../renderer/BloomProvider.js';
+import { useBloomRegistration } from '../renderer/bloom/index.js';
 import { getMaterial } from '../renderer/materialRegistry.js';
 
 // Placeholder explosion mesh; when explosion entities are added, this can be used.

@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef } from 'react';
 import { useThree, useFrame } from '@react-three/fiber';
 import { type EffectComposer, type FXAAEffect, type SelectiveBloomEffect } from 'postprocessing';
 import { type WebGLRenderer, type Scene, type Camera, type WebGLRenderTarget, Color } from 'three';
-import { useBloomContext } from '../renderer/BloomProvider.js';
+import { useBloomContext } from '../renderer/bloom/index.js';
 import { POSTPROCESSING_CONFIG } from '../config/renderer.js';
 import {
   createComposer,

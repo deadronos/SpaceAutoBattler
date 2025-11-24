@@ -6,7 +6,7 @@ import type { ShipEntity } from '../../types/index.js';
 import { getShieldVisuals, SHIELD_RIPPLE_TUNING, TEAM_COLORS, HULL_TINT } from '../../config/renderer.js';
 import { getMaterial } from '../../renderer/materialRegistry.js';
 import { useOptionalGameState } from '../../game/context.js';
-import { useBloomRegistration } from '../../renderer/BloomProvider.js';
+import { useBloomRegistration } from '../../renderer/bloom/index.js';
 import type { HullMaterial } from './ShipModel.js';
 import { applyHullTint } from './ShipModel.js';
 import { computeShieldFraction, validateShieldVisibility } from './shieldUtils.js';

@@ -11,7 +11,7 @@ import {
 } from 'three';
 import type { ShipEntity, ShipHull } from '../../types/index.js';
 import { THRUSTER_GLOW_CONFIG } from '../../config/renderer.js';
-import { useBloomRegistration } from '../../renderer/BloomProvider.js';
+import { useBloomRegistration } from '../../renderer/bloom/index.js';
 import { getInstanceFriendlyMaterial } from '../../renderer/materialRegistry.js';
 import { createSaturationWarningState, warnOnSaturation } from '../layers/saturationWarning.js';
 import { createInstancedLayerManager } from '../layers/instancedLayer.js';

@@ -7,7 +7,7 @@
 
 import type { RefObject } from 'react';
 import type { Mesh, ShaderMaterial } from 'three';
-import { useBloomRegistration } from '../renderer/BloomProvider.js';
+import { useBloomRegistration } from '../renderer/bloom/index.js';
 
 /**
  * Register the star disk mesh with the bloom effect system.

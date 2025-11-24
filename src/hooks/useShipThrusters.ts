@@ -13,7 +13,7 @@ import {
 } from 'three';
 import type { ShipEntity } from '../types/index.js';
 import { THRUSTER_GLOW_CONFIG } from '../config/renderer.js';
-import { useBloomContext } from '../renderer/BloomProvider.js';
+import { useBloomContext } from '../renderer/bloom/index.js';
 import type { SmoothingConfig } from './useShipInterpolation.js';
 
 export interface ThrusterMaterialEntry {
