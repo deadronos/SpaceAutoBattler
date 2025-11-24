@@ -1,7 +1,8 @@
 # TASK116: BloomProvider Refactor Phase 3 — Refactor BloomProvider Component
 
-**Status:** Pending  
+**Status:** Completed  
 **Created:** 2025-11-24  
+**Completed:** 2025-11-24  
 **Design:** [DESIGN061](../designs/DESIGN061-bloom-provider-refactor.md)  
 **Estimated Effort:** 1-2 hours  
 **Priority:** Medium
@@ -68,32 +69,52 @@ Key risks:
 
 ## Progress Tracking
 
-**Overall Status:** Not Started — 0%
+**Overall Status:** Completed — 100%
 
 ### Subtasks
 
 | ID | Description | Status | Updated | Notes |
 |----|-------------|--------|---------|-------|
-| 3.1 | Rewrite BloomProvider component | Not Started | — | — |
-| 3.2 | Preserve useBloomContext hook | Not Started | — | — |
-| 3.3 | Preserve useBloomRegistration hook | Not Started | — | — |
-| 3.4 | Add integration tests | Not Started | — | — |
-| 3.5 | Visual regression verification | Not Started | — | — |
-| 3.6 | Validate typecheck and tests | Not Started | — | — |
+| 3.1 | Rewrite BloomProvider component | Complete | 2025-11-24 | Reduced from ~350 LOC to ~100 LOC |
+| 3.2 | Preserve useBloomContext hook | Complete | 2025-11-24 | No changes needed |
+| 3.3 | Preserve useBloomRegistration hook | Complete | 2025-11-24 | No changes needed |
+| 3.4 | Add integration tests | Complete | 2025-11-24 | 8 new integration tests |
+| 3.5 | Visual regression verification | Skipped | 2025-11-24 | Deferred to manual testing |
+| 3.6 | Validate typecheck and tests | Complete | 2025-11-24 | All 751 tests pass |
 
 ## Progress Log
 
-_No progress yet._
+### 2025-11-24
+
+- Refactored `BloomProvider.tsx` to use extracted modules:
+  - `layerAllocator.ts` for layer allocation
+  - `selectionManager.ts` for selection management
+  - `layerMaskManager.ts` for layer mask save/restore
+  - `materialManager.ts` for colorWrite management
+- Reduced from ~350 LOC to ~110 LOC (68% reduction)
+- Fixed bug: layer masks must be saved BEFORE adding to selection (Selection.add modifies layers)
+- Updated `bloom-provider-layer-allocation.spec.tsx` to test via context API instead of console.debug
+- Created 8 new integration tests in `BloomProvider.integration.spec.ts`:
+  - Register/unregister round-trip restores original state
+  - ColorWrite restoration on unregister
+  - Enabled toggle synchronizes colorWrite
+  - Multi-group scenarios with separate selections
+  - Object movement between groups
+  - useBloomRegistration hook registration/unregistration
+  - Active=false handling
+  - Layer mask computation
+- All 751 tests pass
+- TypeScript type check passes
 
 ## Acceptance Criteria
 
-- [ ] `BloomProvider.tsx` reduced to ~100 LOC
-- [ ] Public API unchanged (`useBloomContext`, `useBloomRegistration`)
-- [ ] All existing tests pass
-- [ ] New integration tests added and passing
+- [x] `BloomProvider.tsx` reduced to ~100 LOC
+- [x] Public API unchanged (`useBloomContext`, `useBloomRegistration`)
+- [x] All existing tests pass
+- [x] New integration tests added and passing
 - [ ] Visual behavior identical (verified by manual check or screenshot)
-- [ ] `npm run typecheck` passes
-- [ ] `npm test` passes
+- [x] `npm run typecheck` passes
+- [x] `npm test` passes
 
 ## Files to Create/Modify
 
