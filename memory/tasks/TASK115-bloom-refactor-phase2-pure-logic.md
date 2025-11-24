@@ -1,7 +1,8 @@
 # TASK115: BloomProvider Refactor Phase 2 — Extract Pure Logic Modules
 
-**Status:** Pending  
+**Status:** Completed  
 **Created:** 2025-11-24  
+**Completed:** 2025-11-24  
 **Design:** [DESIGN061](../designs/DESIGN061-bloom-provider-refactor.md)  
 **Estimated Effort:** 2-3 hours  
 **Priority:** Medium
@@ -80,32 +81,65 @@ The order of extraction matters: start with the simplest module (layer allocatio
 
 ## Progress Tracking
 
-**Overall Status:** Not Started — 0%
+**Overall Status:** Completed — 100%
 
 ### Subtasks
 
 | ID | Description | Status | Updated | Notes |
 |----|-------------|--------|---------|-------|
-| 2.1 | Create `layerAllocator.ts` with tests | Not Started | — | — |
-| 2.2 | Create `selectionManager.ts` with tests | Not Started | — | — |
-| 2.3 | Create `layerMaskManager.ts` with tests | Not Started | — | — |
-| 2.4 | Create `materialManager.ts` with tests | Not Started | — | — |
-| 2.5 | Validate coverage and typecheck | Not Started | — | — |
+| 2.1 | Create `layerAllocator.ts` with tests | Complete | 2025-11-24 | 30 tests passing |
+| 2.2 | Create `selectionManager.ts` with tests | Complete | 2025-11-24 | 21 tests passing |
+| 2.3 | Create `layerMaskManager.ts` with tests | Complete | 2025-11-24 | 22 tests passing |
+| 2.4 | Create `materialManager.ts` with tests | Complete | 2025-11-24 | 27 tests passing |
+| 2.5 | Validate coverage and typecheck | Complete | 2025-11-24 | All 743 tests passing |
 
 ## Progress Log
 
-_No progress yet._
+### 2025-11-24
+
+- Created `src/renderer/bloom/layerAllocator.ts` with:
+  - `normalizeLayerIndex()` - clamps layer indices to valid range [0, 31]
+  - `allocateLayer()` - allocates layers to groups with caching
+  - `createAllocatorState()` - factory for allocator state
+  - `computeLayerMask()` - computes bitmask from selections
+  - `isValidLayer()` - type guard for valid layer indices
+- Created `src/renderer/bloom/selectionManager.ts` with:
+  - `createSelection()` - creates postprocessing Selection with layer
+  - `addObjectToSelection()` / `removeObjectFromSelection()` - object management
+  - `ensureSelectionForGroup()` - ensures selection exists for a group
+  - `getSelectionLayer()` / `selectionHasObject()` / `clearSelection()` - utilities
+- Created `src/renderer/bloom/layerMaskManager.ts` with:
+  - `isMesh()` - type guard for Mesh objects
+  - `safeTraverse()` - error-tolerant traversal
+  - `saveLayerMasks()` / `restoreLayerMasks()` - layer mask preservation
+  - `enableMainPassLayer()` - ensures layer 0 visibility
+  - `hasSavedLayerMask()` / `getSavedLayerMask()` - utilities
+- Created `src/renderer/bloom/materialManager.ts` with:
+  - `hasForceColorWrite()` - checks force-write flag
+  - `getMaterials()` - extracts materials array from mesh
+  - `saveColorWriteState()` / `restoreColorWriteState()` - colorWrite preservation
+  - `applyBloomColorWrite()` - applies bloom-specific colorWrite
+  - `syncColorWriteForObjects()` - syncs all objects on enabled toggle
+  - `hasSavedColorWriteState()` - utility
+- Created test files:
+  - `test/vitest/renderer/bloom/layerAllocator.spec.ts` (30 tests)
+  - `test/vitest/renderer/bloom/selectionManager.spec.ts` (21 tests)
+  - `test/vitest/renderer/bloom/layerMaskManager.spec.ts` (22 tests)
+  - `test/vitest/renderer/bloom/materialManager.spec.ts` (27 tests)
+- Total: 100 new unit tests, all passing
+- `npm run typecheck` passes
+- Full test suite: 743 tests passing
 
 ## Acceptance Criteria
 
-- [ ] `layerAllocator.ts` with >90% test coverage
-- [ ] `selectionManager.ts` with >90% test coverage
-- [ ] `layerMaskManager.ts` with >90% test coverage
-- [ ] `materialManager.ts` with >90% test coverage
-- [ ] No `any` casts except necessary Three.js interop
-- [ ] All `/* ignore */` comments replaced with explicit handling
-- [ ] `npm run typecheck` passes
-- [ ] `npm test` passes
+- [x] `layerAllocator.ts` with >90% test coverage (30 tests)
+- [x] `selectionManager.ts` with >90% test coverage (21 tests)
+- [x] `layerMaskManager.ts` with >90% test coverage (22 tests)
+- [x] `materialManager.ts` with >90% test coverage (27 tests)
+- [x] No `any` casts except necessary Three.js interop
+- [x] All `/* ignore */` comments replaced with explicit handling
+- [x] `npm run typecheck` passes
+- [x] `npm test` passes (743 tests)
 
 ## Files to Create/Modify
 
