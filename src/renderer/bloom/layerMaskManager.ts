@@ -7,6 +7,7 @@
 
 import type { Object3D, Mesh } from 'three';
 import { LEGACY_USER_DATA_KEYS } from './constants.js';
+import { reportMaterialError } from '../../utils/errorReporting.js';
 
 /**
  * Type guard to check if an Object3D is a Mesh.
@@ -29,13 +30,14 @@ export function safeTraverse(obj: Object3D, callback: (child: Object3D) => void)
     obj.traverse((child) => {
       try {
         callback(child);
-      } catch {
-        // Individual child callback errors are silently ignored
-        // This matches the original behavior but could be enhanced with logging
+      } catch (error) {
+        // Expected: Individual child callback may fail on disposed objects
+        reportMaterialError('safeTraverse.callback', 'Object3D', error);
       }
     });
-  } catch {
-    // Traversal itself failed - object may be in an invalid state
+  } catch (error) {
+    // Expected: Traversal may fail if object is in an invalid state
+    reportMaterialError('safeTraverse', 'Object3D', error);
   }
 }
 

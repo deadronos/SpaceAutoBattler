@@ -17,6 +17,7 @@ This folder contains canonical design documents named using the pattern `DESIGNN
 - [DESIGN058](DESIGN058-projectile-advance-perf.md) — Projectile advance hotpath performance improvements. (Proposed) (2025-11-16)
 - [DESIGN059](DESIGN059-projectile-instancing-perf.md) — Projectile instancing and instanced layer performance improvements. (Proposed) (2025-11-16)
 - [DESIGN060](DESIGN060-ship-interpolation-perf.md) — Ship interpolation and visual smoothing performance modes. (Proposed) (2025-11-16)
+- [DESIGN062](DESIGN062-error-handling-centralization.md) — Centralized error handling and silent catch block remediation. (Proposed) (2025-11-25)
 
 ## Completed
 

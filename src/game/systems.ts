@@ -30,6 +30,7 @@ import {
   recordSubsystemFailure,
 } from './simulationQueue.js';
 import { safeSnapshot } from './safeSnapshot.js';
+import { reportQueryError } from '../utils/errorReporting.js';
 
 export { updateDecisionSystem, fireProjectile, findNearestEnemy };
 
@@ -67,12 +68,15 @@ export function updateGame(state: GameState, delta: number): void {
         // Capture a small, safe snapshot for diagnostics and continue.
         const snap = safeSnapshot(state);
         recordSubsystemFailure(state, name, error, snap);
-      } catch {
+      } catch (snapError) {
         // Best-effort: don't allow diagnostics to throw and break the tick.
+        // Expected: safeSnapshot may fail if state is corrupted
+        reportQueryError(`runSafely.snapshot.${name}`, snapError);
         try {
           recordSubsystemFailure(state, name, error);
-        } catch {
-          // swallow
+        } catch (recordError) {
+          // Expected: Recording may fail if simulation state is invalid
+          reportQueryError(`runSafely.record.${name}`, recordError);
         }
       }
     }

@@ -12,6 +12,7 @@ import {
   buildEffects,
   type BloomContextLike,
 } from './postprocessing/buildEffects.js';
+import { reportMaterialError, reportWebGLError } from '../utils/errorReporting.js';
 
 type Props = {
   enabled?: boolean;
@@ -34,10 +35,16 @@ export function Postprocessing({ enabled = false }: Props): null {
     if (setup) {
       try {
         setup.dispose();
-      } catch {}
+      } catch (error) {
+        // Expected: Composer may already be disposed
+        reportWebGLError('composer.dispose', error);
+      }
       try {
         setup.restoreRendererState();
-      } catch {}
+      } catch (error) {
+        // Expected: Renderer state may already be restored
+        reportWebGLError('composer.restoreRendererState', error);
+      }
     }
 
     composerRef.current = null;
@@ -126,14 +133,20 @@ export function Postprocessing({ enabled = false }: Props): null {
           if (bloomCtx && typeof (bloomCtx as any).enableCameraLayers === 'function') {
             prevCameraLayersMask = (bloomCtx as any).enableCameraLayers(camera as any);
           }
-        } catch { /* ignore */ }
+        } catch (error) {
+          // Expected: BloomContext may not expose enableCameraLayers
+          reportMaterialError('enableCameraLayers', 'BloomContext', error);
+        }
 
         composer.render(delta);
 
         // Restore camera layers to previous mask so other systems are unaffected
         try {
           camera.layers.mask = prevCameraLayersMask;
-        } catch { /* ignore */ }
+        } catch (error) {
+          // Expected: Camera layers may be read-only in some contexts
+          reportMaterialError('restoreCameraLayers', 'camera', error);
+        }
       } catch (err) {
         // eslint-disable-next-line no-console
         console.warn('Postprocessing render failed:', err);

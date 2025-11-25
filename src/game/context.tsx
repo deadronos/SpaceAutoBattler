@@ -4,6 +4,7 @@ import type { GameState, GameEntity } from '../types/index.js';
 import { createGameState, disposeGameState, spawnInitialFleets } from './state.js';
 import { updateGame } from './systems.js';
 import { mirrorHudHealthBarsFlag, useUiStore } from './uiStore.js';
+import { reportE2EError, reportConfigError } from '../utils/errorReporting.js';
 
 let warnedAiDisableContext = false;
 function warnAiDisableInContext(): void {
@@ -11,8 +12,9 @@ function warnAiDisableInContext(): void {
   warnedAiDisableContext = true;
   try {
     globalThis.console?.warn?.('AI v2 disable attempts are ignored in the simulation context.');
-  } catch {
-    // ignore logging failures
+  } catch (error) {
+    // Expected: Console may not be available in some environments
+    reportConfigError('console.warn', error);
   }
 }
 
@@ -97,7 +99,9 @@ export function GameProvider({ children, fallback = null }: GameProviderProps): 
                       };
                     }),
                   };
-                } catch {
+                } catch (error) {
+                  // Expected: Ship data may be unavailable during state transitions
+                  reportE2EError('sampleShipMotion', error);
                   return { tick: created.simulation.lastTickIndex, time: created.time, ships: [] };
                 }
               },
@@ -105,8 +109,9 @@ export function GameProvider({ children, fallback = null }: GameProviderProps): 
               tick: (steps = 1, dt = 1 / 60) => {
                 try {
                   for (let i = 0; i < steps; i += 1) updateGame(created, dt);
-                } catch {
-                  /* ignore */
+                } catch (error) {
+                  // Expected: Physics may fail during stress testing
+                  reportE2EError('tick', error);
                 }
               },
               // Start an interval to progress the sim even if R3F frames don't run (e.g., WebKit headless)
@@ -119,8 +124,9 @@ export function GameProvider({ children, fallback = null }: GameProviderProps): 
                     () => updateGame(created, dt),
                     Math.max(1, Math.round(dt * 1000)),
                   );
-                } catch {
-                  /* ignore */
+                } catch (error) {
+                  // Expected: setInterval may fail in restricted contexts
+                  reportE2EError('startAutoTick', error);
                 }
               },
               stopAutoTick: () => {
@@ -131,15 +137,17 @@ export function GameProvider({ children, fallback = null }: GameProviderProps): 
                     clearInterval(w[key]);
                     w[key] = null;
                   }
-                } catch {
-                  /* ignore */
+                } catch (error) {
+                  // Expected: clearInterval may fail if interval was never started
+                  reportE2EError('stopAutoTick', error);
                 }
               },
             };
           }
         }
-      } catch {
-        // best-effort; do not let diagnostics interfere with app behavior
+      } catch (error) {
+        // Expected: E2E hooks are best-effort; must not interfere with app behavior
+        reportE2EError('e2e-setup', error);
       }
       if (!cancelled) {
         setState(created);
@@ -182,8 +190,9 @@ export function GameProvider({ children, fallback = null }: GameProviderProps): 
         if (!store.aiV2Enabled) {
           store.setAiV2Enabled(true);
         }
-      } catch {
-        // ignore store sync failures
+      } catch (error) {
+        // Expected: Store may be in invalid state during hot reload
+        reportConfigError('aiV2Enabled.sync', error);
       }
     }
     state.ai.enabled = true;

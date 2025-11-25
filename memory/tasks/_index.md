@@ -16,7 +16,7 @@ This folder contains canonical task documents named using the pattern `TASKNNN-t
 
 ## Pending
 
-_None currently pending._
+- [TASK118](TASK118-error-handling-centralization.md) — Centralized error handling and silent catch block remediation (design: DESIGN062). (Pending) (2025-11-25)
 
 ## Completed
 

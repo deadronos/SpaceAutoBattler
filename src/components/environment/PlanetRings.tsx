@@ -6,6 +6,7 @@ import { colorFromConfig } from '../../utils/color.js';
 import { RENDER_ORDER_TRANSLUCENT_ADDITIVE } from '../../renderer/sceneLayerOrder.js';
 import { useUiStore } from '../../game/uiStore.js';
 import { isCopilotDebugEnabled } from '../../utils/copilotDebug.js';
+import { reportMaterialError } from '../../utils/errorReporting.js';
 
 interface PlanetRingsProps {
   /** Inner radius of the rings */
@@ -270,8 +271,9 @@ export function PlanetRings({
       (mat as any).userData.__copilot_forceColorWrite = !(bloomOnly === true);
       // Also expose an explicit bloomOnly flag for clarity/debugging.
       (mat as any).userData.__copilot_bloomOnly = Boolean(bloomOnly === true);
-    } catch {
-      /* ignore host environment errors */
+    } catch (error) {
+      // Expected: Material userData may be read-only in some environments
+      reportMaterialError('userData', 'ShaderMaterial', error);
     }
 
     return mat;
@@ -294,7 +296,10 @@ export function PlanetRings({
       // we want the material to remain color-write enabled always.
       (bm as any).userData.__copilot_forceColorWrite = !(bloomOnly === true);
       (bm as any).userData.__copilot_bloomOnly = Boolean(bloomOnly === true);
-    } catch { /* ignore */ }
+    } catch (error) {
+      // Expected: Material userData may be read-only in some environments
+      reportMaterialError('userData', 'MeshBasicMaterial', error);
+    }
     return bm;
   }, [tintColor, opacity, bloomOnly]);
 
@@ -323,10 +328,19 @@ export function PlanetRings({
         (materialToUse as any).uniforms.uLightDir.value = [lightDir.x, lightDir.y, lightDir.z];
         try {
           (materialToUse as any).blending = postprocessingEnabled ? AdditiveBlending : NormalBlending;
-        } catch { /* ignore */ }
-        try { (materialToUse as any).needsUpdate = true; } catch { /* ignore */ }
+        } catch (error) {
+          // Expected: Blending mode may be read-only
+          reportMaterialError('blending', 'ringMaterial', error);
+        }
+        try { (materialToUse as any).needsUpdate = true; } catch (error) {
+          // Expected: Material may be disposed during React unmount cycle
+          reportMaterialError('needsUpdate', 'ringMaterial', error);
+        }
       }
-    } catch { /* ignore */ }
+    } catch (error) {
+      // Expected: Material may be disposed during React unmount cycle
+      reportMaterialError('uniformUpdate.postprocessing', 'ringMaterial', error);
+    }
   }, [materialToUse, postprocessingEnabled, opacity, brightness, bandFrequency, bandStrength, bandNoiseScale, bandDarkness, planetCenter, planetRadius, shadowStrength, penumbra, lightDir]);
 
   // Keep uniforms in sync when props change
@@ -342,10 +356,14 @@ export function PlanetRings({
         (materialToUse as any).uniforms.uPlanetCenter.value = [planetCenter.x, planetCenter.y, planetCenter.z];
         (materialToUse as any).uniforms.uPlanetRadius.value = planetRadius;
         (materialToUse as any).uniforms.uPenumbra.value = penumbra;
-        try { (materialToUse as any).needsUpdate = true; } catch { /* ignore */ }
+        try { (materialToUse as any).needsUpdate = true; } catch (error) {
+          // Expected: Material may be disposed during React unmount cycle
+          reportMaterialError('needsUpdate', 'ringMaterial', error);
+        }
       }
-    } catch {
-      /* ignore host environment errors */
+    } catch (error) {
+      // Expected: Material may be disposed during React unmount cycle
+      reportMaterialError('uniformUpdate.props', 'ringMaterial', error);
     }
   }, [materialToUse, opacity, innerRadius, outerRadius, brightness, fresnelStrength, bandFrequency, planetCenter, planetRadius, penumbra]);
 
@@ -365,7 +383,10 @@ export function PlanetRings({
             } else if (typeof (materialToUse as any).opacity === 'number') {
               (materialToUse as any).opacity = Math.max(0, Math.min(n, 1));
             }
-            try { (materialToUse as any).needsUpdate = true; } catch { /* ignore */ }
+            try { (materialToUse as any).needsUpdate = true; } catch (error) {
+              // Expected: Material may be disposed
+              reportMaterialError('debug.needsUpdate', 'ringMaterial', error);
+            }
             return { set: true, value: (materialToUse as any).uniforms?.uOpacity?.value ?? (materialToUse as any).opacity };
           } catch (e) {
             return { set: false, reason: String(e) };
@@ -382,12 +403,14 @@ export function PlanetRings({
             return { set: false, reason: String(e) };
           }
         };
-      } catch {
-        /* swallow debug attach errors */
+      } catch (error) {
+        // Expected: Debug helper attachment may fail in some environments
+        reportMaterialError('debug.attach', 'ringMaterial', error);
       }
     }
-  } catch {
-    /* swallow host environment errors */
+  } catch (error) {
+    // Expected: isCopilotDebugEnabled check may fail in some environments
+    reportMaterialError('debug.check', 'ringMaterial', error);
   }
 
   useFrame((_, delta) => {
