@@ -11,6 +11,7 @@ import {
   createMainSequenceStarMaterial,
   disposeMainSequenceStarMaterial,
 } from '../renderer/starDiskMaterial.js';
+import { reportConfigError, reportMaterialError } from '../utils/errorReporting.js';
 
 /**
  * Create and manage the star disk shader material.
@@ -34,8 +35,9 @@ export function useStarMaterial(debugEnabled: boolean): ShaderMaterial | null {
         if (typeof localStorage !== 'undefined') {
           localStorage.setItem('copilot_star_material_created', String(Date.now()));
         }
-      } catch {
-        // Ignore storage errors
+      } catch (error) {
+        // Expected: localStorage may be unavailable in some environments
+        reportConfigError('localStorage', error);
       }
       
       // Set DOM attribute for debugging
@@ -43,8 +45,9 @@ export function useStarMaterial(debugEnabled: boolean): ShaderMaterial | null {
         if (typeof document !== 'undefined') {
           document.documentElement.setAttribute('data-star-material-created', '1');
         }
-      } catch {
-        // Ignore DOM errors
+      } catch (error) {
+        // Expected: DOM may be unavailable in some environments
+        reportConfigError('domAttribute', error);
       }
       
       // DEV: Create a transient DOM indicator when the material object is
@@ -63,14 +66,16 @@ export function useStarMaterial(debugEnabled: boolean): ShaderMaterial | null {
             setTimeout(() => {
               try {
                 el.remove();
-              } catch {
-                // Ignore removal errors
+              } catch (error) {
+                // Expected: Element may already be removed
+                reportMaterialError('debugIndicator.remove', 'DOM', error);
               }
             }, 4000);
           }
         }
-      } catch {
-        // Swallow debug-only errors
+      } catch (error) {
+        // Expected: Debug indicator creation may fail in some environments
+        reportMaterialError('debugIndicator.create', 'DOM', error);
       }
       
       return mat;

@@ -37,3 +37,100 @@
   font-size: 11px;
   opacity: 0.8;
 }
+
+/* Error Counts Panel */
+.error-counts-panel {
+  position: fixed;
+  right: 12px;
+  bottom: 12px;
+  min-width: 200px;
+  max-width: 400px;
+  background: rgba(40, 20, 20, 0.92);
+  color: #f5d0d0;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-family:
+    Inter,
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    'Helvetica Neue',
+    Arial;
+  font-size: 13px;
+  z-index: 9999;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 100, 100, 0.2);
+}
+
+.error-counts-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+}
+
+.error-counts-title {
+  font-weight: 600;
+}
+
+.error-counts-toggle {
+  font-size: 10px;
+  opacity: 0.7;
+}
+
+.error-counts-body {
+  margin-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 10px;
+}
+
+.error-counts-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.error-count-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+}
+
+.error-category {
+  text-transform: capitalize;
+  opacity: 0.85;
+}
+
+.error-count {
+  font-weight: 600;
+  color: #ffaaaa;
+}
+
+.error-details {
+  margin-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 8px;
+}
+
+.error-details-title {
+  font-size: 11px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  opacity: 0.8;
+}
+
+.error-detail-row {
+  font-size: 11px;
+  margin-bottom: 4px;
+  word-break: break-word;
+}
+
+.error-detail-category {
+  color: #ffc0c0;
+  margin-right: 6px;
+}
+
+.error-detail-message {
+  opacity: 0.9;
+}
