@@ -18,6 +18,7 @@ import { ensureSelectionForGroup, addObjectToSelection, removeObjectFromSelectio
 import { saveLayerMasks, restoreLayerMasks, enableMainPassLayer } from './layerMaskManager.js';
 import { saveColorWriteState, applyBloomColorWrite, restoreColorWriteState, syncColorWriteForObjects } from './materialManager.js';
 import type { Selection } from 'postprocessing';
+import { reportMaterialError } from '../../utils/errorReporting.js';
 
 const Ctx = createContext<BloomContextValue | null>(null);
 
@@ -113,7 +114,10 @@ export function BloomProvider({ enabled, children }: { enabled: boolean; childre
         if (!camera?.layers) return 0;
         const prev = camera.layers.mask;
         const mask = computeLayerMask(selectionsRef.current);
-        try { camera.layers.mask = prev | mask; } catch { /* ignore */ }
+        try { camera.layers.mask = prev | mask; } catch (error) {
+          // Expected: Camera layers may be read-only in some contexts
+          reportMaterialError('enableCameraLayers', 'camera', error);
+        }
         return prev;
       },
     }),

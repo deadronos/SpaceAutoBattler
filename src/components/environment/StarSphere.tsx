@@ -10,6 +10,7 @@ import { useStarTextures } from '../../hooks/useStarTextures.js';
 import { useStarMaterial } from '../../hooks/useStarMaterial.js';
 import { updateMainSequenceStarUniforms } from '../../renderer/starDiskMaterial.js';
 import { isCopilotDebugEnabled } from '../../utils/copilotDebug.js';
+import { reportMaterialError, reportWebGLError } from '../../utils/errorReporting.js';
 
 interface StarSphereProps {
   config?: StarLightConfig;
@@ -115,9 +116,13 @@ export function StarSphere({
           (mat as any).depthTest = true;
           (mat as any).depthWrite = false;
           (mat as any).needsUpdate = true;
-        } catch { /* ignore */ }
-      } catch {
-        /* ignore */
+        } catch (error) {
+          // Expected: Material may be disposed during React unmount cycle
+          reportMaterialError('depthSettings', 'ShaderMaterial', error);
+        }
+      } catch (error) {
+        // Expected: Material assignment may fail if mesh is disposed
+        reportMaterialError('materialAssignment', 'visualMesh', error);
       }
     }
   }, [appliedMaterial]);
@@ -144,7 +149,10 @@ export function StarSphere({
     // Dispose previous depth material we created
     const prev = depthMaterialRef.current as any;
     if (prev && prev.dispose) {
-      try { prev.dispose(); } catch { /* ignore */ }
+      try { prev.dispose(); } catch (error) {
+        // Expected: Material may already be disposed
+        reportMaterialError('dispose', 'depthMaterial', error);
+      }
     }
 
     if (appliedMaterial && (appliedMaterial as any).isShaderMaterial) {
@@ -169,26 +177,39 @@ export function StarSphere({
         depthMat.polygonOffsetFactor = -1;
         depthMat.polygonOffsetUnits = 1;
         depthMaterialRef.current = depthMat;
-        try { depthMesh.material = depthMat as any; } catch { /* ignore */ }
+        try { depthMesh.material = depthMat as any; } catch (error) {
+          // Expected: Mesh may be disposed during unmount
+          reportMaterialError('depthMeshAssignment', 'ShaderMaterial', error);
+        }
       } catch (err) {
         // Fall back to basic depth-only material if shader material creation fails
+        reportMaterialError('shaderCreation', 'depthShaderMaterial', err);
         const basic = new MeshBasicMaterial({ color: '#000', depthWrite: true, depthTest: true });
         (basic as any).colorWrite = false;
         depthMaterialRef.current = basic;
-        try { depthMesh.material = basic as any; } catch { /* ignore */ }
+        try { depthMesh.material = basic as any; } catch (error) {
+          // Expected: Mesh may be disposed during unmount
+          reportMaterialError('depthMeshAssignment', 'BasicMaterial', error);
+        }
       }
     } else {
       // No shader available: simple depth-only basic material
       const basic = new MeshBasicMaterial({ color: '#000', depthWrite: true, depthTest: true });
       (basic as any).colorWrite = false;
       depthMaterialRef.current = basic;
-      try { depthMesh.material = basic as any; } catch { /* ignore */ }
+      try { depthMesh.material = basic as any; } catch (error) {
+        // Expected: Mesh may be disposed during unmount
+        reportMaterialError('depthMeshAssignment', 'BasicMaterial', error);
+      }
     }
 
     return () => {
       const p = depthMaterialRef.current as any;
       if (p && p.dispose) {
-        try { p.dispose(); } catch { /* ignore */ }
+        try { p.dispose(); } catch (error) {
+          // Expected: Material may already be disposed
+          reportMaterialError('cleanup.dispose', 'depthMaterial', error);
+        }
       }
       depthMaterialRef.current = null;
     };
@@ -202,23 +223,34 @@ export function StarSphere({
     try {
       const raw = (gl as any).getContext ? (gl as any).getContext() : null;
       if (raw && typeof raw.enable === 'function' && typeof (raw as any).SAMPLE_ALPHA_TO_COVERAGE !== 'undefined') {
-        try { raw.enable((raw as any).SAMPLE_ALPHA_TO_COVERAGE); } catch { /* ignore */ }
+        try { raw.enable((raw as any).SAMPLE_ALPHA_TO_COVERAGE); } catch (error) {
+          // Expected: Some browsers/contexts don't support alpha-to-coverage
+          reportWebGLError('SAMPLE_ALPHA_TO_COVERAGE', error);
+        }
       }
-    } catch {
-      /* ignore */
+    } catch (error) {
+      // Expected: getContext may not be available in all environments
+      reportWebGLError('getContext', error);
     }
     // Also try to enable alphaToCoverage on the shader material if the
     // runtime/three.js version exposes the property.
     try {
       if (appliedMaterial) {
-        try { (appliedMaterial as any).alphaToCoverage = true; } catch { /* ignore */ }
+        try { (appliedMaterial as any).alphaToCoverage = true; } catch (error) {
+          // Expected: Property may not exist on all material types
+          reportMaterialError('alphaToCoverage', 'appliedMaterial', error);
+        }
       }
       const depthMat = depthMaterialRef.current;
       if (depthMat) {
-        try { (depthMat as any).alphaToCoverage = true; } catch { /* ignore */ }
+        try { (depthMat as any).alphaToCoverage = true; } catch (error) {
+          // Expected: Property may not exist on all material types
+          reportMaterialError('alphaToCoverage', 'depthMaterial', error);
+        }
       }
-    } catch {
-      /* ignore */
+    } catch (error) {
+      // Expected: Material access may fail during unmount
+      reportMaterialError('alphaToCoverage.outer', 'materials', error);
     }
   }, [gl, appliedMaterial, enableAlphaToCoverage]);
 

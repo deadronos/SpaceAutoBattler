@@ -1,5 +1,6 @@
 import type { GameEntity, GameState, ShipEntity, TurretEntity } from '../types/index.js';
 import { unregisterTurret } from './turretRegistry.js';
+import { reportPhysicsError, reportLifecycleError, reportQueryError } from '../utils/errorReporting.js';
 
 export function disposeGameState(state: GameState): void {
   for (const entity of [...state.world.entities]) {
@@ -17,16 +18,18 @@ export function destroyEntity(state: GameState, entity: GameEntity): void {
   if (entity.collider && entity.collider.isValid()) {
     try {
       state.physicsWorld.removeCollider(entity.collider, true);
-    } catch {
-      // Collider may already be removed by Rapier when the rigid body is removed.
+    } catch (error) {
+      // Expected: Rapier removes colliders automatically when rigid body is freed
+      reportPhysicsError('removeCollider', entity.id, error);
     }
   }
 
   if (entity.rigidBody && entity.rigidBody.isValid()) {
     try {
       state.physicsWorld.removeRigidBody(entity.rigidBody);
-    } catch {
-      // ignore
+    } catch (error) {
+      // Expected: Rigid body may be invalidated by WASM runtime during cleanup
+      reportPhysicsError('removeRigidBody', entity.id, error);
     }
   }
 
@@ -40,15 +43,17 @@ export function destroyEntity(state: GameState, entity: GameEntity): void {
           for (const turret of Array.from(set)) {
             try {
               destroyEntity(state, turret as unknown as GameEntity);
-            } catch {
-              // continue destroying siblings
+            } catch (error) {
+              // Expected: Sibling turret may already be destroyed; continue cleanup
+              reportLifecycleError('destroy', 'Turret', (turret as TurretEntity).id, error);
             }
           }
           map.delete((entity as ShipEntity).id);
         }
       }
-    } catch {
-      // ignore fallback
+    } catch (error) {
+      // Expected: Ship cleanup races with turret destruction
+      reportLifecycleError('destroy', 'Ship', (entity as ShipEntity).id, error);
     }
   }
 
@@ -59,13 +64,15 @@ export function destroyEntity(state: GameState, entity: GameEntity): void {
       if (parentId != null) {
         try {
           unregisterTurret(state, parentId, turret);
-        } catch {
-          // ignore unregister failures
+        } catch (error) {
+          // Expected: Parent ship may already be destroyed
+          reportLifecycleError('destroy', 'TurretUnregister', turret.id, error);
         }
       }
     }
-  } catch {
-    // ignore type mismatches
+  } catch (error) {
+    // Expected: Entity type check may fail on corrupted state
+    reportLifecycleError('destroy', 'TurretTypeCheck', entity.id, error);
   }
 
   state.world.remove(entity as GameEntity);
@@ -79,7 +86,8 @@ export function destroyEntity(state: GameState, entity: GameEntity): void {
         if (index >= 0) query.entities.splice(index, 1);
       }
     }
-  } catch {
-    // ignore defensive cleanup failures
+  } catch (error) {
+    // Expected: Query structure may be modified during iteration
+    reportQueryError('entityCleanup', error);
   }
 }

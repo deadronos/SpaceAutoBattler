@@ -5,6 +5,7 @@
  * diagnostics where accidental property traversal can trigger Rapier panics.
  */
 import type { GameState } from '../types/index.js';
+import { reportQueryError } from '../utils/errorReporting.js';
 
 function isPrimitive(v: unknown): boolean {
   return v === null || (typeof v !== 'object' && typeof v !== 'function');
@@ -16,7 +17,9 @@ export function isWasmBacked(value: unknown): boolean {
     const ctor = (value as Record<string, unknown>).constructor as { name?: string } | undefined;
     const name = ctor?.name ?? '';
     return /World|RigidBody|Collider|EventQueue|Rapier|Rigid/.test(name);
-  } catch {
+  } catch (error) {
+    // Expected: Some objects may have getters that throw
+    reportQueryError('isWasmBacked', error);
     return false;
   }
 }
@@ -37,7 +40,9 @@ export function sanitizeForLog(value: unknown, depth = 2): unknown {
         } else {
           out.push(sanitizeForLog(el, depth - 1));
         }
-      } catch {
+      } catch (error) {
+        // Expected: Array element access may throw on proxy objects
+        reportQueryError('sanitizeForLog.array', error);
         out.push('[Error]');
       }
     }
@@ -59,12 +64,16 @@ export function sanitizeForLog(value: unknown, depth = 2): unknown {
         } else {
           out[k] = sanitizeForLog(v, depth - 1);
         }
-      } catch {
+      } catch (error) {
+        // Expected: Property access may throw on proxy or getter
+        reportQueryError(`sanitizeForLog.prop.${k}`, error);
         out[k] = '[Error]';
       }
     }
     return out;
-  } catch {
+  } catch (error) {
+    // Expected: Object may be unserializable (circular, proxy, etc.)
+    reportQueryError('sanitizeForLog.object', error);
     return '[Unserializable]';
   }
 }
@@ -83,7 +92,9 @@ export function safeSnapshot(state: GameState): Record<string, unknown> {
         return Array.isArray(state.queries.ships.entities)
           ? state.queries.ships.entities.length
           : undefined;
-      } catch {
+      } catch (error) {
+        // Expected: Query may be invalidated during snapshot
+        reportQueryError('safeSnapshot.ships', error);
         return undefined;
       }
     })();
@@ -93,7 +104,9 @@ export function safeSnapshot(state: GameState): Record<string, unknown> {
         return Array.isArray(state.queries.projectiles.entities)
           ? state.queries.projectiles.entities.length
           : undefined;
-      } catch {
+      } catch (error) {
+        // Expected: Query may be invalidated during snapshot
+        reportQueryError('safeSnapshot.projectiles', error);
         return undefined;
       }
     })();
@@ -103,7 +116,9 @@ export function safeSnapshot(state: GameState): Record<string, unknown> {
         return Array.isArray(state.queries.turrets.entities)
           ? state.queries.turrets.entities.length
           : undefined;
-      } catch {
+      } catch (error) {
+        // Expected: Query may be invalidated during snapshot
+        reportQueryError('safeSnapshot.turrets', error);
         return undefined;
       }
     })();
@@ -136,7 +151,9 @@ export function safeSnapshot(state: GameState): Record<string, unknown> {
         1,
       ),
     };
-  } catch {
+  } catch (error) {
+    // Expected: State may be corrupted during error handling
+    reportQueryError('safeSnapshot', error);
     return { error: 'safeSnapshot failed' };
   }
 }
