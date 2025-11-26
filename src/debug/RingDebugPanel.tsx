@@ -1,6 +1,13 @@
 import React, { useEffect, useState } from 'react';
+import type { ShaderMaterial } from 'three';
 import './debugPanel.css';
 import { isCopilotDebugEnabled } from '../utils/copilotDebug.js';
+import type { PlanetRingsUniforms } from '../types/renderer.js';
+
+// Debug window interface for ring material access
+interface CopilotDebugWindow extends Window {
+  __copilot_ringMaterial?: ShaderMaterial & { uniforms: PlanetRingsUniforms };
+}
 
 // Minimal dev-only overlay for tweaking ring shadow and penumbra.
 // Automatically reads/writes values from `window.__copilot_ringMaterial` if available.
@@ -9,7 +16,8 @@ export default function RingDebugPanel(): React.ReactElement | null {
   const enabled = isCopilotDebugEnabled();
   if (!enabled) return null;
 
-  const mat: any = (typeof window !== 'undefined' ? (window as any).__copilot_ringMaterial : null);
+  const debugWindow = typeof window !== 'undefined' ? (window as CopilotDebugWindow) : null;
+  const mat = debugWindow?.__copilot_ringMaterial ?? null;
 
   const initialShadow = mat?.uniforms?.uShadowStrength?.value ?? 0.6;
   const initialPenumbra = mat?.uniforms?.uPenumbra?.value ?? 0.04;
@@ -18,7 +26,7 @@ export default function RingDebugPanel(): React.ReactElement | null {
   const [penumbra, setPenumbra] = useState<number>(initialPenumbra);
 
   useEffect(() => {
-    const m: any = (window as any).__copilot_ringMaterial;
+    const m = (window as CopilotDebugWindow).__copilot_ringMaterial;
     if (!m || !m.uniforms) return;
     try {
       m.uniforms.uShadowStrength.value = shadow;

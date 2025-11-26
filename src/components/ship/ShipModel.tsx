@@ -1,12 +1,19 @@
 import { useEffect, useMemo } from 'react';
-import { Color } from 'three';
+import { Color, Group, Material, Mesh, Object3D, MeshStandardMaterial } from 'three';
 import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { useGLTF } from '@react-three/drei';
 import type { ShipHull } from '../../types/index.js';
+import type { MaterialWithUserData } from '../../types/renderer.js';
 import { SHIP_MODEL_PATHS } from '../../assets/ships.js';
 
+/** Interface for materials that have color properties */
+interface ColoredMaterial extends Material {
+  color: Color;
+  emissive?: Color;
+}
+
 export interface HullMaterial {
-  material: any;
+  material: ColoredMaterial;
   originalColor: Color;
   originalEmissive?: Color;
 }
@@ -17,7 +24,7 @@ export function resolveModelPath(modelKey?: string): string {
 }
 
 export function useShipModel(modelKey?: string): {
-  scene: any | null;
+  scene: Group | null;
   hasValidPath: boolean;
 } {
   const modelPath = resolveModelPath(modelKey);
@@ -29,8 +36,18 @@ export function useShipModel(modelKey?: string): {
   return { scene, hasValidPath };
 }
 
+/** Type guard to check if an Object3D is a Mesh with material */
+function isMeshWithMaterial(obj: Object3D): obj is Mesh {
+  return 'isMesh' in obj && (obj as Mesh).isMesh && 'material' in obj;
+}
+
+/** Type guard to check if a material has a color property */
+function isColoredMaterial(m: Material): m is ColoredMaterial {
+  return 'color' in m && (m as ColoredMaterial).color instanceof Color;
+}
+
 export function useHullMaterials(
-  scene: any | null,
+  scene: Group | null,
 ): React.MutableRefObject<HullMaterial[]> {
   const hullMaterialsRef = { current: [] as HullMaterial[] };
 
@@ -38,18 +55,18 @@ export function useHullMaterials(
     hullMaterialsRef.current = [];
     if (!scene) return;
 
-    scene.traverse((obj: any) => {
-      if (obj && obj.isMesh && obj.material) {
+    scene.traverse((obj: Object3D) => {
+      if (isMeshWithMaterial(obj)) {
         const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
-        mats.forEach((m: any) => {
-          if (m && m.color && typeof m.color.clone === 'function') {
+        mats.forEach((m: Material) => {
+          if (isColoredMaterial(m)) {
             // Ensure hull materials remain visible in the main pass by
             // marking them as force-write. This prevents the selective
             // bloom provider from disabling their colorWrite via
             // registration races or overly-broad group registrations.
             try {
               if (!m.userData) m.userData = {};
-              (m.userData as any).__copilot_forceColorWrite = true;
+              (m as MaterialWithUserData).userData.__copilot_forceColorWrite = true;
             } catch { /* defensive: ignore odd host objects */ }
             const entry: HullMaterial = {
               material: m,

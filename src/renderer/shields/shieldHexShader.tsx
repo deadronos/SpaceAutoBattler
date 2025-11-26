@@ -2,6 +2,7 @@ import React, { useEffect, useMemo } from 'react';
 import { ShaderMaterial, Vector3, Vector4 } from 'three';
 import { useFrame } from '@react-three/fiber';
 import type { ShieldRipple, ShipHull, Team } from '../../types/index.js';
+import type { ShieldHexUniforms, MaterialWithUserData } from '../../types/renderer.js';
 import { getShieldVisuals, SHIELD_TUNING, TEAM_COLORS, SHIELD_RIPPLE_TUNING } from '../../config/renderer.js';
 import { colorFromConfig } from '../../utils/color.js';
 
@@ -273,8 +274,8 @@ export function createShieldHexShaderMaterial(hull: ShipHull, team: Team): Shade
   // Mark shield materials as force-write so the selective-bloom provider
   // will not disable their colorWrite when postprocessing/composer is active.
   try {
-    if (!mat.userData) mat.userData = {} as any;
-    (mat.userData as any).__copilot_forceColorWrite = true;
+    if (!mat.userData) mat.userData = {};
+    (mat as unknown as MaterialWithUserData).userData.__copilot_forceColorWrite = true;
   } catch { /* defensive: ignore in odd test environments */ }
 
   return mat;
@@ -282,25 +283,25 @@ export function createShieldHexShaderMaterial(hull: ShipHull, team: Team): Shade
 
 export const ShieldHexMaterial: React.FC<ShieldHexMaterialProps> = ({ hull, team, opacity, ripple, simTime }) => {
   const mat = useMemo(() => createShieldHexShaderMaterial(hull, team), [hull, team]);
+  const uniforms = mat.uniforms as unknown as ShieldHexUniforms;
 
   useFrame((_, dt) => {
-    (mat.uniforms as any).uTime.value += dt;
+    uniforms.uTime.value += dt;
   });
 
   useEffect(() => {
-    (mat.uniforms as any).uOpacity.value = Math.max(0, Math.min(1, opacity));
-  }, [opacity, mat]);
+    uniforms.uOpacity.value = Math.max(0, Math.min(1, opacity));
+  }, [opacity, uniforms]);
 
   useEffect(() => {
-    (mat.uniforms as any).uTint.value.copy(colorFromConfig(team === 'blue' ? TEAM_COLORS.blue : SHIELD_TUNING.redTint));
-    (mat.uniforms as any).uTeamIsRed.value = team === 'red' ? 1.0 : 0.0;
-    (mat.uniforms as any).uEnableRedBoost.value = SHIELD_TUNING.enableRedBoost ? 1.0 : 0.0;
-    (mat.uniforms as any).uRedBoostPow.value = SHIELD_TUNING.redBoostPower;
-    (mat.uniforms as any).uRedBoostMul.value = SHIELD_TUNING.redBoostMultiplier;
-  }, [team, mat]);
+    uniforms.uTint.value.copy(colorFromConfig(team === 'blue' ? TEAM_COLORS.blue : SHIELD_TUNING.redTint));
+    uniforms.uTeamIsRed.value = team === 'red' ? 1.0 : 0.0;
+    uniforms.uEnableRedBoost.value = SHIELD_TUNING.enableRedBoost ? 1.0 : 0.0;
+    uniforms.uRedBoostPow.value = SHIELD_TUNING.redBoostPower;
+    uniforms.uRedBoostMul.value = SHIELD_TUNING.redBoostMultiplier;
+  }, [team, uniforms]);
 
   useEffect(() => {
-    const uniforms = mat.uniforms as any;
     const maxRipples = Math.min(SHIELD_RIPPLE_TUNING.maxRipples ?? 3, SHADER_MAX_RIPPLES);
     uniforms.uRippleData.value = uniforms.uRippleData.value ?? Array.from({ length: SHADER_MAX_RIPPLES }, () => new Vector4(0, 0, 1, 0));
     uniforms.uRippleT0s.value = uniforms.uRippleT0s.value ?? new Array<number>(SHADER_MAX_RIPPLES).fill(-999);
@@ -312,7 +313,7 @@ export const ShieldHexMaterial: React.FC<ShieldHexMaterialProps> = ({ hull, team
     uniforms.uRippleCount.value = 0;
 
     const list: ShieldRipple[] = ripple ? (Array.isArray(ripple) ? ripple : [ripple]) : [];
-    const bias = ((uniforms.uTime?.value as number) ?? 0) - (simTime ?? 0);
+    const bias = (uniforms.uTime?.value ?? 0) - (simTime ?? 0);
     const take = Math.min(list.length, maxRipples);
     for (let i = 0; i < take; i++) {
       const r = list[list.length - take + i];
@@ -330,7 +331,7 @@ export const ShieldHexMaterial: React.FC<ShieldHexMaterialProps> = ({ hull, team
     uniforms.uRippleStrength.value = SHIELD_RIPPLE_TUNING.strength;
     uniforms.uDisplacementScale.value = SHIELD_RIPPLE_TUNING.displacementScale;
     uniforms.uRippleTintMix.value = SHIELD_RIPPLE_TUNING.tintMix;
-  }, [ripple, simTime, mat]);
+  }, [ripple, simTime, uniforms]);
 
   return <primitive object={mat} attach="material" />;
 };

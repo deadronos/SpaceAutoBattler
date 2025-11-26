@@ -3,7 +3,7 @@ import type React from 'react';
 import { Box3, Color, Sphere, type Group } from 'three';
 import type { ShipEntity } from '../../types/index.js';
 import { getShieldVisuals, TEAM_COLORS } from '../../config/renderer.js';
-import { FALLBACK_RADIUS_BY_HULL } from './ShipModel.js';
+import { FALLBACK_RADIUS_BY_HULL, type HullMaterial } from './ShipModel.js';
 import { ShieldBubble, SHIELD_RENDER_ORDER } from './ShipShield.js';
 
 export { SHIELD_RENDER_ORDER };
@@ -13,9 +13,9 @@ export interface ShipViewProps {
   groupRef: RefObject<Group | null>;
   /** Optional child group that receives purely visual offsets (bob/sway/bank). */
   visualRef?: RefObject<Group | null>;
-  scene: any | null;
+  scene: Group | null;
   hasValidPath: boolean;
-  hullMaterialsRef: RefObject<any[]>;
+  hullMaterialsRef: RefObject<HullMaterial[]>;
 }
 
 export function ShipView({
