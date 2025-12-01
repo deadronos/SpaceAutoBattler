@@ -97,7 +97,7 @@
     "gsap": "^3.13.0",
     "idb-keyval": "^6.2.2",
     "lodash": "^4.17.21",
-    "lru-cache": "^11.2.2",
+    "lru-cache": "^11.2.4",
     "miniplex": "^2.0.0",
     "playwright": "^1.56.1",
     "postprocessing": "^6.38.0",
