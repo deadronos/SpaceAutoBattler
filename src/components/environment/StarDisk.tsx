@@ -155,11 +155,11 @@ export function StarDisk({
     const mat = shaderMaterial;
     if (mesh && mat) {
       try {
-        if (mesh.material !== (mat as any)) {
-          mesh.material = mat as any;
+        if (mesh.material !== mat) {
+          mesh.material = mat;
           // mark needsUpdate to ensure renderer picks up any shader swap
           try {
-            (mat as any).needsUpdate = true;
+            mat.needsUpdate = true;
           } catch {
             /* ignore */
           }

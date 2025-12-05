@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react';
-import type { Mesh } from 'three';
+import type { Mesh, ShaderMaterial as ThreeShaderMaterial } from 'three';
 import { Color, Shape, ExtrudeGeometry, ShaderMaterial, DoubleSide, AdditiveBlending, NormalBlending, MeshBasicMaterial } from 'three';
 import { useFrame } from '@react-three/fiber';
 import { colorFromConfig } from '../../utils/color.js';
@@ -7,6 +7,7 @@ import { RENDER_ORDER_TRANSLUCENT_ADDITIVE } from '../../renderer/sceneLayerOrde
 import { useUiStore } from '../../game/uiStore.js';
 import { isCopilotDebugEnabled } from '../../utils/copilotDebug.js';
 import { reportMaterialError } from '../../utils/errorReporting.js';
+import type { PlanetRingsUniforms, MaterialWithUserData } from '../../types/renderer.js';
 
 interface PlanetRingsProps {
   /** Inner radius of the rings */
@@ -263,14 +264,14 @@ export function PlanetRings({
       // bloomOnly is not requested. If bloomOnly is true the material will
       // intentionally allow the BloomProvider to toggle colorWrite in order
       // to render the object primarily via bloom.
-      (mat as any).colorWrite = true;
-      if (!(mat as any).userData) (mat as any).userData = {};
+      mat.colorWrite = true;
+      if (!mat.userData) mat.userData = {};
       // forceColorWrite true means "do not let the bloom manager disable
       // colorWrite". We set it to the inverse of bloomOnly so artists can
       // opt-in to bloom-only elements.
-      (mat as any).userData.__copilot_forceColorWrite = !(bloomOnly === true);
+      (mat as MaterialWithUserData).userData.__copilot_forceColorWrite = !(bloomOnly === true);
       // Also expose an explicit bloomOnly flag for clarity/debugging.
-      (mat as any).userData.__copilot_bloomOnly = Boolean(bloomOnly === true);
+      (mat as MaterialWithUserData).userData.__copilot_bloomOnly = Boolean(bloomOnly === true);
     } catch (error) {
       // Expected: Material userData may be read-only in some environments
       reportMaterialError('userData', 'ShaderMaterial', error);
@@ -291,11 +292,11 @@ export function PlanetRings({
       blending: NormalBlending,
     });
     try {
-      if (!(bm as any).userData) (bm as any).userData = {};
+      if (!bm.userData) bm.userData = {};
       // For basic fallback, also respect bloomOnly: if bloomOnly is false
       // we want the material to remain color-write enabled always.
-      (bm as any).userData.__copilot_forceColorWrite = !(bloomOnly === true);
-      (bm as any).userData.__copilot_bloomOnly = Boolean(bloomOnly === true);
+      (bm as MaterialWithUserData).userData.__copilot_forceColorWrite = !(bloomOnly === true);
+      (bm as MaterialWithUserData).userData.__copilot_bloomOnly = Boolean(bloomOnly === true);
     } catch (error) {
       // Expected: Material userData may be read-only in some environments
       reportMaterialError('userData', 'MeshBasicMaterial', error);
@@ -308,31 +309,37 @@ export function PlanetRings({
 
   const materialToUse = postprocessingEnabled ? material : basicMaterial;
 
+  // Type guard to check if material has uniforms (ShaderMaterial)
+  const isShaderMat = (mat: ShaderMaterial | MeshBasicMaterial): mat is ShaderMaterial & { uniforms: PlanetRingsUniforms } => {
+    return 'uniforms' in mat;
+  };
+
   // Update uniforms and blending when postprocessing toggles or props change.
   useEffect(() => {
     try {
-      if ((materialToUse as any)?.uniforms) {
+      if (isShaderMat(materialToUse)) {
+        const uniforms = materialToUse.uniforms;
         const desiredTintMix = typeof tintMix === 'number' ? tintMix : (postprocessingEnabled ? 0.0 : 0.9);
-        (materialToUse as any).uniforms.uTintMix.value = desiredTintMix;
-        (materialToUse as any).uniforms.uTintColor.value = colorFromConfig(tintColor ?? '#d9efff');
-        (materialToUse as any).uniforms.uBrightness.value = postprocessingEnabled ? brightness : Math.max(brightness, 1.6);
-        (materialToUse as any).uniforms.uOpacity.value = postprocessingEnabled ? opacity : Math.max(0.45, opacity);
-        (materialToUse as any).uniforms.uBandFreq.value = bandFrequency;
-        (materialToUse as any).uniforms.uBandStrength.value = bandStrength;
-        (materialToUse as any).uniforms.uBandNoiseScale.value = bandNoiseScale;
-        (materialToUse as any).uniforms.uBandDarkness.value = bandDarkness;
-        (materialToUse as any).uniforms.uPlanetCenter.value = [planetCenter.x, planetCenter.y, planetCenter.z];
-        (materialToUse as any).uniforms.uPlanetRadius.value = planetRadius;
-        (materialToUse as any).uniforms.uShadowStrength.value = shadowStrength;
-        (materialToUse as any).uniforms.uPenumbra.value = penumbra;
-        (materialToUse as any).uniforms.uLightDir.value = [lightDir.x, lightDir.y, lightDir.z];
+        uniforms.uTintMix.value = desiredTintMix;
+        uniforms.uTintColor.value = colorFromConfig(tintColor ?? '#d9efff');
+        uniforms.uBrightness.value = postprocessingEnabled ? brightness : Math.max(brightness, 1.6);
+        uniforms.uOpacity.value = postprocessingEnabled ? opacity : Math.max(0.45, opacity);
+        uniforms.uBandFreq.value = bandFrequency;
+        uniforms.uBandStrength.value = bandStrength;
+        uniforms.uBandNoiseScale.value = bandNoiseScale;
+        uniforms.uBandDarkness.value = bandDarkness;
+        uniforms.uPlanetCenter.value = [planetCenter.x, planetCenter.y, planetCenter.z];
+        uniforms.uPlanetRadius.value = planetRadius;
+        uniforms.uShadowStrength.value = shadowStrength;
+        uniforms.uPenumbra.value = penumbra;
+        uniforms.uLightDir.value = [lightDir.x, lightDir.y, lightDir.z];
         try {
-          (materialToUse as any).blending = postprocessingEnabled ? AdditiveBlending : NormalBlending;
+          materialToUse.blending = postprocessingEnabled ? AdditiveBlending : NormalBlending;
         } catch (error) {
           // Expected: Blending mode may be read-only
           reportMaterialError('blending', 'ringMaterial', error);
         }
-        try { (materialToUse as any).needsUpdate = true; } catch (error) {
+        try { materialToUse.needsUpdate = true; } catch (error) {
           // Expected: Material may be disposed during React unmount cycle
           reportMaterialError('needsUpdate', 'ringMaterial', error);
         }
@@ -341,22 +348,23 @@ export function PlanetRings({
       // Expected: Material may be disposed during React unmount cycle
       reportMaterialError('uniformUpdate.postprocessing', 'ringMaterial', error);
     }
-  }, [materialToUse, postprocessingEnabled, opacity, brightness, bandFrequency, bandStrength, bandNoiseScale, bandDarkness, planetCenter, planetRadius, shadowStrength, penumbra, lightDir]);
+  }, [materialToUse, postprocessingEnabled, opacity, brightness, bandFrequency, bandStrength, bandNoiseScale, bandDarkness, planetCenter, planetRadius, shadowStrength, penumbra, lightDir, tintColor, tintMix]);
 
   // Keep uniforms in sync when props change
   useEffect(() => {
     try {
-      if ((materialToUse as any)?.uniforms) {
-        (materialToUse as any).uniforms.uOpacity.value = opacity;
-        (materialToUse as any).uniforms.uInnerRadius.value = innerRadius;
-        (materialToUse as any).uniforms.uOuterRadius.value = outerRadius;
-        (materialToUse as any).uniforms.uBrightness.value = brightness;
-        (materialToUse as any).uniforms.uFresnelStrength.value = fresnelStrength;
-        (materialToUse as any).uniforms.uBandFreq.value = bandFrequency;
-        (materialToUse as any).uniforms.uPlanetCenter.value = [planetCenter.x, planetCenter.y, planetCenter.z];
-        (materialToUse as any).uniforms.uPlanetRadius.value = planetRadius;
-        (materialToUse as any).uniforms.uPenumbra.value = penumbra;
-        try { (materialToUse as any).needsUpdate = true; } catch (error) {
+      if (isShaderMat(materialToUse)) {
+        const uniforms = materialToUse.uniforms;
+        uniforms.uOpacity.value = opacity;
+        uniforms.uInnerRadius.value = innerRadius;
+        uniforms.uOuterRadius.value = outerRadius;
+        uniforms.uBrightness.value = brightness;
+        uniforms.uFresnelStrength.value = fresnelStrength;
+        uniforms.uBandFreq.value = bandFrequency;
+        uniforms.uPlanetCenter.value = [planetCenter.x, planetCenter.y, planetCenter.z];
+        uniforms.uPlanetRadius.value = planetRadius;
+        uniforms.uPenumbra.value = penumbra;
+        try { materialToUse.needsUpdate = true; } catch (error) {
           // Expected: Material may be disposed during React unmount cycle
           reportMaterialError('needsUpdate', 'ringMaterial', error);
         }
@@ -367,32 +375,43 @@ export function PlanetRings({
     }
   }, [materialToUse, opacity, innerRadius, outerRadius, brightness, fresnelStrength, bandFrequency, planetCenter, planetRadius, penumbra]);
 
+  // Debug window interface for ring material access
+  interface CopilotDebugWindow extends Window {
+    __copilot_ringMaterial?: ShaderMaterial | MeshBasicMaterial;
+    __copilot_setRingOpacity?: (v: unknown) => { set: boolean; value?: number; reason?: string };
+    __copilot_setRingRenderOrder?: (v: unknown) => { set: boolean; value?: number; reason?: string };
+  }
+
   // Attach debug helpers once the material exists so we can adjust uniforms
   // and render order from the console during interactive debugging.
   try {
     if (isCopilotDebugEnabled()) {
       try {
+        const debugWindow = window as CopilotDebugWindow;
         // Use a lightweight effect-like attachment without requiring React's useEffect
-        (window as any).__copilot_ringMaterial = materialToUse;
-        (window as any).__copilot_setRingOpacity = (v: any) => {
+        debugWindow.__copilot_ringMaterial = materialToUse;
+        debugWindow.__copilot_setRingOpacity = (v: unknown) => {
           try {
             const n = Number(v);
             if (!Number.isFinite(n)) return { set: false, reason: 'not-a-number' };
-            if ((materialToUse as any)?.uniforms) {
-              (materialToUse as any).uniforms.uOpacity.value = Math.max(0, Math.min(n, 1));
-            } else if (typeof (materialToUse as any).opacity === 'number') {
-              (materialToUse as any).opacity = Math.max(0, Math.min(n, 1));
+            if (isShaderMat(materialToUse)) {
+              materialToUse.uniforms.uOpacity.value = Math.max(0, Math.min(n, 1));
+            } else if ('opacity' in materialToUse) {
+              materialToUse.opacity = Math.max(0, Math.min(n, 1));
             }
-            try { (materialToUse as any).needsUpdate = true; } catch (error) {
+            try { materialToUse.needsUpdate = true; } catch (error) {
               // Expected: Material may be disposed
               reportMaterialError('debug.needsUpdate', 'ringMaterial', error);
             }
-            return { set: true, value: (materialToUse as any).uniforms?.uOpacity?.value ?? (materialToUse as any).opacity };
+            const resultValue = isShaderMat(materialToUse)
+              ? materialToUse.uniforms.uOpacity.value
+              : ('opacity' in materialToUse ? materialToUse.opacity : undefined);
+            return { set: true, value: resultValue };
           } catch (e) {
             return { set: false, reason: String(e) };
           }
         };
-        (window as any).__copilot_setRingRenderOrder = (v: any) => {
+        debugWindow.__copilot_setRingRenderOrder = (v: unknown) => {
           try {
             const n = Number(v);
             if (!meshRef.current) return { set: false, reason: 'no-mesh' };

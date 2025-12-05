@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { useRef } from 'react';
 import { MeshTransmissionMaterial } from '@react-three/drei';
+import type { Material } from 'three';
 import type { ShipHull, Team } from '../../types/index.js';
 import { getShieldVisuals, SHIELD_TUNING, TEAM_COLORS } from '../../config/renderer.js';
 import { colorFromConfig } from '../../utils/color.js';
@@ -15,7 +16,7 @@ export const ShieldTransmissionMaterial: React.FC<ShieldTransmissionMaterialProp
   const cfg = getShieldVisuals(hull);
   const tint = useMemo(() => colorFromConfig(team === 'blue' ? TEAM_COLORS.blue : SHIELD_TUNING.redTint), [team]);
   const alpha = Math.max(0, Math.min(1, opacity * cfg.maxAlpha));
-  const matRef = useRef<any>(null);
+  const matRef = useRef<Material>(null);
 
   return (
     <MeshTransmissionMaterial
