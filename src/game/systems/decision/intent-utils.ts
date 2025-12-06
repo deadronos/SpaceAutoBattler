@@ -61,6 +61,12 @@ export interface IntentCandidate {
   index?: number;
 }
 
+/**
+ * Quantizes a score to a fixed precision to reduce floating point drift in metrics/debugging.
+ *
+ * @param {number} value - The raw score.
+ * @returns {number} The quantized score.
+ */
 export function quantizeScore(value: number): number {
   const precision = AI_CONFIG.scorePrecision > 0 ? AI_CONFIG.scorePrecision : 0.1;
   if (!Number.isFinite(value)) return 0;
@@ -69,12 +75,24 @@ export function quantizeScore(value: number): number {
   return Number.isFinite(rounded) ? rounded : 0;
 }
 
+/**
+ * Returns the priority index for an intent (lower is higher priority).
+ *
+ * @param {AIState['intent']} intent - The intent.
+ * @returns {number} The priority index.
+ */
 export function getIntentPriority(intent: AIState['intent']): number {
   const order = AI_CONFIG.intentPriority;
   const idx = order.indexOf(intent);
   return idx >= 0 ? idx : order.length;
 }
 
+/**
+ * Ensures default values are set for an intent candidate.
+ *
+ * @param {IntentCandidate} candidate - The candidate object.
+ * @param {number} fallbackIndex - Fallback sort index.
+ */
 export function ensureCandidateDefaults(candidate: IntentCandidate, fallbackIndex: number): void {
   candidate.score = quantizeScore(candidate.score);
   if (candidate.intentPriority == null)
@@ -85,6 +103,13 @@ export function ensureCandidateDefaults(candidate: IntentCandidate, fallbackInde
   if (candidate.target === undefined) candidate.target = null;
 }
 
+/**
+ * Comparator for sorting intent candidates.
+ *
+ * @param {IntentCandidate} a - First candidate.
+ * @param {IntentCandidate} b - Second candidate.
+ * @returns {number} Comparison result (<0, 0, >0).
+ */
 export function compareIntentCandidates(a: IntentCandidate, b: IntentCandidate): number {
   const SCORE_EPSILON = 1e-6;
   const scoreDiff = b.score - a.score;
@@ -204,6 +229,15 @@ export function computeInterceptHeadingVector(
   return out;
 }
 
+/**
+ * Breaks a tie between top-scoring candidates using deterministic randomness.
+ *
+ * @param {AIState} ai - The AI state (for seed).
+ * @param {number} tickIndex - The current tick index.
+ * @param {IntentCandidate[]} candidates - The list of candidates (sorted).
+ * @param {AIMetrics} [metrics] - Metrics object to record tie breaks.
+ * @returns {IntentCandidate} The selected candidate.
+ */
 export function tieBreak(
   ai: AIState,
   tickIndex: number,

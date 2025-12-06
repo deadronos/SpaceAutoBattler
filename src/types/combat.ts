@@ -5,44 +5,75 @@ import type { ResolvedProjectileInfo } from '../utils/projectileInfo.js';
 
 export type { DamageType };
 
+/**
+ * Effectiveness multipliers for a damage type against different defenses.
+ */
 export interface DamageEffectiveness {
+  /** Map of damage type keys to effectiveness stats. */
   [damageType: string]: {
-    hull: number; // Effectiveness vs hull HP
-    shield: number; // Effectiveness vs shield HP
-    armor: number; // Effectiveness vs armor defense
+    /** Effectiveness multiplier against hull HP (1.0 = standard). */
+    hull: number;
+    /** Effectiveness multiplier against shield HP (1.0 = standard). */
+    shield: number;
+    /** Effectiveness multiplier against armor defense (1.0 = standard). */
+    armor: number;
   };
 }
 
+/**
+ * Categories of projectiles affecting their simulation behavior.
+ */
 export type ProjectileCategory = 'bullet' | 'missile' | 'torpedo' | 'beam';
 
+/**
+ * Configuration for projectile homing capabilities.
+ */
 export interface ProjectileHomingConfig {
+  /** Maximum turn rate in radians per second. */
   turnRate: number;
+  /** Whether the projectile should attempt to lead the target (predict position). */
   lead?: boolean;
 }
 
+/**
+ * Runtime state for beam weapons.
+ */
 export interface ProjectileBeamRuntime {
+  /** Time to live in seconds. */
   ttl: number;
+  /** Maximum length of the beam in world units. */
   maxLength: number;
+  /** Visual width of the beam. */
   width?: number;
+  /** Point of impact in world coordinates. */
   hitPoint?: Vector3;
+  /** Whether the damage/effect has been applied this tick. */
   applied?: boolean;
 }
 
+/**
+ * ECS component representing a projectile.
+ */
 export interface ProjectileComponent {
+  /** The team that fired this projectile. */
   team: Team;
+  /** Damage dealt on impact. */
   damage: number;
+  /** Time to live in seconds. */
   ttl: number;
+  /** Initial time to live in seconds. */
   maxTtl: number;
+  /** Speed in world units per second. */
   speed: number;
-  /** Material key or type identifier for rendering this projectile (optional) */
+  /** Material key or type identifier for rendering this projectile (optional). */
   bulletType?: string;
   /** Precomputed render key resolved at spawn to avoid per-frame lookup. */
   renderKey?: string;
   /** Pre-resolved projectile info shared across render path to avoid repeated resolution. */
   renderInfo?: ResolvedProjectileInfo;
-  /** Damage type for effectiveness calculations */
+  /** Damage type for effectiveness calculations. */
   damageType: DamageType;
-  /** Entity ID of the ship that fired this projectile */
+  /** Entity ID of the ship that fired this projectile. */
   sourceId?: number;
   /** Canonical simulation category for projectile behaviours. Defaults to 'bullet'. */
   category?: ProjectileCategory;
@@ -74,10 +105,13 @@ export interface TurretSpec {
   range: number;
   /** Optional renderer key for projectile visuals. */
   bulletType?: string;
-  /** Optional arc limits in radians relative to parent forward. */
+  /** Optional lower arc limit in radians relative to parent forward. */
   minYaw?: number;
+  /** Optional upper arc limit in radians relative to parent forward. */
   maxYaw?: number;
+  /** Optional lower pitch limit in radians relative to parent forward. */
   minPitch?: number;
+  /** Optional upper pitch limit in radians relative to parent forward. */
   maxPitch?: number;
   /** Optional targeting priority for turret AI. */
   priority?: 'any' | 'antiFighter' | 'antiCapital';
@@ -99,13 +133,17 @@ export interface TurretComponent extends TurretSpec {
   cooldown: number;
   /** Optional stable index on the parent for ordering. */
   index?: number;
-  /** Current yaw (around Y) and pitch (around X), radians, relative to parent ship forward. */
+  /** Current yaw (around Y) relative to parent ship forward in radians. */
   yaw?: number;
+  /** Current pitch (around X) relative to parent ship forward in radians. */
   pitch?: number;
-  /** Arc limits in radians (relative to parent forward). Defaults to wide arcs if not set. */
+  /** Lower yaw limit in radians (relative to parent forward). Defaults to wide arcs if not set. */
   minYaw?: number;
+  /** Upper yaw limit in radians (relative to parent forward). Defaults to wide arcs if not set. */
   maxYaw?: number;
+  /** Lower pitch limit in radians. */
   minPitch?: number;
+  /** Upper pitch limit in radians. */
   maxPitch?: number;
   /** Targeting priority for turret AI. */
   priority?: 'any' | 'antiFighter' | 'antiCapital';

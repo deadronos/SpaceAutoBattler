@@ -46,6 +46,15 @@ function resolveFlashColor(bulletType?: string | null): Color {
   return COLOR_MAP[bulletType] ?? DEFAULT_COLOR;
 }
 
+/**
+ * Instanced renderer for muzzle flashes.
+ *
+ * @param {object} props - Component props.
+ * @param {Archetype<GameEntity, ['turret']>} props.archetype - Archetype containing turrets (which hold flashes).
+ * @param {number} [props.capacity=256] - Max number of flashes.
+ * @param {number} [props.lifetime=0.25] - Lifetime of a flash in seconds.
+ * @returns {React.ReactElement} The instanced mesh for muzzle flashes.
+ */
 export function MuzzleFlashInstancedLayer({
   archetype,
   capacity = DEFAULT_CAPACITY,

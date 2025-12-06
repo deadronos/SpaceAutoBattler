@@ -15,6 +15,13 @@ export interface ProcessedRipple {
   amp: number;
 }
 
+/**
+ * Scales ripple amplitudes for rendering impact.
+ *
+ * @param {readonly ShieldRipple[]} ripples - The list of ripples.
+ * @param {number} ampScale - Scaling factor.
+ * @returns {ScaledRipple[]} Scaled ripples.
+ */
 export function scaleRippleAmplitudes(
   ripples: readonly ShieldRipple[],
   ampScale: number,
@@ -27,6 +34,13 @@ export function scaleRippleAmplitudes(
   }));
 }
 
+/**
+ * Filters out ripples that are too weak to be seen.
+ *
+ * @param {readonly ScaledRipple[]} ripples - The list of ripples.
+ * @param {number} minAmp - Minimum amplitude threshold.
+ * @returns {ScaledRipple[]} Filtered list.
+ */
 export function filterSignificantRipples(
   ripples: readonly ScaledRipple[],
   minAmp: number,
@@ -41,6 +55,13 @@ export function filterSignificantRipples(
   return result;
 }
 
+/**
+ * Coalesces ripples that are close in time to avoid shader slot exhaustion.
+ *
+ * @param {readonly ScaledRipple[]} ripples - The list of ripples.
+ * @param {number} windowSec - Time window for coalescing.
+ * @returns {ScaledRipple[]} Coalesced list.
+ */
 export function coalesceRipples(
   ripples: readonly ScaledRipple[],
   windowSec: number,
@@ -67,6 +88,13 @@ export function coalesceRipples(
   return coalesced;
 }
 
+/**
+ * Slices the ripple list to fit within the shader's maximum count.
+ *
+ * @param {readonly ScaledRipple[]} ripples - The list of ripples.
+ * @param {number} maxRipples - Maximum allowed ripples.
+ * @returns {ScaledRipple[]} Sliced list.
+ */
 export function sliceToMaxRipples(
   ripples: readonly ScaledRipple[],
   maxRipples: number,
@@ -77,6 +105,14 @@ export function sliceToMaxRipples(
   return ripples.slice(Math.max(0, ripples.length - maxRipples));
 }
 
+/**
+ * Processes raw shield ripples into a format suitable for the shader.
+ * Scales, filters, coalesces, and limits the count based on tuning config.
+ *
+ * @param {readonly ShieldRipple[]} ripples - The raw ripples.
+ * @param {ShieldRippleTuning} tuning - Configuration for ripple processing.
+ * @returns {ProcessedRipple[]} The final list of ripples for the shader.
+ */
 export function processRipplesForRendering(
   ripples: readonly ShieldRipple[],
   tuning: ShieldRippleTuning,

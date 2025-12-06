@@ -19,6 +19,9 @@ import type {
 } from './progression.js';
 import type { TurretState, MuzzleFlash } from './combat.js';
 
+/**
+ * Definition of a launch slot for a carrier.
+ */
 export interface CarrierLaunchSlot {
   /** Forward offset in world units relative to the carrier's origin. */
   forward: number;
@@ -28,6 +31,9 @@ export interface CarrierLaunchSlot {
   vertical?: number;
 }
 
+/**
+ * Configuration for carrier launch behavior.
+ */
 export interface CarrierLaunchConfig {
   /** Maximum number of alive fighters this carrier may field simultaneously. */
   maxActive: number;
@@ -41,6 +47,9 @@ export interface CarrierLaunchConfig {
   jitterRadius?: number;
 }
 
+/**
+ * ECS component representing a carrier's hangar and launch state.
+ */
 export interface CarrierComponent {
   /** Countdown timer before the carrier may launch another batch. */
   launchCooldownRemaining: number;
@@ -52,10 +61,17 @@ export interface CarrierComponent {
   config: CarrierLaunchConfig;
 }
 
+/**
+ * ECS component representing a ship's state and statistics.
+ */
 export interface ShipComponent {
+  /** The team the ship belongs to. */
   team: Team;
+  /** The type of hull the ship has. */
   hull: ShipHull;
+  /** Current hit points. */
   hp: number;
+  /** Maximum hit points. */
   maxHp: number;
   /** Current shield hit points. Visual opacity scales with this value. */
   shield: number;
@@ -63,13 +79,19 @@ export interface ShipComponent {
   maxShield: number;
   /** Shield regeneration rate in hit points per second (optional). */
   shieldRegen?: number;
+  /** Current weapon cooldown timer. */
   cooldown: number;
+  /** Seconds between shots (fire rate). */
   fireRate: number;
+  /** Damage per projectile fired by the ship's main guns. */
   damage: number;
+  /** Speed of projectiles fired by the ship's main guns. */
   projectileSpeed: number;
+  /** Maximum range of the ship's weapons. */
   range: number;
+  /** Maximum movement speed. */
   speed: number;
-  /** Key for the projectile material/type this ship fires (e.g. 'bullet:laser') */
+  /** Key for the projectile material/type this ship fires (e.g. 'bullet:laser'). */
   bulletType?: string;
   /** Optional identifier if this ship was launched from a parent carrier. */
   parentCarrierId?: number;
@@ -94,27 +116,27 @@ export interface ShipComponent {
   visualDetailLevel?: VisualDetailLevel;
 
   // Ship Progression System
-  /** Experience points accumulated by this ship */
+  /** Experience points accumulated by this ship. */
   xp: number;
-  /** Current level of this ship */
+  /** Current level of this ship. */
   level: number;
-  /** Experience points needed to reach next level */
+  /** Experience points needed to reach next level. */
   xpToNext: number;
-  /** Damage type this ship deals (overrides bulletType for effectiveness calculations) */
+  /** Damage type this ship deals (overrides bulletType for effectiveness calculations). */
   damageType: DamageType;
-  /** Cumulative level bonus multipliers applied to capped stats */
+  /** Cumulative level bonus multipliers applied to capped stats. */
   levelBonuses: ShipLevelBonuses;
 
   // Captain System (for large ships)
-  /** Captain assigned to this ship (destroyers and carriers only) */
+  /** Captain assigned to this ship (destroyers and carriers only). */
   captain?: Captain;
 
   // Subsystem Health
-  /** Health and status of ship subsystems */
+  /** Health and status of ship subsystems. */
   subsystems: Record<SubsystemType, Subsystem>;
 
   // Defense Categories (for damage type effectiveness)
-  /** Armor value for damage type calculations */
+  /** Armor value for damage type calculations. */
   armor: number;
 }
 
@@ -128,14 +150,26 @@ export interface ShieldRipple {
   amp: number;
 }
 
+/**
+ * Union type representing a generic entity in the game world.
+ * Contains optional components depending on what the entity is (ship, projectile, etc.).
+ */
 export interface GameEntity extends TransformComponent {
+  /** Unique entity identifier. */
   id: number;
+  /** Rapier3D rigid body component. */
   rigidBody: RigidBody;
+  /** Rapier3D collider component. */
   collider: Collider;
+  /** Optional ship component if this entity is a ship. */
   ship?: ShipComponent;
+  /** Optional projectile component if this entity is a projectile. */
   projectile?: import('./combat.js').ProjectileComponent;
+  /** Optional turret component if this entity is a turret. */
   turret?: import('./combat.js').TurretComponent;
+  /** Optional carrier component if this entity is a carrier. */
   carrier?: CarrierComponent;
+  /** Optional AI state component. */
   ai?: import('./ai.js').AIState;
   /** Unit direction vector used for projectile integration. */
   direction?: Vector3;
@@ -149,17 +183,29 @@ export interface GameEntity extends TransformComponent {
   muzzleFlashes?: MuzzleFlash[];
 }
 
+/** Type alias for an entity known to have a ship component. */
 export type ShipEntity = GameEntity & { ship: ShipComponent };
+
+/** Type alias for an entity known to have a projectile component. */
 export type ProjectileEntity = GameEntity & {
   projectile: import('./combat.js').ProjectileComponent;
   direction: Vector3;
 };
+
+/** Type alias for an entity known to have a turret component. */
 export type TurretEntity = GameEntity & { turret: import('./combat.js').TurretComponent };
 
+/**
+ * Miniplex queries used to access entities by their components.
+ */
 export interface GameQueries {
+  /** Query for all ships. */
   ships: import('./core.js').Archetype<GameEntity, ['ship']>;
+  /** Query for all ships that have AI commands. */
   shipsWithCommands?: import('./core.js').Archetype<GameEntity, ['ship', 'ai']>;
+  /** Query for all projectiles. */
   projectiles: import('./core.js').Archetype<GameEntity, ['projectile']>;
+  /** Query for all turrets. */
   turrets: import('./core.js').Archetype<GameEntity, ['turret']>;
 }
 

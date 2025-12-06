@@ -8,6 +8,13 @@ import {
 } from '../../../utils/steering.js';
 import { TEMP_TARGET } from './sharedTemps.js';
 
+/**
+ * Finds a ship entity by its ID using efficient lookups.
+ *
+ * @param {GameState} state - The game state.
+ * @param {number | undefined | null} id - The ID of the ship to find.
+ * @returns {ShipEntity | undefined} The found ship entity, or undefined.
+ */
 export function findShipById(
   state: GameState,
   id: number | undefined | null,
@@ -20,6 +27,15 @@ export function findShipById(
   return ships.find((s) => s.id === id);
 }
 
+/**
+ * Steers a projectile towards its target using homing parameters.
+ * Updates the projectile's direction vector.
+ *
+ * @param {ProjectileEntity} projectile - The projectile entity.
+ * @param {ShipEntity} target - The target ship.
+ * @param {ProjectileHomingConfig} homing - Homing configuration.
+ * @param {number} delta - The time step.
+ */
 export function steerProjectileTowardTarget(
   projectile: ProjectileEntity,
   target: ShipEntity,

@@ -4,6 +4,12 @@ import { enqueuePostPhysicsMutation } from './simulationQueue.js';
 import { destroyEntity } from './entityLifecycle.js';
 import { spawnInitialFleets } from './spawnFleets.js';
 
+/**
+ * Resets the game state completely.
+ * Destroys all entities, clears metrics, resets AI state, and respawns initial fleets.
+ *
+ * @param {GameState} state - The game state to reset.
+ */
 export function resetGame(state: GameState): void {
   for (const entity of [...state.world.entities]) {
     destroyEntity(state, entity);
@@ -26,6 +32,8 @@ export function resetGame(state: GameState): void {
 /**
  * Schedule a reset to be executed after the current physics step completes.
  * This avoids Rapier console errors that occur when resetting during active physics stepping.
+ *
+ * @param {GameState} state - The game state to reset.
  */
 export function requestReset(state: GameState): void {
   const queue = state.simulation.postStepMutations;

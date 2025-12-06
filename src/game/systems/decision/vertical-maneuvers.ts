@@ -12,6 +12,17 @@ import { TEMP_RNG } from './sharedRng.js';
  
 export { resetTempRng } from './sharedRng.js';
 
+/**
+ * Applies vertical perturbations to the ship's heading for evasion and 3D movement.
+ * Modifies the heading vector in-place.
+ *
+ * @param {GameState} state - The game state.
+ * @param {ShipEntity} ship - The ship entity.
+ * @param {AIState} ai - The AI state.
+ * @param {BehaviorProfile} profile - The behavior profile.
+ * @param {Vector3} heading - The heading vector to perturb.
+ * @param {ShipEntity | null} target - The current target.
+ */
 export function applyVerticalPerturbation(
   state: GameState,
   ship: ShipEntity,

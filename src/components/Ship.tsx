@@ -10,6 +10,14 @@ import { ShipView, SHIELD_RENDER_ORDER } from './ship/ShipView.js';
 export { SHIELD_RENDER_ORDER };
 export { resolveModelPath } from './ship/ShipModel.js';
 
+/**
+ * Renders a single ship entity in the 3D scene.
+ * Handles model loading, interpolation, thrusters, and hull materials.
+ *
+ * @param {object} props - Component props.
+ * @param {ShipEntity} props.entity - The ship entity to render.
+ * @returns {React.ReactElement} The rendered ship object.
+ */
 export function ShipObject({ entity }: { entity: ShipEntity }): React.ReactElement {
   const rootGroup = useRef<Group>(null);
   const visualGroup = useRef<Group>(null);

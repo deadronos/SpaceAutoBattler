@@ -24,6 +24,9 @@ export interface PostprocessingConfig {
   bloomGroups: Record<string, BloomGroupConfig>;
 }
 
+/**
+ * Configuration for post-processing effects, primarily bloom.
+ */
 export const POSTPROCESSING_CONFIG: PostprocessingConfig = {
   bloomThreshold: 0.8,
   bloomSmoothing: 0.001,

@@ -1,5 +1,8 @@
 import type { Vector3 } from 'three';
 
+/**
+ * A spatial hash grid for efficient spatial queries.
+ */
 export interface SpatialHash<T> {
   cellSize: number;
   grid: Map<string, T[]>;
@@ -14,6 +17,15 @@ function toKey(x: number, y: number, z: number): string {
   return `${x},${y},${z}`;
 }
 
+/**
+ * Builds a spatial hash from a list of items.
+ *
+ * @template T - The type of item stored.
+ * @param {readonly T[]} items - The items to index.
+ * @param {number} cellSize - The size of each grid cell.
+ * @param {(item: T) => Vector3} getPosition - Function to extract position from an item.
+ * @returns {SpatialHash<T>} The built spatial hash.
+ */
 export function buildSpatialHash<T>(
   items: readonly T[],
   cellSize: number,
@@ -35,6 +47,17 @@ export function buildSpatialHash<T>(
   return { grid, cellSize, getPosition };
 }
 
+/**
+ * Queries the spatial hash for items within a radius of a position.
+ * Note: This implementation is approximate (checks cells overlapping the bounding box of the sphere).
+ *
+ * @template T - The type of item.
+ * @param {SpatialHash<T>} hash - The spatial hash to query.
+ * @param {Vector3} position - The center of the query sphere.
+ * @param {number} radius - The radius of the query sphere.
+ * @param {T[]} [out=[]] - Array to store results in.
+ * @returns {T[]} The list of items found.
+ */
 export function querySpatialHash<T>(
   hash: SpatialHash<T>,
   position: Vector3,

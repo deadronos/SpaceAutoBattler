@@ -10,6 +10,16 @@ const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
  
 export { resetTempRng } from '../sharedRng.js';
 
+/**
+ * Computes a formation offset for an escort ship relative to its VIP.
+ * Uses a golden angle spiral distribution on a sphere surface for even coverage.
+ *
+ * @param {number} vipId - The ID of the VIP ship.
+ * @param {number} slotIndex - The index of this escort in the formation.
+ * @param {number} total - Total number of escorts.
+ * @param {number} radius - Base radius of the formation shell.
+ * @returns {Vector3} The computed offset vector.
+ */
 export const computeEscortShellOffset = (
   vipId: number,
   slotIndex: number,

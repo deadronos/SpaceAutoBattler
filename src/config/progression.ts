@@ -10,6 +10,9 @@ import type {
  */
 
 // XP System Configuration
+/**
+ * Configuration for the XP system scaling and multipliers.
+ */
 export const XP_CONFIG = {
   /** XP multiplier for damage dealt (XP = damage * this value) */
   damageXpMultiplier: 0.5,
@@ -22,6 +25,9 @@ export const XP_CONFIG = {
 } as const;
 
 // Level-up Bonus Configuration (percentage bonuses per level)
+/**
+ * Configuration for bonuses gained at each level.
+ */
 export const LEVEL_BONUSES = {
   hull: { bonus: 0.05, cap: 0.5, maxLevel: 10 }, // +5% maxHp per level, cap at +50%
   shield: { bonus: 0.05, cap: 0.5, maxLevel: 10 }, // +5% maxShield per level, cap at +50%
@@ -32,6 +38,9 @@ export const LEVEL_BONUSES = {
 } as const;
 
 // Damage Type Effectiveness Matrix
+/**
+ * Damage type effectiveness modifiers against hull, shield, and armor.
+ */
 export const DAMAGE_EFFECTIVENESS: DamageEffectiveness = {
   kinetic: { hull: 1.0, shield: 0.8, armor: 1.2 }, // Good vs armor, poor vs shields
   plasma: { hull: 1.1, shield: 0.9, armor: 1.3 }, // Best vs armor, decent overall
@@ -40,6 +49,9 @@ export const DAMAGE_EFFECTIVENESS: DamageEffectiveness = {
 };
 
 // Captain System Configuration
+/**
+ * Configuration for the Captain system.
+ */
 export const CAPTAIN_CONFIG = {
   /** Probability of destroyer having a captain */
   destroyerCaptainChance: 0.8,
@@ -54,6 +66,9 @@ export const CAPTAIN_CONFIG = {
 } as const;
 
 // Morale Ability Configuration
+/**
+ * Configuration for morale-triggered abilities.
+ */
 export const MORALE_ABILITIES: Record<
   MoraleEffectType,
   {
@@ -80,6 +95,9 @@ export const MORALE_ABILITIES: Record<
 };
 
 // Subsystem Configuration
+/**
+ * Configuration for subsystem health and repair.
+ */
 export const SUBSYSTEM_CONFIG = {
   /** Base HP multiplier relative to ship max HP */
   baseHpMultiplier: 0.3,
@@ -104,6 +122,9 @@ export const SUBSYSTEM_CONFIG = {
 } as const;
 
 // Subsystem Status Effect Configuration
+/**
+ * Configuration for effects applied when subsystems are damaged/offline.
+ */
 export const SUBSYSTEM_EFFECTS = {
   engine: {
     damaged: 0.75, // -25% speed
@@ -120,6 +141,9 @@ export const SUBSYSTEM_EFFECTS = {
 } as const;
 
 // Default damage types for each hull class
+/**
+ * Default damage type assignments for each hull class.
+ */
 export const HULL_DAMAGE_TYPES: Record<string, DamageType> = {
   fighter: 'kinetic', // Fast, balanced
   corvette: 'kinetic', // Similar role to fighters
@@ -129,6 +153,9 @@ export const HULL_DAMAGE_TYPES: Record<string, DamageType> = {
 };
 
 // Default armor values for each hull class
+/**
+ * Default armor values for each hull class.
+ */
 export const HULL_ARMOR_VALUES: Record<string, number> = {
   fighter: 5, // Light armor
   corvette: 8, // Light-medium armor
@@ -139,6 +166,9 @@ export const HULL_ARMOR_VALUES: Record<string, number> = {
 
 /**
  * Calculate XP required to reach a specific level
+ *
+ * @param {number} level - The target level.
+ * @returns {number} The XP required.
  */
 export function calculateXpForLevel(level: number): number {
   if (level <= 1) return 0;
@@ -147,6 +177,10 @@ export function calculateXpForLevel(level: number): number {
 
 /**
  * Calculate the level bonus multiplier for a given stat and current level
+ *
+ * @param {keyof typeof LEVEL_BONUSES} stat - The stat to calculate.
+ * @param {number} level - The current ship level.
+ * @returns {number} The bonus multiplier.
  */
 export function calculateLevelBonus(stat: keyof typeof LEVEL_BONUSES, level: number): number {
   const config = LEVEL_BONUSES[stat];
@@ -157,6 +191,10 @@ export function calculateLevelBonus(stat: keyof typeof LEVEL_BONUSES, level: num
 
 /**
  * Get effective damage multiplier for a damage type against a defense type
+ *
+ * @param {DamageType} damageType - The type of damage being dealt.
+ * @param {'hull' | 'shield' | 'armor'} defenseType - The type of defense being hit.
+ * @returns {number} The damage effectiveness multiplier.
  */
 export function getDamageEffectiveness(
   damageType: DamageType,

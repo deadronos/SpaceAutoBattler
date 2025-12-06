@@ -22,6 +22,15 @@ export interface ThrusterMaterialEntry {
   baseIntensity?: number;
 }
 
+/**
+ * Hook to manage ship thruster effects.
+ * Finds or creates engine meshes, registers them for bloom, and updates intensity based on throttle.
+ *
+ * @param {Object3D | null} scene - The ship model scene.
+ * @param {ShipEntity} entity - The ship entity.
+ * @param {SmoothingConfig} smoothing - Interpolation and visual config.
+ * @returns {MutableRefObject<ThrusterMaterialEntry[]>} Ref to the managed materials.
+ */
 export function useShipThrusters(
   scene: Object3D | null,
   entity: ShipEntity,
@@ -199,6 +208,15 @@ export function useShipThrusters(
   return thrusterMaterialsRef;
 }
 
+/**
+ * Updates the emissive intensity of thruster materials based on current throttle.
+ *
+ * @param {readonly ThrusterMaterialEntry[]} thrusters - List of thruster materials.
+ * @param {number} throttle - Current throttle value (0..1).
+ * @param {number} baseIntensity - Base emissive intensity.
+ * @param {number} range - Dynamic intensity range.
+ * @param {Color} thrusterColorRef - Reusable color object.
+ */
 export function updateThrusterIntensity(
   thrusters: readonly ThrusterMaterialEntry[],
   throttle: number,

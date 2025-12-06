@@ -6,6 +6,14 @@ import type { TurretEntity } from '../types/index.js';
 // Debug visuals removed from config; keep local defaults (false)
 const SHOW_TURRET_GIZMOS = false;
 
+/**
+ * Renders a turret entity in the 3D scene.
+ * Updates position and rotation based on the entity transform.
+ *
+ * @param {object} props - Component props.
+ * @param {TurretEntity} props.entity - The turret entity to render.
+ * @returns {React.ReactElement} The rendered turret object.
+ */
 export function TurretObject({ entity }: { entity: TurretEntity }): React.ReactElement {
   const groupRef = useRef<Group>(null);
 

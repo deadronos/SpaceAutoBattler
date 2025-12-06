@@ -8,6 +8,13 @@ import { runEmbeddedTurrets } from '../turrets.js';
 
 export { getShipById } from './aiExecutor.js';
 
+/**
+ * Prepares ships for the update cycle.
+ * Handles lifecycle updates (cooldowns, regen) and runs embedded turrets.
+ *
+ * @param {GameState} state - The game state.
+ * @param {number} delta - The time step.
+ */
 export function prepareShips(state: GameState, delta: number): void {
   const ships = state.queries.ships.entities as ShipEntity[];
 
@@ -25,6 +32,15 @@ export function prepareShips(state: GameState, delta: number): void {
   }
 }
 
+/**
+ * Executes the AI command for a single ship.
+ * Applies movement and handles weapon firing.
+ *
+ * @param {GameState} state - The game state.
+ * @param {ShipEntity} ship - The ship entity.
+ * @param {number} delta - The time step.
+ * @returns {ShipEntity | null} The ship's current target, or null.
+ */
 export function executeAICommand(
   state: GameState,
   ship: ShipEntity,

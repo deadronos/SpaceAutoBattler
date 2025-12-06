@@ -4,6 +4,14 @@ import { useBloomRegistration } from '../renderer/bloom/index.js';
 import { getMaterial } from '../renderer/materialRegistry.js';
 
 // Placeholder explosion mesh; when explosion entities are added, this can be used.
+/**
+ * Renders a placeholder explosion effect.
+ *
+ * @param {object} props - Component props.
+ * @param {[number, number, number]} [props.position] - World position.
+ * @param {number} [props.size] - Scale of the explosion.
+ * @returns {React.ReactElement} The rendered explosion mesh.
+ */
 export function ExplosionObject({ position = [0,0,0], size = 1 }: { position?: [number, number, number]; size?: number }): React.ReactElement {
   const ref = useRef<Mesh>(null);
   useBloomRegistration(ref, { group: 'explosions' });

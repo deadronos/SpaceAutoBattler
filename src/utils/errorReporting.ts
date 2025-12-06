@@ -45,6 +45,11 @@ const state: ErrorReportingState = {
 
 /**
  * Report a caught error. Always increments the counter; logs only in dev.
+ *
+ * @param {ErrorCategory} category - The category of the error.
+ * @param {string} message - A descriptive error message.
+ * @param {Record<string, unknown>} [context] - Optional context data.
+ * @param {unknown} [error] - The original error object, if any.
  */
 export function reportError(
   category: ErrorCategory,
@@ -76,6 +81,10 @@ export function reportError(
 
 /**
  * Report a material-related error (needsUpdate, dispose, property access).
+ *
+ * @param {string} operation - The operation being performed.
+ * @param {string} materialType - The type of material involved.
+ * @param {unknown} [error] - The original error object.
  */
 export function reportMaterialError(
   operation: string,
@@ -92,6 +101,10 @@ export function reportMaterialError(
 
 /**
  * Report a physics/Rapier error (collider removal, rigid body cleanup).
+ *
+ * @param {string} operation - The operation being performed.
+ * @param {number} [entityId] - The ID of the entity involved.
+ * @param {unknown} [error] - The original error object.
  */
 export function reportPhysicsError(
   operation: string,
@@ -108,6 +121,11 @@ export function reportPhysicsError(
 
 /**
  * Report an entity lifecycle error (create, destroy, update).
+ *
+ * @param {'create' | 'destroy' | 'update'} phase - The lifecycle phase.
+ * @param {string} entityType - The type of entity.
+ * @param {number} [entityId] - The ID of the entity.
+ * @param {unknown} [error] - The original error object.
  */
 export function reportLifecycleError(
   phase: 'create' | 'destroy' | 'update',
@@ -125,6 +143,9 @@ export function reportLifecycleError(
 
 /**
  * Report an E2E test hook error (window.__SAB methods).
+ *
+ * @param {string} hookName - The name of the hook.
+ * @param {unknown} [error] - The original error object.
  */
 export function reportE2EError(
   hookName: string,
@@ -140,6 +161,9 @@ export function reportE2EError(
 
 /**
  * Report a query/snapshot error (query access, safe snapshot).
+ *
+ * @param {string} queryName - The name of the query.
+ * @param {unknown} [error] - The original error object.
  */
 export function reportQueryError(
   queryName: string,
@@ -155,6 +179,9 @@ export function reportQueryError(
 
 /**
  * Report a WebGL-related error (context, extensions, state).
+ *
+ * @param {string} operation - The operation being performed.
+ * @param {unknown} [error] - The original error object.
  */
 export function reportWebGLError(
   operation: string,
@@ -170,6 +197,9 @@ export function reportWebGLError(
 
 /**
  * Report a config-related error (env parsing, query params).
+ *
+ * @param {string} configKey - The configuration key involved.
+ * @param {unknown} [error] - The original error object.
  */
 export function reportConfigError(
   configKey: string,
@@ -185,6 +215,8 @@ export function reportConfigError(
 
 /**
  * Get current error counts by category.
+ *
+ * @returns {Record<ErrorCategory, number>} A map of categories to error counts.
  */
 export function getErrorCounts(): Record<ErrorCategory, number> {
   return { ...state.counts };
@@ -192,6 +224,8 @@ export function getErrorCounts(): Record<ErrorCategory, number> {
 
 /**
  * Get total error count across all categories.
+ *
+ * @returns {number} The total number of errors reported.
  */
 export function getTotalErrorCount(): number {
   return Object.values(state.counts).reduce((a, b) => a + b, 0);
@@ -199,6 +233,9 @@ export function getTotalErrorCount(): number {
 
 /**
  * Get recent error reports (most recent last).
+ *
+ * @param {number} [limit=10] - The maximum number of reports to return.
+ * @returns {ErrorReport[]} An array of recent error reports.
  */
 export function getRecentErrors(limit = 10): ErrorReport[] {
   return state.reports.slice(-limit);
@@ -217,6 +254,8 @@ export function resetErrorCounts(): void {
 
 /**
  * Enable or disable detailed logging (counters always run).
+ *
+ * @param {boolean} enabled - Whether to enable detailed logging.
  */
 export function setErrorReportingEnabled(enabled: boolean): void {
   state.enabled = enabled;
@@ -224,6 +263,8 @@ export function setErrorReportingEnabled(enabled: boolean): void {
 
 /**
  * Check if detailed logging is enabled.
+ *
+ * @returns {boolean} True if detailed logging is enabled.
  */
 export function isErrorReportingEnabled(): boolean {
   return state.enabled;

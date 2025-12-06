@@ -68,6 +68,16 @@ export function advanceCursor(
   return (currentCursor + sliceSize) % totalShips;
 }
 
+/**
+ * Processes a tick of the AI scheduler.
+ * Determines how many and which ships should think this frame.
+ *
+ * @param {number} delta - The time delta.
+ * @param {SchedulerState} state - The current scheduler state.
+ * @param {SchedulerConfig} config - The scheduler configuration.
+ * @param {number} totalShips - Total number of active ships.
+ * @returns {SchedulerTickResult} The result including ship indices to process.
+ */
 export function processSchedulerTick(
   delta: number,
   state: SchedulerState,
@@ -139,6 +149,14 @@ export function processSchedulerTick(
   };
 }
 
+/**
+ * Updates metrics based on scheduler results.
+ *
+ * @param {AIMetrics} metrics - The metrics object to update.
+ * @param {SchedulerTickResult['metrics']} schedulerMetrics - Metrics from the scheduler tick.
+ * @param {number} decisions - Number of decisions made.
+ * @param {number} skipped - Number of ships skipped.
+ */
 export function updateSchedulerMetrics(
   metrics: AIMetrics,
   schedulerMetrics: SchedulerTickResult['metrics'],

@@ -9,6 +9,13 @@ import {
 import { ensureInterruptState, queueInterrupt } from '../interrupts.js';
 import { resolvePosture } from './posture.js';
 
+/**
+ * Recomputes the shared blackboard state for the current frame.
+ * Updates centroids, threat analysis, target prioritization, and team posture.
+ *
+ * @param {GameState} state - The game state.
+ * @param {ShipEntity[]} ships - The list of all active ships.
+ */
 export const refreshBlackboard = (state: GameState, ships: ShipEntity[]): void => {
   const { blackboard } = state;
   const manager = state.ai;

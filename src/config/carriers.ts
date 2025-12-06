@@ -19,6 +19,9 @@ const DEFAULT_LAUNCH_FORMATION: readonly CarrierLaunchSlot[] = Object.freeze([
  * jitter radius is intentionally small – just enough to break up visual uniformity without
  * compromising deterministic behaviour (all randomness flows through the seeded RNG).
  */
+/**
+ * Configuration for carrier launch behavior and formation.
+ */
 export const CARRIER_LAUNCH_CONFIG: CarrierLaunchConfig = Object.freeze({
   maxActive: 6,
   cooldownSeconds: 1.5,

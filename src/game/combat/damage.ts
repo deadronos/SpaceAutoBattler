@@ -3,6 +3,9 @@ import type { ProjectileCategory } from '../../types/combat.js';
 import { getDamageEffectiveness } from '../../config/progression.js';
 import { SeededRng } from '../../utils/rng.js';
 
+/**
+ * Result of a damage calculation broken down by component.
+ */
 export interface DamageBreakdown {
   shieldDamage: number;
   armorDamage: number;
@@ -54,6 +57,15 @@ export interface DamageApplicationSummary {
   destroyed: boolean;
 }
 
+/**
+ * Calculates the effective damage applied to shields, armor, and hull.
+ *
+ * @param {number} baseDamage - The incoming raw damage.
+ * @param {DamageType} damageType - The type of damage.
+ * @param {number} targetShield - Current shield HP.
+ * @param {number} targetArmor - Current armor value.
+ * @returns {DamageBreakdown} The calculated damage components.
+ */
 export function calculateEffectiveDamage(
   baseDamage: number,
   damageType: DamageType,
@@ -103,6 +115,12 @@ export function calculateEffectiveDamage(
   };
 }
 
+/**
+ * Applies calculated damage to a ship entity and invokes callbacks.
+ *
+ * @param {ApplyDamageResultOptions} options - Configuration for applying damage.
+ * @returns {DamageApplicationSummary} Summary of the applied damage.
+ */
 export function applyDamageResultToShip(
   options: ApplyDamageResultOptions,
 ): DamageApplicationSummary {

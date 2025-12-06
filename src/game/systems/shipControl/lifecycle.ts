@@ -3,6 +3,14 @@ import { updateCaptainAbilities, repairSubsystems, getEffectiveStats } from '../
 
 const MUZZLE_FLASH_LIFETIME = 0.25;
 
+/**
+ * Updates the lifecycle state of a ship.
+ * Handles cooldowns, subsystem repair, shield regeneration, and effect cleanup.
+ *
+ * @param {GameState} state - The game state.
+ * @param {ShipEntity} ship - The ship entity.
+ * @param {number} delta - The time step.
+ */
 export function updateShipLifecycle(state: GameState, ship: ShipEntity, delta: number): void {
   ship.ship.cooldown = Math.max(0, ship.ship.cooldown - delta);
   if (ship.turrets) {

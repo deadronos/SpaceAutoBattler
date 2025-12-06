@@ -49,12 +49,12 @@ function ensureSmoothingState(ai: AIState): SmoothingState {
  * - Heavy ships (destroyer/carrier) get additional smoothing to reduce their
  *   tendency to overshoot due to high inertia.
  *
- * @param ai - AIState for this ship (used to store smoothing history)
- * @param rawHeading - The newly computed heading direction (will be modified in-place)
- * @param patience - Patience value from profile (0..1)
- * @param aggression - Aggression value from profile (0..1)
- * @param hull - Ship hull type for mass-based smoothing adjustment
- * @param tickIndex - Current tick for detecting tick jumps
+ * @param {AIState} ai - AIState for this ship (used to store smoothing history).
+ * @param {Vector3} rawHeading - The newly computed heading direction (will be modified in-place).
+ * @param {number} patience - Patience value from profile (0..1).
+ * @param {number} aggression - Aggression value from profile (0..1).
+ * @param {string} hull - Ship hull type for mass-based smoothing adjustment.
+ * @param {number} tickIndex - Current tick for detecting tick jumps.
  */
 export function smoothHeading(
   ai: AIState,
@@ -167,13 +167,13 @@ export function smoothHeading(
  * - Similar alpha scaling as heading smoothing: patience increases smoothing,
  *   aggression reduces it, and hull mass adds smoothing for heavy ships.
  *
- * @param ai - AIState for this ship
- * @param rawThrust - The newly computed thrust value (0..1, will be modified)
- * @param patience - Patience value from profile (0..1)
- * @param aggression - Aggression value from profile (0..1)
- * @param hull - Ship hull type
- * @param tickIndex - Current tick
- * @returns Smoothed thrust value
+ * @param {AIState} ai - AIState for this ship.
+ * @param {number} rawThrust - The newly computed thrust value (0..1, will be modified).
+ * @param {number} patience - Patience value from profile (0..1).
+ * @param {number} aggression - Aggression value from profile (0..1).
+ * @param {string} hull - Ship hull type.
+ * @param {number} tickIndex - Current tick.
+ * @returns {number} Smoothed thrust value.
  */
 export function smoothThrust(
   ai: AIState,

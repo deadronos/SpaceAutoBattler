@@ -8,6 +8,12 @@ function syncEntityTransform(entity: GameEntity): void {
   entity.transform.rotation.set(rotation.x, rotation.y, rotation.z, rotation.w);
 }
 
+/**
+ * Synchronizes entity transforms with their physics bodies.
+ * Copies position and rotation from Rapier rigid bodies to the ECS components.
+ *
+ * @param {GameState} state - The game state.
+ */
 export function syncTransforms(state: GameState): void {
   const synced = new Set<number>();
 

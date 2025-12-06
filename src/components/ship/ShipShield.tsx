@@ -12,6 +12,7 @@ import { applyHullTint } from './ShipModel.js';
 import { computeShieldFraction, validateShieldVisibility } from './shieldUtils.js';
 import { processRipplesForRendering } from './rippleUtils.js';
 
+/** Render order for the transparent shield bubble. */
 export const SHIELD_RENDER_ORDER = 20;
 
 const FALLBACK_SHIELD_RADIUS_BY_HULL: Record<ShipEntity['ship']['hull'], number> = {
@@ -28,6 +29,13 @@ interface ShieldBubbleProps {
   hullMaterialsRef?: React.MutableRefObject<HullMaterial[]>;
 }
 
+/**
+ * Renders the energy shield bubble around a ship.
+ * Handles visibility based on shield HP, ripple effects, and material resolution.
+ *
+ * @param {ShieldBubbleProps} props - Component props.
+ * @returns {React.ReactElement} The rendered shield mesh.
+ */
 export function ShieldBubble({ entity, radius, hullMaterialsRef }: ShieldBubbleProps): React.ReactElement {
   const meshRef = useRef<Mesh>(null);
   useBloomRegistration(meshRef, { group: 'shields' });
@@ -110,7 +118,7 @@ export function ShieldBubble({ entity, radius, hullMaterialsRef }: ShieldBubbleP
     if (mesh) {
       mesh.position.set(0, 0, 0);
       mesh.quaternion.identity();
-      
+
       // Defensive clamp: prevent accidental enormous shield scales by
       // limiting the per-axis multiplier to a conservative maximum.
       const r = radius ?? FALLBACK_SHIELD_RADIUS_BY_HULL[entity.ship.hull] ?? 2.0;
@@ -146,7 +154,7 @@ export function ShieldBubble({ entity, radius, hullMaterialsRef }: ShieldBubbleP
     if (mats && mats.length > 0) {
       const shieldFrac = entity.ship.shield / Math.max(1, entity.ship.maxShield);
       const teamColor = entity.ship.team === 'blue' ? new Color(TEAM_COLORS.blue) : new Color(TEAM_COLORS.red);
-      
+
       applyHullTint(mats, shieldFrac, teamColor, HULL_TINT.tintThreshold, HULL_TINT.tintStrength);
     }
 

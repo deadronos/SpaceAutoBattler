@@ -18,6 +18,14 @@ import {
 } from './sharedTemps.js';
 import { getForwardFromQuaternion } from '../../../utils/vector.js';
 
+/**
+ * Updates the angular velocity and rotation of a ship to align with a target heading.
+ * Uses a PD controller for smooth turning.
+ *
+ * @param {ShipEntity} ship - The ship entity.
+ * @param {Vector3} targetHeading - The desired forward vector.
+ * @param {number} dt - The time step.
+ */
 export function updateAngularMotion(ship: ShipEntity, targetHeading: Vector3, dt: number): void {
   const motion = ship.ship.motion;
   const kp = motion.turnKp ?? DEFAULT_TURN_KP;

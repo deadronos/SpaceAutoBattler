@@ -9,6 +9,12 @@ import {
 export type InBandAccumulator = { samples: number; satisfied: number };
 export type InBandSummary = { samples: number; satisfied: number; ratio: number | null };
 
+/**
+ * Creates a new histogram with specified buckets.
+ *
+ * @param {readonly number[]} buckets - The bucket boundaries.
+ * @returns {AIShotHistogram} A new, empty histogram.
+ */
 export function createHistogram(buckets: readonly number[]): AIShotHistogram {
   return {
     buckets,
@@ -17,14 +23,29 @@ export function createHistogram(buckets: readonly number[]): AIShotHistogram {
   };
 }
 
+/**
+ * Creates a new accumulator for in-band statistics.
+ *
+ * @returns {InBandAccumulator} A new accumulator.
+ */
 export function createInBandAccumulator(): InBandAccumulator {
   return { samples: 0, satisfied: 0 };
 }
 
+/**
+ * Creates a new summary object for in-band statistics.
+ *
+ * @returns {InBandSummary} A new summary.
+ */
 export function createInBandSummary(): InBandSummary {
   return { samples: 0, satisfied: 0, ratio: null };
 }
 
+/**
+ * Creates a default, empty AIMetrics object.
+ *
+ * @returns {AIMetrics} The initialized metrics object.
+ */
 export function createDefaultMetrics(): AIMetrics {
   const shotDistanceHist = Object.create(null) as Record<ShipHull, AIShotHistogram>;
   const shotDeltaYHist = Object.create(null) as Record<ShipHull, AIShotHistogram>;
@@ -91,6 +112,12 @@ export function createDefaultMetrics(): AIMetrics {
   };
 }
 
+/**
+ * Adds a value to a histogram.
+ *
+ * @param {AIShotHistogram} hist - The histogram to update.
+ * @param {number} value - The value to add.
+ */
 export function addToHistogram(hist: AIShotHistogram, value: number): void {
   hist.total += 1;
   const bucketCount = hist.buckets.length;
@@ -104,6 +131,13 @@ export function addToHistogram(hist: AIShotHistogram, value: number): void {
   hist.counts[index] += 1;
 }
 
+/**
+ * Calculates a percentile value from a sorted array.
+ *
+ * @param {number[]} sortedValues - The sorted array of values.
+ * @param {number} p - The percentile to calculate (0..1).
+ * @returns {number} The value at the specified percentile.
+ */
 export function percentile(sortedValues: number[], p: number): number {
   if (sortedValues.length === 0) return 0;
   if (sortedValues.length === 1) return sortedValues[0];
