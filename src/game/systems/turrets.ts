@@ -126,7 +126,7 @@ export function updateTurrets(state: GameState, delta: number): void {
         const dSq = s.transform.position.distanceToSquared(origin);
         // Bonus scaling: multiply by typical distance magnitude to maintain
         // relative weighting when using squared distances
-        const bonusScale = 100;
+        const bonusScale = 25000;
         const bonus = preferSmall
           ? SMALL_HULLS.has(s.ship.hull)
             ? -10 * bonusScale
