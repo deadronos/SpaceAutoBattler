@@ -54,6 +54,19 @@ export {
 export { applyVerticalPerturbation } from './vertical-maneuvers.js';
 export { recordFocusDiagnostics, updateBandStickiness } from './metrics-diagnostics.js';
 
+/**
+ * Selects the best high-level intent for an AI ship based on the current situation.
+ * Evaluates candidates like Attack, Kite, Escort, Flee, etc.
+ *
+ * @param {GameState} state - The game state.
+ * @param {ShipEntity} ship - The AI ship.
+ * @param {AIState} ai - The AI component state.
+ * @param {BehaviorProfile} profile - The behavior profile.
+ * @param {ShipEntity | null} primaryTarget - The primary target entity.
+ * @param {ShipEntity | null} escortTarget - The target to escort (if any).
+ * @param {EscortAssignment | null} escortAssignment - Details of the escort mission.
+ * @returns {IntentCandidate} The selected intent candidate.
+ */
 export function selectIntent(
   state: GameState,
   ship: ShipEntity,
@@ -151,6 +164,14 @@ export function selectIntent(
   return tieBreak(ai, state.ai.tickIndex, candidates, state.ai.metrics);
 }
 
+/**
+ * Computes the Level of Detail (LOD) for AI processing based on distance to target.
+ *
+ * @param {ShipEntity} ship - The AI ship.
+ * @param {ShipEntity | null} target - The target ship.
+ * @param {BehaviorProfile} profile - The behavior profile.
+ * @returns {0 | 1 | 2} The LOD level (0=high, 2=low).
+ */
 export function computeLod(
   ship: ShipEntity,
   target: ShipEntity | null,
@@ -165,6 +186,18 @@ export function computeLod(
   return 2;
 }
 
+/**
+ * Generates a specific command (heading, thrust, firing) based on the selected intent.
+ * Writes the command to the AI state.
+ *
+ * @param {GameState} state - The game state.
+ * @param {ShipEntity} ship - The AI ship.
+ * @param {AIState} ai - The AI component state.
+ * @param {BehaviorProfile} profile - The behavior profile.
+ * @param {ShipEntity | null} target - The primary target.
+ * @param {ShipEntity | null} escortTarget - The escort target.
+ * @param {EscortAssignment | null} escortAssignment - Escort details.
+ */
 export function writeCommand(
   state: GameState,
   ship: ShipEntity,

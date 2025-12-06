@@ -9,10 +9,17 @@ import {
 
 const geometryCache = new Map<string, BufferGeometry>();
 
+/**
+ * Metadata attached to projectile geometries for rendering.
+ */
 export interface ProjectileGeometryMetadata {
+  /** The simulation category of the projectile (e.g., 'missile', 'beam'). */
   category: string;
+  /** Base radius of the geometry in model units. */
   baseRadius?: number;
+  /** Base width of the geometry. */
   baseWidth?: number;
+  /** Base length of the geometry. */
   baseLength?: number;
 }
 
@@ -90,6 +97,13 @@ function createDefaultGeometry(key: string, config: ProjectileConfigItem): Buffe
   return geometry;
 }
 
+/**
+ * Retrieves or creates a geometry for the specified projectile type.
+ * Geometries are cached by type key.
+ *
+ * @param {string | null} [bulletType] - The projectile type key (e.g., 'bullet:laser').
+ * @returns {BufferGeometry} The requested geometry.
+ */
 export function getProjectileGeometry(bulletType?: string | null): BufferGeometry {
   const key = bulletType ?? 'bullet:laser';
   const cached = geometryCache.get(key);
@@ -102,6 +116,9 @@ export function getProjectileGeometry(bulletType?: string | null): BufferGeometr
   return geometry;
 }
 
+/**
+ * Disposes all cached projectile geometries and clears the cache.
+ */
 export function clearProjectileGeometryCache(): void {
   for (const geom of geometryCache.values()) {
     geom.dispose();

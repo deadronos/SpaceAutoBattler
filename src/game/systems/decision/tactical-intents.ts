@@ -21,6 +21,19 @@ import {
   getPriorityRank,
 } from './intent-utils.js';
 
+/**
+ * Scores the 'Intercept' intent.
+ *
+ * @param {GameState} state - The game state.
+ * @param {ShipEntity} ship - The AI ship.
+ * @param {BehaviorProfile} profile - The behavior profile.
+ * @param {ShipEntity} target - The target to intercept.
+ * @param {ShipEntity | null} escortTarget - The escort target (if any).
+ * @param {TeamPosture} posture - The team's posture.
+ * @param {AITraits} traits - The AI's traits.
+ * @param {EscortAssignment | null} escortAssignment - Escort details.
+ * @returns {number} The calculated score.
+ */
 export function scoreInterceptIntent(
   state: GameState,
   ship: ShipEntity,
@@ -70,6 +83,17 @@ export function scoreInterceptIntent(
   return quantizeScore(score);
 }
 
+/**
+ * Scores the 'Reposition' intent.
+ *
+ * @param {GameState} state - The game state.
+ * @param {ShipEntity} ship - The AI ship.
+ * @param {BehaviorProfile} profile - The behavior profile.
+ * @param {ShipEntity | null} target - The target (optional).
+ * @param {AITraits} traits - The AI's traits.
+ * @param {TeamPosture} posture - The team's posture.
+ * @returns {number} The calculated score.
+ */
 export function scoreRepositionIntent(
   state: GameState,
   ship: ShipEntity,

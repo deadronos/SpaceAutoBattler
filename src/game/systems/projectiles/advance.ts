@@ -8,6 +8,14 @@ import {
 import { TEMP_POS } from './sharedTemps.js';
 import { findShipById, steerProjectileTowardTarget } from './homing.js';
 
+/**
+ * Advances all active projectiles by one time step.
+ * Updates position and applies steering for homing projectiles.
+ * Beam projectiles are handled separately.
+ *
+ * @param {GameState} state - The game state.
+ * @param {number} delta - The time step.
+ */
 export function advanceProjectiles(state: GameState, delta: number): void {
   const projectiles = state.queries.projectiles.entities as ProjectileEntity[];
   for (const projectile of projectiles) {

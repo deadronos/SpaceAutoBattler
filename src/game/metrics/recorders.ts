@@ -3,6 +3,15 @@ import { MAX_INTENT_TIMELINE_ENTRIES } from './constants.js';
 import { addToHistogram } from './factories.js';
 import { appendCappedMutable } from '../../utils/cappedBuffer.js';
 
+/**
+ * Records an intent decision into the metrics history.
+ *
+ * @param {AIMetrics} metrics - The metrics object to update.
+ * @param {number} tick - The current game tick.
+ * @param {number} time - The current game time.
+ * @param {AIIntent} intent - The intent chosen by the AI.
+ * @param {boolean} isOpeningWindow - Whether the game is in the opening phase.
+ */
 export function recordIntentMetrics(
   metrics: AIMetrics,
   tick: number,
@@ -26,6 +35,13 @@ export function recordIntentMetrics(
   }
 }
 
+/**
+ * Records a sample for range-band satisfaction.
+ *
+ * @param {AIMetrics} metrics - The metrics object.
+ * @param {ShipHull} hull - The hull type of the ship.
+ * @param {boolean} satisfied - Whether the ship is within its desired range band.
+ */
 export function recordBandSample(metrics: AIMetrics, hull: ShipHull, satisfied: boolean): void {
   metrics.inBandSamples += 1;
   if (satisfied) metrics.inBandSatisfied += 1;
@@ -35,6 +51,12 @@ export function recordBandSample(metrics: AIMetrics, hull: ShipHull, satisfied: 
   if (satisfied) perHull.satisfied += 1;
 }
 
+/**
+ * Records metrics for a shot fired.
+ *
+ * @param {AIMetrics} metrics - The metrics object.
+ * @param {{ shipId: number; hull: ShipHull; time: number; distance?: number; deltaY?: number }} params - The shot details.
+ */
 export function recordShotMetrics(
   metrics: AIMetrics,
   params: {

@@ -12,17 +12,32 @@ interface ColoredMaterial extends Material {
   emissive?: Color;
 }
 
+/**
+ * Resolved metadata for a hull material instance.
+ */
 export interface HullMaterial {
   material: ColoredMaterial;
   originalColor: Color;
   originalEmissive?: Color;
 }
 
+/**
+ * Resolves the URL for a given ship model key.
+ *
+ * @param {string} [modelKey] - The key for the ship model.
+ * @returns {string} The resolved URL.
+ */
 export function resolveModelPath(modelKey?: string): string {
   const key = (modelKey ?? 'fighter') as keyof typeof SHIP_MODEL_PATHS;
   return SHIP_MODEL_PATHS[key] ?? SHIP_MODEL_PATHS.fighter;
 }
 
+/**
+ * Hook to load and clone a GLTF ship model.
+ *
+ * @param {string} [modelKey] - The model key to load.
+ * @returns {{ scene: Group | null; hasValidPath: boolean }} The loaded scene and validity flag.
+ */
 export function useShipModel(modelKey?: string): {
   scene: Group | null;
   hasValidPath: boolean;
@@ -46,6 +61,12 @@ function isColoredMaterial(m: Material): m is ColoredMaterial {
   return 'color' in m && (m as ColoredMaterial).color instanceof Color;
 }
 
+/**
+ * Hook to extract and track materials from a ship model scene.
+ *
+ * @param {Group | null} scene - The scene to traverse.
+ * @returns {React.MutableRefObject<HullMaterial[]>} A ref containing the list of materials.
+ */
 export function useHullMaterials(
   scene: Group | null,
 ): React.MutableRefObject<HullMaterial[]> {
@@ -85,6 +106,15 @@ export function useHullMaterials(
   return hullMaterialsRef as React.MutableRefObject<HullMaterial[]>;
 }
 
+/**
+ * Applies a team-colored tint to hull materials based on shield status.
+ *
+ * @param {HullMaterial[]} materials - The list of materials to update.
+ * @param {number} shieldFraction - Current shield fraction (0..1).
+ * @param {Color} teamColor - The team color.
+ * @param {number} tintThreshold - Fraction below which tint is applied.
+ * @param {number} tintStrength - Strength of the tint.
+ */
 export function applyHullTint(
   materials: HullMaterial[],
   shieldFraction: number,
@@ -117,6 +147,9 @@ export function applyHullTint(
   }
 }
 
+/**
+ * Fallback radii for shields by hull type, used if model bounding box fails.
+ */
 export const FALLBACK_RADIUS_BY_HULL: Record<ShipHull, number> = {
   fighter: 1.6,
   corvette: 2.1,

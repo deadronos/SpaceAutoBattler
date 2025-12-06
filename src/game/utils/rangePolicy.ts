@@ -1,12 +1,28 @@
 import { AI_CONFIG } from '../config.js';
 import { SeededRng } from '../../utils/rng.js';
 
+/** Type alias for AI config to support dependency injection/mocking. */
 export type RangePolicyConfig = typeof AI_CONFIG;
 
+/**
+ * Checks if the legacy range policy is active.
+ *
+ * @param {RangePolicyConfig} [config=AI_CONFIG] - The config to check.
+ * @returns {boolean} True if legacy policy is enabled.
+ */
 export function isLegacyRangePolicy(config: RangePolicyConfig = AI_CONFIG): boolean {
   return config.rangePolicy === 'v0.1.1-exp';
 }
 
+/**
+ * Applies variance to a base range value based on a seed.
+ *
+ * @param {number} baseRange - The base range.
+ * @param {number} traitSeed - The seed for the entity.
+ * @param {number} [weaponIndex=0] - Index of the weapon to vary independently.
+ * @param {RangePolicyConfig} [config=AI_CONFIG] - Config to check policy.
+ * @returns {number} The varied range.
+ */
 export function applyRangeVariance(
   baseRange: number,
   traitSeed: number,
@@ -24,6 +40,16 @@ export function applyRangeVariance(
   return Math.round(baseRange * modifier);
 }
 
+/**
+ * Adjusts projectile speed based on hull type and bullet type (legacy policy).
+ *
+ * @param {string} hull - The firing ship's hull type.
+ * @param {number} baseSpeed - The base projectile speed.
+ * @param {string} bulletType - The type of bullet.
+ * @param {boolean} [overrideProvided=false] - Whether an override exists to skip this logic.
+ * @param {RangePolicyConfig} [config=AI_CONFIG] - Config to check policy.
+ * @returns {number} The adjusted speed.
+ */
 export function adjustProjectileSpeedForHullAndBullet(
   hull: string,
   baseSpeed: number,
@@ -55,6 +81,15 @@ export function adjustProjectileSpeedForHullAndBullet(
   return adjusted;
 }
 
+/**
+ * Adjusts the behavior profile's preferred range based on combat style and hull (legacy policy).
+ *
+ * @param {readonly [number, number]} baseRange - The base [min, max] range.
+ * @param {string} style - The combat style.
+ * @param {string} hull - The ship hull type.
+ * @param {RangePolicyConfig} [config=AI_CONFIG] - Config to check policy.
+ * @returns {readonly [number, number]} The adjusted range interval.
+ */
 export function adjustBehaviorProfileRange(
   baseRange: readonly [number, number],
   style: string,

@@ -6,6 +6,9 @@ type ColliderShapeConfig =
   | { type: 'ball'; radius: number }
   | { type: 'capsule'; halfHeight: number; radius: number };
 
+/**
+ * Options for creating a rigid body with a collider.
+ */
 export interface CreateBodyColliderOpts {
   position?: Vector3;
   rotation?: Quaternion | { x: number; y: number; z: number; w: number };
@@ -39,6 +42,13 @@ function ensureNumbers(position?: Vector3): { x: number; y: number; z: number } 
   return { x: position.x, y: position.y, z: position.z };
 }
 
+/**
+ * Creates a Rapier kinematic rigid body and attached collider based on options.
+ *
+ * @param {GameState} state - The game state.
+ * @param {CreateBodyColliderOpts} opts - Configuration options.
+ * @returns {{ body: RigidBody; collider: Collider | null }} The created body and collider.
+ */
 export function createKinematicBodyWithCollider(
   state: GameState,
   opts: CreateBodyColliderOpts,
@@ -76,6 +86,13 @@ export function createKinematicBodyWithCollider(
   return { body, collider };
 }
 
+/**
+ * Registers a collider handle in the global lookup map.
+ *
+ * @param {GameState} state - The game state.
+ * @param {Collider | null | undefined} collider - The collider to register.
+ * @param {GameEntity} entity - The entity associated with the collider.
+ */
 export function registerColliderHandle(
   state: GameState,
   collider: Collider | null | undefined,
@@ -88,6 +105,12 @@ export function registerColliderHandle(
   state.colliderLookup.set(handle, entity);
 }
 
+/**
+ * Unregisters a collider handle from the global lookup map.
+ *
+ * @param {GameState} state - The game state.
+ * @param {Collider | null | undefined} collider - The collider to unregister.
+ */
 export function unregisterColliderHandle(
   state: GameState,
   collider: Collider | null | undefined,
@@ -99,6 +122,16 @@ export function unregisterColliderHandle(
   state.colliderLookup.delete(handle);
 }
 
+/**
+ * Convenience function to create a body/collider, create an entity using a factory, and register it.
+ *
+ * @template T - The type of the game entity.
+ * @param {GameState} state - The game state.
+ * @param {(body: RigidBody, collider: Collider | null) => T} entityFactory - Function to create the entity.
+ * @param {CreateBodyColliderOpts} opts - Physics options.
+ * @param {(entity: T) => void} [registerEntity] - Optional callback to register the entity in ECS or other lists.
+ * @returns {{ entity: T; collider: Collider | null; body: RigidBody }} The created components.
+ */
 export function createAndRegisterEntityBody<T extends GameEntity>(
   state: GameState,
   entityFactory: (body: RigidBody, collider: Collider | null) => T,

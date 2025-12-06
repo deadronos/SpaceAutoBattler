@@ -25,6 +25,9 @@ const TRAIL_RNG_SEED = 0x54524149; // 'TRAI'
 /**
  * Simple particle trail system for ship thrusters.
  * Spawns small particles from ship thruster anchors that fade out over time.
+ *
+ * @param {ParticleTrailProps} props - Component properties.
+ * @returns {React.ReactElement} The rendered particle system mesh.
  */
 export function ParticleTrails({ ships, resources }: ParticleTrailProps): React.ReactElement {
   if (!PARTICLE_TRAILS_CONFIG.enabled) return <></>;

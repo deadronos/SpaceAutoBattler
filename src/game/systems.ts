@@ -37,11 +37,20 @@ export { updateDecisionSystem, fireProjectile, findNearestEnemy };
 /**
  * Run a single decision tick for all AI-controlled ships.
  * Alias for updateDecisionSystem, provided for test compatibility.
+ *
+ * @param {GameState} state - The game state.
+ * @param {number} delta - The time delta.
  */
 export function runDecisionTick(state: GameState, delta: number): void {
   updateDecisionSystem(state, delta);
 }
 
+/**
+ * Main game update loop. Runs all systems in order.
+ *
+ * @param {GameState} state - The game state.
+ * @param {number} delta - The time step in seconds.
+ */
 export function updateGame(state: GameState, delta: number): void {
   const sim = state.simulation;
   sim.lastTickStart = state.time;
@@ -135,6 +144,9 @@ export function updateGame(state: GameState, delta: number): void {
   measureSubsystem('updateExplosions', () => updateExplosions(state, delta));
 }
 
+/**
+ * Test hooks exposing internal system functions.
+ */
 export const __aiTestHooks = {
   updateDecisionSystem,
   refreshBlackboard,

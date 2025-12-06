@@ -7,6 +7,11 @@ import { createDefaultMetrics } from './metrics.js';
 import { AI_CONFIG } from './config.js';
 import { createDefaultDoctrineState } from './aiDoctrine.js';
 
+/**
+ * Initializes the game state, including physics (Rapier), ECS world, and AI state.
+ *
+ * @returns {Promise<GameState>} A promise that resolves to the initialized GameState.
+ */
 export async function createGameState(): Promise<GameState> {
   // Rapier 0.19+ expects an options object; calling without args triggers a deprecation warning.
   // Passing an empty object keeps default behavior and removes the warning.

@@ -18,6 +18,14 @@ type Props = {
   enabled?: boolean;
 };
 
+/**
+ * Manages the post-processing effect composer and passes.
+ * Handles Bloom, FXAA, and other screen-space effects.
+ *
+ * @param {object} props - Component props.
+ * @param {boolean} [props.enabled=false] - Whether post-processing is enabled.
+ * @returns {null} This component does not render DOM elements, but attaches to the R3F canvas.
+ */
 export function Postprocessing({ enabled = false }: Props): null {
   const { gl, scene, camera, size, invalidate } = useThree();
   const effectiveEnabled = enabled;

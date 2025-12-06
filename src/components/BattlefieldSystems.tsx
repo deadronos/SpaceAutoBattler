@@ -6,11 +6,23 @@ import { useUiStore } from '../game/uiStore.js';
 
 export const MAX_ALLOWED_SIMULATION_SUBSTEPS = 5;
 
+/**
+ * Limits the number of substeps to prevent death spirals on slow frames.
+ *
+ * @param {number} value - The requested number of substeps.
+ * @returns {number} The clamped value.
+ */
 export function clampSimulationSubsteps(value: number): number {
   const normalized = Number.isFinite(value) ? Math.max(1, Math.floor(value)) : 1;
   return Math.min(MAX_ALLOWED_SIMULATION_SUBSTEPS, normalized);
 }
 
+/**
+ * Component that runs the simulation loop within the React Three Fiber update cycle.
+ * It does not render anything visual but drives the game state updates.
+ *
+ * @returns {React.ReactElement} A fragment (no DOM).
+ */
 export function BattlefieldSystems(): React.ReactElement {
   const state = useGameState();
   const paused = useUiStore((s) => s.paused);

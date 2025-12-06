@@ -6,8 +6,14 @@ import type { ExplosionEvent } from './renderer.js';
 import type { SeededRng } from '../utils/rng.js';
 import type { ShipEntity } from './ship.js';
 
+/**
+ * Type representing a mutation to the game world that is deferred until a safe point in the loop.
+ */
 export type DeferredMutation = () => void;
 
+/**
+ * Diagnostics data for the physics engine and simulation safety guards.
+ */
 export interface RapierDiagnostics {
   /** Number of deferred operations that threw during the latest run. */
   deferredMutationFailures: number;
@@ -45,6 +51,9 @@ export interface RapierDiagnostics {
   lastSubsystemFailureTimestamp: number;
 }
 
+/**
+ * Performance timings for individual subsystems in the game loop.
+ */
 export interface SubsystemTimings {
   /** Wall-clock durations (ms) for the latest tick keyed by subsystem name. */
   durations: Record<string, number>;
@@ -54,6 +63,9 @@ export interface SubsystemTimings {
   lastTickTime: number;
 }
 
+/**
+ * Clock and timing state for the fixed-timestep simulation.
+ */
 export interface SimulationClock {
   /** Fixed step size in seconds for simulation updates. */
   step: number;
@@ -85,25 +97,44 @@ export interface SimulationClock {
   subsystemTimings: SubsystemTimings;
 }
 
+/**
+ * Flags controlling HUD UI visibility and features.
+ */
 export interface HudUiFlags {
   /** Whether HUD health bars are currently enabled. */
   hudHealthBars: boolean;
 }
 
+/**
+ * The root container for all game state.
+ *
+ * This object holds the ECS world, physics world, simulation clock, and all other
+ * runtime data required to simulate the game. It is designed to be deterministic.
+ */
 export interface GameState {
+  /** Rapier3D module instance. */
   rapier: RapierModule;
+  /** Rapier3D physics world instance. */
   physicsWorld: RapierWorld;
+  /** Rapier3D event queue for collision events. */
   eventQueue: EventQueue;
+  /** Miniplex ECS world containing all entities. */
   world: ECSWorld<GameEntity>;
+  /** Map from physics body handles to game entities. */
   colliderLookup: Map<number, GameEntity>;
   /** Constant-time lookup table for ships by entity id. */
   shipById: Map<number, ShipEntity>;
+  /** Next available entity ID. */
   nextEntityId: number;
+  /** Next available explosion ID. */
   nextExplosionId: number;
+  /** Current simulation time in seconds. */
   time: number;
+  /** Pre-calculated queries for efficient entity access. */
   queries: GameQueries;
   /** Map from ship entity id -> set of turret entities mounted on that ship. Optional for tests/mocks. */
   turretsByShip?: Map<number, Set<TurretEntity>>;
+  /** Seeded random number generator for deterministic simulation. */
   rng: SeededRng;
   /** Whether simulation is paused (authoritative mirror of UI state). */
   paused: boolean;
@@ -111,8 +142,11 @@ export interface GameState {
   timeScale: number;
   /** Simulation clock bookkeeping used for fixed-step integration and interpolation. */
   simulation: SimulationClock;
+  /** AI manager state. */
   ai: AIManagerState;
+  /** Sensor system state. */
   sensors?: SensorState;
+  /** Shared blackboard for AI decision making. */
   blackboard: AIBlackboard;
   /** Flags mirrored from the UI store to keep deterministic playback. */
   uiFlags: HudUiFlags;

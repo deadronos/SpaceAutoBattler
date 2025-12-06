@@ -13,6 +13,10 @@ function warnAiDisable(): void {
   }
 }
 
+/**
+ * State interface for the UI store (Zustand).
+ * Controls game pause, time scale, debug toggles, and UI visibility.
+ */
 export type UiState = {
   paused: boolean;
   timeScale: number; // 0.25x .. 4x typical
@@ -85,6 +89,9 @@ export type UiState = {
   setSimEnableSubsystemGuards: (value: boolean) => void;
 };
 
+/**
+ * Zustand store hook for accessing and modifying UI state.
+ */
 export const useUiStore = create<UiState>((set) => ({
   paused: false,
   timeScale: 1,
@@ -202,6 +209,13 @@ if (typeof globalThis !== 'undefined') {
   globalWithUiStore.__spaceAutobattlerUiStore = useUiStore;
 }
 
+/**
+ * Mirrors the HUD health bars flag from the UI store to the game state.
+ * Ensures deterministic playback when replaying game states (if implemented).
+ *
+ * @param {GameState | null} state - The current game state.
+ * @param {boolean} enabled - Whether health bars should be enabled.
+ */
 export function mirrorHudHealthBarsFlag(state: GameState | null, enabled: boolean): void {
   if (!state) return;
   if (!state.uiFlags) {

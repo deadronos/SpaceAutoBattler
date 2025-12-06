@@ -5,6 +5,15 @@ import { fireProjectile } from '../projectiles.js';
 import type { ShipDecision } from './aiExecutor.js';
 import { TEMP_DIR } from './sharedTemps.js';
 
+/**
+ * Handles weapon firing based on the ship's decision.
+ * Manages cooldowns, muzzle flashes, and projectile spawning.
+ *
+ * @param {GameState} state - The game state.
+ * @param {ShipEntity} ship - The ship entity.
+ * @param {ShipDecision} decision - The firing decision.
+ * @param {ShipEntity | null} preferredTarget - The preferred target (for metrics).
+ */
 export function handleShipWeapons(
   state: GameState,
   ship: ShipEntity,

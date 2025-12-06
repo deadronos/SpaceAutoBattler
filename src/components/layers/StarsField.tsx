@@ -15,6 +15,12 @@ const STAR_POSITIONS = (() => {
   return new Float32Array(positions);
 })();
 
+/**
+ * Renders a static star field background.
+ * Uses a points mesh for performance.
+ *
+ * @returns {React.ReactElement} The star field component.
+ */
 export function StarsField(): React.ReactElement {
   return (
     <group>

@@ -9,6 +9,12 @@ import { findNearestEnemy } from '../turrets.js';
 const missingAiShips = new Set<number>();
 let warnedAiDisableInShips = false;
 
+/**
+ * Ensures that the AI system is enabled in the game state.
+ * Logs a warning if it was disabled (legacy support removed).
+ *
+ * @param {GameState} state - The game state.
+ */
 export function ensureAiEnabled(state: GameState): void {
   if (state.ai) state.ai.enabled = true;
   if (warnedAiDisableInShips) return;
@@ -20,6 +26,13 @@ export function ensureAiEnabled(state: GameState): void {
   }
 }
 
+/**
+ * Forces a ship to remain stationary.
+ * Used as a fallback when AI is missing or invalid.
+ *
+ * @param {GameState} state - The game state.
+ * @param {ShipEntity} ship - The ship entity.
+ */
 export function keepShipStationary(state: GameState, ship: ShipEntity): void {
   const position = ship.transform.position;
   deferSetNextKinematicTranslation(
@@ -40,6 +53,14 @@ export function keepShipStationary(state: GameState, ship: ShipEntity): void {
   );
 }
 
+/**
+ * Handles the case where a ship is missing its AI component.
+ * Logs an error and keeps the ship stationary.
+ *
+ * @param {GameState} state - The game state.
+ * @param {ShipEntity} ship - The ship entity.
+ * @returns {ShipEntity | null} A fallback target (nearest enemy), or null.
+ */
 export function handleMissingAi(state: GameState, ship: ShipEntity): ShipEntity | null {
   if (!missingAiShips.has(ship.id)) {
     missingAiShips.add(ship.id);

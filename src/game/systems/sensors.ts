@@ -28,6 +28,12 @@ function ensureVisibleMaps(state: GameState): void {
   }
 }
 
+/**
+ * Ensures the sensor state is initialized on the game state.
+ *
+ * @param {GameState} state - The game state.
+ * @returns {SensorState} The initialized sensor state.
+ */
 export function ensureSensorState(state: GameState): SensorState {
   if (!state.sensors) {
     state.sensors = {
@@ -84,6 +90,12 @@ function decayContacts(
   }
 }
 
+/**
+ * Updates the sensor system, recalculating visibility and occlusion for all ships.
+ *
+ * @param {GameState} state - The game state.
+ * @param {ShipEntity[]} ships - The list of active ships.
+ */
 export function updateSensorSystem(state: GameState, ships: ShipEntity[]): void {
   const sensorState = ensureSensorState(state);
   const manager = state.ai;

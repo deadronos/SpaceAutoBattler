@@ -7,6 +7,9 @@ import {
   registerColliderHandle,
 } from '../../utils/physicsFactory.js';
 
+/**
+ * Parameters for spawning a projectile entity with physics.
+ */
 export interface ProjectileSpawnParams {
   state: GameState;
   position: Vector3;
@@ -17,6 +20,12 @@ export interface ProjectileSpawnParams {
   projectile: ProjectileComponent;
 }
 
+/**
+ * Spawns a projectile entity with a physics body and registers it.
+ *
+ * @param {ProjectileSpawnParams} params - The spawn parameters.
+ * @param {(projectile: ProjectileEntity) => void} [onSpawn] - Callback invoked with the created entity.
+ */
 export function spawnProjectileEntity(
   params: ProjectileSpawnParams,
   onSpawn?: (projectile: ProjectileEntity) => void,

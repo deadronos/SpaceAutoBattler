@@ -1,12 +1,24 @@
 import type { Vector3 } from 'three';
 import type { GameState, ProjectileEntity, ShipEntity } from '../../../types/index.js';
 
+/**
+ * Information about where a beam hits.
+ */
 export interface BeamHitInfo {
   hitPoint: Vector3;
   targetId?: number;
   distance: number;
 }
 
+/**
+ * Performs a raycast to determine where a beam projectile hits.
+ *
+ * @param {GameState} state - The game state.
+ * @param {Vector3} start - The start position of the beam.
+ * @param {Vector3} direction - The direction of the beam.
+ * @param {number} range - The maximum range of the beam.
+ * @returns {BeamHitInfo} Information about the hit point and target.
+ */
 export function createBeamHitInfo(
   state: GameState,
   start: Vector3,

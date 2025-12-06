@@ -6,6 +6,9 @@ import { recordIntentMetrics } from '../../metrics.js';
 import { selectIntent, computeLod, writeCommand, recordFocusDiagnostics } from './intents.js';
 import { getEffectiveProfile } from './profile-adjustment.js';
 
+/**
+ * Result of the ship evaluation process.
+ */
 export interface EvaluationResult {
   intent: AIState['intent'];
   lastScore: number;
@@ -18,6 +21,16 @@ export interface EvaluationResult {
   previousTargetId: EntityId | null;
 }
 
+/**
+ * Evaluates a ship's situation and determines the best next action (intent).
+ * Does NOT apply the changes to the ship's state; this is a pure function.
+ *
+ * @param {GameState} state - The game state.
+ * @param {ShipEntity} ship - The ship to evaluate.
+ * @param {AIState} ai - The AI state of the ship.
+ * @param {Map<number, ShipEntity>} entityById - Lookup map for entities.
+ * @returns {EvaluationResult} The result of the evaluation.
+ */
 export function evaluateShip(
   state: GameState,
   ship: ShipEntity,
@@ -67,6 +80,15 @@ export function evaluateShip(
   };
 }
 
+/**
+ * Applies the evaluation result to the ship's AI state and generates the final command.
+ *
+ * @param {GameState} state - The game state.
+ * @param {ShipEntity} ship - The ship entity.
+ * @param {AIState} ai - The AI state to update.
+ * @param {EvaluationResult} result - The result from evaluateShip.
+ * @param {Map<number, ShipEntity>} entityById - Lookup map.
+ */
 export function applyEvaluationResult(
   state: GameState,
   ship: ShipEntity,

@@ -5,17 +5,26 @@ import { TEMP_DIR, TEMP_POS, TEMP_QUAT, TEMP_REL_POS } from './sharedTemps.js';
 import { handleMissingAi } from './aiSafety.js';
 import { getForwardFromQuaternion } from '../../../utils/vector.js';
 
+/** Represents the decision output of the ship AI. */
 export interface ShipDecision {
   heading: Vector3;
   thrust: number;
   firePrimary: boolean;
 }
 
+/** Result of the AI execution, including decision and target. */
 export interface ShipAiResult {
   decision: ShipDecision | null;
   preferredTarget: ShipEntity | null;
 }
 
+/**
+ * Finds a ship entity by ID.
+ *
+ * @param {GameState} state - The game state.
+ * @param {number | undefined} id - The ship ID.
+ * @returns {ShipEntity | null} The ship entity, or null.
+ */
 export function getShipById(state: GameState, id: number | undefined): ShipEntity | null {
   if (id == null) return null;
   const ships = state.queries.ships.entities as ShipEntity[];
@@ -25,6 +34,15 @@ export function getShipById(state: GameState, id: number | undefined): ShipEntit
   return null;
 }
 
+/**
+ * Executes the low-level AI logic for a ship to produce a maneuver decision.
+ * Converts high-level AI commands into immediate thrust and heading controls.
+ *
+ * @param {GameState} state - The game state.
+ * @param {ShipEntity} ship - The ship entity.
+ * @param {number} delta - The time step.
+ * @returns {ShipAiResult} The calculated decision and target.
+ */
 export function executeShipAi(state: GameState, ship: ShipEntity, delta: number): ShipAiResult {
   const ai = ship.ai;
   if (!ai) {

@@ -10,8 +10,8 @@ export const STAR_TIME_WRAP_SECONDS = 8192;
 /**
  * Wrap elapsed time to prevent floating-point precision loss in shader uniforms.
  *
- * @param time - Elapsed time in seconds
- * @returns Object with wrapped time and number of complete cycles
+ * @param {number} time - Elapsed time in seconds.
+ * @returns {{ wrapped: number; cycles: number }} Object with wrapped time and number of complete cycles.
  */
 export function wrapStarTime(time: number): { wrapped: number; cycles: number } {
   if (!Number.isFinite(time)) {

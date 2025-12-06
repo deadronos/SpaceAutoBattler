@@ -17,6 +17,12 @@ interface TeamSummary {
   maxHp: number;
 }
 
+/**
+ * Root component for the Heads-Up Display (HUD).
+ * Renders team summaries, debug overlays, and health bars.
+ *
+ * @returns {React.ReactElement} The HUD UI.
+ */
 export function Hud(): React.ReactElement {
   const state = useOptionalGameState();
   // Call the hook unconditionally; it accepts a nullable archetype and will

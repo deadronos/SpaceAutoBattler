@@ -40,6 +40,12 @@ function ensureState(ai: AIState): HysteresisState {
  *
  * Returns an adjusted [min, max] range that callers should use instead of the
  * nominal profile values for comparisons.
+ *
+ * @param {AIState} ai - The AI state.
+ * @param {BehaviorProfile} profile - The behavior profile.
+ * @param {number} distance - Current distance to target.
+ * @param {number} tickIndex - Current tick.
+ * @returns {readonly [number, number]} The effective range interval.
  */
 export function computeEffectiveDesiredRange(
   ai: AIState,
@@ -133,6 +139,12 @@ export function computeEffectiveDesiredRange(
  * Damp the raw vertical amplitude to reduce excessive bobbing when repeated
  * high vertical amplitudes are observed. Uses a short cooldown to lower
  * amplitude on recurring large samples.
+ *
+ * @param {AIState} ai - The AI state.
+ * @param {BehaviorProfile} profile - The behavior profile.
+ * @param {number} rawAmplitude - The calculated vertical amplitude.
+ * @param {number} tickIndex - Current tick.
+ * @returns {number} The damped amplitude.
  */
 export function dampVerticalAmplitude(
   ai: AIState,

@@ -32,6 +32,13 @@ function isIdleCommand(ship: ShipEntity): boolean {
   return thrustIdle && strafeIdle && headingAligned && linearIdle && angularIdle;
 }
 
+/**
+ * Updates the motion state of all ships based on their AI commands.
+ * Handles both linear and angular motion integration.
+ *
+ * @param {GameState} state - The game state.
+ * @param {number} dt - The time step.
+ */
 export function updateMotionSystem(state: GameState, dt: number): void {
   const ships =
     (state.queries.shipsWithCommands?.entities as ShipEntity[] | undefined) ??

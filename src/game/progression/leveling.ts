@@ -2,6 +2,11 @@ import type { GameState, ShipComponent, ShipLevelBonuses } from '../../types/ind
 import { calculateLevelBonus, calculateXpForLevel } from '../../config/progression.js';
 import { addProgressionEvent, shouldLogProgressionEvent } from './events.js';
 
+/**
+ * Creates an initial zeroed state for ship level bonuses.
+ *
+ * @returns {ShipLevelBonuses} The initial bonus state.
+ */
 export function createLevelBonusState(): ShipLevelBonuses {
   return {
     hull: 0,
@@ -49,6 +54,12 @@ function applyStatBonus(
   return baseStat * (1 + newBonus);
 }
 
+/**
+ * Recalculates and applies stats bonuses to a ship based on its current level.
+ * Handles derived stats like maxHp, maxShield, damage, etc.
+ *
+ * @param {ShipComponent} ship - The ship to update.
+ */
 export function applyLevelUpBonuses(ship: ShipComponent): void {
   const levelBonuses = ensureLevelBonuses(ship);
 
@@ -90,6 +101,15 @@ export function applyLevelUpBonuses(ship: ShipComponent): void {
   levelBonuses.repairRate = repairBonus;
 }
 
+/**
+ * Checks if a ship has enough XP to level up and applies the level up if so.
+ * Can trigger multiple level ups if enough XP is accumulated.
+ *
+ * @param {ShipComponent} ship - The ship to check.
+ * @param {GameState | null} [state] - The game state (for events).
+ * @param {number} [shipId] - The ship ID (for events).
+ * @returns {boolean} True if the ship leveled up at least once.
+ */
 export function checkLevelUp(
   ship: ShipComponent,
   state?: GameState | null,

@@ -81,6 +81,18 @@ function ProjectileGroupMesh({ group }: { group: ProjectileGroupState }): React.
   );
 }
 
+/**
+ * Instanced renderer for projectiles.
+ * Groups projectiles by type/key and renders them using InstancedMesh for performance.
+ * Handles beam visualization separately via scaling matrices.
+ *
+ * @param {object} props - Component props.
+ * @param {Archetype<GameEntity, ['projectile']>} props.archetype - The projectile archetype.
+ * @param {Partial<Record<string, number>>} [props.capacityByType] - Optional capacity overrides per type.
+ * @param {number} [props.defaultCapacity=512] - Default capacity per group.
+ * @param {number} [props.maxTotal=Infinity] - Maximum total rendered projectiles.
+ * @returns {React.ReactElement} The rendered instanced meshes.
+ */
 export function ProjectilesInstancedLayer({
   archetype,
   capacityByType,

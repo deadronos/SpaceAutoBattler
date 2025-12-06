@@ -69,6 +69,13 @@ export const SHIELD_VISUAL_DEFAULTS: Required<ShieldVisualSettings> = {
   },
 };
 
+/**
+ * Resolves the visual settings for a ship's shield based on its hull type.
+ * Applies defaults where specific configuration is missing.
+ *
+ * @param {ShipHull} hull - The hull type of the ship.
+ * @returns {Required<ShieldVisualSettings>} The fully resolved shield configuration.
+ */
 export function getShieldVisuals(hull: ShipHull): Required<ShieldVisualSettings> {
   const cfg = SHIELD_VISUALS[hull] ?? {};
   const defaults = SHIELD_VISUAL_DEFAULTS;
@@ -100,7 +107,12 @@ export function getShieldVisuals(hull: ShipHull): Required<ShieldVisualSettings>
   };
 }
 
-// Convenience helper to globally override all hulls if needed in the future
+/**
+ * Sets the global material type for all shields.
+ * Useful for debugging or performance tuning.
+ *
+ * @param {ShieldMaterialKind} kind - The material kind to use ('hex' or 'meshtransmission').
+ */
 export function setGlobalShieldMaterial(kind: ShieldMaterialKind): void {
   (Object.keys(SHIELD_VISUALS) as ShipHull[]).forEach((hull) => {
     SHIELD_VISUALS[hull] = { ...(SHIELD_VISUALS[hull] ?? {}), materialKind: kind };
