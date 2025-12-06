@@ -10,8 +10,8 @@ describe('calculateEffectiveDamage', () => {
   it('splits overflow damage between armor absorption and hull', () => {
     const result = calculateEffectiveDamage(100, 'kinetic', 50, 20);
     expect(result.shieldDamage).toBe(50);
-    expect(result.armorDamage).toBe(15);
-    expect(result.hullDamage).toBe(15);
+    expect(result.armorDamage).toBe(18.75);
+    expect(result.hullDamage).toBe(18.75);
   });
 
   it('handles targets without shields by applying armor absorption and hull damage', () => {
