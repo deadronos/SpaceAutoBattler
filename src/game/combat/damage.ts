@@ -81,12 +81,13 @@ export function calculateEffectiveDamage(
     const effectiveShieldDamage = damage * shieldEffectiveness;
 
     if (effectiveShieldDamage >= shield) {
-      const remainingDamage = effectiveShieldDamage - shield;
+      const rawDamageConsumed = shield / shieldEffectiveness;
+      const remainingRawDamage = Math.max(0, damage - rawDamageConsumed);
       const armorEffectiveness = getDamageEffectiveness(damageType, 'armor');
       const hullEffectiveness = getDamageEffectiveness(damageType, 'hull');
       const maxArmorAbsorption = armor * armorEffectiveness;
-      const armorAbsorption = Math.min(remainingDamage * 0.5, maxArmorAbsorption);
-      const hullDamage = Math.max(0, (remainingDamage - armorAbsorption) * hullEffectiveness);
+      const armorAbsorption = Math.min(remainingRawDamage * 0.5, maxArmorAbsorption);
+      const hullDamage = Math.max(0, (remainingRawDamage - armorAbsorption) * hullEffectiveness);
 
       return {
         shieldDamage: shield,
