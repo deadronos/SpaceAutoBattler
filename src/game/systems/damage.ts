@@ -190,7 +190,7 @@ function applyAoeDamage(
   radius: number,
   primaryTarget: ShipEntity,
 ): void {
-  const origin = primaryTarget.transform.position;
+  const origin = projectile.transform.position;
   const nearbyShips = querySpatialHash(shipSpatialHash, origin, radius);
   for (const ship of nearbyShips) {
     if (ship === primaryTarget) continue;
