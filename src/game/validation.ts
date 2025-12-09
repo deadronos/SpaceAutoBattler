@@ -12,6 +12,13 @@ function assertRange(name: string, value: number, opts: { min?: number; max?: nu
   }
 }
 
+/**
+ * Validates a MotionStats object to ensure all values are within safe ranges.
+ * Throws an error if any value is invalid.
+ *
+ * @param {MotionStats} stats - The motion statistics configuration to validate.
+ * @throws {Error} If any configuration value is out of bounds or invalid.
+ */
 export function validateMotionStats(stats: MotionStats): void {
   assertRange('motion.mass', stats.mass, { min: 0 });
   assertRange('motion.maxSpeed', stats.maxSpeed, { min: 0 });

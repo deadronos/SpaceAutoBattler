@@ -26,6 +26,9 @@ export interface StatusEffectDefinition {
   tone: 'info' | 'warning' | 'critical';
 }
 
+/**
+ * Configuration for the HUD health bars and overlays.
+ */
 export const DEFAULT_HUD_HEALTH_OVERLAY_CONFIG: HudHealthOverlayConfig = {
   shieldColor: '#4cc2ff',
   healthColor: '#3bd675',
@@ -45,6 +48,9 @@ export const DEFAULT_HUD_HEALTH_OVERLAY_CONFIG: HudHealthOverlayConfig = {
   hudOffsetY: 50,
 };
 
+/**
+ * Registry of status effect definitions (icons, labels, tones).
+ */
 export const STATUS_EFFECT_REGISTRY: Record<StatusEffectTag, StatusEffectDefinition> = {
   jammed: {
     icon: '📡',
@@ -68,6 +74,9 @@ export const STATUS_EFFECT_REGISTRY: Record<StatusEffectTag, StatusEffectDefinit
   },
 };
 
+/**
+ * Fallback definition for unknown status effects.
+ */
 export const STATUS_EFFECT_FALLBACK: StatusEffectDefinition = {
   icon: '❔',
   label: 'Unknown effect',

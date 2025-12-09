@@ -13,6 +13,16 @@ import {
   getEffectivePatience,
 } from './intent-utils.js';
 
+/**
+ * Scores the 'Regroup' intent.
+ *
+ * @param {GameState} state - The game state.
+ * @param {ShipEntity} ship - The AI ship.
+ * @param {BehaviorProfile} profile - The behavior profile.
+ * @param {TeamPosture} posture - The team's posture.
+ * @param {AITraits} traits - The AI's traits.
+ * @returns {number} The calculated score.
+ */
 export function scoreRegroupIntent(
   state: GameState,
   ship: ShipEntity,
@@ -39,6 +49,17 @@ export function scoreRegroupIntent(
   return quantizeScore(180);
 }
 
+/**
+ * Scores the 'Escort' intent.
+ *
+ * @param {ShipEntity} ship - The AI ship.
+ * @param {BehaviorProfile} profile - The behavior profile.
+ * @param {ShipEntity} escortTarget - The target to escort.
+ * @param {GameState} state - The game state.
+ * @param {AITraits} traits - The AI's traits.
+ * @param {EscortAssignment | null} escortAssignment - Escort details.
+ * @returns {number} The calculated score.
+ */
 export function scoreEscortIntent(
   ship: ShipEntity,
   profile: BehaviorProfile,

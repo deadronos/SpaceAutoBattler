@@ -32,6 +32,13 @@ function recordShotIfMetrics(
   }
 }
 
+/**
+ * Finds the nearest enemy ship to a given origin ship.
+ *
+ * @param {GameState} state - The game state.
+ * @param {ShipEntity} origin - The searching ship.
+ * @returns {ShipEntity | null} The nearest enemy, or null if none found.
+ */
 export function findNearestEnemy(state: GameState, origin: ShipEntity): ShipEntity | null {
   const ships = state.queries.ships.entities as ShipEntity[];
   let closest: ShipEntity | null = null;
@@ -56,6 +63,13 @@ function getTurretWorldPosition(ship: ShipEntity, turret: TurretState): Vector3 
   return world;
 }
 
+/**
+ * Runs logic for embedded turrets (not separate entities).
+ *
+ * @param {GameState} state - The game state.
+ * @param {ShipEntity} ship - The ship with embedded turrets.
+ * @param {ShipEntity} target - The current target.
+ */
 export function runEmbeddedTurrets(state: GameState, ship: ShipEntity, target: ShipEntity): void {
   for (const turret of ship.turrets ?? []) {
     if (turret.cooldown > 0) continue;
@@ -82,6 +96,12 @@ export function runEmbeddedTurrets(state: GameState, ship: ShipEntity, target: S
   }
 }
 
+/**
+ * Updates all independent turret entities.
+ *
+ * @param {GameState} state - The game state.
+ * @param {number} delta - The time step.
+ */
 export function updateTurrets(state: GameState, delta: number): void {
   const turrets = state.queries.turrets.entities as TurretEntity[];
   for (const t of turrets) {
@@ -106,7 +126,7 @@ export function updateTurrets(state: GameState, delta: number): void {
         const dSq = s.transform.position.distanceToSquared(origin);
         // Bonus scaling: multiply by typical distance magnitude to maintain
         // relative weighting when using squared distances
-        const bonusScale = 100;
+        const bonusScale = 25000;
         const bonus = preferSmall
           ? SMALL_HULLS.has(s.ship.hull)
             ? -10 * bonusScale

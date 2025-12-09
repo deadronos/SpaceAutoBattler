@@ -42,6 +42,16 @@ function setHeadingToward(
   }
 }
 
+/**
+ * Generates an Intercept command.
+ *
+ * @param {GameState} state - The game state.
+ * @param {ShipEntity} ship - The AI ship.
+ * @param {BehaviorProfile} profile - The behavior profile.
+ * @param {ShipEntity | null} target - The target.
+ * @param {Vector3} heading - Vector to write the heading to.
+ * @returns {CommandResult} The command parameters.
+ */
 export function computeInterceptCommand(
   state: GameState,
   ship: ShipEntity,
@@ -69,6 +79,16 @@ export function computeInterceptCommand(
   }
 }
 
+/**
+ * Generates a Reposition command.
+ *
+ * @param {GameState} state - The game state.
+ * @param {ShipEntity} ship - The AI ship.
+ * @param {BehaviorProfile} profile - The behavior profile.
+ * @param {ShipEntity | null} target - The target.
+ * @param {Vector3} heading - Vector to write the heading to.
+ * @returns {CommandResult} The command parameters.
+ */
 export function computeRepositionCommand(
   state: GameState,
   ship: ShipEntity,
@@ -128,6 +148,15 @@ export function computeRepositionCommand(
   }
 }
 
+/**
+ * Generates a Regroup command.
+ *
+ * @param {GameState} state - The game state.
+ * @param {ShipEntity} ship - The AI ship.
+ * @param {BehaviorProfile} profile - The behavior profile.
+ * @param {Vector3} heading - Vector to write the heading to.
+ * @returns {CommandResult} The command parameters.
+ */
 export function computeRegroupCommand(
   state: GameState,
   ship: ShipEntity,
@@ -148,6 +177,17 @@ export function computeRegroupCommand(
   };
 }
 
+/**
+ * Generates an Escort command.
+ *
+ * @param {GameState} state - The game state.
+ * @param {ShipEntity} ship - The AI ship.
+ * @param {BehaviorProfile} profile - The behavior profile.
+ * @param {ShipEntity | null} escortTarget - The escort target.
+ * @param {EscortAssignment | null} escortAssignment - Escort details.
+ * @param {Vector3} heading - Vector to write the heading to.
+ * @returns {CommandResult} The command parameters.
+ */
 export function computeEscortCommand(
   state: GameState,
   ship: ShipEntity,
@@ -172,6 +212,16 @@ export function computeEscortCommand(
   };
 }
 
+/**
+ * Generates a Kite command.
+ *
+ * @param {GameState} state - The game state.
+ * @param {ShipEntity} ship - The AI ship.
+ * @param {BehaviorProfile} profile - The behavior profile.
+ * @param {ShipEntity | null} target - The target.
+ * @param {Vector3} heading - Vector to write the heading to.
+ * @returns {CommandResult} The command parameters.
+ */
 export function computeKiteCommand(
   state: GameState,
   ship: ShipEntity,
@@ -199,6 +249,15 @@ export function computeKiteCommand(
   }
 }
 
+/**
+ * Generates a Flee command.
+ *
+ * @param {GameState} state - The game state.
+ * @param {ShipEntity} ship - The AI ship.
+ * @param {BehaviorProfile} profile - The behavior profile.
+ * @param {Vector3} heading - Vector to write the heading to.
+ * @returns {CommandResult} The command parameters.
+ */
 export function computeFleeCommand(
   state: GameState,
   ship: ShipEntity,
@@ -215,6 +274,16 @@ export function computeFleeCommand(
   };
 }
 
+/**
+ * Generates an Attack command.
+ *
+ * @param {GameState} state - The game state.
+ * @param {ShipEntity} ship - The AI ship.
+ * @param {BehaviorProfile} profile - The behavior profile.
+ * @param {ShipEntity | null} target - The target.
+ * @param {Vector3} heading - Vector to write the heading to.
+ * @returns {CommandResult} The command parameters.
+ */
 export function computeAttackCommand(
   state: GameState,
   ship: ShipEntity,

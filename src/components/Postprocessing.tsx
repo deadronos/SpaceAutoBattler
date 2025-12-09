@@ -18,6 +18,14 @@ type Props = {
   enabled?: boolean;
 };
 
+/**
+ * Manages the post-processing effect composer and passes.
+ * Handles Bloom, FXAA, and other screen-space effects.
+ *
+ * @param {object} props - Component props.
+ * @param {boolean} [props.enabled=false] - Whether post-processing is enabled.
+ * @returns {null} This component does not render DOM elements, but attaches to the R3F canvas.
+ */
 export function Postprocessing({ enabled = false }: Props): null {
   const { gl, scene, camera, size, invalidate } = useThree();
   const effectiveEnabled = enabled;
@@ -128,7 +136,7 @@ export function Postprocessing({ enabled = false }: Props): null {
         // Use BloomProvider helper to enable all bloom selection layers on the camera
         // and restore the previous mask afterwards. This centralizes the logic
         // inside BloomProvider so tests can assert it deterministically.
-        let prevCameraLayersMask = camera.layers.mask;
+        let prevCameraLayersMask = camera.layers?.mask;
         try {
           if (bloomCtx && typeof (bloomCtx as any).enableCameraLayers === 'function') {
             prevCameraLayersMask = (bloomCtx as any).enableCameraLayers(camera as any);
@@ -141,11 +149,13 @@ export function Postprocessing({ enabled = false }: Props): null {
         composer.render(delta);
 
         // Restore camera layers to previous mask so other systems are unaffected
-        try {
-          camera.layers.mask = prevCameraLayersMask;
-        } catch (error) {
-          // Expected: Camera layers may be read-only in some contexts
-          reportMaterialError('restoreCameraLayers', 'camera', error);
+        if (prevCameraLayersMask !== undefined && camera.layers) {
+          try {
+            camera.layers.mask = prevCameraLayersMask;
+          } catch (error) {
+            // Expected: Camera layers may be read-only in some contexts
+            reportMaterialError('restoreCameraLayers', 'camera', error);
+          }
         }
       } catch (err) {
         // eslint-disable-next-line no-console

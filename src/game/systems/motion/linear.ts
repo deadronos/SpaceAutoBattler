@@ -3,6 +3,13 @@ import { getEffectiveStats } from '../../progression.js';
 import { TEMP_FORWARD, TEMP_RIGHT, TEMP_VELOCITY_CHANGE } from './sharedTemps.js';
 import { getForwardFromQuaternion, getRightFromQuaternion } from '../../../utils/vector.js';
 
+/**
+ * Updates the linear velocity of a ship based on thrust and drag.
+ *
+ * @param {ShipEntity} ship - The ship entity.
+ * @param {AICommand} command - The AI command containing thrust inputs.
+ * @param {number} dt - The time step.
+ */
 export function updateLinearMotion(ship: ShipEntity, command: AICommand, dt: number): void {
   const motion = ship.ship.motion;
   const velocity = ship.ship.velocity;

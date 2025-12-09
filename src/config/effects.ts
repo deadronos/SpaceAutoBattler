@@ -14,6 +14,9 @@ export interface ThrusterGlowConfig {
   anchorsByHull: Record<ShipHull, number>;
 }
 
+/**
+ * Configuration for thruster glow effects.
+ */
 export const THRUSTER_GLOW_CONFIG: ThrusterGlowConfig = {
   defaultEmissiveColor: '#5fb6ff',
   darkEmissiveThreshold: 0.9,
@@ -29,6 +32,9 @@ export const THRUSTER_GLOW_CONFIG: ThrusterGlowConfig = {
 };
 
 // Team color constants used across renderer and placeholder models.
+/**
+ * Team color definitions.
+ */
 export const TEAM_COLORS = {
   blue: '#8fc4ff',
   red: '#ff8193',
@@ -100,6 +106,9 @@ export interface ParticleTrailsConfig {
   scaleJitter: number;
 }
 
+/**
+ * Configuration for particle trail effects (engine exhaust).
+ */
 export const PARTICLE_TRAILS_CONFIG: ParticleTrailsConfig = {
   enabled: true,
   maxParticles: 5000,

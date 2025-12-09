@@ -1,6 +1,11 @@
 import type { AIMetrics } from '../../types/index.js';
 import { SHIP_HULLS } from './constants.js';
 
+/**
+ * Resets all metrics in the provided object to their initial state.
+ *
+ * @param {AIMetrics} metrics - The metrics object to reset.
+ */
 export function resetMetrics(metrics: AIMetrics): void {
   metrics.totalDecisions = 0;
   metrics.totalSkipped = 0;

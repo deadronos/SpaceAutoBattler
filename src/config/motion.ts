@@ -48,6 +48,13 @@ export const RENDERER_VISUAL_CONFIG: RendererVisualConfig = {
   performanceTier: 'high',
 };
 
+/**
+ * Resolves the effective motion configuration for rendering a ship.
+ * Merges ship-specific overrides with global defaults.
+ *
+ * @param {MotionStats} [motion] - The motion statistics of the ship.
+ * @returns {RendererMotionConfig} The resolved configuration for the renderer.
+ */
 export function resolveRendererMotionConfig(motion?: MotionStats): RendererMotionConfig {
   const visual = motion?.visual;
   return {

@@ -3,6 +3,12 @@ import type { GameState, ShipHull, Team } from '../types/index.js';
 import { spawnShip, SHIP_STATS } from './ships.js';
 import { WORLD_HALF, SPAWN_CONFIG, clampToWorld } from './config.js';
 
+/**
+ * Spawns the initial fleets for both teams at the start of the game.
+ * Positions are calculated based on formation, jitter, and world bounds.
+ *
+ * @param {GameState} state - The game state to spawn entities into.
+ */
 export function spawnInitialFleets(state: GameState): void {
   const formation: ShipHull[] = ['fighter', 'corvette', 'frigate', 'destroyer', 'carrier'];
   const maxRange = Math.max(...Object.values(SHIP_STATS).map((stats) => stats.range));
@@ -51,6 +57,13 @@ export function spawnInitialFleets(state: GameState): void {
   });
 }
 
+/**
+ * Spawns a single random ship for a specific team at a random position.
+ * Used for reinforcing fleets or testing.
+ *
+ * @param {GameState} state - The game state.
+ * @param {Team} team - The team the ship belongs to.
+ */
 export function spawnRandomShip(state: GameState, team: Team): void {
   const hulls: ShipHull[] = ['fighter', 'corvette', 'frigate', 'destroyer', 'carrier'];
   const hull = hulls[Math.floor(state.rng.next() * hulls.length)];

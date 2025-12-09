@@ -192,29 +192,49 @@ function createColliderRestitutionWrapper(
 }
 
 // Export deferred wrappers
+
+/** Wrapper to defer setting kinematic translation. */
 export const deferSetNextKinematicTranslation = createTranslationWrapper(
   withDeferredEnqueue,
   'defer',
 );
+/** Wrapper to defer setting kinematic rotation. */
 export const deferSetNextKinematicRotation = createRotationWrapper(withDeferredEnqueue, 'defer');
+/** Wrapper to defer setting linear velocity. */
 export const deferSetLinvel = createLinvelWrapper(withDeferredEnqueue, 'defer');
+/** Wrapper to defer setting angular velocity. */
 export const deferSetAngvel = createAngvelWrapper(withDeferredEnqueue, 'defer');
+/** Wrapper to defer setting mass. */
 export const deferSetMass = createMassWrapper(withDeferredEnqueue, 'defer');
+/** Wrapper to defer setting linear damping. */
 export const deferSetLinearDamping = createLinearDampingWrapper(withDeferredEnqueue, 'defer');
+/** Wrapper to defer setting angular damping. */
 export const deferSetAngularDamping = createAngularDampingWrapper(withDeferredEnqueue, 'defer');
+/** Wrapper to defer setting collider friction. */
 export const deferSetColliderFriction = createColliderFrictionWrapper(withDeferredEnqueue, 'defer');
+/** Wrapper to defer setting collider restitution. */
 export const deferSetColliderRestitution = createColliderRestitutionWrapper(
   withDeferredEnqueue,
   'defer',
 );
 
 // Export post-physics wrappers
+
+/** Wrapper to set kinematic translation after physics step. */
 export const postSetNextKinematicTranslation = createTranslationWrapper(withPostEnqueue, 'post');
+/** Wrapper to set kinematic rotation after physics step. */
 export const postSetNextKinematicRotation = createRotationWrapper(withPostEnqueue, 'post');
+/** Wrapper to set linear velocity after physics step. */
 export const postSetLinvel = createLinvelWrapper(withPostEnqueue, 'post');
+/** Wrapper to set angular velocity after physics step. */
 export const postSetAngvel = createAngvelWrapper(withPostEnqueue, 'post');
+/** Wrapper to set mass after physics step. */
 export const postSetMass = createMassWrapper(withPostEnqueue, 'post');
+/** Wrapper to set linear damping after physics step. */
 export const postSetLinearDamping = createLinearDampingWrapper(withPostEnqueue, 'post');
+/** Wrapper to set angular damping after physics step. */
 export const postSetAngularDamping = createAngularDampingWrapper(withPostEnqueue, 'post');
+/** Wrapper to set collider friction after physics step. */
 export const postSetColliderFriction = createColliderFrictionWrapper(withPostEnqueue, 'post');
+/** Wrapper to set collider restitution after physics step. */
 export const postSetColliderRestitution = createColliderRestitutionWrapper(withPostEnqueue, 'post');

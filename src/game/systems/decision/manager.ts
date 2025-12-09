@@ -42,6 +42,13 @@ function runShipDecisions(
   return { decisions, skipped };
 }
 
+/**
+ * Updates the decision-making system for all AI ships.
+ * Manages scheduling, blackboard updates, and executing AI logic for a subset of ships per tick.
+ *
+ * @param {GameState} state - The game state.
+ * @param {number} delta - The time delta.
+ */
 export function updateDecisionSystem(state: GameState, delta: number): void {
   if (!state.ai || !state.blackboard) return;
   const manager = state.ai;
@@ -131,6 +138,9 @@ export function updateDecisionSystem(state: GameState, delta: number): void {
   aggregateKpis(manager.metrics, manager.tickIndex);
 }
 
+/**
+ * Internal helpers exposed for testing.
+ */
 export const __decisionInternals = {
   getEffectiveProfile,
   runShipDecisions,

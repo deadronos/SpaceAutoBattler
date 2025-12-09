@@ -7,7 +7,7 @@
 /**
  * Check if Copilot debug mode is enabled via query parameter or window flag.
  *
- * @returns true if debug mode is active
+ * @returns {boolean} True if debug mode is active.
  */
 export function isCopilotDebugEnabled(): boolean {
   if (typeof window === 'undefined') {

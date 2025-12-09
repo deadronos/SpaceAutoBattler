@@ -1,10 +1,16 @@
 import type { ProjectileCategory, ProjectileHomingConfig } from '../types/combat.js';
 
+/**
+ * Beam-specific configuration parameters.
+ */
 export interface ProjectileBeamConfig {
   ttl: number;
   width?: number;
 }
 
+/**
+ * Configuration for a specific projectile type.
+ */
 export interface ProjectileConfigItem {
   visualScale: number; // transform.scale applied to projectile
   colliderRadius?: number; // collider ball radius (overrides derived)
@@ -17,6 +23,9 @@ export interface ProjectileConfigItem {
   beam?: ProjectileBeamConfig;
 }
 
+/**
+ * Registry of all projectile configurations.
+ */
 export const PROJECTILE_CONFIG: Record<string, ProjectileConfigItem> = {
   'bullet:laser': {
     category: 'bullet',
@@ -77,6 +86,9 @@ export const PROJECTILE_CONFIG: Record<string, ProjectileConfigItem> = {
   },
 };
 
+/**
+ * Default fallback configuration for projectiles.
+ */
 export const DEFAULT_PROJECTILE_CONFIG: ProjectileConfigItem = {
   visualScale: 0.2,
   colliderRadius: 0.24,
@@ -84,15 +96,33 @@ export const DEFAULT_PROJECTILE_CONFIG: ProjectileConfigItem = {
   visualMultiplier: 1.0,
 };
 
+/**
+ * Retrieves the configuration for a given projectile type.
+ *
+ * @param {string | null} [bulletType] - The projectile type key.
+ * @returns {ProjectileConfigItem} The configuration object.
+ */
 export function getProjectileConfig(bulletType?: string | null): ProjectileConfigItem {
   return PROJECTILE_CONFIG[bulletType ?? ''] ?? DEFAULT_PROJECTILE_CONFIG;
 }
 
+/**
+ * Retrieves the category for a given projectile type.
+ *
+ * @param {string | null} [bulletType] - The projectile type key.
+ * @returns {ProjectileCategory} The projectile category.
+ */
 export function getProjectileCategory(bulletType?: string | null): ProjectileCategory {
   const config = getProjectileConfig(bulletType);
   return config.category ?? 'bullet';
 }
 
+/**
+ * Retrieves the base geometry radius for a given projectile type.
+ *
+ * @param {string | null} [bulletType] - The projectile type key.
+ * @returns {number} The base radius.
+ */
 export function getProjectileBaseRadius(bulletType?: string | null): number {
   const config = getProjectileConfig(bulletType);
   if (typeof config.baseGeometryRadius === 'number') {

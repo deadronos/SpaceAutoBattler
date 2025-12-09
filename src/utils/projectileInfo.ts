@@ -75,6 +75,14 @@ function resolveGeometryMetadata(
   };
 }
 
+/**
+ * Resolves detailed static and runtime configuration for a projectile type.
+ * Aggregates data from config, geometry metadata, and defaults.
+ *
+ * @param {string | null} [key] - The projectile type key.
+ * @param {ResolveProjectileInfoOptions} [opts] - Optional overrides for resolution.
+ * @returns {ResolvedProjectileInfo} The fully resolved projectile information.
+ */
 export function resolveProjectileInfo(
   key?: string | null,
   opts?: ResolveProjectileInfoOptions,
@@ -127,10 +135,22 @@ export function resolveProjectileInfo(
   };
 }
 
+/**
+ * Helper to resolve just the category of a projectile type.
+ *
+ * @param {string | null} [key] - The projectile type key.
+ * @returns {ProjectileCategory} The category of the projectile.
+ */
 export function resolveProjectileCategory(key?: string | null): ProjectileCategory {
   return resolveProjectileInfo(key).category;
 }
 
+/**
+ * Computes the transformation matrix and scaling for a beam projectile.
+ *
+ * @param {ComputeBeamTransformParams} params - The parameters including the projectile entity and resolved info.
+ * @returns {BeamTransformResult} The computed matrix and scale factors.
+ */
 export function computeBeamTransform({
   projectile,
   info,

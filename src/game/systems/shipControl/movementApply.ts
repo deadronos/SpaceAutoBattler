@@ -5,6 +5,15 @@ import type { KinematicBody } from '../../physics/safeKinematics.js';
 import { deferSetNextKinematicTranslation } from '../../physics/safeKinematics.js';
 import { TEMP_POS } from './sharedTemps.js';
 
+/**
+ * Applies the calculated movement decision to the ship's physics body.
+ * NOTE: This is a legacy movement applicator. Newer systems use `systems/motion`.
+ *
+ * @param {GameState} state - The game state.
+ * @param {ShipEntity} ship - The ship entity.
+ * @param {ShipDecision} decision - The movement decision.
+ * @param {number} delta - The time step.
+ */
 export function applyShipMovement(
   state: GameState,
   ship: ShipEntity,

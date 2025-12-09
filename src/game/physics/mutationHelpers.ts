@@ -5,6 +5,9 @@ import {
   recordRapierGuardTrip,
 } from '../simulationQueue.js';
 
+/**
+ * A task that performs a mutation on the physics world or game state.
+ */
 export type MutationTask = () => void;
 
 type SimulationQueueKey = 'deferredMutations' | 'postStepMutations';
@@ -32,6 +35,13 @@ function wrapMutation(state: GameState, task: MutationTask): () => void {
   };
 }
 
+/**
+ * Enqueues a task to be executed before the physics step (deferred).
+ *
+ * @param {GameState | null | undefined} state - The game state.
+ * @param {string} caller - The name of the calling function (for error reporting).
+ * @param {MutationTask} task - The mutation to perform.
+ */
 export function withDeferredEnqueue(
   state: GameState | null | undefined,
   caller: string,
@@ -41,6 +51,13 @@ export function withDeferredEnqueue(
   enqueueDeferredMutation(gameState, wrapMutation(gameState, task));
 }
 
+/**
+ * Enqueues a task to be executed after the physics step (post-step).
+ *
+ * @param {GameState | null | undefined} state - The game state.
+ * @param {string} caller - The name of the calling function.
+ * @param {MutationTask} task - The mutation to perform.
+ */
 export function withPostEnqueue(
   state: GameState | null | undefined,
   caller: string,

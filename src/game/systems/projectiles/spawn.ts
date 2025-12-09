@@ -17,6 +17,9 @@ import { orientQuaternionFromDirection } from '../../../utils/steering.js';
 import { createBeamHitInfo } from './beam.js';
 import { spawnProjectileEntity } from './physicsAdapter.js';
 
+/**
+ * Overrides for projectile properties when firing.
+ */
 export interface FireProjectileOverride
   extends Partial<
     Pick<ShipEntity['ship'], 'damage' | 'projectileSpeed' | 'range' | 'bulletType' | 'damageType'>
@@ -29,6 +32,9 @@ export interface FireProjectileOverride
   targetId?: number;
 }
 
+/**
+ * Options for firing a projectile.
+ */
 export interface FireProjectileOptions {
   originPosition?: Vector3;
   override?: FireProjectileOverride;
@@ -90,6 +96,15 @@ function populateProjectileBehaviour(
   }
 }
 
+/**
+ * Fires a projectile from a ship or specified origin.
+ * Handles configuration resolution, spawn setup, and behavior initialization.
+ *
+ * @param {GameState} state - The game state.
+ * @param {ShipEntity} origin - The ship firing the projectile.
+ * @param {Vector3} direction - The fire direction.
+ * @param {FireProjectileOptions} [opts] - Optional configuration overrides.
+ */
 export function fireProjectile(
   state: GameState,
   origin: ShipEntity,

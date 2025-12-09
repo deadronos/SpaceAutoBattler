@@ -11,9 +11,9 @@ export type ColorConfig = string | Color;
  * suitable for shader math and uniforms. If input is falsy or invalid, the fallback
  * (string or Color) will be used instead.
  *
- * @param input - color provided by config (hex string or Color)
- * @param fallback - fallback value used when input is falsy or invalid
- * @returns a new Three.js Color in linear color space ready for shader uniforms
+ * @param {ColorConfig | null} [input] - Color provided by config (hex string or Color).
+ * @param {ColorConfig} [fallback='#ffffff'] - Fallback value used when input is falsy or invalid.
+ * @returns {Color} A new Three.js Color in linear color space ready for shader uniforms.
  */
 export function colorFromConfig(
   input?: ColorConfig | null,

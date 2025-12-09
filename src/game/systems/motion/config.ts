@@ -1,3 +1,7 @@
+/**
+ * Thresholds used to detect when a ship is idle (stationary and not accelerating).
+ * Used to skip expensive physics calculations.
+ */
 export const MOTION_IDLE_THRESHOLDS = {
   /** Absolute thrust value below which a command is treated as idle. */
   thrustEpsilon: 1e-3,

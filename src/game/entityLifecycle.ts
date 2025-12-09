@@ -2,6 +2,11 @@ import type { GameEntity, GameState, ShipEntity, TurretEntity } from '../types/i
 import { unregisterTurret } from './turretRegistry.js';
 import { reportPhysicsError, reportLifecycleError, reportQueryError } from '../utils/errorReporting.js';
 
+/**
+ * Cleans up the entire game state, destroying all entities and freeing physics resources.
+ *
+ * @param {GameState} state - The game state to dispose.
+ */
 export function disposeGameState(state: GameState): void {
   for (const entity of [...state.world.entities]) {
     destroyEntity(state, entity);
@@ -12,6 +17,12 @@ export function disposeGameState(state: GameState): void {
   state.colliderLookup.clear();
 }
 
+/**
+ * Destroys a single entity and cleans up its resources (physics bodies, colliders, lookups).
+ *
+ * @param {GameState} state - The game state containing the entity.
+ * @param {GameEntity} entity - The entity to destroy.
+ */
 export function destroyEntity(state: GameState, entity: GameEntity): void {
   if (entity.collider?.handle != null) state.colliderLookup.delete(entity.collider.handle);
 

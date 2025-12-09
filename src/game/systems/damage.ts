@@ -29,12 +29,25 @@ import { buildSpatialHash, querySpatialHash } from '../utils/spatialHash.js';
 const TEMP_RIPPLE_DIR = new Vector3();
 const SHIP_GRID_CELL_SIZE = 12;
 
+/**
+ * Result of applying projectile damage.
+ */
 export interface ProjectileDamageOutcome {
   totalDamage: number;
   hullDamage: number;
   destroyed: boolean;
 }
 
+/**
+ * Applies damage from a projectile impact to a ship.
+ *
+ * @param {GameState} state - The game state.
+ * @param {ProjectileEntity} projectile - The projectile that hit.
+ * @param {ShipEntity} ship - The ship that was hit.
+ * @param {ShipEntity[]} ships - List of all ships (for context).
+ * @param {Map<number, ShipEntity>} shipsById - Lookup map for ships.
+ * @returns {ProjectileDamageOutcome} The outcome of the damage application.
+ */
 export function applyProjectileDamage(
   state: GameState,
   projectile: ProjectileEntity,
@@ -177,7 +190,7 @@ function applyAoeDamage(
   radius: number,
   primaryTarget: ShipEntity,
 ): void {
-  const origin = primaryTarget.transform.position;
+  const origin = projectile.transform.position;
   const nearbyShips = querySpatialHash(shipSpatialHash, origin, radius);
   for (const ship of nearbyShips) {
     if (ship === primaryTarget) continue;
@@ -191,6 +204,13 @@ function applyAoeDamage(
   }
 }
 
+/**
+ * Resolves projectile collisions and timeouts.
+ * Checks for impacts using a spatial hash and applies damage/AoE effects.
+ *
+ * @param {GameState} state - The game state.
+ * @param {number} delta - The time step.
+ */
 export function resolveProjectiles(state: GameState, delta: number): void {
   const ships = state.queries.ships.entities as ShipEntity[];
   const shipSpatialHash: SpatialHash<ShipEntity> = buildSpatialHash(

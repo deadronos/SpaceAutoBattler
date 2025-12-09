@@ -2,6 +2,13 @@ import type { AIMetrics, ShipHull } from '../../types/index.js';
 import { SHIP_HULLS } from './constants.js';
 import { percentile } from './factories.js';
 
+/**
+ * Aggregates raw metrics into Key Performance Indicators (KPIs).
+ * Should be called periodically or at the end of a session.
+ *
+ * @param {AIMetrics} metrics - The metrics object to aggregate.
+ * @param {number} tick - The current game tick.
+ */
 export function aggregateKpis(metrics: AIMetrics, tick: number): void {
   if (!metrics.firstShotTimes) metrics.firstShotTimes = [];
   if (metrics.firstShotTimes.length > 0) {

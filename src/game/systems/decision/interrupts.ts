@@ -15,6 +15,12 @@ function interruptKey(shipId: EntityId, reason: AIInterruptReason): string {
   return `${shipId}${INTERRUPT_KEY_SEPARATOR}${reason}`;
 }
 
+/**
+ * Ensures the interrupt state is initialized in the AI manager.
+ *
+ * @param {AIManagerState} manager - The AI manager state.
+ * @returns {AIInterruptState} The interrupt state.
+ */
 export function ensureInterruptState(manager: AIManagerState): AIInterruptState {
   if (!manager.interruptState) {
     manager.interruptState = {
@@ -27,11 +33,24 @@ export function ensureInterruptState(manager: AIManagerState): AIInterruptState 
   return manager.interruptState;
 }
 
+/**
+ * Gets the current queue of pending interrupts.
+ *
+ * @param {AIManagerState} manager - The AI manager state.
+ * @returns {IntentInterruptEvent[]} The queue of interrupts.
+ */
 export function getInterruptQueue(manager: AIManagerState): IntentInterruptEvent[] {
   if (!manager.interrupts) manager.interrupts = [];
   return manager.interrupts;
 }
 
+/**
+ * Queues an interrupt event to be processed in the next AI tick.
+ * Respects cooldowns for similar interrupts.
+ *
+ * @param {AIManagerState} manager - The AI manager state.
+ * @param {IntentInterruptEvent} event - The interrupt event.
+ */
 export function queueInterrupt(manager: AIManagerState, event: IntentInterruptEvent): void {
   const state = ensureInterruptState(manager);
   const queue = getInterruptQueue(manager);
@@ -43,6 +62,15 @@ export function queueInterrupt(manager: AIManagerState, event: IntentInterruptEv
   queue.push(event);
 }
 
+/**
+ * Accumulates damage for a ship to trigger HP-drop interrupts.
+ *
+ * @param {AIManagerState} manager - The AI manager state.
+ * @param {EntityId} shipId - The ship taking damage.
+ * @param {number} damage - The amount of damage taken.
+ * @param {number} tick - The current tick.
+ * @returns {number} The total accumulated damage this tick.
+ */
 export function accumulateInterruptDamage(
   manager: AIManagerState,
   shipId: EntityId,
@@ -59,6 +87,13 @@ export function accumulateInterruptDamage(
   return next;
 }
 
+/**
+ * Queues interrupts for all ships that were targeting a specific ship that has been lost (destroyed).
+ *
+ * @param {GameState} state - The game state.
+ * @param {ShipEntity[]} ships - The list of active ships.
+ * @param {EntityId} targetId - The ID of the lost target.
+ */
 export function queueTargetLossInterrupts(
   state: GameState,
   ships: ShipEntity[],
@@ -80,6 +115,12 @@ export function queueTargetLossInterrupts(
   }
 }
 
+/**
+ * Processes the interrupt queue, forcing immediate re-evaluation for affected ships.
+ *
+ * @param {AIManagerState} manager - The AI manager state.
+ * @param {Map<number, ShipEntity>} entities - Lookup map for ships.
+ */
 export function processInterruptQueue(
   manager: AIManagerState,
   entities: Map<number, ShipEntity>,

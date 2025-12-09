@@ -309,4 +309,44 @@ describe('extended projectile behaviours', () => {
     expect(spawned.projectile.beam?.hitPoint?.z).toBeCloseTo(15, 3);
     expect(spawned.projectile.targetId).toBe(hitShip.id);
   });
+
+  it('applies aoe damage from the point of impact, not the target center', () => {
+    // Primary target large so we can hit it far from center
+    target.transform.scale = 10;
+    // Hit radius is approx 9.6 (calculated as scale * 0.9 + projRadius, i.e., 10 * 0.9 + 0.6).
+
+    const secondaryTarget = createTestShip(3, 'red', new Vector3(0, 0, 13));
+    state.queries.ships.entities.push(secondaryTarget);
+    state.shipById.set(secondaryTarget.id, secondaryTarget);
+
+    const projectile = createProjectileEntity({
+      id: 102,
+      transform: {
+        position: new Vector3(0, 0, 9), // Hits the primary target near the edge
+        rotation: new Quaternion(),
+        scale: 0.5,
+      },
+      projectile: {
+        team: attacker.ship.team,
+        damage: 10,
+        ttl: 5,
+        maxTtl: 5,
+        speed: 0,
+        bulletType: 'torpedo:standard',
+        damageType: attacker.ship.damageType,
+        sourceId: attacker.id,
+        aoeRadius: 5,
+        spawnTime: state.time,
+      },
+    });
+    (state.queries.projectiles.entities as ProjectileEntity[]).push(projectile);
+
+    const initialHpPrimary = target.ship.hp;
+    const initialHpSecondary = secondaryTarget.ship.hp;
+
+    resolveProjectiles(state, 0.1);
+
+    expect(target.ship.hp).toBeLessThan(initialHpPrimary);
+    expect(secondaryTarget.ship.hp).toBeLessThan(initialHpSecondary);
+  });
 });

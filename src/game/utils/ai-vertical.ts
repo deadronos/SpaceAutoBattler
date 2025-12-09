@@ -4,6 +4,13 @@ import { AI_CONFIG } from '../config.js';
 /**
  * Compute the effective vertical clamp for the given ship/profile/AI state.
  * Centralized so callers outside the decision/ folder can use the same logic.
+ *
+ * @param {GameState} state - The game state.
+ * @param {ShipEntity} ship - The ship entity.
+ * @param {BehaviorProfile} profile - The AI behavior profile.
+ * @param {AIState} ai - The AI state.
+ * @param {ShipEntity | null} target - The current target entity.
+ * @returns {number} The calculated vertical clamp value (0..1).
  */
 export function computeVerticalClamp(
   state: GameState,

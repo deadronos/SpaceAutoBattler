@@ -71,6 +71,12 @@ function BattleSceneContent({ ppEnabled }: BattleSceneContentProps): React.React
   return ppEnabled ? <BloomProvider enabled>{sceneContent}</BloomProvider> : sceneContent;
 }
 
+/**
+ * Main 3D scene component for the battlefield.
+ * Sets up the Canvas, lights, camera controls, and renders all game layers (ships, projectiles, etc.).
+ *
+ * @returns {React.ReactElement} The rendered Battlefield component.
+ */
 export function Battlefield(): React.ReactElement {
   const state = useOptionalGameState();
   // Respect UI toggle, but allow a debug override for automation tests so we

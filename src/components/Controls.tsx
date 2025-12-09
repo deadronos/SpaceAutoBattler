@@ -3,6 +3,11 @@ import { useOptionalGameState } from '../game/context.js';
 import { useUiStore } from '../game/uiStore.js';
 import { requestReset, spawnRandomShip } from '../game/state.js';
 
+/**
+ * UI component rendering the top-level controls bar (Pause, Reset, Spawn).
+ *
+ * @returns {React.ReactElement} The rendered controls bar.
+ */
 export function Controls(): React.ReactElement {
   const state = useOptionalGameState();
   const paused = useUiStore((s) => s.paused);

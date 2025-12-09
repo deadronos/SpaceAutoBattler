@@ -1,12 +1,26 @@
 import { MathUtils } from 'three';
 import type { ShipHull } from '../../types/index.js';
 
+/**
+ * Result of shield fraction computation.
+ */
 export interface ShieldFractionResult {
   fraction: number;
   shouldDisplay: boolean;
   warnings: string[];
 }
 
+/**
+ * Computes the normalized shield fraction (0..1) safely.
+ * Handles edge cases like zero max shield or invalid values.
+ *
+ * @param {number} shield - Current shield HP.
+ * @param {number} maxShield - Max shield HP.
+ * @param {number} shipId - Ship ID for logging.
+ * @param {ShipHull} hull - Ship hull type for logging.
+ * @param {number} [minThreshold=0.01] - Minimum fraction to be considered visible.
+ * @returns {ShieldFractionResult} The result.
+ */
 export function computeShieldFraction(
   shield: number,
   maxShield: number,
@@ -42,10 +56,28 @@ export function computeShieldFraction(
   return { fraction, shouldDisplay, warnings };
 }
 
+/**
+ * Determines if the shield should be displayed based on fraction.
+ *
+ * @param {number} fraction - The shield fraction.
+ * @param {number} threshold - The visibility threshold.
+ * @returns {boolean} True if visible.
+ */
 export function shouldDisplayShield(fraction: number, threshold: number): boolean {
   return fraction >= threshold;
 }
 
+/**
+ * Validates that the shield visibility matches expectations (debug helper).
+ *
+ * @param {number} computedFraction - The computed fraction.
+ * @param {number} shield - Raw shield HP.
+ * @param {number} maxShield - Max shield HP.
+ * @param {number} minThreshold - Visibility threshold.
+ * @param {number} shipId - Ship ID.
+ * @param {ShipHull} hull - Hull type.
+ * @returns {string | null} An error message if invalid, or null.
+ */
 export function validateShieldVisibility(
   computedFraction: number,
   shield: number,

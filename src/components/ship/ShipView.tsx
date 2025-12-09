@@ -18,6 +18,13 @@ export interface ShipViewProps {
   hullMaterialsRef: RefObject<HullMaterial[]>;
 }
 
+/**
+ * Visual presentation component for a ship.
+ * Renders the model and the shield bubble.
+ *
+ * @param {ShipViewProps} props - Component props.
+ * @returns {React.ReactElement} The rendered group.
+ */
 export function ShipView({
   entity,
   groupRef,

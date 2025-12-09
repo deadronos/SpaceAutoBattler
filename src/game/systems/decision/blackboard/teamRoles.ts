@@ -10,6 +10,12 @@ const sortTeamPools = (teamShips: Record<Team, ShipEntity[]>): void => {
   teamShips.red.sort(compareById);
 };
 
+/**
+ * Assigns dynamic roles (like escorts) to ships based on the current tactical situation.
+ *
+ * @param {GameState} state - The game state.
+ * @param {ShipEntity[]} ships - The list of active ships.
+ */
 export const assignTeamRoles = (state: GameState, ships: ShipEntity[]): void => {
   const escorts = state.ai.assignments.escorts;
   escorts.clear();

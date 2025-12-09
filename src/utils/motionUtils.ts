@@ -3,6 +3,8 @@ import { validateMotionStats } from '../game/validation.js';
 
 /**
  * Create default motion stats for testing and fallback scenarios.
+ *
+ * @returns {MotionStats} A default MotionStats object with sensible defaults.
  */
 export function createDefaultMotionStats(): MotionStats {
   const stats: MotionStats = {

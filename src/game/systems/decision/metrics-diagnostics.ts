@@ -2,6 +2,14 @@ import { Vector3 } from 'three';
 import type { AIState, GameState, ShipEntity, EntityId } from '../../../types/index.js';
 import { AI_CONFIG } from '../../config.js';
 
+/**
+ * Records diagnostics about focus fire efficiency.
+ *
+ * @param {GameState} state - The game state.
+ * @param {ShipEntity} ship - The ship firing/targeting.
+ * @param {ShipEntity | null} target - The target ship.
+ * @param {EntityId | null} previousTargetId - The previous target ID (to detect switching).
+ */
 export function recordFocusDiagnostics(
   state: GameState,
   ship: ShipEntity,
@@ -30,6 +38,16 @@ export function recordFocusDiagnostics(
   }
 }
 
+/**
+ * Updates "stickiness" state to prevent rapid target/maneuver switching when within the desired range band.
+ *
+ * @param {GameState} state - The game state.
+ * @param {AIState} ai - The AI state.
+ * @param {ShipEntity} target - The target.
+ * @param {number} distance - Distance to target.
+ * @param {readonly [number, number]} desiredRange - The desired range interval.
+ * @param {Vector3} heading - The current heading command.
+ */
 export function updateBandStickiness(
   state: GameState,
   ai: AIState,

@@ -22,6 +22,9 @@ const FALLBACK_SLOT: CarrierLaunchSlot = { forward: 14, lateral: 0, vertical: 0 
 /**
  * Spawn fighters from carrier hulls while respecting cooldowns and active caps. The system is
  * deterministic: all positional jitter draws from the seeded RNG carried on the GameState.
+ *
+ * @param {GameState} state - The game state.
+ * @param {number} dt - The time step.
  */
 export function updateCarrierLaunchSystem(state: GameState, dt: number): void {
   const ships = state.queries.ships.entities as ShipEntity[] | undefined;

@@ -20,6 +20,17 @@ import {
 } from './intent-utils.js';
 import { getEffectiveAIConfig } from '../../config.js';
 
+/**
+ * Scores the 'Attack' intent for a given ship and target.
+ *
+ * @param {GameState} state - The game state.
+ * @param {ShipEntity} ship - The AI ship.
+ * @param {BehaviorProfile} profile - The behavior profile.
+ * @param {ShipEntity | null} target - The target to attack.
+ * @param {TeamPosture} posture - The team's posture.
+ * @param {AITraits} traits - The AI's traits.
+ * @returns {number} The calculated score.
+ */
 export function scoreAttackIntent(
   state: GameState,
   ship: ShipEntity,
@@ -60,6 +71,16 @@ export function scoreAttackIntent(
   return quantizeScore(score);
 }
 
+/**
+ * Scores the 'Kite' intent.
+ *
+ * @param {ShipEntity} ship - The AI ship.
+ * @param {BehaviorProfile} profile - The behavior profile.
+ * @param {ShipEntity | null} target - The target to kite.
+ * @param {TeamPosture} posture - The team's posture.
+ * @param {AITraits} traits - The AI's traits.
+ * @returns {number} The calculated score.
+ */
 export function scoreKiteIntent(
   ship: ShipEntity,
   profile: BehaviorProfile,
@@ -82,6 +103,16 @@ export function scoreKiteIntent(
   return quantizeScore(score);
 }
 
+/**
+ * Scores the 'Flee' intent.
+ *
+ * @param {ShipEntity} ship - The AI ship.
+ * @param {BehaviorProfile} profile - The behavior profile.
+ * @param {ShipEntity | null} target - The target (source of threat).
+ * @param {TeamPosture} posture - The team's posture.
+ * @param {AITraits} traits - The AI's traits.
+ * @returns {number} The calculated score.
+ */
 export function scoreFleeIntent(
   ship: ShipEntity,
   profile: BehaviorProfile,
