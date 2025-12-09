@@ -313,7 +313,7 @@ describe('extended projectile behaviours', () => {
   it('applies aoe damage from the point of impact, not the target center', () => {
     // Primary target large so we can hit it far from center
     target.transform.scale = 10;
-    // Hit radius approx 9.
+    // Hit radius is approx 9.6 (calculated as scale * 0.9 + projRadius, i.e., 10 * 0.9 + 0.6).
 
     const secondaryTarget = createTestShip(3, 'red', new Vector3(0, 0, 13));
     state.queries.ships.entities.push(secondaryTarget);
