@@ -204,6 +204,9 @@ registerMaterial('bullet:ion', BulletIonMaterial, {
 registerMaterial('bullet:heavy', BulletHeavyMaterial, {
   create: createBulletHeavyMaterial,
 });
+registerMaterial('bullet:flak', BulletHeavyMaterial, {
+  create: createBulletHeavyMaterial,
+});
 registerMaterial('missile:light', MissileLightMaterial, {
   create: createMissileLightMaterial,
 });

@@ -9,6 +9,13 @@ export interface ProjectileBeamConfig {
 }
 
 /**
+ * Proximity fuse configuration for projectiles.
+ */
+export interface ProjectileProximityFuseConfig {
+  radius: number;
+}
+
+/**
  * Configuration for a specific projectile type.
  */
 export interface ProjectileConfigItem {
@@ -21,12 +28,22 @@ export interface ProjectileConfigItem {
   armingTime?: number;
   aoeRadius?: number;
   beam?: ProjectileBeamConfig;
+  proximityFuse?: ProjectileProximityFuseConfig;
 }
 
 /**
  * Registry of all projectile configurations.
  */
 export const PROJECTILE_CONFIG: Record<string, ProjectileConfigItem> = {
+  'bullet:flak': {
+    category: 'bullet',
+    visualScale: 0.8,
+    colliderRadius: 0.4,
+    baseGeometryRadius: 0.4,
+    visualMultiplier: 1.0,
+    aoeRadius: 8,
+    proximityFuse: { radius: 4 },
+  },
   'bullet:laser': {
     category: 'bullet',
     visualScale: 0.5,
