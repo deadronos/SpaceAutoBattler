@@ -235,10 +235,10 @@ describe('Flak Proximity Fuse', () => {
     // Fire flak along X axis
     // Use override to set flak type
     fireProjectile(state, attacker, new Vector3(1, 0, 0), {
-        override: {
-            bulletType: 'bullet:flak',
-            originPosition: new Vector3(0, 0, 0)
-        }
+      originPosition: new Vector3(0, 0, 0),
+      override: {
+        bulletType: 'bullet:flak',
+      },
     });
 
     flushPostPhysicsMutations(state);
@@ -269,10 +269,10 @@ describe('Flak Proximity Fuse', () => {
     state.shipById.set(target.id, target);
 
     fireProjectile(state, attacker, new Vector3(1, 0, 0), {
-        override: {
-            bulletType: 'bullet:flak',
-            originPosition: new Vector3(0, 0, 0)
-        }
+      originPosition: new Vector3(0, 0, 0),
+      override: {
+        bulletType: 'bullet:flak',
+      },
     });
 
     flushPostPhysicsMutations(state);
@@ -298,10 +298,10 @@ describe('Flak Proximity Fuse', () => {
     state.shipById.set(friend.id, friend);
 
     fireProjectile(state, attacker, new Vector3(1, 0, 0), {
-        override: {
-            bulletType: 'bullet:flak',
-            originPosition: new Vector3(0, 0, 0)
-        }
+      originPosition: new Vector3(0, 0, 0),
+      override: {
+        bulletType: 'bullet:flak',
+      },
     });
 
     flushPostPhysicsMutations(state);

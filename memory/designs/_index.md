@@ -21,6 +21,7 @@ This folder contains canonical design documents named using the pattern `DESIGNN
 
 ## Completed
 
+- [DESIGN063](DESIGN063-flak-proximity-tests.md) — Align flak proximity tests with `FireProjectileOptions` contract and restore lint/type safety. (Completed) (2025-12-10)
 - [DESIGN061](DESIGN061-bloom-provider-refactor.md) — Refactor BloomProvider into smaller focused modules for testability and maintainability. (Completed) (2025-11-24)
 - [DESIGN035](DESIGN035-star-disk-material.md) — Star disk material design and shader notes; baseline implementation validated in tests. (2025-10-27)
 - [DESIGN042](DESIGN042-centralize-projectile-info.md) — Centralized projectile metadata and helpers; reduced duplication across projectile systems. (2025-10-27)
