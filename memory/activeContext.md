@@ -11,6 +11,7 @@ Current focuses (short-term):
 
 Recent changes:
 
+- **TASK119 (In Progress — 80%)**: Updated `test/vitest/flak-proximity.spec.ts` to pass `originPosition` through `FireProjectileOptions` (not `FireProjectileOverride`) and re-indented call sites; `npx tsc --noEmit` and `npx eslint` pass. Vitest run is currently blocked in this sandbox by esbuild `spawn EPERM` during config load.
 - **TASK237 (Completed - 100%)**: Implemented StarDisk uniform telemetry monitoring to track iTime progression and correlate with Rapier panics:
   - Added `window.__copilot_starDiskTelemetry` debug global with 11 telemetry fields
   - Tracks iTime, deltaTime, isProgressing, frameCount, time sources (sim/render/fallback)

@@ -12,7 +12,10 @@ import {
   resolveProjectileInfo,
   type ResolvedProjectileInfo,
 } from '../../../utils/projectileInfo.js';
-import { type ProjectileBeamConfig } from '../../../config/projectiles.js';
+import {
+  type ProjectileBeamConfig,
+  type ProjectileProximityFuseConfig,
+} from '../../../config/projectiles.js';
 import { orientQuaternionFromDirection } from '../../../utils/steering.js';
 import { createBeamHitInfo } from './beam.js';
 import { spawnProjectileEntity } from './physicsAdapter.js';
@@ -29,6 +32,7 @@ export interface FireProjectileOverride
   armingTime?: number;
   aoeRadius?: number;
   beam?: ProjectileBeamConfig;
+  proximityFuse?: ProjectileProximityFuseConfig;
   targetId?: number;
 }
 
@@ -68,6 +72,7 @@ function populateProjectileBehaviour(
   projectile.projectile.spawnTime = state.time;
   projectile.projectile.armingTime = override?.armingTime ?? info.config.armingTime;
   projectile.projectile.aoeRadius = override?.aoeRadius ?? info.config.aoeRadius;
+  projectile.projectile.proximityFuse = override?.proximityFuse ?? info.config.proximityFuse;
   const homing = override?.homing ?? info.config.homing;
   if (homing) {
     projectile.projectile.homing = homing;

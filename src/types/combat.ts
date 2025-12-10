@@ -2,6 +2,7 @@ import type { Vector3 } from 'three';
 import type { Team } from './gameplay.js';
 import type { DamageType } from './gameplay.js';
 import type { ResolvedProjectileInfo } from '../utils/projectileInfo.js';
+import type { ProjectileProximityFuseConfig } from '../config/projectiles.js';
 
 export type { DamageType };
 
@@ -89,6 +90,8 @@ export interface ProjectileComponent {
   aoeRadius?: number;
   /** Optional runtime beam data for hitscan projectiles. */
   beam?: ProjectileBeamRuntime;
+  /** Proximity fuse configuration. */
+  proximityFuse?: ProjectileProximityFuseConfig;
 }
 
 /** Static configuration for a turret mounted on a ship. All values are in ship-local space. */
