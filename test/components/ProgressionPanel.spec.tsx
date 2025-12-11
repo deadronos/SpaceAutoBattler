@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ProgressionPanel } from '../../src/components/ProgressionPanel';
 import * as GameContext from '../../src/game/context';
@@ -99,7 +99,7 @@ describe('ProgressionPanel', () => {
 
     // Expand the ship card to see events
     const toggleButton = screen.getByRole('button', { name: /Expand events/i });
-    toggleButton.click();
+    fireEvent.click(toggleButton);
 
     // Check for decimal precision in event delta XP
     // The current implementation uses toFixed(0), so this test should fail initially
