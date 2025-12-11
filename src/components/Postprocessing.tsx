@@ -136,7 +136,12 @@ export function Postprocessing({ enabled = false }: Props): null {
         // Use BloomProvider helper to enable all bloom selection layers on the camera
         // and restore the previous mask afterwards. This centralizes the logic
         // inside BloomProvider so tests can assert it deterministically.
-        let prevCameraLayersMask = camera.layers?.mask;
+        let prevCameraLayersMask: number | undefined;
+
+        if (camera.layers) {
+          prevCameraLayersMask = camera.layers.mask;
+        }
+
         try {
           if (bloomCtx && typeof (bloomCtx as any).enableCameraLayers === 'function') {
             prevCameraLayersMask = (bloomCtx as any).enableCameraLayers(camera as any);

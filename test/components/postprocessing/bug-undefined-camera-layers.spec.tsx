@@ -28,6 +28,8 @@ const bloomContextValue = {
   enabled: true,
   register: vi.fn(),
   unregister: vi.fn(),
+  // Add enableCameraLayers to simulate real behavior
+  enableCameraLayers: vi.fn(() => 0),
 };
 
 // Mocking the index where useBloomContext is exported from
@@ -95,6 +97,7 @@ describe('Bug Reproduction: Postprocessing render', () => {
     renderTargetDispose.mockClear();
     buildEffectsMock.mockClear();
     createComposerMock.mockClear();
+    bloomContextValue.enableCameraLayers.mockClear();
     bloomSelection.size = 1;
   });
 
@@ -116,5 +119,7 @@ describe('Bug Reproduction: Postprocessing render', () => {
 
     // The bug causes composerRender to NOT be called because of the exception.
     expect(composerRender).toHaveBeenCalledWith(0.016);
+    // Also verify enableCameraLayers was called (since we added it)
+    expect(bloomContextValue.enableCameraLayers).toHaveBeenCalled();
   });
 });
