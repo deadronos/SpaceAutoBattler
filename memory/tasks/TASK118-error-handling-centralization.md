@@ -30,7 +30,7 @@ The approach is to create lightweight infrastructure that:
 
 - Counts errors by category (always, even in prod)
 - Logs details in development mode only
-- Documents *why* each catch block exists
+- Documents _why_ each catch block exists
 - Provides a debug surface for visibility
 
 This is non-breaking: existing try-catch structure remains, we just add reporting.
@@ -72,25 +72,25 @@ This is non-breaking: existing try-catch structure remains, we just add reportin
 
 ### Subtasks
 
-| ID | Description | Status | Updated | Notes |
-|----|-------------|--------|---------|-------|
-| 1.1 | Create errorReporting.ts | Complete | 2025-11-25 | Core infrastructure |
-| 1.2 | Add category helpers | Complete | 2025-11-25 | 7 category-specific helpers |
-| 1.3 | Export from utils index | Complete | 2025-11-25 | N/A - direct imports |
-| 1.4 | Unit tests for reporting | Complete | 2025-11-25 | 22 tests |
-| 2.1 | entityLifecycle.ts | Complete | 2025-11-25 | 7 catches refactored |
-| 2.2 | safeSnapshot.ts | Complete | 2025-11-25 | 9 catches refactored |
-| 2.3 | context.tsx | Complete | 2025-11-25 | 7 catches refactored |
-| 2.4 | systems.ts | Complete | 2025-11-25 | 2 nested catches refactored |
-| 2.5 | simulationQueue.ts | Not Started | — | Lower priority |
-| 3.1 | StarSphere.tsx | Complete | 2025-11-25 | 12 catches refactored |
-| 3.2 | PlanetRings.tsx | Complete | 2025-11-25 | 8 catches refactored |
-| 3.3 | Postprocessing.tsx | Complete | 2025-11-25 | 4 catches refactored |
-| 3.4 | bloom/*.ts | Complete | 2025-11-25 | 3 catches refactored |
-| 3.5 | useStarMaterial.ts | Complete | 2025-11-25 | 5 catches refactored |
-| 4.1 | Debug panel | Complete | 2025-11-25 | ErrorCountsPanel.tsx |
-| 4.2 | Update architecture doc | Not Started | — | Future enhancement |
-| 4.3 | Troubleshooting notes | Not Started | — | Future enhancement |
+| ID  | Description              | Status      | Updated    | Notes                       |
+| --- | ------------------------ | ----------- | ---------- | --------------------------- |
+| 1.1 | Create errorReporting.ts | Complete    | 2025-11-25 | Core infrastructure         |
+| 1.2 | Add category helpers     | Complete    | 2025-11-25 | 7 category-specific helpers |
+| 1.3 | Export from utils index  | Complete    | 2025-11-25 | N/A - direct imports        |
+| 1.4 | Unit tests for reporting | Complete    | 2025-11-25 | 22 tests                    |
+| 2.1 | entityLifecycle.ts       | Complete    | 2025-11-25 | 7 catches refactored        |
+| 2.2 | safeSnapshot.ts          | Complete    | 2025-11-25 | 9 catches refactored        |
+| 2.3 | context.tsx              | Complete    | 2025-11-25 | 7 catches refactored        |
+| 2.4 | systems.ts               | Complete    | 2025-11-25 | 2 nested catches refactored |
+| 2.5 | simulationQueue.ts       | Not Started | —          | Lower priority              |
+| 3.1 | StarSphere.tsx           | Complete    | 2025-11-25 | 12 catches refactored       |
+| 3.2 | PlanetRings.tsx          | Complete    | 2025-11-25 | 8 catches refactored        |
+| 3.3 | Postprocessing.tsx       | Complete    | 2025-11-25 | 4 catches refactored        |
+| 3.4 | bloom/\*.ts              | Complete    | 2025-11-25 | 3 catches refactored        |
+| 3.5 | useStarMaterial.ts       | Complete    | 2025-11-25 | 5 catches refactored        |
+| 4.1 | Debug panel              | Complete    | 2025-11-25 | ErrorCountsPanel.tsx        |
+| 4.2 | Update architecture doc  | Not Started | —          | Future enhancement          |
+| 4.3 | Troubleshooting notes    | Not Started | —          | Future enhancement          |
 
 ## Progress Log
 
@@ -143,22 +143,22 @@ This is non-breaking: existing try-catch structure remains, we just add reportin
 
 ## Estimated Effort
 
-| Phase | Time |
-|-------|------|
-| Phase 1 (Infrastructure) | 2-3 hours |
-| Phase 2 (Game Logic) | 2-3 hours |
-| Phase 3 (Rendering) | 2-3 hours |
-| Phase 4 (Debug Surface) | 1-2 hours |
-| **Total** | **8-12 hours** |
+| Phase                    | Time           |
+| ------------------------ | -------------- |
+| Phase 1 (Infrastructure) | 2-3 hours      |
+| Phase 2 (Game Logic)     | 2-3 hours      |
+| Phase 3 (Rendering)      | 2-3 hours      |
+| Phase 4 (Debug Surface)  | 1-2 hours      |
+| **Total**                | **8-12 hours** |
 
 ## Risks
 
-| Risk | Mitigation |
-|------|------------|
-| Performance overhead | Counters only; logging disabled in prod |
-| Log spam in dev | Rate-limit repeated errors |
-| Scope creep | Focus on high-priority files first |
-| Breaking changes | Keep try-catch structure; only add reporting |
+| Risk                 | Mitigation                                   |
+| -------------------- | -------------------------------------------- |
+| Performance overhead | Counters only; logging disabled in prod      |
+| Log spam in dev      | Rate-limit repeated errors                   |
+| Scope creep          | Focus on high-priority files first           |
+| Breaking changes     | Keep try-catch structure; only add reporting |
 
 ## References
 

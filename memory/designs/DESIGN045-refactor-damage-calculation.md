@@ -55,7 +55,7 @@ Create `src/game/combat/damage.ts` and export two API surfaces:
   - partial shield break with correct armor absorption
   - no shields case
   - edge: zero or negative damage
-  - armorAbsorption capped by targetArmor * armorEffectiveness
+  - armorAbsorption capped by targetArmor \* armorEffectiveness
 
 ## Risk & roll-back
 

@@ -100,3 +100,5 @@ interface HudToggleDrawerProps {
 - Document toggle definitions with inline comments to guide future extension (e.g., add `registerDebugToggle` helper later if dynamic registration becomes necessary).
 
 ```
+
+```

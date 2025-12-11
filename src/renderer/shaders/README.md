@@ -4,22 +4,24 @@ Custom GLSL shaders for specialized visual effects and rendering.
 
 ## Shader Files
 
-| File | Purpose |
-|------|---------|
-| **index.ts** | Main shader export and registry |
-| **common.glsl** | Common utility functions shared across shaders (noise, color, etc.) |
-| **starDisk.vertex.glsl** | Vertex shader for star disk rendering |
-| **starDisk.fragment.glsl** | Fragment shader for star disk with Gooch-style rendering |
-| **mainsequencestar.glsl** | Main sequence star appearance and coloring |
+| File                       | Purpose                                                             |
+| -------------------------- | ------------------------------------------------------------------- |
+| **index.ts**               | Main shader export and registry                                     |
+| **common.glsl**            | Common utility functions shared across shaders (noise, color, etc.) |
+| **starDisk.vertex.glsl**   | Vertex shader for star disk rendering                               |
+| **starDisk.fragment.glsl** | Fragment shader for star disk with Gooch-style rendering            |
+| **mainsequencestar.glsl**  | Main sequence star appearance and coloring                          |
 
 ## Shader Types
 
 ### Star Disk Shaders
+
 - Vertex shader handles star geometry and positioning
 - Fragment shader implements non-photorealistic Gooch rendering
 - Creates distinctive stylized star appearance
 
 ### Common Utilities
+
 - Noise functions for procedural effects
 - Color space conversions
 - Math utilities (smoothstep, etc.)

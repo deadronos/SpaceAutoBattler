@@ -15,7 +15,7 @@ Requirements: 2025-10-27 — Renderer Large File Refactor Planning (TASK412)
 Large renderer modules (`StarDisk.tsx`, `config/renderer.ts`, `ParticleTrails.tsx`) exceed 400 LOC and mix multiple responsibilities (runtime hooks, debug wiring, config glob). This plan documents how to decompose them into smaller, testable modules while preserving deterministic behavior and debug tooling.
 
 ## Architecture Snapshot
- 
+
 ```mermaid
 graph TD
   StarDisk[StarDisk Component] --> UniformCtl[useStarDiskUniformController]
@@ -84,13 +84,13 @@ graph TD
 
 ## Error Matrix
 
-| Area | Potential Failure | Detection | Planned Response |
-|------|-------------------|-----------|------------------|
-| StarDisk uniform hook | Missing refs leading to undefined uniform updates | Vitest hook tests / runtime guard logs | Early-return with warning; maintain existing fallback path |
-| StarDisk debug API | Globals not cleaned up after unmount | Unit test ensuring dispose clears helpers | Hook returns disposer invoked in `useEffect` cleanup |
-| Renderer config splits | Import paths outdated causing runtime errors | TypeScript compile + lint | Provide re-export façade, run codemod to update imports |
-| Particle trail resources | Double resource allocation per hull increases GPU usage | Resource unit tests & instrumentation | Share resource singletons, add `disposeTrailResources` for explicit teardown |
-| Thruster anchor hook | Violating React hook rules | ESLint react-hooks plugin | Keep `useGLTF` inside hook called unconditionally by component |
+| Area                     | Potential Failure                                       | Detection                                 | Planned Response                                                             |
+| ------------------------ | ------------------------------------------------------- | ----------------------------------------- | ---------------------------------------------------------------------------- |
+| StarDisk uniform hook    | Missing refs leading to undefined uniform updates       | Vitest hook tests / runtime guard logs    | Early-return with warning; maintain existing fallback path                   |
+| StarDisk debug API       | Globals not cleaned up after unmount                    | Unit test ensuring dispose clears helpers | Hook returns disposer invoked in `useEffect` cleanup                         |
+| Renderer config splits   | Import paths outdated causing runtime errors            | TypeScript compile + lint                 | Provide re-export façade, run codemod to update imports                      |
+| Particle trail resources | Double resource allocation per hull increases GPU usage | Resource unit tests & instrumentation     | Share resource singletons, add `disposeTrailResources` for explicit teardown |
+| Thruster anchor hook     | Violating React hook rules                              | ESLint react-hooks plugin                 | Keep `useGLTF` inside hook called unconditionally by component               |
 
 ## Unit Testing Strategy
 

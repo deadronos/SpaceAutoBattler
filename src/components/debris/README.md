@@ -4,13 +4,14 @@ Handles debris particle rendering and instanced mesh management for destroyed ob
 
 ## Files
 
-| File | Purpose |
-|------|---------|
+| File                          | Purpose                                                                                       |
+| ----------------------------- | --------------------------------------------------------------------------------------------- |
 | **DebrisInstancedManager.ts** | Manages instanced rendering of debris particles; handles lifecycle, pooling, and mesh updates |
 
 ## Overview
 
 The debris system provides efficient rendering of:
+
 - Ship fragments from destroyed vessels
 - Collision debris
 - Material chunks from explosions

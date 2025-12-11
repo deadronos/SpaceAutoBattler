@@ -5,6 +5,7 @@
 **Completed:** 2025-10-27
 
 ## Original Request
+
 Centralize material preset objects and factories; expose thin React wrappers and factory functions used by the material registry and instanced layers.
 
 ## Implementation Plan
@@ -18,20 +19,22 @@ Centralize material preset objects and factories; expose thin React wrappers and
 
 ## Subtasks
 
-| ID  | Description                    | Status    | Updated    |
-| --- | ------------------------------ | --------- | ---------- |
-| 2.1 | Add `materialPresets.ts`       | Complete  | 2025-10-27 |
-| 2.2 | Add `materialFactory.ts`       | Complete  | 2025-10-27 |
-| 2.3 | Refactor `bulletMaterials.tsx` | Complete  | 2025-10-27 |
-| 2.4 | Refactor all material files    | Complete  | 2025-10-27 |
-| 2.5 | Add tests                      | Complete  | 2025-10-27 |
+| ID  | Description                    | Status   | Updated    |
+| --- | ------------------------------ | -------- | ---------- |
+| 2.1 | Add `materialPresets.ts`       | Complete | 2025-10-27 |
+| 2.2 | Add `materialFactory.ts`       | Complete | 2025-10-27 |
+| 2.3 | Refactor `bulletMaterials.tsx` | Complete | 2025-10-27 |
+| 2.4 | Refactor all material files    | Complete | 2025-10-27 |
+| 2.5 | Add tests                      | Complete | 2025-10-27 |
 
 ## Progress log
 
 ### 2025-10-27 (Initial)
+
 - Task created, design added to memory.
 
 ### 2025-10-27 (Implementation)
+
 - Created `src/renderer/materials/materialPresets.ts` with centralized preset objects:
   - Bullet presets: laser, plasma, ion, heavy, missile, torpedo, beam
   - Muzzle flash preset
@@ -56,15 +59,16 @@ Centralize material preset objects and factories; expose thin React wrappers and
 - TypeScript compilation passes with no errors
 
 ## Acceptance Criteria
+
 - ✅ Typecheck passes
 - ✅ Unit test confirms that material factories create correct materials with expected properties
 - ✅ All existing tests continue to pass
 - ✅ No breaking changes to existing material APIs
 
 ## Technical Notes
+
 - The refactoring maintains full backward compatibility
 - All React component exports remain unchanged
 - Factory functions now use centralized presets, reducing code duplication
 - Material presets are typed with MeshStandardMaterialParameters or MeshBasicMaterialParameters
 - The factory supports flexible override patterns for customization
-

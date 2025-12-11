@@ -3,14 +3,17 @@
 Updated the Progression Panel to display XP and event deltas with 1 decimal place (e.g., "0.5 / 100.0 XP"). This ensures that small XP gains are visible to the player instead of being rounded down to zero.
 
 **Files created/changed:**
+
 - `src/components/ProgressionPanel.tsx`
 - `test/components/ProgressionPanel.spec.tsx`
 
 **Functions created/changed:**
+
 - `ShipProgressionCard` (updated XP display format)
 - `EventRow` (updated delta XP display format)
 
 **Tests created/changed:**
+
 - `test/components/ProgressionPanel.spec.tsx` (new test file)
 
 **Review Status:** APPROVED

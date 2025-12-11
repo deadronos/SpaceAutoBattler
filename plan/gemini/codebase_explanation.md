@@ -27,9 +27,9 @@ The application uses a decoupled game loop pattern:
     - **Preparation**: Ship control (`prepareShips`)
     - **Combat**: Carrier launches, Turret updates (`updateTurrets`)
     - **Physics**:
-        - `flushDeferredMutations`: Applies changes buffered from the previous frame.
-        - `physicsWorld.step()`: Advances Rapier simulation.
-        - `flushPostPhysicsMutations`: Applies changes that depend on the new physics state.
+      - `flushDeferredMutations`: Applies changes buffered from the previous frame.
+      - `physicsWorld.step()`: Advances Rapier simulation.
+      - `flushPostPhysicsMutations`: Applies changes that depend on the new physics state.
     - **Resolution**: Syncs physics transforms back to ECS entities (`syncTransforms`), resolves damage/projectiles.
 
 ## Entity Component System (ECS)
@@ -52,4 +52,3 @@ Physics is handled by **Rapier3D**.
 - **Doctrine**: AI behavior is data-driven (`aiDoctrine.ts`).
 - **Intents**: The decision system evaluates "Intents" (Attack, Kite, Escort) and selects the highest-scoring one.
 - **Blackboard**: A shared data structure (`blackboard.ts`) is used for spatial reasoning and team-level coordination.
-

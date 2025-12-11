@@ -16,4 +16,3 @@ export {
   deferSetColliderFriction,
   deferSetColliderRestitution,
 } from './wrappers.js';
-

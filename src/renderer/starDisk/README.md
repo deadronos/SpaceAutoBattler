@@ -4,16 +4,17 @@ Star disk-specific materials, textures, and effect setup for the central star re
 
 ## Star Disk Files
 
-| File | Purpose |
-|------|---------|
-| **textures.ts** | Star disk texture generation and loading |
+| File                   | Purpose                                                     |
+| ---------------------- | ----------------------------------------------------------- |
+| **textures.ts**        | Star disk texture generation and loading                    |
 | **materialFactory.ts** | Creates star disk-specific materials with custom properties |
-| **uniforms.ts** | Uniform variable definitions for star disk shaders |
-| **devHelpers.ts** | Development utilities for debugging star disk effects |
+| **uniforms.ts**        | Uniform variable definitions for star disk shaders          |
+| **devHelpers.ts**      | Development utilities for debugging star disk effects       |
 
 ## Star Disk Rendering
 
 Provides:
+
 - Procedurally generated or loaded star textures
 - Custom shader-based rendering with Gooch style
 - Dynamic uniform updates for animation effects

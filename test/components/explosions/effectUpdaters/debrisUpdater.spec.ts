@@ -68,7 +68,10 @@ describe('debrisUpdater', () => {
 
   it('should not create debris instances before delay', () => {
     ctx.time = 0.1;
-    const mgr = createInstancedLayerManager({ current: mesh }, { capacity: 100, supportsInstanceColor: true });
+    const mgr = createInstancedLayerManager(
+      { current: mesh },
+      { capacity: 100, supportsInstanceColor: true },
+    );
     mgr.beginFrame();
     const result = updateDebris(ctx, mgr, String(event.id));
     expect(result.count).toBe(0);
@@ -77,7 +80,10 @@ describe('debrisUpdater', () => {
 
   it('should create multiple debris instances after delay', () => {
     ctx.time = 0.3;
-    const mgr = createInstancedLayerManager({ current: mesh }, { capacity: 100, supportsInstanceColor: true });
+    const mgr = createInstancedLayerManager(
+      { current: mesh },
+      { capacity: 100, supportsInstanceColor: true },
+    );
     mgr.beginFrame();
     const result = updateDebris(ctx, mgr, String(event.id));
     expect(result.count).toBeGreaterThan(0);
@@ -87,7 +93,10 @@ describe('debrisUpdater', () => {
 
   it('should respect capacity limits', () => {
     ctx.time = 0.3;
-    const mgr = createInstancedLayerManager({ current: mesh }, { capacity: 5, supportsInstanceColor: true });
+    const mgr = createInstancedLayerManager(
+      { current: mesh },
+      { capacity: 5, supportsInstanceColor: true },
+    );
     mgr.beginFrame();
     const result = updateDebris(ctx, mgr, String(event.id));
     expect(result.count).toBeLessThanOrEqual(5);
@@ -95,7 +104,10 @@ describe('debrisUpdater', () => {
 
   it('should move debris away from explosion center', () => {
     ctx.time = 0.25;
-    const mgr1 = createInstancedLayerManager({ current: mesh }, { capacity: 100, supportsInstanceColor: true });
+    const mgr1 = createInstancedLayerManager(
+      { current: mesh },
+      { capacity: 100, supportsInstanceColor: true },
+    );
     mgr1.beginFrame();
     updateDebris(ctx, mgr1, String(event.id));
 
@@ -106,7 +118,10 @@ describe('debrisUpdater', () => {
     const distance1 = dummy.position.length();
 
     ctx.time = 0.5;
-    const mgr2 = createInstancedLayerManager({ current: mesh }, { capacity: 100, supportsInstanceColor: true });
+    const mgr2 = createInstancedLayerManager(
+      { current: mesh },
+      { capacity: 100, supportsInstanceColor: true },
+    );
     mgr2.beginFrame();
     updateDebris(ctx, mgr2, String(event.id));
     mesh.getMatrixAt(0, dummy.matrix);
@@ -118,14 +133,20 @@ describe('debrisUpdater', () => {
   });
 
   it('should be deterministic with same seed', () => {
-    const mgr = createInstancedLayerManager({ current: mesh }, { capacity: 100, supportsInstanceColor: true });
+    const mgr = createInstancedLayerManager(
+      { current: mesh },
+      { capacity: 100, supportsInstanceColor: true },
+    );
     mgr.beginFrame();
     const result1 = updateDebris(ctx, mgr, String(event.id));
 
     const ctx2 = { ...ctx, event: { ...event } };
     ctx2.derived = getDerived(ctx2.event);
     const mesh2 = new InstancedMesh(new SphereGeometry(1), new MeshBasicMaterial(), 100);
-    const mgr2 = createInstancedLayerManager({ current: mesh2 }, { capacity: 100, supportsInstanceColor: true });
+    const mgr2 = createInstancedLayerManager(
+      { current: mesh2 },
+      { capacity: 100, supportsInstanceColor: true },
+    );
     mgr2.beginFrame();
     const result2 = updateDebris(ctx2, mgr2, String(event.id));
 
@@ -135,7 +156,10 @@ describe('debrisUpdater', () => {
 
   it('marks saturation when debris exceed capacity', () => {
     ctx.time = 0.3;
-    const mgr = createInstancedLayerManager({ current: mesh }, { capacity: 1, supportsInstanceColor: true });
+    const mgr = createInstancedLayerManager(
+      { current: mesh },
+      { capacity: 1, supportsInstanceColor: true },
+    );
     mgr.beginFrame();
     const result = updateDebris(ctx, mgr, String(event.id));
     expect(result.count).toBeLessThanOrEqual(1);

@@ -25,7 +25,7 @@ export const TEMP_REL_VEL = new Vector3();
 // Re-export for backward compatibility
 // The re-exported symbols are intended for backward compatibility and may not
 // be referenced locally in this module — silence the unused-var lint rule.
- 
+
 export { TEMP_RNG, resetTempRng } from './sharedRng.js';
 
 /**
@@ -41,12 +41,7 @@ export function getEffectiveRange(
   let desiredMin = profile.desiredRange[0];
   let desiredMax = profile.desiredRange[1];
   if (getEffectiveAIConfig().hysteresisEnabled && ship.ai) {
-    [desiredMin, desiredMax] = computeEffectiveDesiredRange(
-      ship.ai,
-      profile,
-      distance,
-      tickIndex,
-    );
+    [desiredMin, desiredMax] = computeEffectiveDesiredRange(ship.ai, profile, distance, tickIndex);
   }
   return [desiredMin, desiredMax];
 }

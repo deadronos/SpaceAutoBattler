@@ -13,8 +13,8 @@ Subsystem responsibilities are a separate simulation concern (engine/weapons/shi
 
 ## Requirements (EARS)
 
-- WHEN a ship is constructed, THE SYSTEM SHALL provide a deterministic subset of subsystem objects computed from ship HP and config multipliers. [Acceptance: unit tests for `createSubsystems`] 
-- WHEN subsystem HP changes, THE SYSTEM SHALL update status according to configured thresholds. [Acceptance: tests for `updateSubsystemStatus`] 
+- WHEN a ship is constructed, THE SYSTEM SHALL provide a deterministic subset of subsystem objects computed from ship HP and config multipliers. [Acceptance: unit tests for `createSubsystems`]
+- WHEN subsystem HP changes, THE SYSTEM SHALL update status according to configured thresholds. [Acceptance: tests for `updateSubsystemStatus`]
 - WHEN subsystems are repaired, THE SYSTEM SHALL apply captain repairSpeed and morale boosts and respect `repairPriority`. [Acceptance: tests showing repair order and amounts]
 - WHEN a critical hit triggers subsystem damage, THE SYSTEM SHALL select subsystem using configured weights and apply damage according to configured damage range. [Acceptance: deterministic selection via seeded RNG]
 
@@ -29,6 +29,7 @@ New module: `src/game/subsystems.ts` exports:
 - `getSubsystemMultiplier(subsystemType: SubsystemType, status: Subsystem['status']): number`
 
 Design notes:
+
 - Accept `SeededRng` from callers for deterministic tests.
 - Keep `SUBSYSTEM_CONFIG` usage but document expected fields: `baseHpMultiplier`, `baseRepairRateMultiplier`, `targetWeights`, `subsystemDamageRange`, `repairPriority`, `damagedThreshold`, `offlineThreshold`, `criticalHitChance`.
 - Make the selection strategy pure for testability: expose a helper `selectSubsystemForDamage(rand: number): SubsystemType` so tests can assert weight mapping.

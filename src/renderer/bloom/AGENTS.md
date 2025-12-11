@@ -13,16 +13,16 @@ import type { BloomRegistrationOptions, BloomContextValue } from '../renderer/bl
 
 ## Module Structure
 
-| File | Responsibility |
-|------|---------------|
-| `index.ts` | Public API exports — use this for external imports |
-| `BloomProvider.tsx` | React context provider and hooks |
-| `types.ts` | Shared TypeScript interfaces and type definitions |
-| `constants.ts` | Configuration constants and userData keys |
-| `layerAllocator.ts` | Three.js layer index allocation (layers 11-31) |
-| `materialManager.ts` | Material colorWrite save/restore utilities |
-| `layerMaskManager.ts` | Layer mask preservation utilities |
-| `selectionManager.ts` | Selection creation and object tracking |
+| File                  | Responsibility                                     |
+| --------------------- | -------------------------------------------------- |
+| `index.ts`            | Public API exports — use this for external imports |
+| `BloomProvider.tsx`   | React context provider and hooks                   |
+| `types.ts`            | Shared TypeScript interfaces and type definitions  |
+| `constants.ts`        | Configuration constants and userData keys          |
+| `layerAllocator.ts`   | Three.js layer index allocation (layers 11-31)     |
+| `materialManager.ts`  | Material colorWrite save/restore utilities         |
+| `layerMaskManager.ts` | Layer mask preservation utilities                  |
+| `selectionManager.ts` | Selection creation and object tracking             |
 
 ## Layer Allocation Strategy
 

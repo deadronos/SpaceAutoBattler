@@ -1,6 +1,10 @@
 import type { GameEntity, GameState, ShipEntity, TurretEntity } from '../types/index.js';
 import { unregisterTurret } from './turretRegistry.js';
-import { reportPhysicsError, reportLifecycleError, reportQueryError } from '../utils/errorReporting.js';
+import {
+  reportPhysicsError,
+  reportLifecycleError,
+  reportQueryError,
+} from '../utils/errorReporting.js';
 
 /**
  * Cleans up the entire game state, destroying all entities and freeing physics resources.

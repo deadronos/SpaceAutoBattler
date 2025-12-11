@@ -42,7 +42,7 @@ Computed hull metrics (theoretical)
 
 Notes: DPS values rounded to one decimal place. Turret DPS is broken down by priority when available. All numbers come directly from the source files listed above.
 
-1) Fighter
+1. Fighter
 
 - Source: `src/data/ships/fighter.ts`
 - maxHp: 40
@@ -56,7 +56,7 @@ Notes: DPS values rounded to one decimal place. Turret DPS is broken down by pri
 - raw durability = 64 → theoretical TTK ≈ 64 / 20.8 ≈ 3.1s
 - role: fast skirmisher with mixed short/medium weapons; turret roles mean fighter can contribute specialized damage (torpedoes vs big targets, beam/PD vs small fast targets)
 
-2) Corvette
+2. Corvette
 
 - Source: `src/data/ships/corvette.ts`
 - maxHp: 75
@@ -72,7 +72,7 @@ Notes: DPS values rounded to one decimal place. Turret DPS is broken down by pri
 - raw durability = 120 → theoretical TTK ≈ 120 / 50.2 ≈ 2.4s
 - role: strong anti-fighter platform; point-defense and beam DPS dominate the turret contribution — corvettes are highly effective at suppressing fighters in small engagements.
 
-3) Frigate
+3. Frigate
 
 - Source: `src/data/ships/frigate.ts`
 - maxHp: 120
@@ -89,7 +89,7 @@ Notes: DPS values rounded to one decimal place. Turret DPS is broken down by pri
 - raw durability = 192 → theoretical TTK ≈ 192 / 59.4 ≈ 3.2s
 - role: multirole escort with both sustained turret DPS and PD for fighter suppression; turret mix gives flexibility across target classes.
 
-4) Destroyer
+4. Destroyer
 
 - Source: `src/data/ships/destroyer.ts`
 - maxHp: 250
@@ -106,7 +106,7 @@ Notes: DPS values rounded to one decimal place. Turret DPS is broken down by pri
 - raw durability = 430 → theoretical TTK ≈ 430 / 103.5 ≈ 4.2s
 - role: capital brawler / area denial. Note the turret DPS is split: destroyer brings heavy antiCapital punch (torpedoes + heavy turrets) while also possessing a large antiFighter laser/beam battery. Against mixed fleets it is exceptionally dangerous.
 
-5) Carrier
+5. Carrier
 
 - Source: `src/data/ships/carrier.ts`
 - maxHp: 320
@@ -182,6 +182,7 @@ Notes on interpretation
 - Treat these numbers as a code-audit of present numeric configuration (what the runtime will produce if every weapon can apply DPS uninterrupted). Real engagements reduce available DPS by turret arcs, priority rules, projectile travel/arming times, and AI target distribution; still, the relative ordering and the unusually-high PD/laser contributions are meaningful and should inform tuning.
 
 If you'd like, I can:
+
 - run small deterministic simulation scenarios using the repo's in-engine harness (seeded RNG) and produce empirical TTK and distribution charts, or
 - add Vitest tests that assert expected DPS ranges and fail CI when turret or hull numbers drift outside targets.
 

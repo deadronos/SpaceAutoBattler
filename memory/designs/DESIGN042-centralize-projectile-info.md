@@ -38,7 +38,7 @@ Exports:
   baseRadius?: number;
   baseWidth?: number;
   baseLength?: number;
-}
+  }
 
 - function resolveProjectileInfo(bulletKey?: string | null): ResolvedProjectileInfo
   - Uses `getProjectileConfig` internally and geometry metadata where appropriate.
@@ -47,7 +47,7 @@ Exports:
   projectile: ProjectileEntity;
   metadata?: { baseWidth?: number; baseLength?: number };
   cfg?: ProjectileConfigItem;
-}): { matrix: Matrix4; widthScale: number; lengthScale: number }
+  }): { matrix: Matrix4; widthScale: number; lengthScale: number }
 
 - function resolveProjectileCategory(bulletKey?: string | null): ProjectileCategory
 

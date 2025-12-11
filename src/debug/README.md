@@ -4,14 +4,15 @@ Debug components and panels for visualizing and testing game systems during deve
 
 ## Debug Files
 
-| File | Purpose |
-|------|---------|
+| File                   | Purpose                                                      |
+| ---------------------- | ------------------------------------------------------------ |
 | **RingDebugPanel.tsx** | Debug panel for visualizing debug rings and collision shapes |
-| **debugPanel.css** | Styling for debug panels |
+| **debugPanel.css**     | Styling for debug panels                                     |
 
 ## Purpose
 
 These debug components provide:
+
 - Visual debugging of physics and collisions
 - System state inspection
 - Performance profiling display
@@ -27,6 +28,7 @@ These debug components provide:
 ## Integration
 
 Debug components are conditionally rendered in development:
+
 - Can be toggled on/off
 - Non-intrusive to gameplay
 - Minimal performance impact when disabled
@@ -35,8 +37,11 @@ Debug components are conditionally rendered in development:
 ## Conditional Rendering
 
 These components are typically wrapped with feature flags:
+
 ```tsx
-{isDevelopment && <RingDebugPanel />}
+{
+  isDevelopment && <RingDebugPanel />;
+}
 ```
 
 This ensures debug UI doesn't ship to production.

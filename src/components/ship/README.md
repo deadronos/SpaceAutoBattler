@@ -4,17 +4,18 @@ Specialized components for rendering ship models, shields, and ship-specific vis
 
 ## Core Ship Components
 
-| File | Purpose |
-|------|---------|
-| **ShipView.tsx** | Main ship view component; orchestrates model, shield, and health rendering |
-| **ShipModel.tsx** | Renders the 3D ship model (GLTF loaded from assets) |
-| **ShipShield.tsx** | Renders the energy shield effect and damage visualization |
-| **shieldUtils.ts** | Utility functions for shield calculations and effects |
-| **rippleUtils.ts** | Utility functions for shield ripple/impact effects |
+| File               | Purpose                                                                    |
+| ------------------ | -------------------------------------------------------------------------- |
+| **ShipView.tsx**   | Main ship view component; orchestrates model, shield, and health rendering |
+| **ShipModel.tsx**  | Renders the 3D ship model (GLTF loaded from assets)                        |
+| **ShipShield.tsx** | Renders the energy shield effect and damage visualization                  |
+| **shieldUtils.ts** | Utility functions for shield calculations and effects                      |
+| **rippleUtils.ts** | Utility functions for shield ripple/impact effects                         |
 
 ## Shield System
 
 The shield system provides visual feedback for:
+
 - Shield health and recharge state
 - Impact ripples when taking damage
 - Hexagonal shield geometry with custom material

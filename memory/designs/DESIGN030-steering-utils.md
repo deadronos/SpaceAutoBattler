@@ -40,7 +40,7 @@ Exports:
   - Returns a normalized direction vector that adds a lead component (matching existing homing lead behavior).
 
 - steerDirection(currentDir: Vector3, desiredDir: Vector3, turnRate: number, delta: number): { newDir: Vector3, angle: number }
-  - Computes the maximal allowed rotation (turnRate * delta), and lerps/clamps the currentDir toward desiredDir, returns normalized result.
+  - Computes the maximal allowed rotation (turnRate \* delta), and lerps/clamps the currentDir toward desiredDir, returns normalized result.
 
 - clampAngle(angle: number, min: number, max: number): number
   - Small utility to clamp/normalize angles if needed by other systems.

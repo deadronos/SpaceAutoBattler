@@ -15,7 +15,12 @@ describe('intent-utils helper functions', () => {
     it('calculates distance between two ships', () => {
       const ship1 = {
         transform: {
-          position: { x: 0, y: 0, z: 0, distanceTo: (other: any) => Math.sqrt(other.x ** 2 + other.y ** 2 + other.z ** 2) },
+          position: {
+            x: 0,
+            y: 0,
+            z: 0,
+            distanceTo: (other: any) => Math.sqrt(other.x ** 2 + other.y ** 2 + other.z ** 2),
+          },
         },
       } as ShipEntity;
 

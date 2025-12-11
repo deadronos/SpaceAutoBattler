@@ -36,11 +36,11 @@ npm run typecheck
 
 ### Subtasks
 
-| ID  | Description                                                   | Status      | Updated    | Notes                                           |
-| --- | ------------------------------------------------------------- | ----------- | ---------- | ----------------------------------------------- |
-| 1.1 | Fix GameState fixtures to include `shipById` and registrations | Completed   | 2025-11-17 | Added maps + registration in AI, projectile, shield, turret, and explosion fixtures. |
-| 1.2 | Add motion defaults to test ships to avoid NaN velocities      | Completed   | 2025-11-17 | Fixtures now use `createDefaultMotionStats` for finite motion math.                  |
-| 1.3 | Re-run lint/typecheck/tests and record results                 | Completed   | 2025-11-17 | `npm run typecheck`, `npm run lint`, and `npm run test` all pass.                    |
+| ID  | Description                                                    | Status    | Updated    | Notes                                                                                |
+| --- | -------------------------------------------------------------- | --------- | ---------- | ------------------------------------------------------------------------------------ |
+| 1.1 | Fix GameState fixtures to include `shipById` and registrations | Completed | 2025-11-17 | Added maps + registration in AI, projectile, shield, turret, and explosion fixtures. |
+| 1.2 | Add motion defaults to test ships to avoid NaN velocities      | Completed | 2025-11-17 | Fixtures now use `createDefaultMotionStats` for finite motion math.                  |
+| 1.3 | Re-run lint/typecheck/tests and record results                 | Completed | 2025-11-17 | `npm run typecheck`, `npm run lint`, and `npm run test` all pass.                    |
 
 ## Progress Log
 

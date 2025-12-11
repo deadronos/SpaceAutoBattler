@@ -69,7 +69,10 @@ describe('sparksUpdater', () => {
 
   it('should not create sparks before delay', () => {
     ctx.time = 0.1;
-    const mgr = createInstancedLayerManager({ current: mesh }, { capacity: 100, supportsInstanceColor: true });
+    const mgr = createInstancedLayerManager(
+      { current: mesh },
+      { capacity: 100, supportsInstanceColor: true },
+    );
     mgr.beginFrame();
     const result = updateSparks(ctx, mgr, String(event.id));
     expect(result.count).toBe(0);
@@ -78,7 +81,10 @@ describe('sparksUpdater', () => {
 
   it('should create multiple spark instances', () => {
     ctx.time = 0.3;
-    const mgr = createInstancedLayerManager({ current: mesh }, { capacity: 100, supportsInstanceColor: true });
+    const mgr = createInstancedLayerManager(
+      { current: mesh },
+      { capacity: 100, supportsInstanceColor: true },
+    );
     mgr.beginFrame();
     const result = updateSparks(ctx, mgr, String(event.id));
     expect(result.count).toBeGreaterThan(0);
@@ -88,7 +94,10 @@ describe('sparksUpdater', () => {
 
   it('should respect capacity limits', () => {
     ctx.time = 0.3;
-    const mgr = createInstancedLayerManager({ current: mesh }, { capacity: 5, supportsInstanceColor: true });
+    const mgr = createInstancedLayerManager(
+      { current: mesh },
+      { capacity: 5, supportsInstanceColor: true },
+    );
     mgr.beginFrame();
     const result = updateSparks(ctx, mgr, String(event.id));
     expect(result.count).toBeLessThanOrEqual(5);
@@ -100,7 +109,10 @@ describe('sparksUpdater', () => {
     camera.quaternion.set(0.1, 0.2, 0.3, 0.9);
     camera.quaternion.normalize(); // Ensure valid quaternion
 
-    const mgr = createInstancedLayerManager({ current: mesh }, { capacity: 100, supportsInstanceColor: true });
+    const mgr = createInstancedLayerManager(
+      { current: mesh },
+      { capacity: 100, supportsInstanceColor: true },
+    );
     mgr.beginFrame();
     updateSparks(ctx, mgr, String(event.id));
 
@@ -117,7 +129,10 @@ describe('sparksUpdater', () => {
 
   it('marks saturation when sparks exceed capacity', () => {
     ctx.time = 0.3;
-    const mgr = createInstancedLayerManager({ current: mesh }, { capacity: 1, supportsInstanceColor: true });
+    const mgr = createInstancedLayerManager(
+      { current: mesh },
+      { capacity: 1, supportsInstanceColor: true },
+    );
     mgr.beginFrame();
     const result = updateSparks(ctx, mgr, String(event.id));
     expect(result.count).toBeLessThanOrEqual(1);

@@ -2,9 +2,9 @@
 
 This folder contains canonical task documents named using the pattern `TASKNNN-topic.md` (zero-padded three-digit IDs starting at 001).
 
-
 ## In Progress
 
+- [TASK119](TASK119-flak-proximity-type-alignment.md) — Align flak proximity Vitest call sites with `FireProjectileOptions` so lint/type/test pipelines pass (design: DESIGN063). (In Progress — implementation underway) (2025-12-10)
 - [TASK106](TASK106-duplicate-buffer-caps.md) — Unify capped history helpers across diagnostics, metrics, and progression events (design: DESIGN055). (In Progress — implementation underway) (2025-10-29)
 - [TASK010](TASK010-thruster-trails-gpu.md) — Move thruster trails to GPU-managed instanced buffers for scalable rendering. (In Progress — design published, implementation pending) (2025-10-06)
 - [TASK009](TASK009-ship-hull-visibility.md) — Restore ship hull visibility by refreshing LOD partitioning after instancing refactor. (In Progress — requirements/design in flight) (2025-10-05)
@@ -100,4 +100,3 @@ This folder contains canonical task documents named using the pattern `TASKNNN-t
 ## Abandoned
 
 - _None tracked._
-

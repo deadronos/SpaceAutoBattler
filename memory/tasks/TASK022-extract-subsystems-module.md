@@ -28,13 +28,13 @@ Move subsystem creation, status update, repairs, and critical-hit routing out of
 
 ## Subtasks
 
-| ID  | Description                               | Status      | Updated    | Notes                                                      |
-| --- | ----------------------------------------- | ----------- | ---------- | ---------------------------------------------------------- |
-| 2.1 | Create `src/game/subsystems.ts`           | completed   | 2025-10-27 | File created in memory/design; implementation move pending |
-| 2.2 | Add tests for selection and status/repair | completed   | 2025-10-27 | Use `SeededRng` to validate deterministic weights          |
-| 2.3 | Update `progression.ts` re-exports        | completed   | 2025-10-27 | Keep compatibility shim during migration                   |
-| 2.4 | Update consumers/imports                  | completed   | 2025-10-27 | `systems/damage.ts` and other call sites                   |
-| 2.5 | Run full test suite                       | completed   | 2025-10-27 | Verify no regressions                                      |
+| ID  | Description                               | Status    | Updated    | Notes                                                      |
+| --- | ----------------------------------------- | --------- | ---------- | ---------------------------------------------------------- |
+| 2.1 | Create `src/game/subsystems.ts`           | completed | 2025-10-27 | File created in memory/design; implementation move pending |
+| 2.2 | Add tests for selection and status/repair | completed | 2025-10-27 | Use `SeededRng` to validate deterministic weights          |
+| 2.3 | Update `progression.ts` re-exports        | completed | 2025-10-27 | Keep compatibility shim during migration                   |
+| 2.4 | Update consumers/imports                  | completed | 2025-10-27 | `systems/damage.ts` and other call sites                   |
+| 2.5 | Run full test suite                       | completed | 2025-10-27 | Verify no regressions                                      |
 
 ## Progress Log
 

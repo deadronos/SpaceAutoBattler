@@ -16,4 +16,3 @@ export {
   postSetColliderFriction,
   postSetColliderRestitution,
 } from './wrappers.js';
-

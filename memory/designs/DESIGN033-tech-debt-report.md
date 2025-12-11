@@ -83,12 +83,12 @@ interface TechDebtEntry {
 
 ## Error Handling Matrix
 
-| Scenario | Detection | Response | Notes |
-| --- | --- | --- | --- |
-| Required front matter field omitted | Markdown validator or manual review flags missing key | Verify against checklist; update front matter before finalisation | Blocker until resolved |
-| Category taxonomy unavailable | Unable to locate `/categories.txt` | Reuse previously accepted category (`engineering`) and note follow-up in report | Document assumption in report Notes section |
-| Candidate later deemed active | Reviewer feedback or search shows runtime dependency | Mark as follow-up in task log, adjust rating/notes, and, if necessary, replace with alternative candidate | Maintain audit trail in Memory Bank |
-| Effort estimate uncertain | Lack of historical data | Default to conservative `M` and flag for further estimation; mention dependencies | Ensure transparency in report |
+| Scenario                            | Detection                                             | Response                                                                                                  | Notes                                       |
+| ----------------------------------- | ----------------------------------------------------- | --------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| Required front matter field omitted | Markdown validator or manual review flags missing key | Verify against checklist; update front matter before finalisation                                         | Blocker until resolved                      |
+| Category taxonomy unavailable       | Unable to locate `/categories.txt`                    | Reuse previously accepted category (`engineering`) and note follow-up in report                           | Document assumption in report Notes section |
+| Candidate later deemed active       | Reviewer feedback or search shows runtime dependency  | Mark as follow-up in task log, adjust rating/notes, and, if necessary, replace with alternative candidate | Maintain audit trail in Memory Bank         |
+| Effort estimate uncertain           | Lack of historical data                               | Default to conservative `M` and flag for further estimation; mention dependencies                         | Ensure transparency in report               |
 
 ## Testing Strategy
 

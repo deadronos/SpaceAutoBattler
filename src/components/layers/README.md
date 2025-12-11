@@ -4,28 +4,29 @@ Specialized instanced rendering layers for efficient batch rendering of game obj
 
 ## Core Layer Components
 
-| File | Purpose |
-|------|---------|
-| **ShipsLayer.tsx** | Renders all ships in scene using instanced geometry; optimized for multiple ship rendering |
-| **ProjectilesLayer.tsx** | Legacy projectile rendering layer (non-instanced) |
-| **ProjectilesInstancedLayer.tsx** | Instanced projectile rendering layer; efficient for thousands of projectiles |
-| **TurretsLayer.tsx** | Renders turret objects across all ships |
-| **MuzzleFlashInstancedLayer.tsx** | Instanced rendering of muzzle flash effects when weapons fire |
-| **StarsField.tsx** | Renders background star field |
+| File                              | Purpose                                                                                    |
+| --------------------------------- | ------------------------------------------------------------------------------------------ |
+| **ShipsLayer.tsx**                | Renders all ships in scene using instanced geometry; optimized for multiple ship rendering |
+| **ProjectilesLayer.tsx**          | Legacy projectile rendering layer (non-instanced)                                          |
+| **ProjectilesInstancedLayer.tsx** | Instanced projectile rendering layer; efficient for thousands of projectiles               |
+| **TurretsLayer.tsx**              | Renders turret objects across all ships                                                    |
+| **MuzzleFlashInstancedLayer.tsx** | Instanced rendering of muzzle flash effects when weapons fire                              |
+| **StarsField.tsx**                | Renders background star field                                                              |
 
 ## Supporting Files
 
-| File | Purpose |
-|------|---------|
-| **instancedLayer.ts** | Base utilities and helpers for instanced layer implementations |
-| **instanceAllocator.ts** | Manages instance allocation and pooling for instanced layers |
-| **muzzleFlashMath.ts** | Math utilities for calculating muzzle flash positions and effects |
-| **types.ts** | TypeScript types and interfaces for layer components |
-| **saturationWarning.ts** | Warnings and diagnostics for instance capacity saturation |
+| File                     | Purpose                                                           |
+| ------------------------ | ----------------------------------------------------------------- |
+| **instancedLayer.ts**    | Base utilities and helpers for instanced layer implementations    |
+| **instanceAllocator.ts** | Manages instance allocation and pooling for instanced layers      |
+| **muzzleFlashMath.ts**   | Math utilities for calculating muzzle flash positions and effects |
+| **types.ts**             | TypeScript types and interfaces for layer components              |
+| **saturationWarning.ts** | Warnings and diagnostics for instance capacity saturation         |
 
 ## Layer Architecture
 
 Each layer follows the pattern:
+
 1. **Setup** - Create geometry, materials, and instanced mesh
 2. **Update** - Each frame, update instance matrices and colors
 3. **Cleanup** - Dispose resources when unmounted

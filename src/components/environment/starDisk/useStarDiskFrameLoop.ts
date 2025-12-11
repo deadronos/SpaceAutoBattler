@@ -483,13 +483,17 @@ export function useStarDiskFrameLoop({
         try {
           const win = globalThis as unknown as CopilotDebugWindow;
           const diagnosticsBuffer = (win.__copilot_starDiskDiagnostics ??= []);
-          appendCappedMutable(diagnosticsBuffer, {
-            time: Date.now(),
-            iTime: uniformUpdate.time,
-            applied,
-            materialType: diagnosticsMaterial?.type ?? null,
-            starCompiled,
-          }, 20);
+          appendCappedMutable(
+            diagnosticsBuffer,
+            {
+              time: Date.now(),
+              iTime: uniformUpdate.time,
+              applied,
+              materialType: diagnosticsMaterial?.type ?? null,
+              starCompiled,
+            },
+            20,
+          );
         } catch {
           /* ignore */
         }

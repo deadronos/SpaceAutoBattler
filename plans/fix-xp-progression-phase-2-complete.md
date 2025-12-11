@@ -3,13 +3,16 @@
 Increased the XP multiplier from `0.1` to `0.5` to make progression faster and more rewarding.
 
 **Files created/changed:**
+
 - `src/config/progression.ts`
 - `test/game/progression.spec.ts`
 
 **Functions created/changed:**
+
 - `XP_CONFIG` (updated `damageXpMultiplier`)
 
 **Tests created/changed:**
+
 - `test/game/progression.spec.ts` (new test file)
 
 **Review Status:** APPROVED

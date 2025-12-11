@@ -9,7 +9,10 @@ function createMesh(capacity: number): InstancedMesh {
 describe('InstancedLayerManager edge cases', () => {
   it('allocates lowest indices first and recycles released indices', () => {
     const mesh = createMesh(3);
-    const mgr = createInstancedLayerManager({ current: mesh }, { capacity: 3, supportsInstanceColor: true });
+    const mgr = createInstancedLayerManager(
+      { current: mesh },
+      { capacity: 3, supportsInstanceColor: true },
+    );
     mgr.beginFrame();
 
     const a = mgr.allocate('a');

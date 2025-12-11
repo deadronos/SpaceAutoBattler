@@ -188,12 +188,12 @@ function applyAoeDamage(
   shipSpatialHash: SpatialHash<ShipEntity>,
   toRemove: Set<GameEntity>,
   radius: number,
-  primaryTarget: ShipEntity,
+  primaryTarget: ShipEntity | null,
 ): void {
   const origin = projectile.transform.position;
   const nearbyShips = querySpatialHash(shipSpatialHash, origin, radius);
   for (const ship of nearbyShips) {
-    if (ship === primaryTarget) continue;
+    if (primaryTarget && ship === primaryTarget) continue;
     if (ship.ship.team === projectile.projectile.team) continue;
     const distance = ship.transform.position.distanceTo(origin);
     if (distance > radius) continue;
@@ -222,7 +222,10 @@ export function resolveProjectiles(state: GameState, delta: number): void {
   for (const ship of ships) {
     shipsById.set(ship.id, ship);
   }
-  const maxShipImpactRadius = ships.reduce((radius, ship) => Math.max(radius, ship.transform.scale * 0.9), 0);
+  const maxShipImpactRadius = ships.reduce(
+    (radius, ship) => Math.max(radius, ship.transform.scale * 0.9),
+    0,
+  );
   const projectiles = state.queries.projectiles.entities as ProjectileEntity[];
   const toRemove = new Set<GameEntity>();
   const manager = state.ai;
@@ -244,6 +247,43 @@ export function resolveProjectiles(state: GameState, delta: number): void {
     if (projectile.projectile.ttl <= 0) {
       toRemove.add(projectile);
       continue;
+    }
+
+    // Proximity fuse check
+    if (projectile.projectile.proximityFuse && isProjectileArmed(projectile, state.time)) {
+      const fuseRadius = projectile.projectile.proximityFuse.radius;
+      const fuseTargets = querySpatialHash(
+        shipSpatialHash,
+        projectile.transform.position,
+        fuseRadius,
+      );
+
+      let triggered = false;
+      for (const target of fuseTargets) {
+        if (target.ship.team === projectile.projectile.team) continue;
+        const dist = target.transform.position.distanceTo(projectile.transform.position);
+        if (dist <= fuseRadius) {
+          triggered = true;
+          break;
+        }
+      }
+
+      if (triggered) {
+        toRemove.add(projectile);
+        if (projectile.projectile.aoeRadius && projectile.projectile.aoeRadius > 0) {
+          applyAoeDamage(
+            state,
+            projectile,
+            ships,
+            shipsById,
+            shipSpatialHash,
+            toRemove,
+            projectile.projectile.aoeRadius,
+            null,
+          );
+        }
+        continue;
+      }
     }
 
     const info = resolveProjectileInfo(projectile.projectile.bulletType);

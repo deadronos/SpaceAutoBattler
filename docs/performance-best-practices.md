@@ -18,7 +18,7 @@ This document outlines performance best practices for SpaceAutoBattler based on 
 const candidates = ships.filter((s) => s.ship.team !== ship.ship.team);
 for (const s of candidates) {
   // process enemy ships
-  }
+}
 ```
 
 ## Simulation Diagnostics & Debug Controls
@@ -99,6 +99,7 @@ for (const source of ships) {
 ```
 
 **Key techniques:**
+
 - Identity checks first (`target === source`)
 - Cheap property checks next (`team`)
 - Distance/angle checks before expensive operations
@@ -120,6 +121,7 @@ npm run perf:ai-budget
 ```
 
 Expected output (values will vary):
+
 ```
 [ai-budget] ships=300 ticks=160 avgTick=~1.5ms budget=2.500ms
 [ai-budget] PASS: average AI tick ~1.5ms within budget 2.500ms
@@ -137,6 +139,7 @@ Expected output (values will vary):
 ### Node.js Profiling
 
 For system-level code:
+
 ```bash
 node --prof scripts/perf/assert-ai-budget.ts
 node --prof-process isolate-*.log > profile.txt
@@ -145,6 +148,7 @@ node --prof-process isolate-*.log > profile.txt
 ### Browser Profiling
 
 For renderer code:
+
 1. Open DevTools Performance tab
 2. Start recording
 3. Run simulation for 10-20 seconds
@@ -157,11 +161,13 @@ For renderer code:
 ## When to Optimize
 
 ### Optimize when:
+
 - Profiling shows measurable impact (>2% of frame time)
 - Code runs in game loop (per-frame or per-tick)
 - Processing large collections (100+ entities)
 
 ### Don't optimize when:
+
 - One-time initialization code
 - Debug/UI code outside hot paths
 - Premature optimization without measurements

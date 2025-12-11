@@ -4,13 +4,14 @@ Core damage calculation and combat-related utilities.
 
 ## Combat Files
 
-| File | Purpose |
-|------|---------|
+| File          | Purpose                                                                   |
+| ------------- | ------------------------------------------------------------------------- |
 | **damage.ts** | Damage calculation system including armor, shields, and armor penetration |
 
 ## Damage System
 
 Provides:
+
 - Armor and shield damage calculations
 - Armor penetration mechanics
 - Critical hit chance

@@ -87,6 +87,7 @@ Use the existing deterministic harness (`test/support/aiScenarioHarness.ts`) to 
 - Scenario E: Torpedo salvo on clustered formation (measure multi-kill probability)
 
 Metrics to collect (via harness `collectTestMetrics`):
+
 - TTK median/p90, timeToFirstShot, timeToFirstKill
 - Total damage by source (turret vs hull vs torpedo)
 - Shield→Hull transition time

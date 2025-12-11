@@ -283,7 +283,12 @@ export default defineConfig([
       '@typescript-eslint/no-redeclare': 'off',
     },
   },
-  { files: ['**/*.json'], plugins: { json: json as unknown as any }, language: 'json/json', extends: ['json/recommended'] },
+  {
+    files: ['**/*.json'],
+    plugins: { json: json as unknown as any },
+    language: 'json/json',
+    extends: ['json/recommended'],
+  },
   {
     files: ['**/*.jsonc'],
     plugins: { json: json as unknown as any },
