@@ -249,4 +249,34 @@ describe('Turret Prioritization Bug', () => {
     // I will assert the desired behavior, so the test fails.
     expect(projectile.projectile.targetId).toBe(redFighter.id);
   });
+
+  it('should prioritize fighter over frigate even with large distance difference (robustness check)', () => {
+    const state = makeStateStub();
+
+    // Blue ship with anti-fighter turret at origin
+    const blueShip = createShip(state, 1, 'blue', 'frigate', new Vector3(0, 0, 0));
+    createTurretEntity(state, blueShip, 'antiFighter');
+
+    // Red Fighter at distance 900 (far but in range)
+    const redFighter = createShip(state, 2, 'red', 'fighter', new Vector3(900, 0, 0));
+
+    // Red Frigate at distance 100 (very close)
+    const redFrigate = createShip(state, 3, 'red', 'frigate', new Vector3(100, 0, 0));
+
+    // Run turrets update
+    updateTurrets(state, 0.016);
+
+    // Process post-step mutations (where projectiles are spawned)
+    for (const mutation of state.simulation.postStepMutations) {
+      mutation();
+    }
+
+    // Check projectiles
+    const projectiles = (state.queries.projectiles as any).entities;
+    expect(projectiles.length).toBe(1);
+
+    const projectile = projectiles[0];
+
+    expect(projectile.projectile.targetId).toBe(redFighter.id);
+  });
 });
