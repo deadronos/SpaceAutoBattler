@@ -8,10 +8,7 @@ import {
   type ProjectileBeamConfig,
   type ProjectileConfigItem,
 } from '../config/projectiles.js';
-import {
-  getProjectileGeometry,
-  type ProjectileGeometryMetadata,
-} from './projectileGeometries.js';
+import { getProjectileGeometry, type ProjectileGeometryMetadata } from './projectileGeometries.js';
 
 const FALLBACK_PROJECTILE_KEY = 'bullet:laser';
 const TEMP_HIT_VECTOR = new Vector3();
@@ -96,25 +93,19 @@ export function resolveProjectileInfo(
     config.baseGeometryRadius ??
     DEFAULT_PROJECTILE_CONFIG.baseGeometryRadius ??
     0.5;
-  const computedCategory =
-    geometryMetadata.category ?? config.category ?? 'bullet';
-  const baseWidth =
-    geometryMetadata.baseWidth ??
-    (baseRadius != null ? baseRadius * 2 : undefined);
+  const computedCategory = geometryMetadata.category ?? config.category ?? 'bullet';
+  const baseWidth = geometryMetadata.baseWidth ?? (baseRadius != null ? baseRadius * 2 : undefined);
   const beamLengthFallback = Math.max(
     1,
     (config.visualScale ?? DEFAULT_PROJECTILE_CONFIG.visualScale ?? 1) * 12,
   );
   const baseLength =
     geometryMetadata.baseLength ??
-    (computedCategory === 'beam'
-      ? beamLengthFallback
-      : baseWidth ?? baseRadius * 2);
+    (computedCategory === 'beam' ? beamLengthFallback : (baseWidth ?? baseRadius * 2));
 
   const visualScale = config.visualScale ?? DEFAULT_PROJECTILE_CONFIG.visualScale ?? 0.2;
   const visualMultiplier = config.visualMultiplier ?? 1;
-  const colliderRadius =
-    config.colliderRadius ?? Math.max(0.08, visualScale * 1.2);
+  const colliderRadius = config.colliderRadius ?? Math.max(0.08, visualScale * 1.2);
 
   const metadata: ResolvedProjectileGeometryMetadata = {
     category: computedCategory,
@@ -170,18 +161,14 @@ export function computeBeamTransform({
   const directionScratch = scratchDirection ?? TEMP_HIT_VECTOR;
 
   const baseScale = projectile.transform.scale * info.visualMultiplier;
-  const baseWidth = info.metadata.baseWidth && info.metadata.baseWidth > 0
-    ? info.metadata.baseWidth
-    : baseScale;
-  const configuredWidth =
-    beam.width ?? info.beamConfig?.width ?? baseWidth ?? baseScale;
+  const baseWidth =
+    info.metadata.baseWidth && info.metadata.baseWidth > 0 ? info.metadata.baseWidth : baseScale;
+  const configuredWidth = beam.width ?? info.beamConfig?.width ?? baseWidth ?? baseScale;
   const widthScale = baseWidth && baseWidth > 0 ? configuredWidth / baseWidth : baseScale;
 
   let beamLength = beam.maxLength ?? projectile.projectile.speed * projectile.projectile.maxTtl;
   if (beam.hitPoint) {
-    directionScratch
-      .copy(beam.hitPoint)
-      .sub(projectile.transform.position);
+    directionScratch.copy(beam.hitPoint).sub(projectile.transform.position);
     beamLength = directionScratch.length();
   }
   if (!Number.isFinite(beamLength) || beamLength <= 0) {
@@ -189,9 +176,8 @@ export function computeBeamTransform({
   }
   beamLength = Math.max(0.1, beamLength);
 
-  const baseLength = info.metadata.baseLength && info.metadata.baseLength > 0
-    ? info.metadata.baseLength
-    : 1;
+  const baseLength =
+    info.metadata.baseLength && info.metadata.baseLength > 0 ? info.metadata.baseLength : 1;
   const lengthScale = baseLength > 0 ? beamLength / baseLength : beamLength;
 
   scale.set(widthScale, widthScale, lengthScale);

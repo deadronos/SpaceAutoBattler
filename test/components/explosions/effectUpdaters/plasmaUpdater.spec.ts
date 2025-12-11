@@ -68,7 +68,10 @@ describe('plasmaUpdater', () => {
 
   it('should not create plasma before delay', () => {
     ctx.time = 0.1;
-    const mgr = createInstancedLayerManager({ current: mesh }, { capacity: 100, supportsInstanceColor: true });
+    const mgr = createInstancedLayerManager(
+      { current: mesh },
+      { capacity: 100, supportsInstanceColor: true },
+    );
     mgr.beginFrame();
     const result = updatePlasma(ctx, mgr, String(event.id));
     expect(result.count).toBe(0);
@@ -77,7 +80,10 @@ describe('plasmaUpdater', () => {
 
   it('should create multiple plasma instances', () => {
     ctx.time = 0.4;
-    const mgr = createInstancedLayerManager({ current: mesh }, { capacity: 100, supportsInstanceColor: true });
+    const mgr = createInstancedLayerManager(
+      { current: mesh },
+      { capacity: 100, supportsInstanceColor: true },
+    );
     mgr.beginFrame();
     const result = updatePlasma(ctx, mgr, String(event.id));
     expect(result.count).toBeGreaterThan(0);
@@ -87,7 +93,10 @@ describe('plasmaUpdater', () => {
 
   it('should respect capacity limits', () => {
     ctx.time = 0.4;
-    const mgr = createInstancedLayerManager({ current: mesh }, { capacity: 5, supportsInstanceColor: true });
+    const mgr = createInstancedLayerManager(
+      { current: mesh },
+      { capacity: 5, supportsInstanceColor: true },
+    );
     mgr.beginFrame();
     const result = updatePlasma(ctx, mgr, String(event.id));
     expect(result.count).toBeLessThanOrEqual(5);
@@ -95,7 +104,10 @@ describe('plasmaUpdater', () => {
 
   it('should move plasma plumes outward', () => {
     ctx.time = 0.3;
-    const mgr1 = createInstancedLayerManager({ current: mesh }, { capacity: 100, supportsInstanceColor: true });
+    const mgr1 = createInstancedLayerManager(
+      { current: mesh },
+      { capacity: 100, supportsInstanceColor: true },
+    );
     mgr1.beginFrame();
     updatePlasma(ctx, mgr1, String(event.id));
     const dummy1 = new Object3D();
@@ -104,7 +116,10 @@ describe('plasmaUpdater', () => {
     const distance1 = dummy1.position.length();
 
     ctx.time = 0.6;
-    const mgr2 = createInstancedLayerManager({ current: mesh }, { capacity: 100, supportsInstanceColor: true });
+    const mgr2 = createInstancedLayerManager(
+      { current: mesh },
+      { capacity: 100, supportsInstanceColor: true },
+    );
     mgr2.beginFrame();
     updatePlasma(ctx, mgr2, String(event.id));
     const dummy2 = new Object3D();
@@ -116,14 +131,20 @@ describe('plasmaUpdater', () => {
   });
 
   it('should be deterministic with same seed', () => {
-    const mgr = createInstancedLayerManager({ current: mesh }, { capacity: 100, supportsInstanceColor: true });
+    const mgr = createInstancedLayerManager(
+      { current: mesh },
+      { capacity: 100, supportsInstanceColor: true },
+    );
     mgr.beginFrame();
     const result1 = updatePlasma(ctx, mgr, String(event.id));
 
     const ctx2 = { ...ctx, event: { ...event } };
     ctx2.derived = getDerived(ctx2.event);
     const mesh2 = new InstancedMesh(new SphereGeometry(1), new MeshBasicMaterial(), 100);
-    const mgr2 = createInstancedLayerManager({ current: mesh2 }, { capacity: 100, supportsInstanceColor: true });
+    const mgr2 = createInstancedLayerManager(
+      { current: mesh2 },
+      { capacity: 100, supportsInstanceColor: true },
+    );
     mgr2.beginFrame();
     const result2 = updatePlasma(ctx2, mgr2, String(event.id));
 
@@ -133,7 +154,10 @@ describe('plasmaUpdater', () => {
 
   it('flags saturation when plasma count exceeds capacity', () => {
     ctx.time = 0.4;
-    const mgr = createInstancedLayerManager({ current: mesh }, { capacity: 1, supportsInstanceColor: true });
+    const mgr = createInstancedLayerManager(
+      { current: mesh },
+      { capacity: 1, supportsInstanceColor: true },
+    );
     mgr.beginFrame();
     const result = updatePlasma(ctx, mgr, String(event.id));
     expect(result.count).toBeLessThanOrEqual(1);

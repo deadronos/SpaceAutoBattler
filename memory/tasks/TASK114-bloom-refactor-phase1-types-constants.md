@@ -63,13 +63,13 @@ Key considerations:
 
 ### Subtasks
 
-| ID | Description | Status | Updated | Notes |
-|----|-------------|--------|---------|-------|
-| 1.1 | Create directory structure | Complete | 2025-11-24 | Created `src/renderer/bloom/` with `AGENTS.md` |
-| 1.2 | Extract types to `types.ts` | Complete | 2025-11-24 | Extracted `BloomRegistrationOptions`, `BloomContextValue`, `LayerAllocatorState`, `MaterialColorWriteState`, `BloomUserDataKeys` |
-| 1.3 | Extract constants to `constants.ts` | Complete | 2025-11-24 | Extracted `LAYER_START`, `LAYER_MAX`, `LAYER_MIN`, `FALLBACK_GROUP`, `BLOOM_USER_DATA_KEYS`, `LEGACY_USER_DATA_KEYS` |
-| 1.4 | Update BloomProvider imports | Complete | 2025-11-24 | Updated imports and re-exports for backward compatibility |
-| 1.5 | Validate typecheck and tests | Complete | 2025-11-24 | `npm run typecheck` and `npm test` pass (643 tests) |
+| ID  | Description                         | Status   | Updated    | Notes                                                                                                                            |
+| --- | ----------------------------------- | -------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| 1.1 | Create directory structure          | Complete | 2025-11-24 | Created `src/renderer/bloom/` with `AGENTS.md`                                                                                   |
+| 1.2 | Extract types to `types.ts`         | Complete | 2025-11-24 | Extracted `BloomRegistrationOptions`, `BloomContextValue`, `LayerAllocatorState`, `MaterialColorWriteState`, `BloomUserDataKeys` |
+| 1.3 | Extract constants to `constants.ts` | Complete | 2025-11-24 | Extracted `LAYER_START`, `LAYER_MAX`, `LAYER_MIN`, `FALLBACK_GROUP`, `BLOOM_USER_DATA_KEYS`, `LEGACY_USER_DATA_KEYS`             |
+| 1.4 | Update BloomProvider imports        | Complete | 2025-11-24 | Updated imports and re-exports for backward compatibility                                                                        |
+| 1.5 | Validate typecheck and tests        | Complete | 2025-11-24 | `npm run typecheck` and `npm test` pass (643 tests)                                                                              |
 
 ## Progress Log
 

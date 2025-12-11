@@ -69,7 +69,10 @@ describe('smokeUpdater', () => {
 
   it('should not create smoke before delay', () => {
     ctx.time = 0.1;
-    const mgr = createInstancedLayerManager({ current: mesh }, { capacity: 100, supportsInstanceColor: true });
+    const mgr = createInstancedLayerManager(
+      { current: mesh },
+      { capacity: 100, supportsInstanceColor: true },
+    );
     mgr.beginFrame();
     const result = updateSmoke(ctx, mgr, String(event.id));
     expect(result.count).toBe(0);
@@ -78,7 +81,10 @@ describe('smokeUpdater', () => {
 
   it('should create multiple smoke instances', () => {
     ctx.time = 0.5;
-    const mgr = createInstancedLayerManager({ current: mesh }, { capacity: 100, supportsInstanceColor: true });
+    const mgr = createInstancedLayerManager(
+      { current: mesh },
+      { capacity: 100, supportsInstanceColor: true },
+    );
     mgr.beginFrame();
     const result = updateSmoke(ctx, mgr, String(event.id));
     expect(result.count).toBeGreaterThan(0);
@@ -88,7 +94,10 @@ describe('smokeUpdater', () => {
 
   it('should respect capacity limits', () => {
     ctx.time = 0.5;
-    const mgr = createInstancedLayerManager({ current: mesh }, { capacity: 5, supportsInstanceColor: true });
+    const mgr = createInstancedLayerManager(
+      { current: mesh },
+      { capacity: 5, supportsInstanceColor: true },
+    );
     mgr.beginFrame();
     const result = updateSmoke(ctx, mgr, String(event.id));
     expect(result.count).toBeLessThanOrEqual(5);
@@ -96,7 +105,10 @@ describe('smokeUpdater', () => {
 
   it('should drift smoke wisps over time', () => {
     ctx.time = 0.35;
-    const mgr1 = createInstancedLayerManager({ current: mesh }, { capacity: 100, supportsInstanceColor: true });
+    const mgr1 = createInstancedLayerManager(
+      { current: mesh },
+      { capacity: 100, supportsInstanceColor: true },
+    );
     mgr1.beginFrame();
     updateSmoke(ctx, mgr1, String(event.id));
     const dummy1 = new Object3D();
@@ -105,7 +117,10 @@ describe('smokeUpdater', () => {
     const pos1 = dummy1.position.clone();
 
     ctx.time = 1.0;
-    const mgr2 = createInstancedLayerManager({ current: mesh }, { capacity: 100, supportsInstanceColor: true });
+    const mgr2 = createInstancedLayerManager(
+      { current: mesh },
+      { capacity: 100, supportsInstanceColor: true },
+    );
     mgr2.beginFrame();
     updateSmoke(ctx, mgr2, String(event.id));
     const dummy2 = new Object3D();
@@ -119,7 +134,10 @@ describe('smokeUpdater', () => {
 
   it('should fade smoke over time', () => {
     ctx.time = 0.35;
-    const mgr3 = createInstancedLayerManager({ current: mesh }, { capacity: 100, supportsInstanceColor: true });
+    const mgr3 = createInstancedLayerManager(
+      { current: mesh },
+      { capacity: 100, supportsInstanceColor: true },
+    );
     mgr3.beginFrame();
     updateSmoke(ctx, mgr3, String(event.id));
     const color1 = new Color();
@@ -127,7 +145,10 @@ describe('smokeUpdater', () => {
     const intensity1 = color1.r + color1.g + color1.b;
 
     ctx.time = 1.5;
-    const mgr4 = createInstancedLayerManager({ current: mesh }, { capacity: 100, supportsInstanceColor: true });
+    const mgr4 = createInstancedLayerManager(
+      { current: mesh },
+      { capacity: 100, supportsInstanceColor: true },
+    );
     mgr4.beginFrame();
     updateSmoke(ctx, mgr4, String(event.id));
     const color2 = new Color();
@@ -139,7 +160,10 @@ describe('smokeUpdater', () => {
 
   it('flags saturation when smoke exceeds capacity', () => {
     ctx.time = 0.5;
-    const mgr = createInstancedLayerManager({ current: mesh }, { capacity: 1, supportsInstanceColor: true });
+    const mgr = createInstancedLayerManager(
+      { current: mesh },
+      { capacity: 1, supportsInstanceColor: true },
+    );
     mgr.beginFrame();
     const result = updateSmoke(ctx, mgr, String(event.id));
     expect(result.count).toBeLessThanOrEqual(1);

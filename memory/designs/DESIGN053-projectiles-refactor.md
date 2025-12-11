@@ -11,6 +11,7 @@ Split `src/game/systems/projectiles.ts` into focused modules that separate proje
 Problem
 
 `projectiles.ts` contains several responsibilities:
+
 - Resolving projectile info and determining visual/collider params
 - Projectile entity creation (kinematic body + collider) and registration
 - Beam tracing and hit point computation
@@ -29,6 +30,7 @@ Goals
 Design
 
 Create folder `src/game/systems/projectiles/` with the following files:
+
 - `index.ts` — expose `fireProjectile`, `advanceProjectiles`, constants used elsewhere (e.g., TEMP_POS), re-export internals for tests.
 - `spawn.ts` — `fireProjectile` implementation internals: resolve projectile info, compute initial position/rotation, assemble projectile object, call physics factory and register collider. Use `enqueuePostPhysicsMutation` inside spawn.
 - `advance.ts` — `advanceProjectiles`: per-frame movement for non-beam projectiles, calls into `homing.ts` when needed. Keep movement-only concerns here.
@@ -46,6 +48,7 @@ Interfaces
 Testing
 
 Add unit tests under `test/systems/projectiles/`:
+
 - `homing.spec.ts` — verify steering behavior against moving targets using deterministic positions.
 - `beam.spec.ts` — mock `state.physicsWorld.castRay` and colliderLookup to verify hit point resolution.
 - `spawn.spec.ts` — verify that spawn enqueues a creation mutation and registers collider handle; use a fake `enqueuePostPhysicsMutation` shim.
@@ -80,4 +83,3 @@ Files touched (planned)
 - Add: `src/game/systems/projectiles/physicsAdapter.ts`
 - Add: `src/game/systems/projectiles/sharedTemps.ts`
 - Keep: `src/game/systems/projectiles.ts` as an optional shim until migration completes.
-

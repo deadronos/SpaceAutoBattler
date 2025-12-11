@@ -51,7 +51,11 @@ Existing call sites import helper and remove bespoke logic:
 ```ts
 export function appendCappedMutable<T>(buffer: T[], entry: T, cap: number): T[];
 
-export function appendCappedImmutable<T>(buffer: readonly T[] | undefined | null, entry: T, cap: number): T[];
+export function appendCappedImmutable<T>(
+  buffer: readonly T[] | undefined | null,
+  entry: T,
+  cap: number,
+): T[];
 ```
 
 - Both helpers normalise `cap` via `Math.max(0, Math.floor(cap))`.
@@ -65,12 +69,12 @@ export function appendCappedImmutable<T>(buffer: readonly T[] | undefined | null
 
 ## Error Handling
 
-| Scenario                                 | Behavior                                                          | Consumer expectation                                |
-|------------------------------------------|--------------------------------------------------------------------|-----------------------------------------------------|
-| `buffer` is not an array (mutable helper)| Throw `TypeError` to surface programmer error early               | Callers fix wiring; tests cover the guard           |
-| `cap <= 0`                               | Return empty array (mutable clears buffer, immutable returns `[]`) | Debug tooling avoids runaway growth, remains stable |
-| `entry` is `undefined`                   | Helper still pushes value; trimming logic unaffected              | Callers decide if undefined entries are acceptable  |
-| `cap` smaller than existing length       | Helper drops `buffer.length - cap` oldest elements in one splice   | Ensures FIFO semantics and deterministic history    |
+| Scenario                                  | Behavior                                                           | Consumer expectation                                |
+| ----------------------------------------- | ------------------------------------------------------------------ | --------------------------------------------------- |
+| `buffer` is not an array (mutable helper) | Throw `TypeError` to surface programmer error early                | Callers fix wiring; tests cover the guard           |
+| `cap <= 0`                                | Return empty array (mutable clears buffer, immutable returns `[]`) | Debug tooling avoids runaway growth, remains stable |
+| `entry` is `undefined`                    | Helper still pushes value; trimming logic unaffected               | Callers decide if undefined entries are acceptable  |
+| `cap` smaller than existing length        | Helper drops `buffer.length - cap` oldest elements in one splice   | Ensures FIFO semantics and deterministic history    |
 
 ## Testing Strategy
 

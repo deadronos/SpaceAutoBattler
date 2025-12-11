@@ -28,7 +28,8 @@ export function awardDamageXp(
   // If a canonical entity for this ship exists on the GameState, prefer
   // updating that entity's ShipComponent to ensure the UI (which reads from
   // state.queries.ships.entities / state.shipById) sees the change.
-  const targetShip = state && shipId !== undefined ? state.shipById?.get(shipId)?.ship ?? ship : ship;
+  const targetShip =
+    state && shipId !== undefined ? (state.shipById?.get(shipId)?.ship ?? ship) : ship;
   targetShip.xp += xpGained;
 
   // (debug logging removed)
@@ -68,7 +69,8 @@ export function awardKillXp(
   shipId?: number,
 ): void {
   const xpGained = targetMaxHp * XP_CONFIG.killXpMultiplier;
-  const targetShip = state && shipId !== undefined ? state.shipById?.get(shipId)?.ship ?? ship : ship;
+  const targetShip =
+    state && shipId !== undefined ? (state.shipById?.get(shipId)?.ship ?? ship) : ship;
   targetShip.xp += xpGained;
 
   if (shouldLogProgressionEvent(state, shipId) && shipId !== undefined) {

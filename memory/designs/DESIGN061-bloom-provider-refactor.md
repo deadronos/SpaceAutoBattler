@@ -10,6 +10,7 @@
 ## Problem Statement
 
 The `BloomProvider.tsx` component has grown to 350+ lines and handles multiple concerns:
+
 1. Layer allocation for Three.js bloom selections
 2. Object registration/unregistration with the bloom system
 3. Material colorWrite management (save/restore patterns)
@@ -65,13 +66,13 @@ BloomProvider.tsx
 
 ### Identified Concerns
 
-| Concern | Current Location | Lines | Complexity |
-|---------|-----------------|-------|------------|
-| Layer allocation | `register()`, `useEffect` | ~30 | Medium |
-| Selection management | `register()`, `unregister()` | ~25 | Low |
-| ColorWrite management | `register()`, `unregister()`, `useEffect` | ~80 | High |
-| Layer mask backup/restore | `register()`, `unregister()` | ~40 | Medium |
-| Object-to-group tracking | Throughout | ~15 | Low |
+| Concern                   | Current Location                          | Lines | Complexity |
+| ------------------------- | ----------------------------------------- | ----- | ---------- |
+| Layer allocation          | `register()`, `useEffect`                 | ~30   | Medium     |
+| Selection management      | `register()`, `unregister()`              | ~25   | Low        |
+| ColorWrite management     | `register()`, `unregister()`, `useEffect` | ~80   | High       |
+| Layer mask backup/restore | `register()`, `unregister()`              | ~40   | Medium     |
+| Object-to-group tracking  | Throughout                                | ~15   | Low        |
 
 ## Proposed Architecture
 
@@ -150,6 +151,7 @@ export function computeLayerMask(selections: Map<string, Selection>): number;
 ```
 
 **Tests:**
+
 - Validate layer clamping to `[0, 31]`
 - Verify allocation increments
 - Test mask computation for multiple selections
@@ -165,11 +167,12 @@ export function removeObjectFromSelection(selection: Selection, obj: Object3D): 
 export function ensureSelectionForGroup(
   selections: Map<string, Selection>,
   group: string,
-  allocator: LayerAllocatorState
+  allocator: LayerAllocatorState,
 ): Selection;
 ```
 
 **Tests:**
+
 - Selection creation with correct layer assignment
 - Object add/remove behavior
 - Group-based selection lookup
@@ -182,13 +185,11 @@ ColorWrite flag management:
 export function saveColorWriteState(obj: Object3D): void;
 export function applyBloomColorWrite(obj: Object3D, enabled: boolean): void;
 export function restoreColorWriteState(obj: Object3D): void;
-export function syncColorWriteForObjects(
-  objects: Iterable<Object3D>,
-  enabled: boolean
-): void;
+export function syncColorWriteForObjects(objects: Iterable<Object3D>, enabled: boolean): void;
 ```
 
 **Tests:**
+
 - Save/restore round-trip preserves original values
 - Transparent materials get colorWrite=false when enabled
 - Force-write flag is respected
@@ -205,6 +206,7 @@ export function enableMainPassLayer(obj: Object3D): void;
 ```
 
 **Tests:**
+
 - Layer mask preservation across register/unregister
 - Main pass (layer 0) visibility maintained
 
@@ -241,7 +243,7 @@ export function BloomProvider({ enabled, children }: { enabled: boolean; childre
   useEffect(() => {
     const groups = POSTPROCESSING_CONFIG.bloomGroups ?? {};
     const allGroups = [...new Set([...Object.keys(groups), defaultGroup])];
-    
+
     for (const group of allGroups) {
       ensureSelectionForGroup(selectionsRef.current, group, allocatorRef.current);
     }
@@ -250,7 +252,7 @@ export function BloomProvider({ enabled, children }: { enabled: boolean; childre
   // Registration callback
   const register = useCallback((obj: Object3D | null | undefined, options?: BloomRegistrationOptions) => {
     if (!obj) return;
-    
+
     const isActive = options?.active ?? true;
     const group = options?.group ?? defaultGroup;
     const previousGroup = objectGroupRef.current.get(obj);
@@ -274,12 +276,12 @@ export function BloomProvider({ enabled, children }: { enabled: boolean; childre
     // Register to new group
     objectGroupRef.current.set(obj, group);
     const selection = ensureSelectionForGroup(selectionsRef.current, group, allocatorRef.current);
-    
+
     saveLayerMasks(obj);
     saveColorWriteState(obj);
     addObjectToSelection(selection, obj);
     enableMainPassLayer(obj);
-    
+
     if (enabled) {
       applyBloomColorWrite(obj, true);
     }
@@ -288,7 +290,7 @@ export function BloomProvider({ enabled, children }: { enabled: boolean; childre
   // Unregistration callback
   const unregister = useCallback((obj: Object3D | null | undefined) => {
     if (!obj) return;
-    
+
     const group = objectGroupRef.current.get(obj);
     if (!group) return;
 
@@ -296,7 +298,7 @@ export function BloomProvider({ enabled, children }: { enabled: boolean; childre
     if (selection) {
       removeObjectFromSelection(selection, obj);
     }
-    
+
     restoreColorWriteState(obj);
     restoreLayerMasks(obj);
     objectGroupRef.current.delete(obj);
@@ -360,17 +362,17 @@ Replace silent `catch { /* ignore */ }` with categorized handling:
 export function applyBloomColorWrite(obj: Object3D, enabled: boolean): void {
   obj.traverse((child) => {
     if (!isMesh(child)) return;
-    
+
     const materials = Array.isArray(child.material) ? child.material : [child.material];
     for (const mat of materials) {
       if (!mat || typeof mat !== 'object') continue;
-      
+
       // Skip materials marked with force-write flag
       if (hasForceColorWrite(mat)) continue;
-      
+
       // Only modify transparent materials
       if (!mat.transparent) continue;
-      
+
       try {
         mat.colorWrite = !enabled;
       } catch (err) {
@@ -387,22 +389,26 @@ export function applyBloomColorWrite(obj: Object3D, enabled: boolean): void {
 ## Migration Plan
 
 ### Phase 1: Extract Types and Constants (1 hour)
+
 1. Create `src/renderer/bloom/types.ts`
 2. Create `src/renderer/bloom/constants.ts`
 3. Update imports in `BloomProvider.tsx`
 
 ### Phase 2: Extract Pure Logic (2-3 hours)
+
 1. Create `layerAllocator.ts` with tests
 2. Create `materialManager.ts` with tests
 3. Create `layerMaskManager.ts` with tests
 4. Create `selectionManager.ts` with tests
 
 ### Phase 3: Refactor BloomProvider (1-2 hours)
+
 1. Rewrite `BloomProvider.tsx` to use extracted modules
 2. Verify existing behavior unchanged
 3. Add integration tests
 
 ### Phase 4: Cleanup (30 minutes)
+
 1. Create `index.ts` with public exports
 2. Update external imports
 3. Remove duplicate code
@@ -412,12 +418,12 @@ export function applyBloomColorWrite(obj: Object3D, enabled: boolean): void {
 
 ### Unit Tests
 
-| Module | Test Focus | Coverage Target |
-|--------|-----------|-----------------|
-| `layerAllocator` | Edge cases, bounds | 100% |
-| `materialManager` | Multi-material, force-write | 100% |
-| `layerMaskManager` | Traversal, restoration | 100% |
-| `selectionManager` | Creation, add/remove | 100% |
+| Module             | Test Focus                  | Coverage Target |
+| ------------------ | --------------------------- | --------------- |
+| `layerAllocator`   | Edge cases, bounds          | 100%            |
+| `materialManager`  | Multi-material, force-write | 100%            |
+| `layerMaskManager` | Traversal, restoration      | 100%            |
+| `selectionManager` | Creation, add/remove        | 100%            |
 
 ### Integration Tests
 
@@ -445,12 +451,12 @@ export function applyBloomColorWrite(obj: Object3D, enabled: boolean): void {
 
 ## Risks and Mitigations
 
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| Breaking visual behavior | High | Visual regression tests before/after |
-| Performance regression | Medium | Benchmark registration/unregistration |
-| React rendering issues | Medium | Test with StrictMode double-effects |
-| Three.js version coupling | Low | Abstract traversal/material access |
+| Risk                      | Impact | Mitigation                            |
+| ------------------------- | ------ | ------------------------------------- |
+| Breaking visual behavior  | High   | Visual regression tests before/after  |
+| Performance regression    | Medium | Benchmark registration/unregistration |
+| React rendering issues    | Medium | Test with StrictMode double-effects   |
+| Three.js version coupling | Low    | Abstract traversal/material access    |
 
 ## Open Questions
 
@@ -466,4 +472,4 @@ export function applyBloomColorWrite(obj: Object3D, enabled: boolean): void {
 
 ---
 
-*This design follows the repository's spec-driven workflow. Implementation should update `memory/tasks/` with progress.*
+_This design follows the repository's spec-driven workflow. Implementation should update `memory/tasks/` with progress._

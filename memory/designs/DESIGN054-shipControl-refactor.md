@@ -11,6 +11,7 @@ Refactor `src/game/systems/shipControl.ts` into smaller modules that separate AI
 Problem
 
 `shipControl.ts` currently contains:
+
 - High-level per-ship lifecycle (`prepareShips`) that updates cooldowns, regen and calls `executeAICommand`.
 - `executeAICommand` mixing heading normalization, thrust clamping, kinematic translation deltas via `deferSetNextKinematicTranslation`, and firing behavior (muzzle flash, firing metrics, `fireProjectile`).
 - Helper functions and global bookkeeping for missing AI.
@@ -26,6 +27,7 @@ Goals
 Design
 
 Create folder `src/game/systems/shipControl/`:
+
 - `index.ts` — export `prepareShips` and maintain public API.
 - `aiExecutor.ts` — implement pure aspects of `executeAICommand` that compute the final `command` (heading, thrust, firePrimary decisions) and return a small `Decision` object describing movement and fire intents.
 - `movementApply.ts` — given a `Decision` and `ship`, perform the `deferSetNextKinematicTranslation` plus any clampToWorld logic.
@@ -42,6 +44,7 @@ Interfaces
 Testing
 
 Add tests under `test/systems/shipControl/`:
+
 - `aiExecutor.spec.ts` — feed example ship transforms and commands, assert returned Decision respects max-turn clamping and normalized heading.
 - `movementApply.spec.ts` — mock `deferSetNextKinematicTranslation` to assert correct next positions for a variety of thrust values.
 - `weapons.spec.ts` — mock `fireProjectile` and validate muzzle flash creation and cooldown updates.
@@ -75,4 +78,3 @@ Files touched (planned)
 - Add: `src/game/systems/shipControl/lifecycle.ts`
 - Add: `src/game/systems/shipControl/aiSafety.ts`
 - Keep: `src/game/systems/shipControl.ts` as a shim until migration completes.
-

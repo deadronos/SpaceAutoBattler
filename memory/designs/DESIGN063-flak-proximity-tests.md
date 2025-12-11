@@ -1,9 +1,9 @@
 # DESIGN063 — Flak proximity tests type alignment
 
-- **Status:** Completed  
-- **Owner:** AI  
-- **Created:** 2025-12-10  
-- **Related Tasks:** TASK119  
+- **Status:** Completed
+- **Owner:** AI
+- **Created:** 2025-12-10
+- **Related Tasks:** TASK119
 - **Confidence Score:** 90% (high — small, localized TypeScript/test fix)
 
 ## Requirements (EARS)
@@ -35,11 +35,11 @@
 
 ### Error handling matrix
 
-| Failure | Detection | Response |
-| --- | --- | --- |
-| Type mismatch at flak test call site | `npx tsc --noEmit` | Fix shape to match `FireProjectileOptions`; avoid adding properties to `FireProjectileOverride`. |
-| Lint style errors after edits | `npm run lint -- test/vitest/flak-proximity.spec.ts` | Reformat to 2-space indent/semicolons; keep imports untouched. |
-| Flak proximity behavior regressions | `vitest run test/vitest/flak-proximity.spec.ts` | Verify projectile spawn position and proximity fuse radius; adjust test setup if behavior changed. |
+| Failure                              | Detection                                            | Response                                                                                           |
+| ------------------------------------ | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Type mismatch at flak test call site | `npx tsc --noEmit`                                   | Fix shape to match `FireProjectileOptions`; avoid adding properties to `FireProjectileOverride`.   |
+| Lint style errors after edits        | `npm run lint -- test/vitest/flak-proximity.spec.ts` | Reformat to 2-space indent/semicolons; keep imports untouched.                                     |
+| Flak proximity behavior regressions  | `vitest run test/vitest/flak-proximity.spec.ts`      | Verify projectile spawn position and proximity fuse radius; adjust test setup if behavior changed. |
 
 ### Testing strategy
 

@@ -100,7 +100,9 @@ export function updateGame(state: GameState, delta: number): void {
   };
 
   const profileSampleRate = Math.max(1, sim.profileSampleRate ?? 1);
-  const profileThisTick = Boolean(sim.profileSubsystems && sim.lastTickIndex % profileSampleRate === 0);
+  const profileThisTick = Boolean(
+    sim.profileSubsystems && sim.lastTickIndex % profileSampleRate === 0,
+  );
 
   const measureSubsystem = (name: string, fn: () => void) => {
     if (!profileThisTick) {

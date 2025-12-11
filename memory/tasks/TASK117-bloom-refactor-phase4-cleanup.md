@@ -77,15 +77,15 @@ This is mostly mechanical cleanup but important for maintaining a clean codebase
 
 ### Subtasks
 
-| ID | Description | Status | Updated | Notes |
-|----|-------------|--------|---------|-------|
-| 4.1 | Create `index.ts` with public exports | Complete | 2025-11-25 | Clean public API |
-| 4.2 | Update external imports | Complete | 2025-11-25 | 16 files updated |
-| 4.3 | Move BloomProvider to bloom folder | Complete | 2025-11-25 | Relative imports updated |
-| 4.4 | Remove duplicate code | Complete | 2025-11-25 | Old file deleted |
-| 4.5 | Update documentation | Complete | 2025-11-25 | AGENTS.md comprehensive |
-| 4.6 | Update DESIGN061 status | Complete | 2025-11-25 | Marked complete |
-| 4.7 | Final validation | Complete | 2025-11-25 | 751 tests, lint clean |
+| ID  | Description                           | Status   | Updated    | Notes                    |
+| --- | ------------------------------------- | -------- | ---------- | ------------------------ |
+| 4.1 | Create `index.ts` with public exports | Complete | 2025-11-25 | Clean public API         |
+| 4.2 | Update external imports               | Complete | 2025-11-25 | 16 files updated         |
+| 4.3 | Move BloomProvider to bloom folder    | Complete | 2025-11-25 | Relative imports updated |
+| 4.4 | Remove duplicate code                 | Complete | 2025-11-25 | Old file deleted         |
+| 4.5 | Update documentation                  | Complete | 2025-11-25 | AGENTS.md comprehensive  |
+| 4.6 | Update DESIGN061 status               | Complete | 2025-11-25 | Marked complete          |
+| 4.7 | Final validation                      | Complete | 2025-11-25 | 751 tests, lint clean    |
 
 ## Progress Log
 

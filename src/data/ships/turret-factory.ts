@@ -6,10 +6,7 @@ import type { TurretSpec } from '../../types/index.js';
  * Reduces duplication across ship definitions by centralizing turret patterns.
  */
 
-export function createPlasmaTurret(
-  offset: Vector3,
-  options: Partial<TurretSpec> = {},
-): TurretSpec {
+export function createPlasmaTurret(offset: Vector3, options: Partial<TurretSpec> = {}): TurretSpec {
   return {
     offset,
     damage: 8,
@@ -26,10 +23,7 @@ export function createPlasmaTurret(
   };
 }
 
-export function createLaserTurret(
-  offset: Vector3,
-  options: Partial<TurretSpec> = {},
-): TurretSpec {
+export function createLaserTurret(offset: Vector3, options: Partial<TurretSpec> = {}): TurretSpec {
   return {
     offset,
     damage: 8,
@@ -87,10 +81,7 @@ export function createMissileTurret(
   };
 }
 
-export function createBeamTurret(
-  offset: Vector3,
-  options: Partial<TurretSpec> = {},
-): TurretSpec {
+export function createBeamTurret(offset: Vector3, options: Partial<TurretSpec> = {}): TurretSpec {
   return {
     offset,
     damage: 16,
@@ -108,10 +99,7 @@ export function createBeamTurret(
   };
 }
 
-export function createIonTurret(
-  offset: Vector3,
-  options: Partial<TurretSpec> = {},
-): TurretSpec {
+export function createIonTurret(offset: Vector3, options: Partial<TurretSpec> = {}): TurretSpec {
   return {
     offset,
     damage: 9,
@@ -128,10 +116,7 @@ export function createIonTurret(
   };
 }
 
-export function createHeavyTurret(
-  offset: Vector3,
-  options: Partial<TurretSpec> = {},
-): TurretSpec {
+export function createHeavyTurret(offset: Vector3, options: Partial<TurretSpec> = {}): TurretSpec {
   return {
     offset,
     damage: 10,

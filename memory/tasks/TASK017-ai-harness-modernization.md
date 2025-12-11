@@ -33,16 +33,16 @@ Execute DESIGN006 to modernize the AI scenario harness and consolidate legacy AI
 
 ### Subtasks
 
-| ID  | Description                                                     | Status    | Updated    | Notes                                              |
-| --- | --------------------------------------------------------------- | --------- | ---------- | -------------------------------------------------- |
-| 1.1 | Inventory AI code and identify outdated docs                    | Completed | 2025-10-26 | Found harness moved to test/, docs need updating  |
-| 1.2 | Create DESIGN006 with objectives and solution design             | Completed | 2025-10-26 | Published design documenting all changes          |
-| 1.3 | Update core-aiScenarioHarness.md with correct paths             | Completed | 2025-10-26 | Updated to test/support/, added determinism notes |
-| 1.4 | Update core-aiProfiles.md and link to guides                    | Completed | 2025-10-26 | Linked to deprecation guide and TASK251           |
-| 1.5 | Create AI_DEPRECATION_GUIDE.md with migration paths             | Completed | 2025-10-26 | Documented v1 fallback, smoothing config, profiles|
-| 1.6 | Create TEST_HARNESS_PATTERNS.md with examples                   | Completed | 2025-10-26 | Included quick start, patterns, troubleshooting   |
-| 1.7 | Add JSDoc to aiScenarioHarness.ts                               | Completed | 2025-10-26 | Added module-level JSDoc with examples and refs   |
-| 1.8 | Run typecheck and all tests; validate no regressions            | Completed | 2025-10-26 | All 65 AI tests pass, type checking clean         |
+| ID  | Description                                          | Status    | Updated    | Notes                                              |
+| --- | ---------------------------------------------------- | --------- | ---------- | -------------------------------------------------- |
+| 1.1 | Inventory AI code and identify outdated docs         | Completed | 2025-10-26 | Found harness moved to test/, docs need updating   |
+| 1.2 | Create DESIGN006 with objectives and solution design | Completed | 2025-10-26 | Published design documenting all changes           |
+| 1.3 | Update core-aiScenarioHarness.md with correct paths  | Completed | 2025-10-26 | Updated to test/support/, added determinism notes  |
+| 1.4 | Update core-aiProfiles.md and link to guides         | Completed | 2025-10-26 | Linked to deprecation guide and TASK251            |
+| 1.5 | Create AI_DEPRECATION_GUIDE.md with migration paths  | Completed | 2025-10-26 | Documented v1 fallback, smoothing config, profiles |
+| 1.6 | Create TEST_HARNESS_PATTERNS.md with examples        | Completed | 2025-10-26 | Included quick start, patterns, troubleshooting    |
+| 1.7 | Add JSDoc to aiScenarioHarness.ts                    | Completed | 2025-10-26 | Added module-level JSDoc with examples and refs    |
+| 1.8 | Run typecheck and all tests; validate no regressions | Completed | 2025-10-26 | All 65 AI tests pass, type checking clean          |
 
 ## Progress Log
 
@@ -100,4 +100,3 @@ Execute DESIGN006 to modernize the AI scenario harness and consolidate legacy AI
 2. Add a "AI v2 Onboarding" guide for new contributors that walks through the decision system, profile system, and how to add new behavior.
 3. Monitor for any code that still references old profile names (tank, hit-and-run, etc.) and migrate incrementally.
 4. Consider adding a GitHub Actions CI check that catches imports from moved harness files (src/game/aiScenarioHarness) and blocks them.
-

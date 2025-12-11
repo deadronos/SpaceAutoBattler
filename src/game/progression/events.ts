@@ -63,9 +63,6 @@ export function addProgressionEvent(
  * @param {number} [shipId] - The ship ID.
  * @returns {boolean} True if logging is possible.
  */
-export function shouldLogProgressionEvent(
-  state?: GameState | null,
-  shipId?: number,
-): boolean {
+export function shouldLogProgressionEvent(state?: GameState | null, shipId?: number): boolean {
   return state != null && shipId !== undefined;
 }

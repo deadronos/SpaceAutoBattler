@@ -17,5 +17,8 @@ describe('calculateEffectiveDamage overflow bug', () => {
 
     // The shielded result should be strictly less than the naked result (shield absorbed some damage).
     expect(shieldedHullResult.hullDamage).toBeLessThan(nakedHullResult.hullDamage);
+
+    // Explicitly check for the correct value to prevent regression
+    expect(shieldedHullResult.hullDamage).toBeCloseTo(69.5, 1);
   });
 });

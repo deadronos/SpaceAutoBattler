@@ -35,7 +35,11 @@ export function buildSpatialHash<T>(
 
   for (const item of items) {
     const pos = getPosition(item);
-    const key = toKey(toCellIndex(pos.x, cellSize), toCellIndex(pos.y, cellSize), toCellIndex(pos.z, cellSize));
+    const key = toKey(
+      toCellIndex(pos.x, cellSize),
+      toCellIndex(pos.y, cellSize),
+      toCellIndex(pos.z, cellSize),
+    );
     const bucket = grid.get(key);
     if (bucket) {
       bucket.push(item);

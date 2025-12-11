@@ -104,7 +104,9 @@ export function restoreColorWriteState(obj: Object3D): void {
     if (!isMesh(child)) return;
 
     const materials = getMaterials(child);
-    const origs = child.userData?.[LEGACY_USER_DATA_KEYS.origColorWrite] as Array<boolean | undefined> | undefined;
+    const origs = child.userData?.[LEGACY_USER_DATA_KEYS.origColorWrite] as
+      | Array<boolean | undefined>
+      | undefined;
 
     if (Array.isArray(origs)) {
       for (let i = 0; i < materials.length; i++) {
@@ -137,7 +139,9 @@ export function syncColorWriteForObjects(objects: Iterable<Object3D>, enabled: b
       if (!isMesh(child)) return;
 
       const materials = getMaterials(child);
-      const origs = child.userData?.[LEGACY_USER_DATA_KEYS.origColorWrite] as Array<boolean | undefined> | undefined;
+      const origs = child.userData?.[LEGACY_USER_DATA_KEYS.origColorWrite] as
+        | Array<boolean | undefined>
+        | undefined;
 
       if (enabled) {
         // Apply colorWrite=false for transparent materials
@@ -156,7 +160,12 @@ export function syncColorWriteForObjects(objects: Iterable<Object3D>, enabled: b
           for (let i = 0; i < materials.length; i++) {
             const mat = materials[i];
             const orig = origs[i];
-            if (typeof orig === 'boolean' && mat && typeof mat === 'object' && 'colorWrite' in mat) {
+            if (
+              typeof orig === 'boolean' &&
+              mat &&
+              typeof mat === 'object' &&
+              'colorWrite' in mat
+            ) {
               (mat as { colorWrite: boolean }).colorWrite = orig;
             }
           }

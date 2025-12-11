@@ -4,15 +4,15 @@ Executes AI commands and applies movement/weapon directives to ships.
 
 ## Command Execution Files
 
-| File | Purpose |
-|------|---------|
-| **index.ts** | Main ship control system export |
-| **aiExecutor.ts** | Executes AI-generated commands on ships |
+| File                 | Purpose                                                     |
+| -------------------- | ----------------------------------------------------------- |
+| **index.ts**         | Main ship control system export                             |
+| **aiExecutor.ts**    | Executes AI-generated commands on ships                     |
 | **movementApply.ts** | Applies movement commands to ships (acceleration, rotation) |
-| **weapons.ts** | Executes weapon firing commands |
-| **lifecycle.ts** | Manages ship lifecycle states |
-| **aiSafety.ts** | Safety checks and constraints on AI commands |
-| **sharedTemps.ts** | Reusable temporary vectors/matrices |
+| **weapons.ts**       | Executes weapon firing commands                             |
+| **lifecycle.ts**     | Manages ship lifecycle states                               |
+| **aiSafety.ts**      | Safety checks and constraints on AI commands                |
+| **sharedTemps.ts**   | Reusable temporary vectors/matrices                         |
 
 ## Command Flow
 

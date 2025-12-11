@@ -85,13 +85,13 @@ The order of extraction matters: start with the simplest module (layer allocatio
 
 ### Subtasks
 
-| ID | Description | Status | Updated | Notes |
-|----|-------------|--------|---------|-------|
-| 2.1 | Create `layerAllocator.ts` with tests | Complete | 2025-11-24 | 30 tests passing |
-| 2.2 | Create `selectionManager.ts` with tests | Complete | 2025-11-24 | 21 tests passing |
-| 2.3 | Create `layerMaskManager.ts` with tests | Complete | 2025-11-24 | 22 tests passing |
-| 2.4 | Create `materialManager.ts` with tests | Complete | 2025-11-24 | 27 tests passing |
-| 2.5 | Validate coverage and typecheck | Complete | 2025-11-24 | All 743 tests passing |
+| ID  | Description                             | Status   | Updated    | Notes                 |
+| --- | --------------------------------------- | -------- | ---------- | --------------------- |
+| 2.1 | Create `layerAllocator.ts` with tests   | Complete | 2025-11-24 | 30 tests passing      |
+| 2.2 | Create `selectionManager.ts` with tests | Complete | 2025-11-24 | 21 tests passing      |
+| 2.3 | Create `layerMaskManager.ts` with tests | Complete | 2025-11-24 | 22 tests passing      |
+| 2.4 | Create `materialManager.ts` with tests  | Complete | 2025-11-24 | 27 tests passing      |
+| 2.5 | Validate coverage and typecheck         | Complete | 2025-11-24 | All 743 tests passing |
 
 ## Progress Log
 

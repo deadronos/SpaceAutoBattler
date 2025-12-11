@@ -1,11 +1,7 @@
 import { PLASMA_DELAY } from '../constants.js';
 import { getCachedColor } from '../derived.js';
 import { clamp01 } from '../../../utils/math.js';
-import {
-  type EffectUpdateContext,
-  type EffectUpdater,
-  type EffectUpdateResult,
-} from './types.js';
+import { type EffectUpdateContext, type EffectUpdater, type EffectUpdateResult } from './types.js';
 import { processParticleArray } from './particleLoopHelper.js';
 
 /**

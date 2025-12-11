@@ -11,6 +11,7 @@ This design proposes splitting the large `src/game/systems/motion.ts` file into 
 Problem
 
 `src/game/systems/motion.ts` currently contains multiple responsibilities:
+
 - PD-like angular control and rotation smoothing
 - Linear thrust/strafe acceleration and speed clamping
 - Shared temporary vectors/quaternions and constants
@@ -35,6 +36,7 @@ Design
 Create new folder: `src/game/systems/motion/`
 
 Files:
+
 - `index.ts` — exports `updateMotionSystem` and re-exports any public helpers.
 - `angular.ts` — `updateAngularMotion(ship, targetHeading, dt)` and related constants; pure algorithm as much as possible.
 - `linear.ts` — `updateLinearMotion(ship, command, dt)` handling thrust, strafing, damping and speed clamping.
@@ -86,5 +88,3 @@ Files touched (planned)
 - Add: `src/game/systems/motion/physicsSync.ts`
 - Add: `src/game/systems/motion/sharedTemps.ts`
 - Update (shim): `src/game/systems/motion.ts` — optional: small shim re-exporting from new index
-
-

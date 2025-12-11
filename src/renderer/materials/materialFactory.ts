@@ -43,11 +43,7 @@ export function createMaterialFromPreset(
   const mergedParams = { ...preset, ...overrides };
 
   // Determine material type based on presence of standard material properties
-  if (
-    'roughness' in mergedParams ||
-    'metalness' in mergedParams ||
-    'emissive' in mergedParams
-  ) {
+  if ('roughness' in mergedParams || 'metalness' in mergedParams || 'emissive' in mergedParams) {
     return new MeshStandardMaterial(mergedParams as MeshStandardMaterialParameters);
   }
 

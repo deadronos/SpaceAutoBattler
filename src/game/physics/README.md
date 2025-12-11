@@ -4,18 +4,19 @@ Wrapper and utility layer for Rapier3D physics engine integration with game stat
 
 ## Physics Files
 
-| File | Purpose |
-|------|---------|
-| **index.ts** | Main physics system; steps physics simulation and handles collisions |
-| **deferWrappers.ts** | Deferred wrapper functions for physics operations |
-| **postWrappers.ts** | Post-physics wrapper functions for state updates |
-| **safeKinematics.ts** | Safe kinematic body manipulation without physics conflicts |
-| **mutationHelpers.ts** | Helpers for safely mutating physics bodies |
-| **types.ts** | TypeScript types for physics operations |
+| File                   | Purpose                                                              |
+| ---------------------- | -------------------------------------------------------------------- |
+| **index.ts**           | Main physics system; steps physics simulation and handles collisions |
+| **deferWrappers.ts**   | Deferred wrapper functions for physics operations                    |
+| **postWrappers.ts**    | Post-physics wrapper functions for state updates                     |
+| **safeKinematics.ts**  | Safe kinematic body manipulation without physics conflicts           |
+| **mutationHelpers.ts** | Helpers for safely mutating physics bodies                           |
+| **types.ts**           | TypeScript types for physics operations                              |
 
 ## Physics Integration
 
 The physics system provides:
+
 - Rapier3D world creation and stepping
 - Collision detection and callbacks
 - Rigid body management

@@ -222,7 +222,10 @@ export function resolveProjectiles(state: GameState, delta: number): void {
   for (const ship of ships) {
     shipsById.set(ship.id, ship);
   }
-  const maxShipImpactRadius = ships.reduce((radius, ship) => Math.max(radius, ship.transform.scale * 0.9), 0);
+  const maxShipImpactRadius = ships.reduce(
+    (radius, ship) => Math.max(radius, ship.transform.scale * 0.9),
+    0,
+  );
   const projectiles = state.queries.projectiles.entities as ProjectileEntity[];
   const toRemove = new Set<GameEntity>();
   const manager = state.ai;

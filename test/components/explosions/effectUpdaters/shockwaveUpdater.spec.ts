@@ -69,7 +69,10 @@ describe('shockwaveUpdater', () => {
 
   it('should not create shockwave instance before delay', () => {
     ctx.time = 0.05;
-    const mgr = createInstancedLayerManager({ current: mesh }, { capacity: 10, supportsInstanceColor: true });
+    const mgr = createInstancedLayerManager(
+      { current: mesh },
+      { capacity: 10, supportsInstanceColor: true },
+    );
     mgr.beginFrame();
     const result = updateShockwave(ctx, mgr, String(event.id));
     expect(result.count).toBe(0);
@@ -78,7 +81,10 @@ describe('shockwaveUpdater', () => {
 
   it('should create shockwave instance after delay and within duration', () => {
     ctx.time = 0.2;
-    const mgr = createInstancedLayerManager({ current: mesh }, { capacity: 10, supportsInstanceColor: true });
+    const mgr = createInstancedLayerManager(
+      { current: mesh },
+      { capacity: 10, supportsInstanceColor: true },
+    );
     mgr.beginFrame();
     const result = updateShockwave(ctx, mgr, String(event.id));
     expect(result.count).toBe(1);
@@ -87,7 +93,10 @@ describe('shockwaveUpdater', () => {
 
   it('should not create shockwave instance after duration ends', () => {
     ctx.time = 0.6;
-    const mgr = createInstancedLayerManager({ current: mesh }, { capacity: 10, supportsInstanceColor: true });
+    const mgr = createInstancedLayerManager(
+      { current: mesh },
+      { capacity: 10, supportsInstanceColor: true },
+    );
     mgr.beginFrame();
     const result = updateShockwave(ctx, mgr, String(event.id));
     expect(result.count).toBe(0);
@@ -96,7 +105,10 @@ describe('shockwaveUpdater', () => {
 
   it('should expand shockwave radius over time', () => {
     ctx.time = 0.15;
-    const mgr = createInstancedLayerManager({ current: mesh }, { capacity: 10, supportsInstanceColor: true });
+    const mgr = createInstancedLayerManager(
+      { current: mesh },
+      { capacity: 10, supportsInstanceColor: true },
+    );
     mgr.beginFrame();
     updateShockwave(ctx, mgr, String(event.id));
     const dummy1 = new Object3D();
@@ -105,7 +117,10 @@ describe('shockwaveUpdater', () => {
     const scale1 = dummy1.scale.x;
 
     ctx.time = 0.3;
-    const mgr2 = createInstancedLayerManager({ current: mesh }, { capacity: 10, supportsInstanceColor: true });
+    const mgr2 = createInstancedLayerManager(
+      { current: mesh },
+      { capacity: 10, supportsInstanceColor: true },
+    );
     mgr2.beginFrame();
     updateShockwave(ctx, mgr2, String(event.id));
     const dummy2 = new Object3D();
@@ -118,17 +133,23 @@ describe('shockwaveUpdater', () => {
 
   it('should fade color as shockwave expands', () => {
     ctx.time = 0.15;
-      const mgr1 = createInstancedLayerManager({ current: mesh }, { capacity: 10, supportsInstanceColor: true });
-      mgr1.beginFrame();
-      updateShockwave(ctx, mgr1, String(event.id));
+    const mgr1 = createInstancedLayerManager(
+      { current: mesh },
+      { capacity: 10, supportsInstanceColor: true },
+    );
+    mgr1.beginFrame();
+    updateShockwave(ctx, mgr1, String(event.id));
     const color1 = new Color();
     mesh.getColorAt(0, color1);
     const intensity1 = color1.r + color1.g + color1.b;
 
     ctx.time = 0.4;
-      const mgr2 = createInstancedLayerManager({ current: mesh }, { capacity: 10, supportsInstanceColor: true });
-      mgr2.beginFrame();
-      updateShockwave(ctx, mgr2, String(event.id));
+    const mgr2 = createInstancedLayerManager(
+      { current: mesh },
+      { capacity: 10, supportsInstanceColor: true },
+    );
+    mgr2.beginFrame();
+    updateShockwave(ctx, mgr2, String(event.id));
     const color2 = new Color();
     mesh.getColorAt(1, color2);
     const intensity2 = color2.r + color2.g + color2.b;
@@ -137,7 +158,10 @@ describe('shockwaveUpdater', () => {
   });
 
   it('reports saturation when start index exceeds capacity', () => {
-    const mgr = createInstancedLayerManager({ current: mesh }, { capacity: 10, supportsInstanceColor: true });
+    const mgr = createInstancedLayerManager(
+      { current: mesh },
+      { capacity: 10, supportsInstanceColor: true },
+    );
     mgr.beginFrame();
     // Fill allocator to force saturation
     for (let i = 0; i < 10; i += 1) {

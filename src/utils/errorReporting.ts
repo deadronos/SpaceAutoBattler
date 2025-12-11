@@ -36,9 +36,10 @@ interface ErrorReportingState {
 
 const state: ErrorReportingState = {
   reports: [],
-  counts: Object.fromEntries(
-    Object.values(ErrorCategory).map((c) => [c, 0]),
-  ) as Record<ErrorCategory, number>,
+  counts: Object.fromEntries(Object.values(ErrorCategory).map((c) => [c, 0])) as Record<
+    ErrorCategory,
+    number
+  >,
   enabled: typeof process !== 'undefined' && process.env?.NODE_ENV !== 'production',
   maxReports: 100,
 };
@@ -106,17 +107,8 @@ export function reportMaterialError(
  * @param {number} [entityId] - The ID of the entity involved.
  * @param {unknown} [error] - The original error object.
  */
-export function reportPhysicsError(
-  operation: string,
-  entityId?: number,
-  error?: unknown,
-): void {
-  reportError(
-    ErrorCategory.Physics,
-    `${operation} failed`,
-    { entityId, operation },
-    error,
-  );
+export function reportPhysicsError(operation: string, entityId?: number, error?: unknown): void {
+  reportError(ErrorCategory.Physics, `${operation} failed`, { entityId, operation }, error);
 }
 
 /**
@@ -147,16 +139,8 @@ export function reportLifecycleError(
  * @param {string} hookName - The name of the hook.
  * @param {unknown} [error] - The original error object.
  */
-export function reportE2EError(
-  hookName: string,
-  error?: unknown,
-): void {
-  reportError(
-    ErrorCategory.E2E,
-    `E2E hook ${hookName} failed`,
-    { hookName },
-    error,
-  );
+export function reportE2EError(hookName: string, error?: unknown): void {
+  reportError(ErrorCategory.E2E, `E2E hook ${hookName} failed`, { hookName }, error);
 }
 
 /**
@@ -165,16 +149,8 @@ export function reportE2EError(
  * @param {string} queryName - The name of the query.
  * @param {unknown} [error] - The original error object.
  */
-export function reportQueryError(
-  queryName: string,
-  error?: unknown,
-): void {
-  reportError(
-    ErrorCategory.Query,
-    `Query ${queryName} failed`,
-    { queryName },
-    error,
-  );
+export function reportQueryError(queryName: string, error?: unknown): void {
+  reportError(ErrorCategory.Query, `Query ${queryName} failed`, { queryName }, error);
 }
 
 /**
@@ -183,16 +159,8 @@ export function reportQueryError(
  * @param {string} operation - The operation being performed.
  * @param {unknown} [error] - The original error object.
  */
-export function reportWebGLError(
-  operation: string,
-  error?: unknown,
-): void {
-  reportError(
-    ErrorCategory.WebGL,
-    `WebGL ${operation} failed`,
-    { operation },
-    error,
-  );
+export function reportWebGLError(operation: string, error?: unknown): void {
+  reportError(ErrorCategory.WebGL, `WebGL ${operation} failed`, { operation }, error);
 }
 
 /**
@@ -201,16 +169,8 @@ export function reportWebGLError(
  * @param {string} configKey - The configuration key involved.
  * @param {unknown} [error] - The original error object.
  */
-export function reportConfigError(
-  configKey: string,
-  error?: unknown,
-): void {
-  reportError(
-    ErrorCategory.Config,
-    `Config ${configKey} failed to parse`,
-    { configKey },
-    error,
-  );
+export function reportConfigError(configKey: string, error?: unknown): void {
+  reportError(ErrorCategory.Config, `Config ${configKey} failed to parse`, { configKey }, error);
 }
 
 /**

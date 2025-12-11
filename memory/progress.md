@@ -56,8 +56,6 @@ Planned actions
 - Capture perf/QA results (screenshot set, frame-time notes) once parallax billboards default decision is finalised.
 - Ensure `core-systems.md` stays aligned when system ordering or AI budgets change alongside renderer updates.
 
-
-
 ## 2025-10-28 — Memory bank update
 
 - 2025-10-28: Per request, validated and updated core memory files to follow `.github/instructions/memory-bank.instructions.md`. Confirmed presence of required core memory files (`projectbrief.md`, `productContext.md`, `activeContext.md`, `systemPatterns.md`, `techContext.md`, `progress.md`, `tasks/_index.md`) and refreshed audit timestamps in `memory/_index.md` and `memory/activeContext.md` to reflect this alignment. No code changes were made; documents updated only. (Validated by repository inspection.)
@@ -67,7 +65,9 @@ Planned actions
 Memory audit: 2025-09-30 — updated several per-file memories to reflect source changes in `src/game/*`, `src/utils/*`, and renderer asset mappings.
 
 ## 2025-10-03 — Memory alignment
+
 - Follow-up: consider running markdown linting across the memory folder and normalising list styles (bullets) where inconsistencies remain.
 
 ## 2025-10-16 — Memory bank source audit
+
 - Next validation: run `npx tsc --noEmit` and `npm test` locally to confirm no breakages after docs-only edits (no code changes expected). If any CI or test failures appear, record results and follow-up with corrective edits.

@@ -4,16 +4,17 @@ Manages ship progression system including experience, leveling, talents, and shi
 
 ## Progression Files
 
-| File | Purpose |
-|------|---------|
-| **index.ts** | Main progression system export and orchestration |
-| **events.ts** | Progression-related game events and triggers |
-| **leveling.ts** | Ship leveling system and experience thresholds |
-| **xp.ts** | Experience point calculation and application |
+| File            | Purpose                                          |
+| --------------- | ------------------------------------------------ |
+| **index.ts**    | Main progression system export and orchestration |
+| **events.ts**   | Progression-related game events and triggers     |
+| **leveling.ts** | Ship leveling system and experience thresholds   |
+| **xp.ts**       | Experience point calculation and application     |
 
 ## Progression System
 
 The progression system provides:
+
 - Experience point tracking per ship
 - Leveling milestones and thresholds
 - Talent/skill selection system
@@ -23,6 +24,7 @@ The progression system provides:
 ## XP Sources
 
 Ships gain experience from:
+
 - Dealing damage to enemies
 - Defeating other ships
 - Mission completion

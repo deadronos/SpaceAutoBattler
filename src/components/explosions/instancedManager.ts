@@ -92,15 +92,18 @@ export class ExplosionsInstancedManager {
     // Create a lightweight InstancedLayerManager for each effect. We pass a
     // meshRef wrapper (with current initially null) so the manager can be
     // attached later when meshes are available.
-    this.pools = EFFECT_KEYS.reduce<Record<EffectKey, PoolState>>((acc, key) => {
-      const cap = sanitizeCapacity(capacities[key]);
-      // create manager with a null-ref placeholder; it will be initialized
-      // lazily when attach() is called and the real mesh refs are provided.
-      const placeholderRef = { current: null as InstancedMesh | null };
-      const mgr = createInstancedLayerManager(placeholderRef, { capacity: cap });
-      acc[key] = { manager: mgr, capacity: cap };
-      return acc;
-    }, {} as Record<EffectKey, PoolState>);
+    this.pools = EFFECT_KEYS.reduce<Record<EffectKey, PoolState>>(
+      (acc, key) => {
+        const cap = sanitizeCapacity(capacities[key]);
+        // create manager with a null-ref placeholder; it will be initialized
+        // lazily when attach() is called and the real mesh refs are provided.
+        const placeholderRef = { current: null as InstancedMesh | null };
+        const mgr = createInstancedLayerManager(placeholderRef, { capacity: cap });
+        acc[key] = { manager: mgr, capacity: cap };
+        return acc;
+      },
+      {} as Record<EffectKey, PoolState>,
+    );
   }
 
   /**

@@ -225,6 +225,7 @@ interface GameState {
 ```
 
 **Lifecycle**:
+
 - **Creation**: `createGameState(seed?)` initializes Rapier, ECS world, RNG
 - **Update**: `updateGame(state, delta)` steps simulation forward
 - **Disposal**: `disposeGameState(state)` cleans up Rapier/Three.js resources
@@ -235,11 +236,11 @@ The `SeededRng` class (`src/utils/rng.ts`) provides deterministic randomness:
 
 ```typescript
 const rng = new SeededRng(1337); // Seed controls entire sequence
-rng.next();                 // [0, 1) uniform random
-rng.range(min, max);        // Uniform in [min, max)
-rng.int(min, max);          // Integer in [min, max]
-rng.pick(array);            // Random element from array
-rng.normal(mean, stdDev);   // Gaussian distribution (Box-Muller)
+rng.next(); // [0, 1) uniform random
+rng.range(min, max); // Uniform in [min, max)
+rng.int(min, max); // Integer in [min, max]
+rng.pick(array); // Random element from array
+rng.normal(mean, stdDev); // Gaussian distribution (Box-Muller)
 ```
 
 **Usage**: All simulation logic must use `state.rng` for randomness—never `Math.random()`—to ensure replay determinism.
@@ -266,11 +267,13 @@ Each system is a pure function reading and updating `GameState`.
 ### Physics Integration (Rapier3D)
 
 **Key Constraints**:
+
 - Rapier runs synchronously on the main thread
 - Mutable-borrow safety: Don't modify physics objects during step
 - **Solution**: Deferred mutation queues
 
 **Safe Mutation Pattern**:
+
 ```typescript
 import { scheduleDeferredMutation } from './simulationQueue';
 
@@ -281,7 +284,7 @@ import { scheduleDeferredMutation } from './simulationQueue';
 scheduleDeferredMutation(state, {
   type: 'setTranslation',
   rigidbody,
-  position: { x, y, z }
+  position: { x, y, z },
 }); // ✅ Applied safely between steps
 ```
 
@@ -300,6 +303,7 @@ Decision Flow:
 ```
 
 **Key Files**:
+
 - `src/game/systems/decision/manager.ts` - Intent evaluation coordinator
 - `src/game/systems/decision/blackboard.ts` - Shared AI data structures
 - `src/game/systems/decision/*-intents.ts` - Intent generation logic
@@ -325,6 +329,7 @@ Battlefield.tsx (Canvas root)
 ```
 
 **Key Patterns**:
+
 - **Instancing**: Large entity groups (ships, projectiles) use `THREE.InstancedMesh` for performance
 - **Material Registry**: Shared materials cached in `src/renderer/materialRegistry.tsx`
 - **Selective Bloom**: Entities register for bloom layer via `BloomProvider` context
@@ -334,6 +339,7 @@ Battlefield.tsx (Canvas root)
 ### Explosion System
 
 **Lifecycle**:
+
 1. Damage/destruction triggers explosion event in simulation
 2. Event stored in `state.explosionEvents` queue
 3. `ExplosionRenderer` consumes events, spawns instanced effects
@@ -540,9 +546,9 @@ Tunable parameters in `src/config/` rather than hardcoded values.
 
 ```javascript
 // Access GameState in browser console (when exposed)
-window.__gameState // Current simulation state
-state.rng.reset(42) // Change RNG seed mid-game (breaks determinism!)
-state.simulation.rapierDiagnostics // Physics diagnostics
+window.__gameState; // Current simulation state
+state.rng.reset(42); // Change RNG seed mid-game (breaks determinism!)
+state.simulation.rapierDiagnostics; // Physics diagnostics
 ```
 
 ### Development Scripts

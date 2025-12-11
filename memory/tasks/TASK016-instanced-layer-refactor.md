@@ -10,6 +10,7 @@ Unify repeated instanced-layer logic into a shared abstraction and migrate layer
 ## Thought Process
 
 Many instanced layers reimplement the same three concerns:
+
 - InstancedMesh attribute lifecycle (DynamicDrawUsage, instanceColor allocation)
 - Allocation lifecycle (InstanceAllocator begin/allocate/release/endFrame)
 - Hiding released indices with a HIDDEN_MATRIX and saturation warnings
@@ -39,4 +40,4 @@ Centralizing this will reduce duplication and bugs and make future perf work sim
 - The initial migration keeps `ProjectileGroupMesh` rendering the same `instancedMesh` element and defers attribute initialization to `manager.initMesh()`.
 - Follow-up: consolidate the `HIDDEN_MATRIX` constant to the new module and remove duplicates.
 
-*** End Task
+\*\*\* End Task

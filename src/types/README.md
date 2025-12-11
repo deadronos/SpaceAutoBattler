@@ -4,30 +4,31 @@ Central TypeScript type definitions and interfaces used throughout the applicati
 
 ## Core Type Files
 
-| File | Purpose |
-|------|---------|
-| **index.ts** | Main type exports; canonical GameState, Ship, Projectile, and entity types |
-| **core.ts** | Core game entity types (GameState structure, entity IDs) |
-| **ai.ts** | AI system types (profiles, traits, decisions, intents) |
-| **combat.ts** | Combat system types (damage, weapons, ammo) |
-| **gameplay.ts** | Gameplay types (events, commands, UI state) |
-| **progression.ts** | Progression system types (XP, leveling, talents) |
-| **ship.ts** | Ship entity types (properties, state, weapons) |
-| **renderer.ts** | Renderer types (materials, layers, effects) |
-| **simulation.ts** | Simulation types (physics, projectiles, entities) |
+| File               | Purpose                                                                    |
+| ------------------ | -------------------------------------------------------------------------- |
+| **index.ts**       | Main type exports; canonical GameState, Ship, Projectile, and entity types |
+| **core.ts**        | Core game entity types (GameState structure, entity IDs)                   |
+| **ai.ts**          | AI system types (profiles, traits, decisions, intents)                     |
+| **combat.ts**      | Combat system types (damage, weapons, ammo)                                |
+| **gameplay.ts**    | Gameplay types (events, commands, UI state)                                |
+| **progression.ts** | Progression system types (XP, leveling, talents)                           |
+| **ship.ts**        | Ship entity types (properties, state, weapons)                             |
+| **renderer.ts**    | Renderer types (materials, layers, effects)                                |
+| **simulation.ts**  | Simulation types (physics, projectiles, entities)                          |
 
 ## Type Definition Files (Ambient)
 
-| File | Purpose |
-|------|---------|
-| **assets.d.ts** | Type definitions for asset imports (GLTF, textures) |
-| **react-three-drei.d.ts** | Type extensions for React Three Drei library |
-| **three-stdlib-ambient.d.ts** | Ambient type declarations for Three.js stdlib |
-| **glsl.d.ts** | Type definitions for GLSL shader imports |
+| File                          | Purpose                                             |
+| ----------------------------- | --------------------------------------------------- |
+| **assets.d.ts**               | Type definitions for asset imports (GLTF, textures) |
+| **react-three-drei.d.ts**     | Type extensions for React Three Drei library        |
+| **three-stdlib-ambient.d.ts** | Ambient type declarations for Three.js stdlib       |
+| **glsl.d.ts**                 | Type definitions for GLSL shader imports            |
 
 ## Central GameState
 
 The `GameState` type defined in `index.ts` is the canonical source of truth for:
+
 - All active ships
 - Active projectiles
 - Combat events

@@ -17,40 +17,40 @@ The codebase contains 100+ silent `catch {}` blocks that mask potential issues, 
 
 ### High Priority Files (Core Game Logic)
 
-| File | Silent Catches | Risk Level |
-|------|----------------|------------|
-| `src/game/entityLifecycle.ts` | 7 | **High** — Physics state corruption could go unnoticed |
-| `src/game/safeSnapshot.ts` | 9 | **High** — Debugging becomes difficult when diagnostics fail |
-| `src/game/context.tsx` | 7 | **Medium** — E2E test failures may be masked |
-| `src/game/systems.ts` | 2 (nested) | **Medium** — Original errors lost if diagnostics fail |
-| `src/game/simulationQueue.ts` | 1 | **Medium** — Deferred mutation failures ignored |
+| File                          | Silent Catches | Risk Level                                                   |
+| ----------------------------- | -------------- | ------------------------------------------------------------ |
+| `src/game/entityLifecycle.ts` | 7              | **High** — Physics state corruption could go unnoticed       |
+| `src/game/safeSnapshot.ts`    | 9              | **High** — Debugging becomes difficult when diagnostics fail |
+| `src/game/context.tsx`        | 7              | **Medium** — E2E test failures may be masked                 |
+| `src/game/systems.ts`         | 2 (nested)     | **Medium** — Original errors lost if diagnostics fail        |
+| `src/game/simulationQueue.ts` | 1              | **Medium** — Deferred mutation failures ignored              |
 
 ### Medium Priority Files (Rendering)
 
-| File | Silent Catches | Pattern |
-|------|----------------|---------|
-| `src/components/environment/StarSphere.tsx` | 12 | Material assignment, disposal, WebGL state |
-| `src/components/environment/PlanetRings.tsx` | 8 | Material property updates, needsUpdate flags |
-| `src/components/Postprocessing.tsx` | 4 | Composer cleanup, bloom layer restoration |
-| `src/renderer/bloom/BloomProvider.tsx` | 1 | Camera layer mask operations |
-| `src/renderer/bloom/layerMaskManager.ts` | 2 | Layer mask operations |
-| `src/hooks/useStarMaterial.ts` | 5 | Material lifecycle |
+| File                                         | Silent Catches | Pattern                                      |
+| -------------------------------------------- | -------------- | -------------------------------------------- |
+| `src/components/environment/StarSphere.tsx`  | 12             | Material assignment, disposal, WebGL state   |
+| `src/components/environment/PlanetRings.tsx` | 8              | Material property updates, needsUpdate flags |
+| `src/components/Postprocessing.tsx`          | 4              | Composer cleanup, bloom layer restoration    |
+| `src/renderer/bloom/BloomProvider.tsx`       | 1              | Camera layer mask operations                 |
+| `src/renderer/bloom/layerMaskManager.ts`     | 2              | Layer mask operations                        |
+| `src/hooks/useStarMaterial.ts`               | 5              | Material lifecycle                           |
 
 ### Lower Priority Files (Debug/Dev Tools)
 
-| File | Silent Catches | Notes |
-|------|----------------|-------|
-| `src/renderer/webglDebugWrapper.ts` | 5 | Debug utility |
-| `src/renderer/webglDebugPrototypePatch.ts` | 6 | Prototype patching |
-| `src/renderer/starDisk/devtools/installDevHelpers.ts` | 9 | Dev-only helpers |
-| `src/debug/RingDebugPanel.tsx` | 2 | Debug panel |
+| File                                                  | Silent Catches | Notes              |
+| ----------------------------------------------------- | -------------- | ------------------ |
+| `src/renderer/webglDebugWrapper.ts`                   | 5              | Debug utility      |
+| `src/renderer/webglDebugPrototypePatch.ts`            | 6              | Prototype patching |
+| `src/renderer/starDisk/devtools/installDevHelpers.ts` | 9              | Dev-only helpers   |
+| `src/debug/RingDebugPanel.tsx`                        | 2              | Debug panel        |
 
 ### Acceptable Silent Catches (Config/Utils)
 
-| File | Silent Catches | Reason |
-|------|----------------|--------|
-| `src/game/config.ts` | 5 | Returns defaults on env/query param failure — acceptable |
-| `src/utils/color.ts` | 1 | Returns fallback color — acceptable |
+| File                 | Silent Catches | Reason                                                   |
+| -------------------- | -------------- | -------------------------------------------------------- |
+| `src/game/config.ts` | 5              | Returns defaults on env/query param failure — acceptable |
+| `src/utils/color.ts` | 1              | Returns fallback color — acceptable                      |
 
 ## Root Cause Analysis
 
@@ -111,9 +111,10 @@ interface ErrorReportingState {
 
 const state: ErrorReportingState = {
   reports: [],
-  counts: Object.fromEntries(
-    Object.values(ErrorCategory).map(c => [c, 0])
-  ) as Record<ErrorCategory, number>,
+  counts: Object.fromEntries(Object.values(ErrorCategory).map((c) => [c, 0])) as Record<
+    ErrorCategory,
+    number
+  >,
   enabled: process.env.NODE_ENV !== 'production',
   maxReports: 100,
 };
@@ -122,12 +123,12 @@ export function reportError(
   category: ErrorCategory,
   message: string,
   context?: Record<string, unknown>,
-  error?: unknown
+  error?: unknown,
 ): void {
   state.counts[category]++;
-  
+
   if (!state.enabled) return;
-  
+
   const report: ErrorReport = {
     category,
     message,
@@ -135,12 +136,12 @@ export function reportError(
     timestamp: Date.now(),
     stack: error instanceof Error ? error.stack : undefined,
   };
-  
+
   state.reports.push(report);
   if (state.reports.length > state.maxReports) {
     state.reports.shift();
   }
-  
+
   if (process.env.NODE_ENV === 'development') {
     console.warn(`[${category}] ${message}`, context, error);
   }
@@ -170,40 +171,31 @@ export function resetErrorCounts(): void {
 export function reportMaterialError(
   operation: string,
   materialType: string,
-  error?: unknown
+  error?: unknown,
 ): void {
   reportError(
     ErrorCategory.Material,
     `${operation} failed for ${materialType}`,
     { materialType, operation },
-    error
+    error,
   );
 }
 
-export function reportPhysicsError(
-  operation: string,
-  entityId?: number,
-  error?: unknown
-): void {
-  reportError(
-    ErrorCategory.Physics,
-    `${operation} failed`,
-    { entityId, operation },
-    error
-  );
+export function reportPhysicsError(operation: string, entityId?: number, error?: unknown): void {
+  reportError(ErrorCategory.Physics, `${operation} failed`, { entityId, operation }, error);
 }
 
 export function reportLifecycleError(
   phase: 'create' | 'destroy' | 'update',
   entityType: string,
   entityId?: number,
-  error?: unknown
+  error?: unknown,
 ): void {
   reportError(
     ErrorCategory.Lifecycle,
     `Entity ${phase} failed for ${entityType}`,
     { phase, entityType, entityId },
-    error
+    error,
   );
 }
 ```
@@ -237,7 +229,11 @@ if (entity.collider && entity.collider.isValid()) {
 
 ```typescript
 // Before
-try { (materialToUse as any).needsUpdate = true; } catch { /* ignore */ }
+try {
+  (materialToUse as any).needsUpdate = true;
+} catch {
+  /* ignore */
+}
 
 // After
 try {
@@ -257,9 +253,9 @@ Add error counts to existing debug panels or create a simple overlay:
 export function ErrorCountsPanel(): JSX.Element | null {
   const counts = getErrorCounts();
   const total = Object.values(counts).reduce((a, b) => a + b, 0);
-  
+
   if (total === 0) return null;
-  
+
   return (
     <div className="error-counts-panel">
       <h4>Suppressed Errors: {total}</h4>
@@ -277,17 +273,17 @@ export function ErrorCountsPanel(): JSX.Element | null {
 
 ### Task Breakdown
 
-| Task | Effort | Files |
-|------|--------|-------|
-| Create `errorReporting.ts` | 1-2 hrs | 1 new file |
-| Add exports to utils index | 15 min | 1 file |
-| Refactor `entityLifecycle.ts` | 1 hr | 1 file |
-| Refactor `safeSnapshot.ts` | 45 min | 1 file |
-| Refactor `context.tsx` | 45 min | 1 file |
-| Refactor rendering files (batch) | 2-3 hrs | ~6 files |
-| Add debug panel | 1 hr | 1-2 files |
-| Add unit tests | 1-2 hrs | 1 test file |
-| Update documentation | 30 min | ARCHITECTURE.md |
+| Task                             | Effort  | Files           |
+| -------------------------------- | ------- | --------------- |
+| Create `errorReporting.ts`       | 1-2 hrs | 1 new file      |
+| Add exports to utils index       | 15 min  | 1 file          |
+| Refactor `entityLifecycle.ts`    | 1 hr    | 1 file          |
+| Refactor `safeSnapshot.ts`       | 45 min  | 1 file          |
+| Refactor `context.tsx`           | 45 min  | 1 file          |
+| Refactor rendering files (batch) | 2-3 hrs | ~6 files        |
+| Add debug panel                  | 1 hr    | 1-2 files       |
+| Add unit tests                   | 1-2 hrs | 1 test file     |
+| Update documentation             | 30 min  | ARCHITECTURE.md |
 
 **Total Estimated Effort:** 8-12 hours
 
@@ -308,12 +304,12 @@ export function ErrorCountsPanel(): JSX.Element | null {
 
 ## Risks & Mitigations
 
-| Risk | Mitigation |
-|------|------------|
-| Performance overhead from logging | Disable in production; use lightweight counters |
-| Log spam in development | Rate-limit repeated errors; use counts vs. full logs |
-| Breaking existing behavior | Keep try-catch structure; only add reporting |
-| Scope creep | Focus on high-priority files first; batch lower priority |
+| Risk                              | Mitigation                                               |
+| --------------------------------- | -------------------------------------------------------- |
+| Performance overhead from logging | Disable in production; use lightweight counters          |
+| Log spam in development           | Rate-limit repeated errors; use counts vs. full logs     |
+| Breaking existing behavior        | Keep try-catch structure; only add reporting             |
+| Scope creep                       | Focus on high-priority files first; batch lower priority |
 
 ## Alternatives Considered
 

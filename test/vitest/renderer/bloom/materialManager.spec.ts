@@ -173,8 +173,8 @@ describe('materialManager', () => {
       applyBloomColorWrite(mesh, true);
 
       expect(mat1.colorWrite).toBe(false); // Transparent, no force
-      expect(mat2.colorWrite).toBe(true);  // Opaque
-      expect(mat3.colorWrite).toBe(true);  // Has force flag
+      expect(mat2.colorWrite).toBe(true); // Opaque
+      expect(mat3.colorWrite).toBe(true); // Has force flag
     });
   });
 
