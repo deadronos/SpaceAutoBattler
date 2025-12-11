@@ -44,11 +44,7 @@ function recoverBaseStat(current: number, previousBonus: number): number {
  * Apply a stat bonus using the standard pattern:
  * recover base stat, apply new bonus, update levelBonuses
  */
-function applyStatBonus(
-  currentValue: number,
-  newBonus: number,
-  previousBonus: number,
-): number {
+function applyStatBonus(currentValue: number, newBonus: number, previousBonus: number): number {
   const normalisedPrevious = normaliseBonus(previousBonus);
   const baseStat = recoverBaseStat(currentValue, normalisedPrevious);
   return baseStat * (1 + newBonus);
@@ -86,7 +82,11 @@ export function applyLevelUpBonuses(ship: ShipComponent): void {
   levelBonuses.damage = damageBonus;
 
   // Shield Regen
-  ship.shieldRegen = applyStatBonus(ship.shieldRegen ?? 0, shieldRegenBonus, levelBonuses.shieldRegen);
+  ship.shieldRegen = applyStatBonus(
+    ship.shieldRegen ?? 0,
+    shieldRegenBonus,
+    levelBonuses.shieldRegen,
+  );
   levelBonuses.shieldRegen = shieldRegenBonus;
 
   // Fire Rate
@@ -96,7 +96,11 @@ export function applyLevelUpBonuses(ship: ShipComponent): void {
   // Repair Rate: special case - applies to all subsystems
   for (const subsystem of Object.values(ship.subsystems)) {
     if (!subsystem) continue;
-    subsystem.repairRate = applyStatBonus(subsystem.repairRate, repairBonus, levelBonuses.repairRate);
+    subsystem.repairRate = applyStatBonus(
+      subsystem.repairRate,
+      repairBonus,
+      levelBonuses.repairRate,
+    );
   }
   levelBonuses.repairRate = repairBonus;
 }

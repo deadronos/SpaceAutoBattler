@@ -2,8 +2,6 @@
 
 This folder contains canonical design documents named using the pattern `DESIGNNN-topic.md` (zero-padded three-digit IDs starting at 001).
 
-
-
 ## In Progress
 
 - [DESIGN055](DESIGN055-capped-buffer-helper.md) — Shared capped-buffer helpers centralize history trimming across debug and metrics surfaces. (In Progress — implementation underway) (2025-10-29)

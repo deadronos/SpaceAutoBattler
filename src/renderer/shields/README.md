@@ -4,15 +4,16 @@ Specialized materials and shaders for rendering ship energy shields with impact 
 
 ## Shield Files
 
-| File | Purpose |
-|------|---------|
-| **index.ts** | Main shield renderer export |
+| File                    | Purpose                                                    |
+| ----------------------- | ---------------------------------------------------------- |
+| **index.ts**            | Main shield renderer export                                |
 | **shieldMaterials.tsx** | React component for creating and managing shield materials |
-| **shieldHexShader.tsx** | Hexagonal shield geometry and shader implementation |
+| **shieldHexShader.tsx** | Hexagonal shield geometry and shader implementation        |
 
 ## Shield System
 
 Provides:
+
 - Hexagonal shield geometry rendering
 - Shield impact ripple effects
 - Damage visualization via color changes

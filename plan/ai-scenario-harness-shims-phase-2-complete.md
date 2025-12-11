@@ -3,16 +3,19 @@
 Phase 2 established tests around the AI scenario harness public surface and enforced that it remains test-only.
 
 **Files created/changed:**
+
 - `test/vitest/ai-scenario-harness.spec.ts`
 - `test/vitest/no-runtime-ai-scenario-harness-imports.spec.ts`
 - `test/support/aiScenarioHarness.ts`
 
 **Functions created/changed:**
+
 - Public surface smoke tests for `runAIScenario` and `collectTestMetrics`.
 - Guard test that scans `src/**` for forbidden imports from `test/support/aiScenarioHarness`.
 - Clarified diagnostics behavior in `aiScenarioHarness` documentation/comments.
 
 **Tests created/changed:**
+
 - `ai-scenario-harness.spec.ts` extended with public API assertions.
 - `no-runtime-ai-scenario-harness-imports.spec.ts` added to enforce test-only harness usage.
 

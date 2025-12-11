@@ -30,7 +30,7 @@ Read [](file:///d%3A/GitHub/SpaceAutoBattler/src/components/thrusters/ThrusterIn
 
 Read [](file:///d%3A/GitHub/SpaceAutoBattler/src/components/explosions/ExplosionRendererCore.tsx#40-40), lines 40 to 183
 
-Starting: *Inspect key systems and loops for perf issues* (2/3)
+Starting: _Inspect key systems and loops for perf issues_ (2/3)
 
 I’ve identified the core frame and system loops; now I’ll inspect a few representative per-entity and rendering loops to rank the top hotspots and craft targeted perf suggestions.
 
@@ -40,11 +40,11 @@ Read [](file:///d%3A/GitHub/SpaceAutoBattler/src/components/layers/ProjectilesIn
 
 Read [](file:///d%3A/GitHub/SpaceAutoBattler/src/components/explosions/DynamicLightManager.tsx)
 
-Starting: *Summarize top 5 hotspots with improvements* (3/3)
+Starting: _Summarize top 5 hotspots with improvements_ (3/3)
 
 Read [](file:///d%3A/GitHub/SpaceAutoBattler/src/hooks/interpolation/updateInterpolation.ts)
 
-Completed: *Summarize top 5 hotspots with improvements* (3/3)
+Completed: _Summarize top 5 hotspots with improvements_ (3/3)
 
 Here are the five most likely hot codepaths under src and concrete performance ideas for each.
 
@@ -125,6 +125,7 @@ Files: useShipInterpolation.ts, updateInterpolation.ts
 
 ---
 
-If you’d like, I can next:  
-- Sketch small code changes (behind feature flags) to gate profiling/guards in `updateGame`, and  
+If you’d like, I can next:
+
+- Sketch small code changes (behind feature flags) to gate profiling/guards in `updateGame`, and
 - Draft a config-driven “performance mode” that switches off or simplifies 2–3 of these hot paths for heavier scenes.

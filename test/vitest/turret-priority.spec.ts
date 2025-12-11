@@ -88,13 +88,13 @@ function makeStateStub(): GameState {
     },
     eventQueue: {} as any,
     world: {
-        add: (e: any) => {
-            entities.push(e);
-            if (e.ship) queries.ships.entities.push(e);
-            if (e.turret) queries.turrets.entities.push(e);
-            if (e.projectile) queries.projectiles.entities.push(e);
-            return e;
-        }
+      add: (e: any) => {
+        entities.push(e);
+        if (e.ship) queries.ships.entities.push(e);
+        if (e.turret) queries.turrets.entities.push(e);
+        if (e.projectile) queries.projectiles.entities.push(e);
+        return e;
+      },
     } as any,
     colliderLookup: new Map(),
     shipById,
@@ -109,17 +109,17 @@ function makeStateStub(): GameState {
     progressionEvents: new Map(),
     uiFlags: { hudHealthBars: false },
     ai: {
-        metrics: undefined
+      metrics: undefined,
     } as any,
     simulation: {
-        deferredMutations: [] as any[],
-        postStepMutations: [] as any[],
-        rapierDiagnostics: {} as any,
-        subsystemTimings: {
-            durations: {},
-            lastTickIndex: -1,
-            lastTickTime: 0,
-        },
+      deferredMutations: [] as any[],
+      postStepMutations: [] as any[],
+      rapierDiagnostics: {} as any,
+      subsystemTimings: {
+        durations: {},
+        lastTickIndex: -1,
+        lastTickTime: 0,
+      },
     } as any,
   } as unknown as GameState;
 }
@@ -129,7 +129,7 @@ function createShip(
   id: number,
   team: 'blue' | 'red',
   hull: 'fighter' | 'frigate',
-  pos: Vector3
+  pos: Vector3,
 ): ShipEntity {
   const rb = makeRigidBodyStub({ pos: { x: pos.x, y: pos.y, z: pos.z } });
   const progression = createProgressionDefaults(hull);
@@ -171,14 +171,24 @@ function createShip(
 function createTurretEntity(
   state: GameState,
   parent: ShipEntity,
-  priority: 'antiFighter' | 'antiCapital'
+  priority: 'antiFighter' | 'antiCapital',
 ): TurretEntity {
-  const rb = makeRigidBodyStub({ pos: { x: parent.transform.position.x, y: parent.transform.position.y, z: parent.transform.position.z } });
+  const rb = makeRigidBodyStub({
+    pos: {
+      x: parent.transform.position.x,
+      y: parent.transform.position.y,
+      z: parent.transform.position.z,
+    },
+  });
   const turretEntity: TurretEntity = {
     id: state.nextEntityId++,
     rigidBody: rb,
     collider: { handle: 999, isValid: () => true } as any,
-    transform: { position: parent.transform.position.clone(), rotation: new Quaternion(), scale: 1 },
+    transform: {
+      position: parent.transform.position.clone(),
+      rotation: new Quaternion(),
+      scale: 1,
+    },
     turret: {
       parent,
       offset: new Vector3(0, 0, 0),
@@ -222,7 +232,7 @@ describe('Turret Prioritization Bug', () => {
 
     // Process post-step mutations (where projectiles are spawned)
     for (const mutation of state.simulation.postStepMutations) {
-        mutation();
+      mutation();
     }
 
     // Check projectiles

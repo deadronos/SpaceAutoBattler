@@ -18,13 +18,19 @@ function walk(dir: string, acc: string[] = []): string[] {
 describe('aiScenarioHarness test-only usage guard', () => {
   it('ensures src/ does not import test/support/aiScenarioHarness', () => {
     const srcRoot = join(__dirname, '..', '..', 'src');
-    const files = walk(srcRoot).filter((file) => file.endsWith('.ts') || file.endsWith('.tsx') || file.endsWith('.js') || file.endsWith('.jsx'));
+    const files = walk(srcRoot).filter(
+      (file) =>
+        file.endsWith('.ts') ||
+        file.endsWith('.tsx') ||
+        file.endsWith('.js') ||
+        file.endsWith('.jsx'),
+    );
 
     const forbiddenPatterns = [
       'test/support/aiScenarioHarness',
       'test/support/aiScenarioHarness.js',
-      "test\\support\\aiScenarioHarness",
-      "test\\support\\aiScenarioHarness.js",
+      'test\\support\\aiScenarioHarness',
+      'test\\support\\aiScenarioHarness.js',
     ];
 
     const offenders: string[] = [];

@@ -3,6 +3,7 @@
 ## Motivation
 
 Moving the simulation to Rust/Wasm offers three primary benefits:
+
 1.  **Performance**: Rust's zero-cost abstractions and lack of Garbage Collection (GC) pauses are ideal for high-frequency simulation loops (60Hz+).
 2.  **Determinism**: Easier to ensure bit-exact determinism across clients (crucial for multiplayer or replay systems) compared to JS floating point and JIT variability.
 3.  **Safety**: Rust's type system prevents entire classes of runtime errors common in complex simulations.
@@ -22,7 +23,7 @@ The application will be split into two distinct layers:
 ### Technology Stack
 
 - **Language**: Rust
-- **ECS**: `hecs` (lightweight, fast) or `bevy_ecs` (feature-rich). *Recommendation: `hecs` for easier integration and smaller binary size.*
+- **ECS**: `hecs` (lightweight, fast) or `bevy_ecs` (feature-rich). _Recommendation: `hecs` for easier integration and smaller binary size._
 - **Physics**: `rapier3d` (Rust crate). This removes the overhead of the JS bindings layer.
 - **Interop**: `wasm-bindgen` for function calls.
 - **Serialization**: `bytemuck` for zero-copy views into Wasm memory.
@@ -34,6 +35,7 @@ Transferring thousands of entity transforms every frame via `serde-wasm-bindgen`
 **Solution: Structure of Arrays (SoA) in Wasm Memory**
 
 The Rust side will maintain linear vectors for renderable data:
+
 - `position_buffer: Vec<f32>` (x, y, z per entity)
 - `rotation_buffer: Vec<f32>` (x, y, z, w per entity)
 - `meta_buffer: Vec<u32>` (entity_id, type, team, hp)
@@ -50,23 +52,27 @@ const positions = new Float32Array(wasmMemory, wasmInstance.get_position_ptr(), 
 ## Migration Steps
 
 ### Phase 1: Rust Foundation
+
 1.  Set up a Rust workspace with `wasm-pack`.
 2.  Implement the basic **Game Loop** structure in Rust.
 3.  Integrate `rapier3d` crate.
 4.  Create the "Interop Layer" to expose memory pointers to JS.
 
 ### Phase 2: The "Shadow" Simulation
+
 1.  Re-implement the `Ship` and `Projectile` components in Rust.
 2.  Port the **Movement System** (physics integration).
 3.  Run the Rust sim in the background, logging outputs to verify against the JS sim (optional but good for correctness).
 
 ### Phase 3: Switchover & Rendering
+
 1.  Update `App.tsx` to load the Wasm module.
 2.  Replace `GameProvider` with a `WasmGameProvider`.
 3.  Refactor `Battlefield.tsx` to read from the Wasm memory views instead of Miniplex queries.
-    - *Note*: This is a significant change. React components currently bind to Miniplex. We will likely move to `InstancedMesh` managed by a central "RenderSystem" in JS that consumes the Wasm arrays.
+    - _Note_: This is a significant change. React components currently bind to Miniplex. We will likely move to `InstancedMesh` managed by a central "RenderSystem" in JS that consumes the Wasm arrays.
 
 ### Phase 4: Gameplay Logic Port
+
 1.  Port **AI/Decision Logic** (`aiDoctrine`, `intents`).
 2.  Port **Combat Logic** (Turrets, Damage).
 3.  Port **Spawning/Lifecycle** logic.
@@ -74,9 +80,9 @@ const positions = new Float32Array(wasmMemory, wasmInstance.get_position_ptr(), 
 ## Key Challenges & Solutions
 
 - **React Interop**: The current UI uses Zustand and React Context.
-    - *Solution*: The Wasm bridge will dispatch events (e.g., "HealthChanged") to update the Zustand store for UI, but the main 3D scene will bypass React state for performance.
+  - _Solution_: The Wasm bridge will dispatch events (e.g., "HealthChanged") to update the Zustand store for UI, but the main 3D scene will bypass React state for performance.
 - **Asset Loading**: Rust doesn't load GLTFs.
-    - *Solution*: JS loads assets, calculates bounding boxes/colliders, and passes the *geometry data* (dimensions, shapes) to Rust to initialize the physics world.
+  - _Solution_: JS loads assets, calculates bounding boxes/colliders, and passes the _geometry data_ (dimensions, shapes) to Rust to initialize the physics world.
 
 ## Example Rust Interface
 

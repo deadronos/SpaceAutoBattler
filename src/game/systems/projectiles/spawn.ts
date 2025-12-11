@@ -23,10 +23,9 @@ import { spawnProjectileEntity } from './physicsAdapter.js';
 /**
  * Overrides for projectile properties when firing.
  */
-export interface FireProjectileOverride
-  extends Partial<
-    Pick<ShipEntity['ship'], 'damage' | 'projectileSpeed' | 'range' | 'bulletType' | 'damageType'>
-  > {
+export interface FireProjectileOverride extends Partial<
+  Pick<ShipEntity['ship'], 'damage' | 'projectileSpeed' | 'range' | 'bulletType' | 'damageType'>
+> {
   projectileCategory?: ProjectileCategory;
   homing?: ProjectileHomingConfig;
   armingTime?: number;

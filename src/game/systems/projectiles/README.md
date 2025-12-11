@@ -4,15 +4,15 @@ Manages projectile creation, advancement, and behavior including ballistic and h
 
 ## Projectile Files
 
-| File | Purpose |
-|------|---------|
-| **index.ts** | Main projectile system orchestration |
-| **spawn.ts** | Creates new projectile entities from weapon firing |
-| **advance.ts** | Updates projectile positions each frame |
-| **beam.ts** | Beam weapon projectile behavior (instant-hit or guided beams) |
-| **homing.ts** | Homing missile behavior with tracking algorithms |
-| **physicsAdapter.ts** | Adapts projectile motion to Rapier3D physics |
-| **sharedTemps.ts** | Reusable temporary vectors/matrices |
+| File                  | Purpose                                                       |
+| --------------------- | ------------------------------------------------------------- |
+| **index.ts**          | Main projectile system orchestration                          |
+| **spawn.ts**          | Creates new projectile entities from weapon firing            |
+| **advance.ts**        | Updates projectile positions each frame                       |
+| **beam.ts**           | Beam weapon projectile behavior (instant-hit or guided beams) |
+| **homing.ts**         | Homing missile behavior with tracking algorithms              |
+| **physicsAdapter.ts** | Adapts projectile motion to Rapier3D physics                  |
+| **sharedTemps.ts**    | Reusable temporary vectors/matrices                           |
 
 ## Projectile Types
 

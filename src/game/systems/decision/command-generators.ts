@@ -113,7 +113,12 @@ export function computeRepositionCommand(
       distance = 0;
     }
     const distanceToTarget = getDistanceBetween(ship, target);
-    const [desiredMin, desiredMax] = getEffectiveRange(ship, profile, distanceToTarget, state.ai.tickIndex);
+    const [desiredMin, desiredMax] = getEffectiveRange(
+      ship,
+      profile,
+      distanceToTarget,
+      state.ai.tickIndex,
+    );
     // desiredMin/desiredMax are computed above using hysteresis when possible
     let shouldFire = distance <= ship.ship.range;
     let thrust: number;

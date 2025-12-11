@@ -15,9 +15,8 @@ let createBeamHitInfo: typeof import('../../../../src/game/systems/projectiles/b
 beforeEach(async () => {
   spawnMock.mockReset();
   ({ fireProjectile } = await import('../../../../src/game/systems/projectiles/index.js'));
-  ({ steerProjectileTowardTarget } = await import(
-    '../../../../src/game/systems/projectiles/homing.js'
-  ));
+  ({ steerProjectileTowardTarget } =
+    await import('../../../../src/game/systems/projectiles/homing.js'));
   ({ createBeamHitInfo } = await import('../../../../src/game/systems/projectiles/beam.js'));
 });
 

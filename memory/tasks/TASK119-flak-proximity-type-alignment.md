@@ -32,11 +32,11 @@ User requested: “fix test linter typechecks.”
 
 ### Subtasks
 
-| ID  | Description                                           | Status       | Updated    | Notes |
-| --- | ----------------------------------------------------- | ------------ | ---------- | ----- |
-| 1.1 | Update flak proximity specs to use correct option shape | Complete | 2025-12-10 | Moved `originPosition` to `FireProjectileOptions` in all cases. |
-| 1.2 | Normalize lint/style in the updated test file         | Complete  | 2025-12-10 | Re-indented call sites to 2-space style. |
-| 1.3 | Run typecheck/tests and record results                | Blocked  | 2025-12-10 | Typecheck/lint pass; Vitest run blocked by esbuild spawn EPERM in this environment. |
+| ID  | Description                                             | Status   | Updated    | Notes                                                                               |
+| --- | ------------------------------------------------------- | -------- | ---------- | ----------------------------------------------------------------------------------- |
+| 1.1 | Update flak proximity specs to use correct option shape | Complete | 2025-12-10 | Moved `originPosition` to `FireProjectileOptions` in all cases.                     |
+| 1.2 | Normalize lint/style in the updated test file           | Complete | 2025-12-10 | Re-indented call sites to 2-space style.                                            |
+| 1.3 | Run typecheck/tests and record results                  | Blocked  | 2025-12-10 | Typecheck/lint pass; Vitest run blocked by esbuild spawn EPERM in this environment. |
 
 ## Progress Log
 

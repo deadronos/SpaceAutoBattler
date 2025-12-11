@@ -71,7 +71,10 @@ describe('flashUpdater', () => {
   });
 
   it('should create flash instance when within flash duration', () => {
-    const mgr = createInstancedLayerManager({ current: mesh }, { capacity: 10, supportsInstanceColor: true });
+    const mgr = createInstancedLayerManager(
+      { current: mesh },
+      { capacity: 10, supportsInstanceColor: true },
+    );
     mgr.beginFrame();
     const result = updateFlash(ctx, mgr, String(event.id));
     expect(result.count).toBe(1);
@@ -80,7 +83,10 @@ describe('flashUpdater', () => {
 
   it('should not create flash instance when time exceeds flash duration', () => {
     ctx.time = 0.15;
-    const mgr = createInstancedLayerManager({ current: mesh }, { capacity: 10, supportsInstanceColor: true });
+    const mgr = createInstancedLayerManager(
+      { current: mesh },
+      { capacity: 10, supportsInstanceColor: true },
+    );
     mgr.beginFrame();
     const result = updateFlash(ctx, mgr, String(event.id));
     expect(result.count).toBe(0);
@@ -88,7 +94,10 @@ describe('flashUpdater', () => {
   });
 
   it('should set correct matrix and color for flash instance', () => {
-    const mgr = createInstancedLayerManager({ current: mesh }, { capacity: 10, supportsInstanceColor: true });
+    const mgr = createInstancedLayerManager(
+      { current: mesh },
+      { capacity: 10, supportsInstanceColor: true },
+    );
     mgr.beginFrame();
     updateFlash(ctx, mgr, String(event.id));
 
@@ -102,7 +111,10 @@ describe('flashUpdater', () => {
 
   it('should scale flash based on progress', () => {
     ctx.time = 0.01;
-    const mgr = createInstancedLayerManager({ current: mesh }, { capacity: 10, supportsInstanceColor: true });
+    const mgr = createInstancedLayerManager(
+      { current: mesh },
+      { capacity: 10, supportsInstanceColor: true },
+    );
     mgr.beginFrame();
     updateFlash(ctx, mgr, `${event.id}:t1`);
     const dummy1 = new Object3D();
@@ -122,7 +134,10 @@ describe('flashUpdater', () => {
   });
 
   it('should be deterministic with same seed', () => {
-    const mgr1 = createInstancedLayerManager({ current: mesh }, { capacity: 10, supportsInstanceColor: true });
+    const mgr1 = createInstancedLayerManager(
+      { current: mesh },
+      { capacity: 10, supportsInstanceColor: true },
+    );
     mgr1.beginFrame();
     const result1 = updateFlash(ctx, mgr1, String(event.id));
     const color1 = new Color();
@@ -130,7 +145,10 @@ describe('flashUpdater', () => {
 
     const ctx2 = { ...ctx, event: { ...event } };
     const mesh2 = new InstancedMesh(new SphereGeometry(1), new MeshBasicMaterial(), 10);
-    const mgr2 = createInstancedLayerManager({ current: mesh2 }, { capacity: 10, supportsInstanceColor: true });
+    const mgr2 = createInstancedLayerManager(
+      { current: mesh2 },
+      { capacity: 10, supportsInstanceColor: true },
+    );
     mgr2.beginFrame();
     const result2 = updateFlash(ctx2, mgr2, String(event.id));
     const color2 = new Color();
@@ -144,7 +162,10 @@ describe('flashUpdater', () => {
   });
 
   it('reports saturation when start index exceeds capacity', () => {
-    const mgr = createInstancedLayerManager({ current: mesh }, { capacity: 10, supportsInstanceColor: true });
+    const mgr = createInstancedLayerManager(
+      { current: mesh },
+      { capacity: 10, supportsInstanceColor: true },
+    );
     mgr.beginFrame();
     // Fill the allocator to force saturation
     for (let i = 0; i < 10; i += 1) {

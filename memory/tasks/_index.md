@@ -2,7 +2,6 @@
 
 This folder contains canonical task documents named using the pattern `TASKNNN-topic.md` (zero-padded three-digit IDs starting at 001).
 
-
 ## In Progress
 
 - [TASK119](TASK119-flak-proximity-type-alignment.md) — Align flak proximity Vitest call sites with `FireProjectileOptions` so lint/type/test pipelines pass (design: DESIGN063). (In Progress — implementation underway) (2025-12-10)

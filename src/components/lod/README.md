@@ -4,13 +4,14 @@ Manages Level of Detail (LOD) switching for distant objects to optimize renderin
 
 ## Files
 
-| File | Purpose |
-|------|---------|
+| File                   | Purpose                                                                   |
+| ---------------------- | ------------------------------------------------------------------------- |
 | **ShipLODManager.tsx** | React component managing LOD switching for ships based on camera distance |
 
 ## Overview
 
 The LOD system provides:
+
 - Automatic model swapping based on distance from camera
 - Performance optimization for large ship counts
 - Seamless transitions between LOD levels
@@ -19,6 +20,7 @@ The LOD system provides:
 ## LOD Strategy
 
 Ships use different levels of detail:
+
 - **High Detail (Close)** - Full geometry and effects
 - **Medium Detail (Mid)** - Simplified geometry
 - **Low Detail (Far)** - Bounding box or simple mesh

@@ -4,9 +4,9 @@ Resources and utilities for particle effects including trails and thruster ancho
 
 ## Particle Files
 
-| File | Purpose |
-|------|---------|
-| **trailResources.ts** | Resources for particle trail effects (geometries, materials) |
+| File                      | Purpose                                                                 |
+| ------------------------- | ----------------------------------------------------------------------- |
+| **trailResources.ts**     | Resources for particle trail effects (geometries, materials)            |
 | **useThrusterAnchors.ts** | React hook for managing thruster attachment points and anchor positions |
 
 ## Resources Provided

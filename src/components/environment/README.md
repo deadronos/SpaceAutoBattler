@@ -4,23 +4,23 @@ Components for rendering the space environment: planets, moons, stars, star disk
 
 ## Star Components
 
-| File | Purpose |
-|------|---------|
-| **StarDisk.tsx** | Main star disk component; manages star disk rendering and material setup |
-| **StarDiskMesh.tsx** | Low-level star disk mesh rendering with custom shader material |
-| **StarSphere.tsx** | Renders background star sphere (distant stars) |
-| **StarLight.tsx** | Provides dynamic lighting from star source |
+| File                 | Purpose                                                                  |
+| -------------------- | ------------------------------------------------------------------------ |
+| **StarDisk.tsx**     | Main star disk component; manages star disk rendering and material setup |
+| **StarDiskMesh.tsx** | Low-level star disk mesh rendering with custom shader material           |
+| **StarSphere.tsx**   | Renders background star sphere (distant stars)                           |
+| **StarLight.tsx**    | Provides dynamic lighting from star source                               |
 
 ## Celestial Body Components
 
-| File | Purpose |
-|------|---------|
+| File                         | Purpose                                                             |
+| ---------------------------- | ------------------------------------------------------------------- |
 | **CelestialEnvironment.tsx** | Main environment orchestrator; sets up all celestial bodies and sky |
-| **PlanetBody.tsx** | Renders a single planet with procedural texture and rotation |
-| **PlanetRings.tsx** | Renders planetary ring systems around gas giants |
-| **PlanetRimShell.tsx** | Creates atmospheric rim/glow effect around planets |
-| **Skysphere.tsx** | Renders the background skysphere (nebula texture) |
-| **ParallaxBillboard.tsx** | Utility component for parallax scrolling billboard effects |
+| **PlanetBody.tsx**           | Renders a single planet with procedural texture and rotation        |
+| **PlanetRings.tsx**          | Renders planetary ring systems around gas giants                    |
+| **PlanetRimShell.tsx**       | Creates atmospheric rim/glow effect around planets                  |
+| **Skysphere.tsx**            | Renders the background skysphere (nebula texture)                   |
+| **ParallaxBillboard.tsx**    | Utility component for parallax scrolling billboard effects          |
 
 ## Environment Features
 

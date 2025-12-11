@@ -10,18 +10,18 @@ SpaceAutoBattler is a deterministic 3D space combat auto-battler built with Reac
 
 ### Overall Architecture Rating: **B+ (Good)**
 
-| Category | Rating | Notes |
-|----------|--------|-------|
-| Code Organization | A- | Excellent module structure, clear boundaries |
-| Determinism & Testing | A | Strong RNG discipline, testable design |
-| Physics Integration | B+ | Safe mutation patterns, good error handling |
-| Rendering Pipeline | B | Effective instancing, some complexity |
-| AI System | B+ | Sophisticated intent-based design |
-| Type Safety | A- | Comprehensive typing, some `any` fallbacks |
-| Performance Patterns | B | Good instancing, room for optimization |
-| Documentation | B+ | Good inline docs, existing ARCHITECTURE.md |
-| Error Handling | B- | Defensive try-catch, inconsistent patterns |
-| Extensibility | A- | Well-defined extension points |
+| Category              | Rating | Notes                                        |
+| --------------------- | ------ | -------------------------------------------- |
+| Code Organization     | A-     | Excellent module structure, clear boundaries |
+| Determinism & Testing | A      | Strong RNG discipline, testable design       |
+| Physics Integration   | B+     | Safe mutation patterns, good error handling  |
+| Rendering Pipeline    | B      | Effective instancing, some complexity        |
+| AI System             | B+     | Sophisticated intent-based design            |
+| Type Safety           | A-     | Comprehensive typing, some `any` fallbacks   |
+| Performance Patterns  | B      | Good instancing, room for optimization       |
+| Documentation         | B+     | Good inline docs, existing ARCHITECTURE.md   |
+| Error Handling        | B-     | Defensive try-catch, inconsistent patterns   |
+| Extensibility         | A-     | Well-defined extension points                |
 
 ---
 
@@ -85,12 +85,14 @@ src/
 
 **Rating: A-**  
 **Strengths:**
+
 - Clear separation between `game/` (simulation) and `components/` (rendering)
 - Centralized type definitions in `types/`
 - Configuration-driven design in `config/`
 
 **Areas to Improve:**
-- Some boundary blurring between `renderer/` and `components/` 
+
+- Some boundary blurring between `renderer/` and `components/`
 - `hooks/` contains both rendering and interpolation concerns that could be further separated
 
 ---
@@ -102,35 +104,35 @@ src/
 ```typescript
 interface GameState {
   // ECS Core
-  world: World<GameEntity>;        // Miniplex ECS
-  queries: GameQueries;            // Precomputed archetype queries
-  
+  world: World<GameEntity>; // Miniplex ECS
+  queries: GameQueries; // Precomputed archetype queries
+
   // Physics
   rapier: RapierModule;
   physicsWorld: RapierWorld;
   eventQueue: EventQueue;
   colliderLookup: Map<number, GameEntity>;
-  
+
   // Lookup Tables
   shipById: Map<number, ShipEntity>;
   turretsByShip: Map<number, Set<TurretEntity>>;
-  
+
   // Simulation Clock
-  simulation: SimulationClock;     // Fixed timestep, accumulator, diagnostics
-  
+  simulation: SimulationClock; // Fixed timestep, accumulator, diagnostics
+
   // AI State
   ai: AIManagerState;
   blackboard: AIBlackboard;
   sensors: SensorState;
-  
+
   // Determinism
   rng: SeededRng;
-  
+
   // UI Mirror
   paused: boolean;
   timeScale: number;
   uiFlags: HudUiFlags;
-  
+
   // Events (pooled)
   explosions: ExplosionEvent[];
   explosionPool: ExplosionEvent[];
@@ -140,12 +142,14 @@ interface GameState {
 
 **Rating: A**  
 **Strengths:**
+
 - Comprehensive state encapsulation
 - Pooled event arrays for determinism
 - Clear lookup table design (`shipById`, `turretsByShip`)
 - Proper seeded RNG integration
 
 **Areas to Improve:**
+
 - `turretsByShip` is optional (`?`) which creates null-checking overhead
 - Consider freezing readonly portions of state for safety
 
@@ -159,14 +163,16 @@ interface GameState {
 // src/utils/rng.ts
 export class SeededRng {
   private state = 1;
-  
-  constructor(seed: number) { this.reset(seed); }
-  
+
+  constructor(seed: number) {
+    this.reset(seed);
+  }
+
   reset(seed: number): void {
     this.state = seed >>> 0;
     if (this.state === 0) this.state = 1;
   }
-  
+
   next(): number {
     // Lehmer RNG with glibc parameters
     this.state = (this.state * 48271) % 0x7fffffff;
@@ -178,12 +184,14 @@ export class SeededRng {
 
 **Rating: A**  
 **Strengths:**
+
 - Lehmer RNG provides fast, deterministic randomness
 - Box-Muller transform for Gaussian distribution
 - All simulation code uses `state.rng`
 - AI traits seeded deterministically from ship spawn
 
 **Areas to Improve:**
+
 - No state serialization for save/load functionality
 - Consider adding `getState()`/`setState()` for replay recording
 
@@ -195,9 +203,9 @@ export class SeededRng {
 
 ```typescript
 // src/game/simulationQueue.ts - Deferred mutation queues
-flushDeferredMutations(state);  // Before physics step
-state.physicsWorld.step();       // Synchronized step
-flushPostPhysicsMutations(state);// After physics step
+flushDeferredMutations(state); // Before physics step
+state.physicsWorld.step(); // Synchronized step
+flushPostPhysicsMutations(state); // After physics step
 
 // src/game/physics/safeKinematics.ts - Safe wrappers
 export function safeSetTranslation(body: RigidBody, pos: Vector3): void {
@@ -219,11 +227,13 @@ interface RapierDiagnostics {
 
 **Rating: B+**  
 **Strengths:**
+
 - Deferred mutation queues prevent mid-step corruption
 - Comprehensive diagnostics for debugging physics issues
 - Guard system catches Rapier panics gracefully
 
 **Areas to Improve:**
+
 - Heavy reliance on try-catch in `entityLifecycle.ts` suggests fragile cleanup
 - Consider using Rapier's event-driven collision callbacks more extensively
 - Some defensive coding patterns mask underlying issues rather than fixing them
@@ -261,11 +271,13 @@ queries: {
 
 **Rating: B+**  
 **Strengths:**
+
 - Clean archetype-based queries
 - Optional components allow flexible entity composition
 - Efficient iteration via Miniplex queries
 
 **Areas to Improve:**
+
 - Heavy use of optional components (`ship?`, `ai?`) creates runtime null-checking
 - No component pooling for frequently created/destroyed entities (projectiles)
 - Entity lifecycle in `entityLifecycle.ts` has defensive try-catch blocks suggesting instability
@@ -290,23 +302,25 @@ Decision Flow:
 
 ### 6.2 Key Components
 
-| Component | File | Purpose |
-|-----------|------|---------|
-| Manager | `decision/manager.ts` | Orchestrates tick-based evaluation |
-| Blackboard | `decision/blackboard.ts` | Shared AI world-state |
-| Intents | `decision/*-intents.ts` | Intent generation (Attack, Kite, etc.) |
-| Profiles | `aiProfiles.ts` | Behavior presets per ship hull |
-| Scheduler | `decision/scheduler.ts` | Round-robin ship processing |
-| Interrupts | `decision/interrupts.ts` | Event-driven behavior changes |
+| Component  | File                     | Purpose                                |
+| ---------- | ------------------------ | -------------------------------------- |
+| Manager    | `decision/manager.ts`    | Orchestrates tick-based evaluation     |
+| Blackboard | `decision/blackboard.ts` | Shared AI world-state                  |
+| Intents    | `decision/*-intents.ts`  | Intent generation (Attack, Kite, etc.) |
+| Profiles   | `aiProfiles.ts`          | Behavior presets per ship hull         |
+| Scheduler  | `decision/scheduler.ts`  | Round-robin ship processing            |
+| Interrupts | `decision/interrupts.ts` | Event-driven behavior changes          |
 
 **Rating: B+**  
 **Strengths:**
+
 - Sophisticated intent-based AI with scoring and prioritization
 - Blackboard pattern enables shared tactical awareness
 - Configurable behavior profiles per ship type
 - Interrupt system for reactive behaviors
 
 **Areas to Improve:**
+
 - Complex intent scoring logic spread across multiple files
 - Heavy configuration surface in `AI_CONFIG` (30+ parameters)
 - Some oscillation concerns documented in `aiProfiles.ts` comments suggest tuning challenges
@@ -336,20 +350,22 @@ Battlefield.tsx (Canvas)
 
 ### 7.2 Key Patterns
 
-| Pattern | Implementation | Purpose |
-|---------|----------------|---------|
-| Instanced Rendering | `ProjectilesInstancedLayer`, `ShipImpostorLayer` | Batch similar geometries |
-| LOD System | `ShipLODManager` | Distance-based detail levels |
-| Material Registry | `materialRegistry.tsx` | Shared material caching |
-| Selective Bloom | `BloomProvider.tsx` | Layer-based bloom registration |
+| Pattern             | Implementation                                   | Purpose                        |
+| ------------------- | ------------------------------------------------ | ------------------------------ |
+| Instanced Rendering | `ProjectilesInstancedLayer`, `ShipImpostorLayer` | Batch similar geometries       |
+| LOD System          | `ShipLODManager`                                 | Distance-based detail levels   |
+| Material Registry   | `materialRegistry.tsx`                           | Shared material caching        |
+| Selective Bloom     | `BloomProvider.tsx`                              | Layer-based bloom registration |
 
 **Rating: B**  
 **Strengths:**
+
 - Instanced rendering for projectiles and far ships
 - LOD system with hysteresis prevents thrashing
 - Selective bloom implementation with layer management
 
 **Areas to Improve:**
+
 - `BloomProvider.tsx` is 350+ lines with complex colorWrite management
 - Postprocessing toggle logic has defensive try-catch blocks suggesting edge cases
 - Material disposal patterns unclear in some components
@@ -395,11 +411,13 @@ function readBooleanParam(name: string, defaultValue: boolean): boolean { ... }
 
 **Rating: B+**  
 **Strengths:**
+
 - Centralized configuration prevents magic numbers
 - Environment variable and URL query param overrides
 - Feature flag system for experiments
 
 **Areas to Improve:**
+
 - `AI_CONFIG` has grown very large (30+ fields)
 - Some configs duplicate information (e.g., vertical clamp per ship type)
 - No validation on config values at startup
@@ -429,11 +447,13 @@ src/types/
 
 **Rating: A-**  
 **Strengths:**
+
 - Centralized imports via `types/index.ts`
 - Good separation of type domains (AI, combat, progression)
 - Comprehensive type coverage
 
 **Areas to Improve:**
+
 - Some `any` type usage in renderer code (bloom registration)
 - AI types spread across multiple files with complex re-exports
 - Missing strict null checks in some defensive code paths
@@ -461,10 +481,12 @@ if (!state?.ai) return;
 
 **Rating: B-**  
 **Strengths:**
+
 - Physics diagnostics system captures failures for debugging
 - Subsystem guards prevent single system failure from crashing simulation
 
 **Areas to Improve:**
+
 - Many silent `catch { /* ignore */ }` blocks mask potential issues
 - Inconsistent error handling patterns across modules
 - No centralized error reporting/logging system
@@ -476,31 +498,33 @@ if (!state?.ai) return;
 
 ### 11.1 Implemented Optimizations
 
-| Optimization | Location | Effectiveness |
-|--------------|----------|---------------|
-| Instanced Mesh | `ProjectilesInstancedLayer`, `ShipImpostorLayer` | ✅ High |
-| LOD System | `ShipLODManager` | ✅ High |
-| Material Caching | `materialRegistry.tsx` | ✅ Medium |
-| Pooled Events | `explosionPool` in GameState | ✅ Medium |
-| Fixed Timestep | `BattlefieldSystems.tsx` | ✅ High |
-| Archetype Queries | Miniplex queries | ✅ High |
+| Optimization      | Location                                         | Effectiveness |
+| ----------------- | ------------------------------------------------ | ------------- |
+| Instanced Mesh    | `ProjectilesInstancedLayer`, `ShipImpostorLayer` | ✅ High       |
+| LOD System        | `ShipLODManager`                                 | ✅ High       |
+| Material Caching  | `materialRegistry.tsx`                           | ✅ Medium     |
+| Pooled Events     | `explosionPool` in GameState                     | ✅ Medium     |
+| Fixed Timestep    | `BattlefieldSystems.tsx`                         | ✅ High       |
+| Archetype Queries | Miniplex queries                                 | ✅ High       |
 
 ### 11.2 Performance Concerns
 
-| Concern | Location | Impact |
-|---------|----------|--------|
-| Per-frame allocations | Vector3 temps in AI | Medium |
-| Heavy blackboard refresh | Every AI tick | Medium |
-| Bloom layer iteration | On register/unregister | Low |
-| Map iteration | `shipById`, `turretsByShip` | Low |
+| Concern                  | Location                    | Impact |
+| ------------------------ | --------------------------- | ------ |
+| Per-frame allocations    | Vector3 temps in AI         | Medium |
+| Heavy blackboard refresh | Every AI tick               | Medium |
+| Bloom layer iteration    | On register/unregister      | Low    |
+| Map iteration            | `shipById`, `turretsByShip` | Low    |
 
 **Rating: B**  
 **Strengths:**
+
 - Good use of instancing for large entity counts
 - LOD system reduces draw calls for distant ships
 - Fixed timestep prevents spiral-of-death
 
 **Areas to Improve:**
+
 - Some per-frame Vector3 allocations in hot paths
 - Consider object pooling for frequently spawned entities
 - Blackboard refresh could be incremental rather than full rebuild
@@ -585,16 +609,16 @@ if (!state?.ai) return;
 
 ## Appendix: File Metrics
 
-| Module | Files | LOC (approx) | Complexity |
-|--------|-------|--------------|------------|
-| game/ | 45+ | ~3500 | High |
-| components/ | 35+ | ~2500 | Medium |
-| renderer/ | 20+ | ~1500 | Medium |
-| types/ | 15+ | ~1200 | Low |
-| config/ | 15+ | ~800 | Low |
-| hooks/ | 12+ | ~500 | Medium |
-| utils/ | 15+ | ~400 | Low |
+| Module      | Files | LOC (approx) | Complexity |
+| ----------- | ----- | ------------ | ---------- |
+| game/       | 45+   | ~3500        | High       |
+| components/ | 35+   | ~2500        | Medium     |
+| renderer/   | 20+   | ~1500        | Medium     |
+| types/      | 15+   | ~1200        | Low        |
+| config/     | 15+   | ~800         | Low        |
+| hooks/      | 12+   | ~500         | Medium     |
+| utils/      | 15+   | ~400         | Low        |
 
 ---
 
-*This document provides a point-in-time analysis. Architecture evolves; re-evaluate quarterly.*
+_This document provides a point-in-time analysis. Architecture evolves; re-evaluate quarterly._

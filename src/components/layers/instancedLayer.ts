@@ -74,7 +74,9 @@ export class InstancedLayerManager<K> {
   }
 
   setColorAt(index: number, color: Color): void {
-    const mesh = this.meshRef.current as (InstancedMesh & { setColorAt?: (i: number, c: Color) => void }) | null;
+    const mesh = this.meshRef.current as
+      | (InstancedMesh & { setColorAt?: (i: number, c: Color) => void })
+      | null;
     if (!mesh || !mesh.instanceColor || typeof mesh.setColorAt !== 'function') return;
     mesh.setColorAt!(index, color);
     mesh.instanceColor.needsUpdate = true;

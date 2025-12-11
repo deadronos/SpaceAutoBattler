@@ -27,12 +27,12 @@ Identify five potential tech-debt or legacy code paths that could be removed or 
 
 ### Subtasks
 
-| ID  | Description                                                                 | Status      | Updated    | Notes                                                         |
-| --- | --------------------------------------------------------------------------- | ----------- | ---------- | ------------------------------------------------------------- |
-| 1.1 | Register requirements and DESIGN004 for the report workflow                 | Completed   | 2025-10-26 | Added requirements section and DESIGN004 in Memory Bank       |
-| 1.2 | Audit repository for five legacy/tech-debt candidates with evidence         | Completed   | 2025-10-26 | Confirmed five targets (legacy AI, JSX shims, Miniplex shim, renderer lerp, Pixi) |
-| 1.3 | Author `docs/tech-debt-report.md` with ratings, effort, and remediation data | Completed   | 2025-10-26 | Report drafted with summary + per-item sections               |
-| 1.4 | Run validation commands and finalise documentation updates                  | Completed   | 2025-10-26 | `npm run typecheck` + `npm test` (warnings only, all tests pass) |
+| ID  | Description                                                                  | Status    | Updated    | Notes                                                                             |
+| --- | ---------------------------------------------------------------------------- | --------- | ---------- | --------------------------------------------------------------------------------- |
+| 1.1 | Register requirements and DESIGN004 for the report workflow                  | Completed | 2025-10-26 | Added requirements section and DESIGN004 in Memory Bank                           |
+| 1.2 | Audit repository for five legacy/tech-debt candidates with evidence          | Completed | 2025-10-26 | Confirmed five targets (legacy AI, JSX shims, Miniplex shim, renderer lerp, Pixi) |
+| 1.3 | Author `docs/tech-debt-report.md` with ratings, effort, and remediation data | Completed | 2025-10-26 | Report drafted with summary + per-item sections                                   |
+| 1.4 | Run validation commands and finalise documentation updates                   | Completed | 2025-10-26 | `npm run typecheck` + `npm test` (warnings only, all tests pass)                  |
 
 ## Progress Log
 

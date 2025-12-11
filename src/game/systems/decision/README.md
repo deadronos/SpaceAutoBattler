@@ -4,21 +4,22 @@ Handles AI decision-making for autonomous ships including tactical evaluation, i
 
 ## Decision Files
 
-| File | Purpose |
-|------|---------|
-| **manager.ts** | Orchestrates decision-making process for all AI ships each frame |
-| **blackboard.ts** | Shared data structure for decision context and tactical information |
-| **evaluator.ts** | Evaluates tactical situations (threat assessment, target prioritization) |
-| **intents.ts** | Defines AI intentions (combat, formation, evasion, etc.) |
-| **command-generators.ts** | Generates movement and firing commands from intentions |
-| **scheduler.ts** | Schedules decision updates to avoid overhead per frame |
-| **smoothing.ts** | Smooths command transitions to avoid jittery behavior |
-| **hysteresis.ts** | Implements hysteresis to prevent rapid decision changes |
-| **profile-adjustment.ts** | Adjusts AI behavior based on difficulty profile |
+| File                      | Purpose                                                                  |
+| ------------------------- | ------------------------------------------------------------------------ |
+| **manager.ts**            | Orchestrates decision-making process for all AI ships each frame         |
+| **blackboard.ts**         | Shared data structure for decision context and tactical information      |
+| **evaluator.ts**          | Evaluates tactical situations (threat assessment, target prioritization) |
+| **intents.ts**            | Defines AI intentions (combat, formation, evasion, etc.)                 |
+| **command-generators.ts** | Generates movement and firing commands from intentions                   |
+| **scheduler.ts**          | Schedules decision updates to avoid overhead per frame                   |
+| **smoothing.ts**          | Smooths command transitions to avoid jittery behavior                    |
+| **hysteresis.ts**         | Implements hysteresis to prevent rapid decision changes                  |
+| **profile-adjustment.ts** | Adjusts AI behavior based on difficulty profile                          |
 
 ## Intent Types
 
 The decision system generates various intents:
+
 - **Combat Intents** - Attack, pursue, retreat
 - **Formation Intents** - Maintain formation, spread out
 - **Tactical Intents** - Flanking, positioning

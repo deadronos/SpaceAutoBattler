@@ -44,17 +44,17 @@ function readEnv<T extends string | boolean>(
     };
     const raw = source.process?.env?.[name];
     if (!raw) return defaultValue;
-    
+
     if (parser) {
       return parser(raw);
     }
-    
+
     // Boolean parsing if default is boolean
     if (typeof defaultValue === 'boolean') {
       const normalized = raw.toLowerCase();
       return (normalized === '1' || normalized === 'true' || normalized === 'on') as T;
     }
-    
+
     // String return
     return raw as T;
   } catch {

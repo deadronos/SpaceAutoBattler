@@ -65,7 +65,7 @@ export function removeObjectFromSelection(selection: Selection, obj: Object3D): 
 export function ensureSelectionForGroup(
   selections: Map<string, Selection>,
   group: string,
-  allocator: LayerAllocatorState
+  allocator: LayerAllocatorState,
 ): Selection {
   let selection = selections.get(group);
   if (!selection) {

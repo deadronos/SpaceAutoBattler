@@ -73,14 +73,14 @@ Key risks:
 
 ### Subtasks
 
-| ID | Description | Status | Updated | Notes |
-|----|-------------|--------|---------|-------|
-| 3.1 | Rewrite BloomProvider component | Complete | 2025-11-24 | Reduced from ~350 LOC to ~100 LOC |
-| 3.2 | Preserve useBloomContext hook | Complete | 2025-11-24 | No changes needed |
-| 3.3 | Preserve useBloomRegistration hook | Complete | 2025-11-24 | No changes needed |
-| 3.4 | Add integration tests | Complete | 2025-11-24 | 8 new integration tests |
-| 3.5 | Visual regression verification | Skipped | 2025-11-24 | Deferred to manual testing |
-| 3.6 | Validate typecheck and tests | Complete | 2025-11-24 | All 751 tests pass |
+| ID  | Description                        | Status   | Updated    | Notes                             |
+| --- | ---------------------------------- | -------- | ---------- | --------------------------------- |
+| 3.1 | Rewrite BloomProvider component    | Complete | 2025-11-24 | Reduced from ~350 LOC to ~100 LOC |
+| 3.2 | Preserve useBloomContext hook      | Complete | 2025-11-24 | No changes needed                 |
+| 3.3 | Preserve useBloomRegistration hook | Complete | 2025-11-24 | No changes needed                 |
+| 3.4 | Add integration tests              | Complete | 2025-11-24 | 8 new integration tests           |
+| 3.5 | Visual regression verification     | Skipped  | 2025-11-24 | Deferred to manual testing        |
+| 3.6 | Validate typecheck and tests       | Complete | 2025-11-24 | All 751 tests pass                |
 
 ## Progress Log
 

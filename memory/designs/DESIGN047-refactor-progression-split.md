@@ -51,5 +51,5 @@ Split into modules below inside `src/game/progression/`:
 
 ## Notes
 
-- Keep pure formula functions separate from state mutation to ease unit testing. 
+- Keep pure formula functions separate from state mutation to ease unit testing.
 - Ensure all new modules import the config constants from `src/config/progression.js` as needed.

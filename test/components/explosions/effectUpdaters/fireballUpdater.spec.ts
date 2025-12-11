@@ -68,7 +68,10 @@ describe('fireballUpdater', () => {
 
   it('should not create fireball before delay', () => {
     ctx.time = 0.01;
-    const mgr = createInstancedLayerManager({ current: mesh }, { capacity: 10, supportsInstanceColor: true });
+    const mgr = createInstancedLayerManager(
+      { current: mesh },
+      { capacity: 10, supportsInstanceColor: true },
+    );
     mgr.beginFrame();
     const result = updateFireball(ctx, mgr, String(event.id));
     expect(result.count).toBe(0);
@@ -77,7 +80,10 @@ describe('fireballUpdater', () => {
 
   it('should create fireball after delay', () => {
     ctx.time = 0.1;
-    const mgr = createInstancedLayerManager({ current: mesh }, { capacity: 10, supportsInstanceColor: true });
+    const mgr = createInstancedLayerManager(
+      { current: mesh },
+      { capacity: 10, supportsInstanceColor: true },
+    );
     mgr.beginFrame();
     const result = updateFireball(ctx, mgr, String(event.id));
     expect(result.count).toBe(1);
@@ -86,7 +92,10 @@ describe('fireballUpdater', () => {
 
   it('should not create fireball after duration ends', () => {
     ctx.time = 0.7;
-    const mgr = createInstancedLayerManager({ current: mesh }, { capacity: 10, supportsInstanceColor: true });
+    const mgr = createInstancedLayerManager(
+      { current: mesh },
+      { capacity: 10, supportsInstanceColor: true },
+    );
     mgr.beginFrame();
     const result = updateFireball(ctx, mgr, String(event.id));
     expect(result.count).toBe(0);
@@ -95,14 +104,20 @@ describe('fireballUpdater', () => {
 
   it('should transition color from hot to cool', () => {
     ctx.time = 0.1;
-    const mgr1 = createInstancedLayerManager({ current: mesh }, { capacity: 10, supportsInstanceColor: true });
+    const mgr1 = createInstancedLayerManager(
+      { current: mesh },
+      { capacity: 10, supportsInstanceColor: true },
+    );
     mgr1.beginFrame();
     updateFireball(ctx, mgr1, String(event.id));
     const color1 = new Color();
     mesh.getColorAt(0, color1);
 
     ctx.time = 0.5;
-    const mgr2 = createInstancedLayerManager({ current: mesh }, { capacity: 10, supportsInstanceColor: true });
+    const mgr2 = createInstancedLayerManager(
+      { current: mesh },
+      { capacity: 10, supportsInstanceColor: true },
+    );
     mgr2.beginFrame();
     updateFireball(ctx, mgr2, String(event.id));
     const color2 = new Color();
@@ -114,7 +129,10 @@ describe('fireballUpdater', () => {
 
   it('should shrink fireball over time', () => {
     ctx.time = 0.1;
-    const mgr3 = createInstancedLayerManager({ current: mesh }, { capacity: 10, supportsInstanceColor: true });
+    const mgr3 = createInstancedLayerManager(
+      { current: mesh },
+      { capacity: 10, supportsInstanceColor: true },
+    );
     mgr3.beginFrame();
     updateFireball(ctx, mgr3, String(event.id));
     const dummy1 = new Object3D();
@@ -123,7 +141,10 @@ describe('fireballUpdater', () => {
     const scale1 = dummy1.scale.x;
 
     ctx.time = 0.5;
-    const mgr4 = createInstancedLayerManager({ current: mesh }, { capacity: 10, supportsInstanceColor: true });
+    const mgr4 = createInstancedLayerManager(
+      { current: mesh },
+      { capacity: 10, supportsInstanceColor: true },
+    );
     mgr4.beginFrame();
     updateFireball(ctx, mgr4, String(event.id));
     const dummy2 = new Object3D();
@@ -135,7 +156,10 @@ describe('fireballUpdater', () => {
   });
 
   it('reports saturation when start index exceeds capacity', () => {
-    const mgr = createInstancedLayerManager({ current: mesh }, { capacity: 10, supportsInstanceColor: true });
+    const mgr = createInstancedLayerManager(
+      { current: mesh },
+      { capacity: 10, supportsInstanceColor: true },
+    );
     mgr.beginFrame();
     // Fill allocator to force saturation
     for (let i = 0; i < 10; i += 1) {

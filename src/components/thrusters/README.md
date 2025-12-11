@@ -4,13 +4,14 @@ Renders thruster/engine fire effects for ship propulsion and maneuvering.
 
 ## Files
 
-| File | Purpose |
-|------|---------|
+| File                             | Purpose                                                                                                     |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------------- |
 | **ThrusterInstancedManager.tsx** | React component managing instanced rendering of thruster particles; handles thruster state and fire effects |
 
 ## Overview
 
 The thruster system provides:
+
 - Engine fire effects when ships accelerate
 - Maneuvering thruster jets for rotation
 - Continuous propulsion feedback

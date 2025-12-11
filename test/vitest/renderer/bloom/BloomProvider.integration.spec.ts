@@ -12,7 +12,11 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { render, act, cleanup } from '@testing-library/react';
 import React from 'react';
 import { Mesh, BoxGeometry, MeshBasicMaterial, Object3D } from 'three';
-import { BloomProvider, useBloomContext, useBloomRegistration } from '../../../../src/renderer/bloom/index.js';
+import {
+  BloomProvider,
+  useBloomContext,
+  useBloomRegistration,
+} from '../../../../src/renderer/bloom/index.js';
 import { LEGACY_USER_DATA_KEYS } from '../../../../src/renderer/bloom/constants.js';
 
 describe('BloomProvider integration', () => {
@@ -36,9 +40,7 @@ describe('BloomProvider integration', () => {
       };
 
       render(
-        React.createElement(BloomProvider, { enabled: true },
-          React.createElement(CaptureContext)
-        )
+        React.createElement(BloomProvider, { enabled: true }, React.createElement(CaptureContext)),
       );
 
       expect(registerFn).toBeDefined();
@@ -78,9 +80,7 @@ describe('BloomProvider integration', () => {
       };
 
       render(
-        React.createElement(BloomProvider, { enabled: true },
-          React.createElement(CaptureContext)
-        )
+        React.createElement(BloomProvider, { enabled: true }, React.createElement(CaptureContext)),
       );
 
       act(() => {
@@ -117,9 +117,7 @@ describe('BloomProvider integration', () => {
 
       // Start with enabled=false
       const { rerender } = render(
-        React.createElement(BloomProvider, { enabled: false },
-          React.createElement(CaptureContext)
-        )
+        React.createElement(BloomProvider, { enabled: false }, React.createElement(CaptureContext)),
       );
 
       act(() => {
@@ -131,9 +129,7 @@ describe('BloomProvider integration', () => {
 
       // Toggle to enabled=true
       rerender(
-        React.createElement(BloomProvider, { enabled: true },
-          React.createElement(CaptureContext)
-        )
+        React.createElement(BloomProvider, { enabled: true }, React.createElement(CaptureContext)),
       );
 
       // Now colorWrite should be false for transparent material
@@ -141,9 +137,7 @@ describe('BloomProvider integration', () => {
 
       // Toggle back to enabled=false
       rerender(
-        React.createElement(BloomProvider, { enabled: false },
-          React.createElement(CaptureContext)
-        )
+        React.createElement(BloomProvider, { enabled: false }, React.createElement(CaptureContext)),
       );
 
       // colorWrite should be restored to original
@@ -164,9 +158,7 @@ describe('BloomProvider integration', () => {
       };
 
       render(
-        React.createElement(BloomProvider, { enabled: true },
-          React.createElement(CaptureContext)
-        )
+        React.createElement(BloomProvider, { enabled: true }, React.createElement(CaptureContext)),
       );
 
       act(() => {
@@ -199,9 +191,7 @@ describe('BloomProvider integration', () => {
       };
 
       render(
-        React.createElement(BloomProvider, { enabled: true },
-          React.createElement(CaptureContext)
-        )
+        React.createElement(BloomProvider, { enabled: true }, React.createElement(CaptureContext)),
       );
 
       act(() => {
@@ -238,10 +228,12 @@ describe('BloomProvider integration', () => {
       };
 
       const { unmount } = render(
-        React.createElement(BloomProvider, { enabled: true },
+        React.createElement(
+          BloomProvider,
+          { enabled: true },
           React.createElement(CaptureContext),
-          React.createElement(RegisteredComponent)
-        )
+          React.createElement(RegisteredComponent),
+        ),
       );
 
       // Object should be registered
@@ -271,20 +263,24 @@ describe('BloomProvider integration', () => {
       };
 
       const { rerender } = render(
-        React.createElement(BloomProvider, { enabled: true },
+        React.createElement(
+          BloomProvider,
+          { enabled: true },
           React.createElement(CaptureContext),
-          React.createElement(RegisteredComponent, { active: true })
-        )
+          React.createElement(RegisteredComponent, { active: true }),
+        ),
       );
 
       const defaultGroup = contextValue!.defaultGroup;
       expect(contextValue!.selections.get(defaultGroup)!.has(mesh)).toBe(true);
 
       rerender(
-        React.createElement(BloomProvider, { enabled: true },
+        React.createElement(
+          BloomProvider,
+          { enabled: true },
           React.createElement(CaptureContext),
-          React.createElement(RegisteredComponent, { active: false })
-        )
+          React.createElement(RegisteredComponent, { active: false }),
+        ),
       );
 
       // With active=false, object should be unregistered
@@ -302,9 +298,7 @@ describe('BloomProvider integration', () => {
       };
 
       render(
-        React.createElement(BloomProvider, { enabled: true },
-          React.createElement(CaptureContext)
-        )
+        React.createElement(BloomProvider, { enabled: true }, React.createElement(CaptureContext)),
       );
 
       const mesh1 = new Mesh(new BoxGeometry(1, 1, 1), new MeshBasicMaterial());

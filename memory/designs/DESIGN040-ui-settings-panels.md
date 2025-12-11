@@ -25,7 +25,7 @@ Expose compact HUD-level controls for simulation presentation (postprocessing, H
 
 ## Data Flow
 
-```text
+````text
 [Gear Button] --click--> [HudToggleDrawer:settings] --dispatch--> useUiStore.togglePostprocessing()
                                                          \--> useUiStore.toggleHudHealthBars()
                                                          \--> useUiStore.toggleAiV2()
@@ -56,7 +56,7 @@ interface HudToggleDrawerProps {
   toggles: HudToggleDefinition[];
   alignment?: 'left' | 'right';
 }
-```
+````
 
 - `HudToggleDrawer` owns local `isOpen` state and sets `aria-expanded` / `aria-controls` on the trigger button.
 - Each toggle row renders a button with `role="switch"`, `aria-checked`, and optional helper text.
@@ -98,5 +98,7 @@ interface HudToggleDrawerProps {
 - Provide keyboard support: trigger must be focusable, panel traps focus via `tabIndex={-1}` sentinel and closes on `Escape`.
 - Use CSS variables / modifiers (e.g., `.hud-drawer`, `.hud-drawer__toggle`) for maintainable styling.
 - Document toggle definitions with inline comments to guide future extension (e.g., add `registerDebugToggle` helper later if dynamic registration becomes necessary).
+
+```
 
 ```

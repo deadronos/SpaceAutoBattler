@@ -25,6 +25,7 @@ Several shader files reimplement the same hash and noise utilities (`snoise`, `h
 - `src/renderer/shaders/index.ts` — export `COMMON_GLSL: string` for runtime injection
 
 Integration modes:
+
 - If `glsl-loader` supports `#include`, update shader sources to `#include "common.glsl"` and configure loader to resolve includes to `src/renderer/shaders/common.glsl`.
 - Else, modify shader import code paths to prepend `COMMON_GLSL` before passing to `ShaderMaterial` or other compile step.
 

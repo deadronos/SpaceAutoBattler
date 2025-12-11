@@ -29,12 +29,12 @@ Refactor `src/game/progression.ts` into smaller modules: `xp.ts`, `leveling.ts`,
 
 ## Subtasks
 
-| ID  | Description                                            | Status      | Updated    | Notes                                             |
-| --- | ------------------------------------------------------ | ----------- | ---------- | ------------------------------------------------- |
-| 3.1 | Create `xp.ts`, `leveling.ts`, `events.ts`, `index.ts` | completed   | 2025-10-27 | Keep `progression.ts` as a shim initially         |
-| 3.2 | Add tests for each new module                          | completed   | 2025-10-27 | Tests to ensure parity with original behaviour    |
-| 3.3 | Update imports and remove legacy code                  | completed   | 2025-10-27 | After tests pass, remove duplicates from old file |
-| 3.4 | Run full test suite and review coverage                | completed   | 2025-10-27 | Validate no regressions                           |
+| ID  | Description                                            | Status    | Updated    | Notes                                             |
+| --- | ------------------------------------------------------ | --------- | ---------- | ------------------------------------------------- |
+| 3.1 | Create `xp.ts`, `leveling.ts`, `events.ts`, `index.ts` | completed | 2025-10-27 | Keep `progression.ts` as a shim initially         |
+| 3.2 | Add tests for each new module                          | completed | 2025-10-27 | Tests to ensure parity with original behaviour    |
+| 3.3 | Update imports and remove legacy code                  | completed | 2025-10-27 | After tests pass, remove duplicates from old file |
+| 3.4 | Run full test suite and review coverage                | completed | 2025-10-27 | Validate no regressions                           |
 
 ## Progress Log
 

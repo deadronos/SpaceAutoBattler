@@ -2,7 +2,7 @@ deadronos: identify 3 biggest legacy codepaths in src to remove/refactor out, re
 
 GitHub Copilot: Created 4 todos
 
-Starting (1/4) *Scan repository for legacy indicators*
+Starting (1/4) _Scan repository for legacy indicators_
 
 Searched for files matching `**/src/**`, 20 matches
 
@@ -30,17 +30,18 @@ Searched for files matching `**/src/game/aiScenarioHarness/**`, 10 matches
 
 Read [](file:///d%3A/GitHub/SpaceAutoBattler/src/game/state.ts)
 
-Starting (2/4) *Identify candidate legacy codepaths (top 10)*
+Starting (2/4) _Identify candidate legacy codepaths (top 10)_
 
 Read [](file:///d%3A/GitHub/SpaceAutoBattler/src/game/systems/combat.ts)
 
-Starting (3/4) *Analyze and prioritize top 3 for removal/refactor*
+Starting (3/4) _Analyze and prioritize top 3 for removal/refactor_
 
-Completed (3/4) *Analyze and prioritize top 3 for removal/refactor*
+Completed (3/4) _Analyze and prioritize top 3 for removal/refactor_
 
 I'll scan the codebase and recommend the three largest legacy code‑paths in src that you should remove or refactor (with rationale, risk, and migration suggestions).
 
 ## Summary — top 3 legacy codepaths to remove/refactor
+
 1. Backwards-compatibility shims in core GameState & Miniplex facade
    - Key files: state.ts (Miniplex shims: `createEntity`/`destroyEntity`/`archetype`), combat.ts (compat re-export), and related defensive compatibility comments scattered across `src/game/*`.
    - Why it’s legacy: The project contains deliberate runtime shims that map old Miniplex APIs and older patterns to the current library shapes. These shims run in core game initialization and hide API mismatches between old code and current lib versions.
@@ -118,7 +119,9 @@ I'll scan the codebase and recommend the three largest legacy code‑paths in sr
 ---
 
 ## Secondary/other legacy candidates (short list)
+
 These are useful follow-ups after the top 3 are addressed:
+
 - patchGltfLoader.ts — runtime patch that modifies loader prototype to guard invalid URLs. Consider replacing with robust input validation or upstream bugfix; move to dev-only if not required in production.
 - webglDebugPrototypePatch.ts — dev-only prototype patch to capture GL logs; move behind a dev-only entry or remove if not used.
 - ExplosionRenderer.tsx and other re-export facades — small legacy facades kept for backward compatibility; replace imports in callers with the new modular paths and remove the wrappers.
@@ -128,6 +131,7 @@ These are useful follow-ups after the top 3 are addressed:
 ---
 
 ## Suggested priority/order
+
 1. Move the AI harness out of src (low impact on production, quick wins) — reduces accidental imports and clarifies test/production separation.
 2. Remove compatibility facades & re-exports (small PRs): replace uses of combat.ts, `ExplosionRenderer` wrapper, etc. (medium risk).
 3. Type migration: remove `jsx-compat` shims and fix TypeScript errors (low → medium risk, can be done incrementally).
@@ -169,6 +173,7 @@ These are useful follow-ups after the top 3 are addressed:
 ---
 
 ## Risks, tests & verification
+
 - Core shim removal (state.ts) is highest risk — cover with:
   - Unit tests for entity lifecycle, turret registration/unregistration.
   - Integration tests that spawn/destroy ships and confirm no memory leaks or orphaned turrets.
@@ -185,6 +190,7 @@ These are useful follow-ups after the top 3 are addressed:
 ---
 
 ## Short actionable plan (next steps)
+
 - Step A (quick, low-risk): Move aiScenarioHarness to `test/aiScenarioHarness` or `tools/ai-harness`. Update tests and import paths. Verify `npm test` passes.
 - Step B (small PRs): Replace facades like combat.ts and ExplosionRenderer.tsx usages with direct imports from new modules; remove wrapper files when done.
 - Step C (types): Remove jsx-compat.d.ts in a branch, fix TypeScript errors, iterate until clean.
@@ -193,6 +199,7 @@ These are useful follow-ups after the top 3 are addressed:
 ---
 
 ## Files I inspected (examples)
+
 - state.ts — backwards-compat shims and turret cleanup (core runtime).
 - `src/game/aiScenarioHarness/*` — rapierShim, stateFactory, shipFactory, stateBuilder (deprecated).
 - jsx-compat.d.ts and jsx-shim.d.ts — global type shims.
@@ -203,6 +210,7 @@ These are useful follow-ups after the top 3 are addressed:
 ---
 
 ## Closing and status (todo list)
+
 I used a todo list while investigating and updated it as I progressed:
 
 - [completed] Scan repository for legacy indicators
@@ -211,6 +219,7 @@ I used a todo list while investigating and updated it as I progressed:
 - [completed] Prepare report with rationale, risks, and migration suggestions
 
 If you want, next I can:
+
 - produce a prioritized, step-by-step PR plan with concrete codemod scripts (regexes or jscodeshift) for the Miniplex API changes, or
 - generate the first codemod and a CI job change to move the `aiScenarioHarness` out of src to test and update imports automatically.
 

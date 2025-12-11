@@ -75,8 +75,13 @@ export function computeLayerMask(selections: Map<string, Selection>): number {
   let mask = 0;
   for (const selection of selections.values()) {
     const layer = (selection as { layer?: unknown }).layer;
-    if (typeof layer === 'number' && Number.isFinite(layer) && layer >= LAYER_MIN && layer <= LAYER_MAX) {
-      mask |= (1 << layer);
+    if (
+      typeof layer === 'number' &&
+      Number.isFinite(layer) &&
+      layer >= LAYER_MIN &&
+      layer <= LAYER_MAX
+    ) {
+      mask |= 1 << layer;
     }
   }
   return mask;
@@ -89,5 +94,7 @@ export function computeLayerMask(selections: Map<string, Selection>): number {
  * @returns True if the layer is a valid integer in [0, 31]
  */
 export function isValidLayer(layer: unknown): layer is number {
-  return typeof layer === 'number' && Number.isInteger(layer) && layer >= LAYER_MIN && layer <= LAYER_MAX;
+  return (
+    typeof layer === 'number' && Number.isInteger(layer) && layer >= LAYER_MIN && layer <= LAYER_MAX
+  );
 }

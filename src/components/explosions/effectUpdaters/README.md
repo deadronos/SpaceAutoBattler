@@ -4,17 +4,17 @@ Modular particle effect updaters for different explosion visual components. Each
 
 ## Effect Updater Modules
 
-| File | Purpose |
-|------|---------|
-| **flashUpdater.ts** | Updates bright camera-facing spheres that provide initial flash of light; quickly fades out |
-| **shockwaveUpdater.ts** | Updates expanding ring/billboard effect simulating pressure wave; provides concentric ring visual |
-| **fireballUpdater.ts** | Updates primary explosion ball with color transitions from hot (red/yellow) to cool (orange/black) colors |
-| **debrisUpdater.ts** | Updates rotating debris shards ejected radially outward; particles rotate and gradually fade |
-| **sparksUpdater.ts** | Updates fast-moving spark particles scattering outward; camera-facing for visibility |
-| **plasmaUpdater.ts** | Updates rotating billboard plumes simulating energetic electrical discharge effect |
-| **smokeUpdater.ts** | Updates drifting smoke wisps that linger; camera-facing and gradually dissipate |
-| **types.ts** | Shared TypeScript types and interfaces for effect updaters (EffectUpdateContext, configuration) |
-| **index.ts** | Exports all updater functions for easy importing |
+| File                    | Purpose                                                                                                   |
+| ----------------------- | --------------------------------------------------------------------------------------------------------- |
+| **flashUpdater.ts**     | Updates bright camera-facing spheres that provide initial flash of light; quickly fades out               |
+| **shockwaveUpdater.ts** | Updates expanding ring/billboard effect simulating pressure wave; provides concentric ring visual         |
+| **fireballUpdater.ts**  | Updates primary explosion ball with color transitions from hot (red/yellow) to cool (orange/black) colors |
+| **debrisUpdater.ts**    | Updates rotating debris shards ejected radially outward; particles rotate and gradually fade              |
+| **sparksUpdater.ts**    | Updates fast-moving spark particles scattering outward; camera-facing for visibility                      |
+| **plasmaUpdater.ts**    | Updates rotating billboard plumes simulating energetic electrical discharge effect                        |
+| **smokeUpdater.ts**     | Updates drifting smoke wisps that linger; camera-facing and gradually dissipate                           |
+| **types.ts**            | Shared TypeScript types and interfaces for effect updaters (EffectUpdateContext, configuration)           |
+| **index.ts**            | Exports all updater functions for easy importing                                                          |
 
 ## Updater Pattern
 
@@ -25,11 +25,12 @@ function updateEffectType(
   ctx: EffectUpdateContext,
   mesh: InstancedMesh,
   startIndex: number,
-  capacity: number
+  capacity: number,
 ): number;
 ```
 
 **Parameters:**
+
 - `ctx` - Update context with explosion data, timing, and particle cache
 - `mesh` - Three.js InstancedMesh to update with particle data
 - `startIndex` - Where in the mesh to start placing instances
@@ -40,6 +41,7 @@ function updateEffectType(
 ## Shared Context
 
 `EffectUpdateContext` provides:
+
 - Explosion position and initial velocity
 - Elapsed time and total duration
 - Seeded RNG for deterministic randomness
