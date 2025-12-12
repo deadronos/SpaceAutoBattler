@@ -2,6 +2,14 @@
 
 This file summarizes recent work and maintenance actions performed on the memory bank.
 
+- 2025-12-12: Misc UI, systems, and tests landed — validated by `npm run typecheck` + `npm test` (unit suites passing)
+
+  - `src/components/Hud.tsx`: Added accessibility attributes on HUD progress bars (role=progressbar + aria attributes) and grouped HUD controls. `test/components/Hud.spec.tsx` added.
+  - `src/components/ProgressionPanel.tsx`: Progression panel supports drag-to-reposition (persisted position via UI store), formats XP with decimal precision (one decimal), exposes aria-live, and has additional UI refinements. `test/components/ProgressionPanel.spec.tsx` added.
+  - `src/components/Postprocessing.tsx`: Guard added for missing `camera.layers` to prevent composer errors; `test/components/postprocessing/bug-undefined-camera-layers.spec.tsx` added.
+  - `src/game/systems/turrets.ts`: Target scoring adjusted to honor turret priority preferences; `test/vitest/turret-priority.spec.ts` added.
+  - `package.json`: `pyright` added as a developer dependency to enable optional static analysis in the developer toolchain.
+
 - 2025-10-29: Began TASK415 capped-buffer unification — added shared helpers in `src/utils/cappedBuffer.ts`, refactored Rapier panic snapshots, shield ripple diagnostics, AI intent timelines, and StarDisk debug exports to consume them, introduced immutable delegate for progression events, and authored Vitest coverage (`test/utils/cappedBuffer.spec.ts`). Validation: `npx tsc --noEmit` passes; Vitest run currently blocked by missing optional `@rollup/rollup-linux-x64-gnu` binary (npm bug #4828).
 - 2025-10-02: Implemented StarDisk uniform telemetry monitoring (TASK237) — exposed `window.__copilot_starDiskTelemetry` with iTime progression tracking, frame-to-frame deltas, and Rapier panic correlation fields; added Vitest coverage (5 passing tests) and comprehensive documentation in `docs/star-disk-telemetry.md`. Validation: `npm run typecheck`, `npm test -- star-disk-telemetry`.
 - 2025-10-02: Instrumented Rapier step panic diagnostics (TASK236) — extended `RapierDiagnostics` with panic metadata, wrapped `physicsWorld.step` to record + rethrow panics, published `window.__copilot_rapierPanics` snapshots behind debug flag override, refreshed test fixtures, and added Vitest coverage (`rapier-diagnostics`, `update-game-panic`). Validation: `npm run typecheck`, `npm test` (500 passing, existing Three.js warnings).

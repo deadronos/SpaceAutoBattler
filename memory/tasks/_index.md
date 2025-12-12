@@ -22,6 +22,10 @@ This folder contains canonical task documents named using the pattern `TASKNNN-t
 
 - [TASK117](TASK117-bloom-refactor-phase4-cleanup.md) — BloomProvider Refactor Phase 4: Cleanup, documentation, and final integration (design: DESIGN061). (Completed 2025-11-25)
 - [TASK116](TASK116-bloom-refactor-phase3-provider.md) — BloomProvider Refactor Phase 3: Refactor BloomProvider to use extracted modules (design: DESIGN061). (Completed 2025-11-25)
+- [TASK082](TASK082-implement-progression-panel.md) — Implemented Progression Panel UI, event tracking, drag-and-position persistence, decimal XP formatting, and integration tests (Completed 2025-12-12).
+- [TASK122](TASK122-turret-priority-bonus-scale-fix.md) — Turret priority score scaling and small/large hull preference refinement; `bonusScale` introduced and tests added (Completed 2025-12-12).
+- [TASK121](TASK121-postprocessing-camera-layers-guard.md) — Guard added for missing `camera.layers` during Postprocessing; composer continues to render in test harness with missing layers (Completed 2025-12-12).
+- [TASK120](TASK120-hud-accessibility-improvements.md) — HUD accessibility improvements: progress bars now include proper ARIA attributes and group semantics; tests added (Completed 2025-12-12).
 - [TASK115](TASK115-bloom-refactor-phase2-pure-logic.md) — BloomProvider Refactor Phase 2: Extract pure logic modules with unit tests (design: DESIGN061). (Completed 2025-11-24)
 - [TASK114](TASK114-bloom-refactor-phase1-types-constants.md) — BloomProvider Refactor Phase 1: Extract types and constants into dedicated modules (design: DESIGN061). (Completed 2025-11-24)
 - [TASK113](TASK113-fix-checks-and-motion.md) — Restored test fixtures with `shipById` maps, motion stats, and updated motion hot-path expectations; checks now pass. (2025-11-17)

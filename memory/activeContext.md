@@ -21,6 +21,11 @@ Recent changes:
   - Added Vitest test suite with 5 passing tests (`star-disk-telemetry.spec.ts`)
   - Validation: `npm run typecheck`, `npm test -- star-disk-telemetry`
 - Added HUD settings/debug drawers (TASK147), defaulting postprocessing + AI V2 to enabled and relocating overlay toggles from the top control bar.
+- **2025-12-12**: Minor UI, systems, and tests landed:
+  - `src/components/Hud.tsx`: Added accessible attributes for HUD progress bars — `role="progressbar"`, `aria-label`, `aria-valuenow`, and `aria-valuemax`; grouped HUD controls with `role="group"`/`aria-label`. Validated via `test/components/Hud.spec.tsx`.
+  - `src/components/ProgressionPanel.tsx`: Panel supports drag-to-reposition using `useUiStore` to persist `position`, and formats XP with decimal precision (`toFixed(1)`). Also exposed `aria-live="polite"` to announce updates. Validated via `test/components/ProgressionPanel.spec.tsx`.
+  - `src/components/Postprocessing.tsx`: Added guard for missing `camera.layers` and safe camera layer mask restore to prevent composer errors if `camera.layers` is not present. Validated via `test/components/postprocessing/bug-undefined-camera-layers.spec.tsx`.
+  - `src/game/systems/turrets.ts`: Adjusted turret target selection score to respect priority by applying a `bonusScale` so hull preference composes with squared distance consistently. Validated via `test/vitest/turret-priority.spec.ts`.
 - Migrated Vitest smoke importer to Vite glob loaders, rewrote projectile geometry specs to inspect JSX output, and revalidated `npm run typecheck`, `npm test`, and `npm run build` to stabilise the build/test pipeline post React 19 upgrade.
 - Replaced the rimmed planet shader with a stock `MeshStandardMaterial` surface plus additive rim shell, restoring lit/dark hemispheres while keeping glow; planets continue to cast/receive star light shadows with tuned shadow maps.
 - Captured requirements and design for an automated Playwright workflow that outputs before/after star disk screenshots using debug overrides.
@@ -113,3 +118,4 @@ Status updates:
 
 - Updated: 2025-10-16
 - Updated: 2025-10-28
+- Updated: 2025-12-12
