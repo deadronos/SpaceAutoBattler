@@ -45,7 +45,7 @@ export function Hud(): React.ReactElement {
             <h2>Space Auto Battler</h2>
             <p className="subtitle">React Three Fiber · Miniplex · Rapier</p>
           </div>
-          <div className="hud-panel__actions" aria-label="HUD controls">
+        <div className="hud-panel__actions" role="group" aria-label="HUD controls">
             <SettingsDrawer />
             <DebugDrawer />
           </div>
@@ -85,12 +85,21 @@ function TeamCard({ summary }: { summary: TeamSummary }): React.ReactElement {
   const capacity = summary.maxHp > 0 ? summary.hp / summary.maxHp : 0;
   const cls = `team-card team-card--${summary.team}`;
   const level = Math.max(0, Math.min(20, Math.round(Math.min(capacity, 1) * 20)));
+  const teamName = summary.team === 'blue' ? 'Alliance' : 'Reavers';
+
   return (
     <div className={cls}>
-      <h3 className="team-name">{summary.team === 'blue' ? 'Alliance' : 'Reavers'}</h3>
+      <h3 className="team-name">{teamName}</h3>
       <div className="stat">Fleet strength: <strong>{summary.ships}</strong></div>
       <div className="stat">Total hull integrity: <strong>{summary.hp.toFixed(0)}</strong></div>
-      <div className="progress">
+      <div
+        className="progress"
+        role="progressbar"
+        aria-label={`${teamName} hull integrity`}
+        aria-valuenow={summary.hp}
+        aria-valuemin={0}
+        aria-valuemax={summary.maxHp}
+      >
         <span className={`progress-fill progress-fill--${level}`} />
       </div>
     </div>
