@@ -12,7 +12,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 window.__TEST__ = {
   waitForReady: async () => ({ frameRendered: -1, error: 'Initializing...' }),
   getSceneSummary: async () => ({ error: 'Initializing...' }),
-  setOptions: async () => ({ success: false })
+  setOptions: async () => ({ success: false }),
 };
 
 // Configuration from query params
@@ -141,11 +141,11 @@ function addEngineGlow(ship, hull) {
 
   const geometry = new THREE.SphereGeometry(1, 16, 12);
   const material = new THREE.MeshStandardMaterial({
-      color: new THREE.Color(0x000000),
-      emissive: new THREE.Color(THRUSTER_GLOW_CONFIG.defaultEmissiveColor),
-      emissiveIntensity: 1.5,
-      transparent: true,
-      opacity: 0.8
+    color: new THREE.Color(0x000000),
+    emissive: new THREE.Color(THRUSTER_GLOW_CONFIG.defaultEmissiveColor),
+    emissiveIntensity: 1.5,
+    transparent: true,
+    opacity: 0.8,
   });
   material.name = 'engine-glow';
 
@@ -161,17 +161,16 @@ function addEngineGlow(ship, hull) {
 
 // --- End Engine Glow Logic ---
 
-
 // Helper: try to find a model file matching hullId in common directories
 async function findModelFile(hull) {
   // Directly check the known source path first to avoid 404s and delays
   // The test server runs at repo root, so /src/assets/gltf/ is accessible.
   const directPath = `/src/assets/gltf/${hull}.glb`;
   try {
-     const res = await fetch(directPath, { method: 'HEAD' });
-     if (res.ok) return directPath;
+    const res = await fetch(directPath, { method: 'HEAD' });
+    if (res.ok) return directPath;
   } catch (e) {
-     console.warn(`Direct fetch failed for ${directPath}`, e);
+    console.warn(`Direct fetch failed for ${directPath}`, e);
   }
 
   const candidateDirs = ['/models/', '/dist/models/', '/assets/models/', '/src/assets/gltf/'];
@@ -388,7 +387,7 @@ async function loadShip() {
 
           // Even on placeholder, show engine glow if requested
           if (engineEnabled) {
-             addEngineGlow(placeholder, hullId);
+            addEngineGlow(placeholder, hullId);
           }
 
           shipModel = placeholder;
