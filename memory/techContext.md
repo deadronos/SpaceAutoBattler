@@ -15,6 +15,7 @@ Tech stack and notable dependencies:
 Developer workflow notes:
 
 - Typecheck with `npm run typecheck` and run `npm test` before committing.
+- Optional static analysis: `pyright` is added to `devDependencies` to enable fast static checks; use `npx pyright` as needed for IDE/linting assistance.
 - For physics-related features, consult `src/game/simulationQueue.ts` and `src/game/physics/safeKinematics.ts` to ensure safe mutation patterns and diagnostic recording.
 - Rapier diagnostics are recorded to `state.simulation.rapierDiagnostics` to help triage guard trips and step panics in both tests and Playwright captures.
 - E2E/visual tests can be run via `npm run test:playwright` (see `playwright.config.cjs` for configuration).

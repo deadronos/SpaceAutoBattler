@@ -10,6 +10,10 @@ import { test, expect, Page } from '@playwright/test';
 import type { TestInfo } from '@playwright/test';
 import path from 'path';
 import fs from 'fs';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Extend Window interface for test API
 declare global {
@@ -100,6 +104,8 @@ async function loadShipRenderer(
   await page.goto(`/test/playwright/pages/ship-renderer.html?${params.toString()}`);
 
   // Wait for the test API to be ready
+  await page.waitForFunction(() => window.__TEST__ && window.__TEST__.waitForReady);
+
   const readyResult = await page.evaluate(async () => {
     return await window.__TEST__.waitForReady();
   });
@@ -289,7 +295,7 @@ test.describe('Ship Hull Rendering', () => {
       });
 
       // TODO: Add engine glow tests when engine rendering is implemented
-      test.skip('should render engine glow when enabled', async ({ page }) => {
+      test('should render engine glow when enabled', async ({ page }) => {
         await loadShipRenderer(page, hullId, { engine: true });
 
         const summary = await getSceneSummary(page);

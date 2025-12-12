@@ -8,6 +8,13 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
+// Pre-initialize test API to ensure availability
+window.__TEST__ = {
+  waitForReady: async () => ({ frameRendered: -1, error: 'Initializing...' }),
+  getSceneSummary: async () => ({ error: 'Initializing...' }),
+  setOptions: async () => ({ success: false }),
+};
+
 // Configuration from query params
 const params = new URLSearchParams(window.location.search);
 const hullId = params.get('hull') || 'fighter';
@@ -76,9 +83,97 @@ renderer.setPixelRatio(1); // Fixed pixel ratio for deterministic rendering
 // GLTF loader
 const loader = new GLTFLoader();
 
+// --- Engine Glow Config & Logic (ported from src/components/thrusters/ThrusterInstancedManager.tsx) ---
+const THRUSTER_GLOW_CONFIG = {
+  defaultEmissiveColor: '#5fb6ff',
+  glowMeshSize: 0.02,
+  tailOffset: 0.01,
+  anchorsByHull: {
+    fighter: 1,
+    corvette: 2,
+    frigate: 2,
+    destroyer: 4,
+    carrier: 6,
+  },
+};
+
+const HULL_SIZE_HINTS = {
+  fighter: new THREE.Vector3(1.4, 0.7, 2.8),
+  corvette: new THREE.Vector3(2.4, 1.2, 4.2),
+  frigate: new THREE.Vector3(3.2, 1.4, 5.5),
+  destroyer: new THREE.Vector3(4.4, 2.0, 7.2),
+  carrier: new THREE.Vector3(6.4, 2.8, 10.4),
+};
+
+function createAnchorPattern(hull) {
+  const count = THRUSTER_GLOW_CONFIG.anchorsByHull[hull] ?? 1;
+  const size = HULL_SIZE_HINTS[hull] ?? new THREE.Vector3(2, 1, 3);
+  const tailZ = -size.z * 0.6 - size.z * THRUSTER_GLOW_CONFIG.tailOffset;
+  const anchors = [];
+  for (let i = 0; i < count; i += 1) {
+    let x = 0;
+    let y = 0;
+    if (count === 2) {
+      x = (i === 0 ? -1 : 1) * 0.3 * size.x;
+    } else if (count === 4) {
+      x = (i % 2 === 0 ? -1 : 1) * 0.25 * size.x;
+      y = (i < 2 ? -1 : 1) * 0.2 * size.y;
+    } else if (count === 6) {
+      x = (i % 2 === 0 ? -1 : 1) * 0.35 * size.x;
+      y = (Math.floor(i / 2) - 1) * 0.18 * size.y;
+    }
+    anchors.push(new THREE.Vector3(x, y, tailZ));
+  }
+  return anchors;
+}
+
+function addEngineGlow(ship, hull) {
+  const anchors = createAnchorPattern(hull);
+  const size = HULL_SIZE_HINTS[hull] ?? new THREE.Vector3(2, 1, 3);
+
+  // Base scale calculation from ThrusterInstancedManager:
+  // hullScale (approx 1.0 here) * (glowMeshSize * 50) * (1 + throttle * 1.8)
+  // We assume throttle = 1.0 (full thrust) for the test
+  const hullScale = 1.0;
+  const baseScale = hullScale * (THRUSTER_GLOW_CONFIG.glowMeshSize * 50);
+  const throttle = 1.0;
+  const scaleValue = baseScale * (1 + throttle * 1.8);
+
+  const geometry = new THREE.SphereGeometry(1, 16, 12);
+  const material = new THREE.MeshStandardMaterial({
+    color: new THREE.Color(0x000000),
+    emissive: new THREE.Color(THRUSTER_GLOW_CONFIG.defaultEmissiveColor),
+    emissiveIntensity: 1.5,
+    transparent: true,
+    opacity: 0.8,
+  });
+  material.name = 'engine-glow';
+
+  anchors.forEach((anchorPos, index) => {
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.name = `engine-glow-${index}`;
+    // Position relative to ship center
+    mesh.position.copy(anchorPos);
+    mesh.scale.setScalar(scaleValue);
+    ship.add(mesh);
+  });
+}
+
+// --- End Engine Glow Logic ---
+
 // Helper: try to find a model file matching hullId in common directories
 async function findModelFile(hull) {
-  const candidateDirs = ['/models/', '/dist/models/', '/assets/models/'];
+  // Directly check the known source path first to avoid 404s and delays
+  // The test server runs at repo root, so /src/assets/gltf/ is accessible.
+  const directPath = `/src/assets/gltf/${hull}.glb`;
+  try {
+    const res = await fetch(directPath, { method: 'HEAD' });
+    if (res.ok) return directPath;
+  } catch (e) {
+    console.warn(`Direct fetch failed for ${directPath}`, e);
+  }
+
+  const candidateDirs = ['/models/', '/dist/models/', '/assets/models/', '/src/assets/gltf/'];
   const filenamePattern = new RegExp(hull + '[^"' + "'" + ']*\\.glb', 'i');
 
   for (const dir of candidateDirs) {
@@ -107,7 +202,7 @@ async function findModelFile(hull) {
   }
 
   // Fallbacks: try conventional paths
-  const fallbacks = ['/assets/models/', '/models/', '/dist/models/'];
+  const fallbacks = ['/assets/models/', '/models/', '/dist/models/', '/src/assets/gltf/'];
   for (const fb of fallbacks) {
     const fbPath = `${fb}${hull}.glb`;
     try {
@@ -222,6 +317,10 @@ async function loadShip() {
   // Attempt to locate the correct model file (handles webpackized names)
   // Honor explicit model path passed from the test runner first
   let modelPath = explicitModelPath || (SHIP_MODEL_PATHS[hullId] ?? null);
+
+  // Try discovery if explicit path is not set or failed previous checks (though logic here is simple)
+  // If SHIP_MODEL_PATHS gave a path but it's 404ing (which we can't easily know yet), we might want to try discovery.
+  // But for now, let's aggressively assume we need discovery if explicit isn't set.
   if (!explicitModelPath) {
     try {
       const discovered = await findModelFile(hullId);
@@ -232,7 +331,8 @@ async function loadShip() {
   }
 
   if (!modelPath) {
-    throw new Error(`Unknown hull ID: ${hullId}`);
+    // If no path found at all, try the direct source one last time as fallback
+    modelPath = `/src/assets/gltf/${hullId}.glb`;
   }
 
   return new Promise((resolve, reject) => {
@@ -246,6 +346,11 @@ async function loadShip() {
         const box = new THREE.Box3().setFromObject(shipModel);
         const center = box.getCenter(new THREE.Vector3());
         shipModel.position.sub(center);
+
+        // --- Apply Engine Glow if enabled ---
+        if (engineEnabled) {
+          addEngineGlow(shipModel, hullId);
+        }
 
         updateStatus(`Loaded ${hullId}`);
         resolve();
@@ -278,6 +383,11 @@ async function loadShip() {
             );
             shield.name = `${hullId}-placeholder-shield`;
             placeholder.add(shield);
+          }
+
+          // Even on placeholder, show engine glow if requested
+          if (engineEnabled) {
+            addEngineGlow(placeholder, hullId);
           }
 
           shipModel = placeholder;
@@ -320,6 +430,10 @@ async function initInternal() {
   } catch (error) {
     showError(error.message);
     console.error(error);
+    // Expose error to test API
+    if (window.__TEST__) {
+      window.__TEST__.waitForReady = async () => ({ frameRendered: -1, error: error.message });
+    }
   }
   // draw overlay once after initial render in case fallback was used
   maybeDrawOverlay();
