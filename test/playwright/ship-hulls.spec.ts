@@ -280,8 +280,7 @@ test.describe('Ship Hull Rendering', () => {
         }
       });
 
-      // TODO: Add shield-specific tests when shield rendering is implemented
-      test.skip('should render shield when enabled', async ({ page }) => {
+      test('should render shield when enabled', async ({ page }) => {
         await loadShipRenderer(page, hullId, { shield: true });
 
         const summary = await getSceneSummary(page);
