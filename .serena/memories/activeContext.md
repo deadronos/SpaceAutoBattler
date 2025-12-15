@@ -2,13 +2,13 @@
 
 Current focuses (short-term):
 
-- Validate Playwright ship hull rendering tests (TASK154) with local build + serve cycle and generate initial baselines
+- Validate Playwright ship hull rendering tests (TASK156) with local build + serve cycle and generate initial baselines
 - Harden renderer validation through Vitest config checks and Playwright screenshot baselines to keep the environment deterministic and regression-ready
 - Track follow-up performance captures for large-scene budgets (planet geometry segments, anisotropy settings) before enabling parallax billboards by default
 
 Recent changes:
 
-- **TASK154 (In Progress - 70%)**: Implemented Playwright ship mock render tests per design document:
+- **TASK156 (In Progress - 70%)**: Implemented Playwright ship mock render tests per design document:
   - Created test page (`test/playwright/pages/ship-renderer.html`) with Three.js scene, fixed camera/lighting, deterministic rendering
   - Implemented `window.__TEST__` API (waitForReady, getSceneSummary, setOptions) for test coordination
   - Created comprehensive test suite (`test/playwright/ship-hulls.spec.ts`) with two-tier verification (scene introspection + screenshot comparison)
@@ -40,7 +40,7 @@ Recent changes:
 
 Next steps:
 
-- **TASK154**: Validate ship hull tests locally (`npm run build && npm run serve`, then `npm run test:playwright:ship`), generate baselines, review screenshots, integrate into CI
+- **TASK156**: Validate ship hull tests locally (`npm run build && npm run serve`, then `npm run test:playwright:ship`), generate baselines, review screenshots, integrate into CI
 - Integrate the before/after captures into documentation and track future refreshes as shader presets evolve.
 - Capture a render comparison showcasing the new shader control ranges (core-focused vs corona-focused) for docs.
 - Capture a perf snapshot (GPU/CPU frame time) with postprocessing on/off and parallax billboards toggled for documentation.
