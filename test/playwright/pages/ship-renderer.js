@@ -17,11 +17,11 @@ window.__TEST__ = {
 
 // Configuration from query params
 const params = new URLSearchParams(window.location.search);
-const hullId = params.get('hull') || 'fighter';
-const frame = parseInt(params.get('frame') || '0', 10);
-const shieldEnabled = params.get('shield') === 'true';
-const engineEnabled = params.get('engine') === 'true';
-const postprocessing = params.get('postprocessing') !== 'false';
+let hullId = params.get('hull') || 'fighter';
+let frame = parseInt(params.get('frame') || '0', 10);
+let shieldEnabled = params.get('shield') === 'true';
+let engineEnabled = params.get('engine') === 'true';
+let postprocessing = params.get('postprocessing') !== 'false';
 // Optional explicit model path passed by the test runner (useful when filenames are webpack-hashed)
 let explicitModelPath = params.get('model') || null;
 // Support Playwright inlined-page mode where init params can be injected before module runs
@@ -718,11 +718,79 @@ window.__TEST__ = {
   },
 
   /**
-   * Set test options (for future extension)
+   * Set test options (for dynamic updates)
    */
   async setOptions(options) {
-    // TODO: Implement dynamic option changes
     console.log('setOptions called:', options);
+    let reloadNeeded = false;
+
+    if (options.hull !== undefined && options.hull !== hullId) {
+      hullId = options.hull;
+      reloadNeeded = true;
+    }
+
+    if (options.model !== undefined && options.model !== explicitModelPath) {
+      explicitModelPath = options.model;
+      reloadNeeded = true;
+    }
+
+    if (options.shield !== undefined) {
+      const val = options.shield === true || options.shield === 'true';
+      if (shieldEnabled !== val) {
+        shieldEnabled = val;
+        reloadNeeded = true;
+      }
+    }
+
+    if (options.engine !== undefined) {
+      const val = options.engine === true || options.engine === 'true';
+      if (engineEnabled !== val) {
+        engineEnabled = val;
+        reloadNeeded = true;
+      }
+    }
+
+    if (options.postprocessing !== undefined) {
+      postprocessing = options.postprocessing !== false && options.postprocessing !== 'false';
+    }
+
+    if (options.frame !== undefined) {
+      frame = parseInt(options.frame, 10);
+    }
+
+    if (reloadNeeded) {
+      if (shipModel) {
+        scene.remove(shipModel);
+        shipModel.traverse((node) => {
+          if (node.isMesh) {
+            if (node.geometry) node.geometry.dispose();
+            if (node.material) {
+              if (Array.isArray(node.material)) {
+                node.material.forEach((m) => m.dispose());
+              } else {
+                node.material.dispose();
+              }
+            }
+          }
+        });
+        shipModel = null;
+      }
+
+      isReady = false;
+      renderComplete = false;
+      overlayNeeded = false;
+      if (overlayCtx) overlayCtx.clearRect(0, 0, overlay.width, overlay.height);
+      updateStatus('Reloading...');
+
+      try {
+        await loadShip();
+      } catch (e) {
+        return { success: false, error: e.message };
+      }
+      maybeDrawOverlay();
+    }
+
+    renderFrame();
     return { success: true };
   },
 };
