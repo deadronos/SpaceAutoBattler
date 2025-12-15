@@ -71,7 +71,7 @@
     "pngjs": "^7.0.0",
     "prettier": "^3.7.4",
     "react-compiler-webpack": "^1.0.0",
-    "react-test-renderer": "^19.2.1",
+    "react-test-renderer": "^19.2.3",
     "rollup": "^4.53.3",
     "ts-loader": "^9.5.4",
     "ts-node": "^10.9.2",
