@@ -201,5 +201,5 @@ Planned additions:
 ## References
 
 - Design Document: `memory/designs/design-ship-mock-test.md`
-- Task Tracking: `memory/tasks/TASK154-playwright-ship-screenshots.md`
+- Task Tracking: `memory/tasks/TASK156-playwright-ship-screenshots.md`
 - Playwright Config: `playwright.config.cjs`
