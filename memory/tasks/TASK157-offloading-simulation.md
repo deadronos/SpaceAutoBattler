@@ -1,7 +1,7 @@
 # Tasks: Offloading Simulation to Web Worker
 
 **Status:** Planned
-**Design:** `memory/designs/offloading-simulation-to-worker.md`
+**Design:** `memory/designs/DESIGN065-offloading-simulation-to-worker.md`
 
 ## Phase 1: Infrastructure & Worker Setup
 - [ ] **Create Worker Entry Point**: Create `src/worker/sim.worker.ts`.
