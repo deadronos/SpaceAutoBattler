@@ -1,7 +1,8 @@
 # Design: Offloading Simulation to Web Worker
 
-**Status:** Draft
+**Status:** In Progress
 **Date:** 2025-10-29
+**Last Updated:** 2025-12-17
 **Author:** Jules
 
 ## 1. Overview
@@ -88,7 +89,9 @@ Rapier3D-compat works well in workers.
 
 Webpack note:
 
-- The webpack config intentionally keeps `@dimforge/rapier3d-compat` bundled with its importer chunk to avoid cross-chunk init ordering issues; the worker entry should be the importer.
+- Web workers load additional split chunks via `importScripts(...)` relative to the worker script URL. If chunk output paths differ between main bundles and async chunks (e.g., `chunkFilename` under `workers/` but shared chunks emitted at the root), the worker may try to load the wrong URL and fail at runtime.
+- Practical constraint: worker-friendly chunking requires consistent chunk paths and stable split-chunk names that do not conflict with entry chunk names (Webpack 5 disallows some patterns that older configs tolerated).
+- Current approach (2025-12-17): extract Rapier into a dedicated `rapier` split chunk, ensure worker chunk loading resolves to the same output directory as other chunks, and avoid splitChunks rules that attempt to reuse the entry chunk name.
 
 ## 4. Input Handling
 
@@ -115,6 +118,7 @@ Repo implementation notes:
 
 - **Serialization Overhead:** Minimizing `postMessage` size is key. Only send topology changes (create/destroy) and events. Use SharedBuffers for continuous data.
 - **Headers:** SharedArrayBuffer requires specific headers. Fallback: if headers are missing, fall back to `postMessage` with `Transferable` arrays (Float32Array).
+- **Worker Chunk Loading:** Worker entrypoints may need to `importScripts` additional split chunks at runtime; ensure Webpack output paths keep worker chunk URLs resolvable in both dev server and production builds.
 - **Interpolation Jitter:** Worker timing might drift. We may need to send "Time" in the shared buffer and perform interpolation on the Main Thread based on Sim Time vs Render Time.
 - **AI overrides:** `getEffectiveAIConfig()` expects a UI store on `globalThis`. The bridge must provide worker-side overrides to preserve runtime toggles.
 - **Explosion serialization:** `ExplosionEvent.position` is a Three.js `Vector3` and cannot be structured-cloned; worker must serialize explosions into plain numeric payloads.

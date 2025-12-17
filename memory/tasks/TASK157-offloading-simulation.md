@@ -42,6 +42,16 @@
 - [x] **Transform Sync (MVP ships)**: Write ship transforms + basic ship scalars into the shared/transfer buffer each tick.
 - [ ] **Event Sync**: Serialize `state.explosions` and `state.progressionEvents` and send via `postMessage` (no Three.js objects).
 
+## Phase 3.5: Worker-Driven Render MVP
+
+- [x] **WorkerShipsLayer (Debug Visuals)**: Render worker-driven ships as lightweight instanced markers (cones) behind `?sim_worker_render=1`.
+- [x] **Render-Only Mode**: Add `?sim_worker_render_only=1` to disable the main-thread sim tick and hide main ship/combat layers so the scene is visually driven by worker snapshots.
+
+Notes:
+
+- This is intentionally a debug/MVP rendering path. The long-term goal remains a proper `RenderWorld` mirror that feeds the existing ship/LOD/interpolation pipeline.
+- Production worker support required Webpack chunk-loading fixes so the worker can `importScripts` split chunks.
+
 ## Phase 4: Renderer Adaptation
 
 - [ ] **RenderWorld**: Create a Miniplex world on Main Thread that acts as the visual source of truth.
@@ -49,7 +59,7 @@
 - [ ] **Update Components**:
   - `Ship.tsx`: Read transform from the "Mirror Entity" (which reads from SharedBuffer).
   - `Battlefield.tsx`: Ensure it mounts the `SimulationBridge`.
-- [ ] **Remove Logic**: Remove `BattlefieldSystems.tsx` (the main thread simulation loop) as it's now in the worker.
+- [ ] **Remove Logic**: Remove `BattlefieldSystems.tsx` (the main thread simulation loop) once parity is reached (currently gated off behind `?sim_worker_render_only=1`).
 
 ## Phase 5: Input & Polish
 
@@ -57,3 +67,17 @@
 - [ ] **Resize Handling**: Sync canvas resize/aspect ratio events to worker (if needed for camera logic, though camera is usually Main Thread).
 - [ ] **Headers Config**: Ensure dev server sends `Cross-Origin-Opener-Policy` and `Cross-Origin-Embedder-Policy`.
 - [ ] **Fallback**: Implement a fallback mode if `SharedArrayBuffer` is not supported (optional but recommended).
+
+## Validation
+
+- Unit + type: `npm run typecheck`, `npm test`
+- Build: `npm run build`
+- E2E (worker): `npx playwright test test/playwright/worker-sim.spec.ts`
+
+## Progress Log
+
+### 2025-12-17
+
+- Added worker-driven ship rendering MVP and a render-only flag to disable main-thread ticking.
+- Fixed production Webpack chunking so the worker can load split chunks (notably Rapier) without `importScripts` 404s.
+- Hardened Playwright worker E2E by fixing `waitForFunction` usage and exposing worker status/error for diagnostics.

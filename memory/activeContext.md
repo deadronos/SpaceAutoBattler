@@ -6,12 +6,14 @@ Current focuses (short-term):
 - Refine AI motion PD tuning (TASK241) to eliminate bobbing and document hull-specific gains (spec/motion-tuning.md).
 - Monitor StarDisk uniform telemetry (`window.__copilot_starDiskTelemetry`) alongside Rapier diagnostics to verify iTime progression after addressing WASM faults (TASK237 complete)
 - **TASK156 (In Progress)**: Validate Playwright ship hull rendering tests with local `build + serve` cycle, generate representative baselines (fighter/frigate/carrier), and add CI job for PR-level subset; initial PoC files and baseline script are present.
+- **TASK157 (In Progress)**: Offload simulation to a Web Worker (Rapier + ECS + AI) with worker-driven ship snapshot streaming; maintain feature-flagged worker render debug modes and converge toward a proper RenderWorld mirror.
 - Harden renderer validation through Vitest config checks and Playwright screenshot baselines to keep the environment deterministic and regression-ready
 - Track follow-up performance captures for large-scene budgets (planet geometry segments, anisotropy settings) before enabling parallax billboards by default
 
 Recent changes:
 
 - **TASK119 (In Progress — 80%)**: Updated `test/vitest/flak-proximity.spec.ts` to pass `originPosition` through `FireProjectileOptions` (not `FireProjectileOverride`) and re-indented call sites; `npx tsc --noEmit` and `npx eslint` pass. Vitest run is currently blocked in this sandbox by esbuild `spawn EPERM` during config load.
+- **TASK157 (In Progress)**: Landed worker simulation snapshot pipeline + worker-driven ship render MVP (cones) and a render-only flag to stop main-thread ticking; fixed production Webpack chunk loading for worker split chunks and added Playwright coverage (`worker-sim.spec.ts`).
 - **TASK237 (Completed - 100%)**: Implemented StarDisk uniform telemetry monitoring to track iTime progression and correlate with Rapier panics:
   - Added `window.__copilot_starDiskTelemetry` debug global with 11 telemetry fields
   - Tracks iTime, deltaTime, isProgressing, frameCount, time sources (sim/render/fallback)

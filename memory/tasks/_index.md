@@ -6,6 +6,7 @@ This folder contains canonical task documents named using the pattern `TASKNNN-t
 
 - [TASK119](TASK119-flak-proximity-type-alignment.md) — Align flak proximity Vitest call sites with `FireProjectileOptions` so lint/type/test pipelines pass (design: DESIGN063). (In Progress — implementation underway) (2025-12-10)
 - [TASK156](TASK156-playwright-ship-screenshots.md) — Validate Playwright ship harness, generate representative baselines (fighter/frigate/carrier), and add a CI job to run a representative subset. (In Progress — validate PoC & generate baselines) (2025-12-15)
+- [TASK157](TASK157-offloading-simulation.md) — Offload simulation to a Web Worker (Rapier + ECS + AI), stream ship snapshots, and add worker-driven render debug modes (design: DESIGN065). (In Progress — worker sim + snapshot + render MVP landed; event sync pending) (2025-12-17)
 - [TASK106](TASK106-duplicate-buffer-caps.md) — Unify capped history helpers across diagnostics, metrics, and progression events (design: DESIGN055). (In Progress — implementation underway) (2025-10-29)
 - [TASK010](TASK010-thruster-trails-gpu.md) — Move thruster trails to GPU-managed instanced buffers for scalable rendering. (In Progress — design published, implementation pending) (2025-10-06)
 - [TASK009](TASK009-ship-hull-visibility.md) — Restore ship hull visibility by refreshing LOD partitioning after instancing refactor. (In Progress — requirements/design in flight) (2025-10-05)
