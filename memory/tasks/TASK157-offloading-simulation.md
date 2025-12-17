@@ -28,18 +28,18 @@
 ## Phase 2: State Bridge & Shared Memory
 
 - [x] **Define Protocol**: Create `src/worker/protocol.ts` defining `WorkerMessage` and `MainMessage` types.
-- [ ] **Shared Memory Manager**: Create a class to manage `SharedArrayBuffer` allocation and layout (Structure of Arrays).
+- [x] **Shared Memory Layout (MVP)**: Define a Structure-of-Arrays layout and allocate a single packed buffer (SAB when available; transferable buffers otherwise).
 - [x] **SimulationBridge**: Create `src/game/SimulationBridge.ts` on Main Thread.
   - Handles worker instantiation.
   - Receives snapshots.
   - Updates local "Mirror World".
 - [x] **Feature Flag / Smoke Toggle**: Gate worker creation behind a URL flag (ex: `?sim_worker=1`) until full parity is reached.
-- [ ] **Worker GameState**: Move `createGameState` usage to the worker. Ensure `state.physicsWorld` is created there.
+- [x] **Worker GameState**: Move `createGameState` usage to the worker. Ensure `state.physicsWorld` is created there.
 
 ## Phase 3: Synchronization Logic
 
-- [ ] **Topology Sync**: Implement logic in Worker to track created/destroyed entities each tick and send diffs.
-- [ ] **Transform Sync**: Modify `src/game/systems/sync.ts` (or similar) to write `position/rotation` to the `SharedArrayBuffer` instead of just mutating local objects.
+- [x] **Topology Sync (MVP ships)**: Track created/destroyed ship entity ids and send diffs in `snapshot` messages.
+- [x] **Transform Sync (MVP ships)**: Write ship transforms + basic ship scalars into the shared/transfer buffer each tick.
 - [ ] **Event Sync**: Serialize `state.explosions` and `state.progressionEvents` and send via `postMessage` (no Three.js objects).
 
 ## Phase 4: Renderer Adaptation

@@ -19,7 +19,9 @@ import { ProjectilesLayer } from './layers/ProjectilesLayer.js';
 import { MuzzleFlashInstancedLayer } from './layers/MuzzleFlashInstancedLayer.js';
 import { TurretsLayer } from './layers/TurretsLayer.js';
 import { StarsField } from './layers/StarsField.js';
+import { WorkerShipsLayer } from './layers/WorkerShipsLayer.js';
 import { installWebGLDebugHooks } from '../renderer/webglDebugWrapper.js';
+import { shouldRenderWorkerShips, shouldRenderWorkerShipsOnly } from '../game/SimulationBridge.js';
 
 interface BattleSceneContentProps {
   ppEnabled: boolean;
@@ -28,6 +30,8 @@ interface BattleSceneContentProps {
 function BattleSceneContent({ ppEnabled }: BattleSceneContentProps): React.ReactElement {
   const state = useOptionalGameState();
   if (!state) return <></>;
+  const renderWorkerShipsOnly = shouldRenderWorkerShipsOnly();
+  const renderWorkerShips = shouldRenderWorkerShips();
   // Expose a local `ships` binding to make particle integration explicit for static checks
   const ships = state.queries.ships;
 
@@ -36,12 +40,13 @@ function BattleSceneContent({ ppEnabled }: BattleSceneContentProps): React.React
       <fog attach="fog" args={FOG_DEFAULTS} />
       <CelestialEnvironment />
       <Suspense fallback={null}>
-        <ShipsLayer archetype={state.queries.ships} />
-        <TurretsLayer archetype={state.queries.turrets} />
-        <MuzzleFlashInstancedLayer archetype={state.queries.turrets} />
-        <ProjectilesLayer archetype={state.queries.projectiles} />
-        <ExplosionsLayer />
-        <ParticleTrails ships={ships} />
+        {renderWorkerShips && <WorkerShipsLayer />}
+        {!renderWorkerShipsOnly && <ShipsLayer archetype={state.queries.ships} />}
+        {!renderWorkerShipsOnly && <TurretsLayer archetype={state.queries.turrets} />}
+        {!renderWorkerShipsOnly && <MuzzleFlashInstancedLayer archetype={state.queries.turrets} />}
+        {!renderWorkerShipsOnly && <ProjectilesLayer archetype={state.queries.projectiles} />}
+        {!renderWorkerShipsOnly && <ExplosionsLayer />}
+        {!renderWorkerShipsOnly && <ParticleTrails ships={ships} />}
       </Suspense>
       {ppEnabled && <PostprocessingLazy />}
       <BattlefieldSystems />
