@@ -1,9 +1,14 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { GameState, GameEntity } from '../types/index.js';
 import { createGameState, disposeGameState, spawnInitialFleets } from './state.js';
 import { updateGame } from './systems.js';
 import { mirrorHudHealthBarsFlag, useUiStore } from './uiStore.js';
+import {
+  SimulationBridge,
+  shouldDebugWorkerSimulation,
+  shouldEnableWorkerSimulation,
+} from './SimulationBridge.js';
 import { reportE2EError, reportConfigError } from '../utils/errorReporting.js';
 
 let warnedAiDisableContext = false;
@@ -31,13 +36,69 @@ type GameProviderProps = {
 
 export function GameProvider({ children, fallback = null }: GameProviderProps): React.ReactElement {
   const [state, setState] = useState<GameState | null>(null);
+  const simBridgeRef = useRef<SimulationBridge | null>(null);
   const paused = useUiStore((s) => s.paused);
   const timeScale = useUiStore((s) => s.timeScale);
   const aiV2Enabled = useUiStore((s) => s.aiV2Enabled);
   const hudHealthBarsEnabled = useUiStore((s) => s.hudHealthBarsEnabled);
+  const aiVerticalEnabled = useUiStore((s) => s.aiVerticalEnabled);
+  const aiEngagementBoostEnabled = useUiStore((s) => s.aiEngagementBoostEnabled);
+  const aiTickRateExperimentEnabled = useUiStore((s) => s.aiTickRateExperimentEnabled);
+  const aiRangePolicy = useUiStore((s) => s.aiRangePolicy);
+  const aiSmoothingEnabled = useUiStore((s) => s.aiSmoothingEnabled);
+  const aiHysteresisEnabled = useUiStore((s) => s.aiHysteresisEnabled);
+  const aiVerticalDampingEnabled = useUiStore((s) => s.aiVerticalDampingEnabled);
   const simProfileSubsystems = useUiStore((s) => s.simProfileSubsystems);
   const simProfileSampleRate = useUiStore((s) => s.simProfileSampleRate);
   const simEnableSubsystemGuards = useUiStore((s) => s.simEnableSubsystemGuards);
+
+  // Phase 1 worker smoke-test: start a worker when explicitly enabled.
+  useEffect(() => {
+    if (!shouldEnableWorkerSimulation()) return;
+    if (simBridgeRef.current) return;
+
+    simBridgeRef.current = new SimulationBridge({
+      seed: 1337,
+      aiOverrides: {
+        aiVerticalEnabled,
+        aiEngagementBoostEnabled,
+        aiTickRateExperimentEnabled,
+        aiRangePolicy,
+        aiSmoothingEnabled,
+        aiHysteresisEnabled,
+        aiVerticalDampingEnabled,
+      },
+      debug: shouldDebugWorkerSimulation(),
+    });
+
+    return () => {
+      simBridgeRef.current?.dispose();
+      simBridgeRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const bridge = simBridgeRef.current;
+    if (!bridge) return;
+    bridge.setAiOverrides({
+      aiVerticalEnabled,
+      aiEngagementBoostEnabled,
+      aiTickRateExperimentEnabled,
+      aiRangePolicy,
+      aiSmoothingEnabled,
+      aiHysteresisEnabled,
+      aiVerticalDampingEnabled,
+    });
+  }, [
+    aiVerticalEnabled,
+    aiEngagementBoostEnabled,
+    aiTickRateExperimentEnabled,
+    aiRangePolicy,
+    aiSmoothingEnabled,
+    aiHysteresisEnabled,
+    aiVerticalDampingEnabled,
+  ]);
 
   useEffect(() => {
     let cancelled = false;
