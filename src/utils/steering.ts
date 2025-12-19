@@ -1,4 +1,5 @@
 import { Quaternion, Vector3 } from 'three';
+import { clamp } from './math.js';
 
 /** Global forward vector (0, 0, 1). */
 export const FORWARD = new Vector3(0, 0, 1);
@@ -128,7 +129,7 @@ export function steerDirection(
  */
 export function clampAngle(angle: number, min: number, max: number): number {
   if (!Number.isFinite(angle)) {
-    return Math.min(Math.max(0, Math.min(min, max)), Math.max(min, max));
+    return clamp(0, Math.min(min, max), Math.max(min, max));
   }
   const twoPi = Math.PI * 2;
   let normalised = angle % twoPi;

@@ -1,3 +1,5 @@
+import { clamp } from '../utils/math.js';
+
 // Centralized world configuration
 // A cubic world sized WORLD_SIZE^3 centered at the origin.
 // Keep gameplay deterministic: no randomness here.
@@ -316,7 +318,7 @@ export const WORLD_BOUNDS_MARGIN = 2; // small margin to stay slightly within th
 export function clampToWorld(v: { x: number; y: number; z: number }): void {
   const min = -WORLD_HALF + WORLD_BOUNDS_MARGIN;
   const max = WORLD_HALF - WORLD_BOUNDS_MARGIN;
-  v.x = Math.min(Math.max(v.x, min), max);
-  v.y = Math.min(Math.max(v.y, min), max);
-  v.z = Math.min(Math.max(v.z, min), max);
+  v.x = clamp(v.x, min, max);
+  v.y = clamp(v.y, min, max);
+  v.z = clamp(v.z, min, max);
 }

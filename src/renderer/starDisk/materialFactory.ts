@@ -2,6 +2,7 @@ import { AdditiveBlending, ShaderMaterial, Texture, Vector3, Vector4 } from 'thr
 import fragmentShaderRaw from '../shaders/mainsequencestar.glsl';
 import vertexShader from '../shaders/starDisk.vertex.glsl';
 import { COMMON_GLSL } from '../shaders/index.js';
+import { clamp01 } from '../../utils/math.js';
 import {
   StarDiskBoundaryUniformInput,
   StarDiskHazeUniformInput,
@@ -139,7 +140,7 @@ export function updateMainSequenceStarUniforms(
     const safeX = Number.isFinite(update.viewAlignment.x) ? update.viewAlignment.x : 0;
     const safeY = Number.isFinite(update.viewAlignment.y) ? update.viewAlignment.y : 0;
     const safeZRaw = Number.isFinite(update.viewAlignment.z) ? update.viewAlignment.z : 1;
-    const safeZ = Math.min(Math.max(safeZRaw, 0), 1);
+    const safeZ = clamp01(safeZRaw);
     uniforms.iViewAlignment.value.set(safeX, safeY, safeZ);
   }
   const facingCosine = uniforms.iViewAlignment.value.z;
@@ -158,7 +159,7 @@ export function updateMainSequenceStarUniforms(
   );
   if (update.depthCoreRadius !== undefined) {
     const core = Number.isFinite(update.depthCoreRadius as number)
-      ? Math.min(Math.max(Number(update.depthCoreRadius), 0), 1)
+      ? clamp01(Number(update.depthCoreRadius))
       : 0;
     uniforms.iDepthCoreRadius.value = core;
   }

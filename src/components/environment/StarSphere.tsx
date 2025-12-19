@@ -10,6 +10,7 @@ import { useStarTextures } from '../../hooks/useStarTextures.js';
 import { useStarMaterial } from '../../hooks/useStarMaterial.js';
 import { updateMainSequenceStarUniforms } from '../../renderer/starDiskMaterial.js';
 import { isCopilotDebugEnabled } from '../../utils/copilotDebug.js';
+import { clamp, clamp01 } from '../../utils/math.js';
 import { reportMaterialError, reportWebGLError } from '../../utils/errorReporting.js';
 
 interface StarSphereProps {
@@ -132,9 +133,9 @@ export function StarSphere({
   // configured boundary.featherStart with a conservative offset.
   const boundaryStart = Number(boundary?.featherStart ?? fallbackBoundary?.featherStart ?? 0.88);
   const derivedDepthCoreRadius = depthCoreRadiusProp !== undefined
-    ? Math.min(Math.max(Number(depthCoreRadiusProp), 0), 1)
-    : Math.min(Math.max(boundaryStart - 0.12, 0.02), 0.95);
-  const depthMeshNormalized = Math.min(Math.max(derivedDepthCoreRadius, 0.02), 0.99);
+    ? clamp01(Number(depthCoreRadiusProp))
+    : clamp(boundaryStart - 0.12, 0.02, 0.95);
+  const depthMeshNormalized = clamp(derivedDepthCoreRadius, 0.02, 0.99);
   const depthMeshRadius = radius * depthMeshNormalized * 0.995;
 
   // Create a shader-driven DEPTH_PASS material when the shader material is

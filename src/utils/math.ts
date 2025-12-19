@@ -37,3 +37,17 @@ export function clampRatio(value: number): number {
   if (!Number.isFinite(value)) return 0;
   return Math.min(Math.max(value, 0), 1);
 }
+
+/**
+ * Calculates the shortest signed angle between two angles in radians.
+ *
+ * @param {number} from - The start angle.
+ * @param {number} to - The end angle.
+ * @returns {number} The shortest difference in [-PI, PI].
+ */
+export function shortestAngle(from: number, to: number): number {
+  let diff = to - from;
+  while (diff > Math.PI) diff -= 2 * Math.PI;
+  while (diff < -Math.PI) diff += 2 * Math.PI;
+  return diff;
+}

@@ -11,6 +11,7 @@ import type {
 import { AI_CONFIG, getEffectiveAIConfig } from '../../config.js';
 import { hashToInt } from './utils.js';
 import { computeEffectiveDesiredRange } from './hysteresis.js';
+import { clamp } from '../../../utils/math.js';
 // TEMP_RNG and resetTempRng are re-exported below for backward compatibility.
 // Avoid importing them here to prevent unused-variable lint errors.
 import { getForwardFromQuaternion } from '../../../utils/vector.js';
@@ -208,7 +209,7 @@ export function computeInterceptHeadingVector(
     }
   }
 
-  t = Math.min(Math.max(t, 0), 2.5);
+  t = clamp(t, 0, 2.5);
   const future = out.copy(target.transform.position).addScaledVector(targetVel, t);
   future.sub(ship.transform.position);
   if (future.lengthSq() < 1e-5) {

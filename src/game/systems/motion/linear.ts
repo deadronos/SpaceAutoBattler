@@ -2,6 +2,7 @@ import type { AICommand, ShipEntity } from '../../../types/index.js';
 import { getEffectiveStats } from '../../progression.js';
 import { TEMP_FORWARD, TEMP_RIGHT, TEMP_VELOCITY_CHANGE } from './sharedTemps.js';
 import { getForwardFromQuaternion, getRightFromQuaternion } from '../../../utils/vector.js';
+import { clamp } from '../../../utils/math.js';
 
 /**
  * Updates the linear velocity of a ship based on thrust and drag.
@@ -16,7 +17,7 @@ export function updateLinearMotion(ship: ShipEntity, command: AICommand, dt: num
 
   getForwardFromQuaternion(ship.transform.rotation, TEMP_FORWARD);
 
-  const clampedThrust = Math.max(-1, Math.min(1, command.thrust));
+  const clampedThrust = clamp(command.thrust, -1, 1);
   const forwardAccel = clampedThrust * motion.linearAcceleration;
   TEMP_VELOCITY_CHANGE.copy(TEMP_FORWARD).multiplyScalar(forwardAccel * dt);
   velocity.add(TEMP_VELOCITY_CHANGE);
@@ -24,7 +25,7 @@ export function updateLinearMotion(ship: ShipEntity, command: AICommand, dt: num
   let lateralAccel = 0;
   const maxStrafe = motion.maxLateralAcceleration ?? 0;
   if (maxStrafe > 0) {
-    const strafeInput = Math.max(-1, Math.min(1, command.strafe ?? 0));
+    const strafeInput = clamp(command.strafe ?? 0, -1, 1);
     if (Math.abs(strafeInput) > 1e-4) {
       lateralAccel = strafeInput * maxStrafe;
       getRightFromQuaternion(ship.transform.rotation, TEMP_RIGHT);

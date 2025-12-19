@@ -3,6 +3,7 @@ import type React from 'react';
 import type { ShipEntity, ProgressionEvent } from '../types/index.js';
 import { useOptionalGameState } from '../game/context.js';
 import { useUiStore } from '../game/uiStore.js';
+import { clamp } from '../utils/math.js';
 import './progression-panel.css';
 
 interface ProgressionPanelShip {
@@ -50,8 +51,6 @@ export function ProgressionPanel(): React.ReactElement | null {
       start: { x: 0, y: 0 },
       size: { x: 0, y: 0 },
     };
-
-    const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 
     const onMove = (e: PointerEvent) => {
       if (!drag.active) return;
@@ -175,7 +174,7 @@ function ShipProgressionCard({ ship }: { ship: ProgressionPanelShip }): React.Re
   useEffect(() => {
     const node = fillRef.current;
     if (!node) return;
-    const clamped = Math.min(100, Math.max(0, progressPercent));
+    const clamped = clamp(progressPercent, 0, 100);
     node.style.width = `${clamped}%`;
   }, [progressPercent]);
 
