@@ -4,8 +4,8 @@ The rewrite branch uses a small, explicit configuration surface focused on world
 
 ## World configuration (`src/game/config.ts`)
 
-- `WORLD_SIZE` — length of the cubic world edge (default: 4000). The world is centered at the origin.
-- `WORLD_HALF` — `WORLD_SIZE / 2` (±2000 with defaults).
+- `WORLD_SIZE` — length of the cubic world edge (default: 8000). The world is centered at the origin.
+- `WORLD_HALF` — `WORLD_SIZE / 2` (±4000 with defaults).
 - `WORLD_BOUNDS_MARGIN` — small inward margin used by clamping.
 - `clampToWorld(v)` — clamps a position `{x,y,z}` to stay within the world cube.
 - `CAMERA_DEFAULTS` — far/near, fov, and default camera position tuned for the large world.
@@ -32,7 +32,7 @@ These can be tuned directly in `Battlefield.tsx` if the world size is changed.
 
 ## Ship stats/scales
 
-`src/game/ships.ts` defines `SHIP_STATS`. All models are assumed to be authored at roughly 1:1 units, and each ship uses `scale: 1`. Colliders are adjusted in code (`capsule(0.8, 0.6)`) for consistent gameplay.
+`SHIP_STATS` is defined in `src/data/shipStats.ts` and re-exported from `src/game/ships.ts`. Ships use per-hull `stats.scale`, and colliders are currently created as a capsule (`halfHeight: 0.8`, `radius: 0.6`) in `spawnShip`.
 
 ---
 

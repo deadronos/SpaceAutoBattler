@@ -12,7 +12,7 @@ Diagnose and fix the ESLint errors reported by `npm run lint:fix`, covering unus
 
 - WHEN ESLint runs on the explosion effect updater modules, THE SYSTEM SHALL keep only the constants and parameters that are actually used so no `no-unused-vars` or `no-unused-args` violations remain. [Acceptance: `npm run lint` reports zero unused variable errors in `src/components/explosions/effectUpdaters/*.ts`.]
 - WHEN the hooks that drive renderer interpolation and thruster visuals compile, THE SYSTEM SHALL import the necessary React types and rely on browser-safe environment guards so lint/type checks pass without `no-undef` findings. [Acceptance: `npm run lint` produces no `no-undef` errors in `src/hooks/useShipInterpolation.ts` or `src/hooks/useShipThrusters.ts`.]
-- WHEN runtime config and AI harness utilities access shared state, THE SYSTEM SHALL avoid implicit Node globals and replace loosened `any` casts with typed helpers so linting finds no `no-undef` or `no-explicit-any` warnings in `src/game/config.ts`, `src/game/aiScenarioHarness.ts`, or `src/game/aiScenarioHarness/logging.ts`. [Acceptance: `npm run lint` and `npx tsc --noEmit` succeed without the flagged warnings in those files.]
+- WHEN runtime config and AI harness utilities access shared state, THE SYSTEM SHALL avoid implicit Node globals and replace loosened `any` casts with typed helpers so linting finds no `no-undef` or `no-explicit-any` warnings in `src/game/config.ts`, `test/support/aiScenarioHarness.ts`, or `test/support/aiScenarioHarness/logging.ts`. [Acceptance: `npm run lint` and `npx tsc --noEmit` succeed without the flagged warnings in those files.]
 
 ## Thought Process
 
@@ -48,18 +48,9 @@ Diagnose and fix the ESLint errors reported by `npm run lint:fix`, covering unus
 ### 2025-10-03
 
 - Task captured with initial requirements and plan; pending implementation.
-
-### 2025-10-03
-
 - Removed unused explosion updater imports and marked unused capacity parameters, clearing `no-unused-vars` failures.
 - Replaced `config.ts` lazy `require` with a typed global resolver and pruned unused tick constants.
 - Updated AI scenario harness diagnostics to reuse `IntentCandidate` typing and eliminated loose `any` casts.
 - Refactored dev shader compile/interpolation/thruster hooks to rely on explicit React types and browser-safe env checks; tightened thruster material typing.
-
-### 2025-10-03
-
 - Ran `npx tsc --noEmit` and `npm run lint`; both succeed after the refactors, confirming the lint breakages are resolved.
-
-### 2025-10-03
-
 - Final verification: `npx tsc --noEmit` and `npm run lint` both succeed; task closed.

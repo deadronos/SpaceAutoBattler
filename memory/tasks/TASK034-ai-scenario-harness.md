@@ -20,5 +20,5 @@
 
 ## Notes
 
-- `src/game/aiScenarioHarness.ts` + `test/vitest/ai-scenario-harness.spec.ts` cover the escort intercept baseline; fixture stored at `test/vitest/fixtures/ai-escort-scenario.json`.
+- `test/support/aiScenarioHarness.ts` + `test/vitest/ai-scenario-harness.spec.ts` cover the escort intercept baseline; fixture stored at `test/vitest/fixtures/ai-escort-scenario.json`.
 - HUD overlay capture remains a follow-up — document manual expectations in `docs/ai-v2-rollout.md`.

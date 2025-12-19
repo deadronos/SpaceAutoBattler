@@ -4,6 +4,16 @@
 
 SpaceAutoBattler is a lightweight, research-oriented 3D space combat simulator. The project separates deterministic simulation logic (pure game logic under `src/game`) from rendering and UI (`src/components`, `App.tsx`) so you can run headless tests and fast experiments.
 
+## Tech stack
+
+- TypeScript + React 19
+- Rendering: React Three Fiber (`@react-three/fiber`) + Drei + Three.js
+- Physics: Rapier (`@dimforge/rapier3d-compat`)
+- ECS: Miniplex
+- UI state: Zustand
+- Tooling: webpack, ESLint, Prettier
+- Tests: Vitest (unit/integration) and Playwright (E2E/visual)
+
 ## Quick start
 
 Clone, install dependencies, then either run the dev server (fast feedback) or build and serve the production bundle:
@@ -26,14 +36,14 @@ npm run serve
 npm run serve:root
 ```
 
-Open the local server at http://localhost:8080 (or the URL printed by the serve script).
+Open the local server at <http://localhost:8080> (or the URL printed by the serve script).
 
 ### Documentation
 
 - **Architecture Overview**: [`ARCHITECTURE.md`](ARCHITECTURE.md) — High-level system design, architectural principles, directory structure, core concepts, and data flow patterns
 - **Source Structure**: [`spec/src-structure.md`](spec/src-structure.md) — Detailed file-by-file breakdown of the `src/` directory
 - **Motion System**: [`spec/spec-physical-movement.md`](spec/spec-physical-movement.md) — Deterministic ship movement, renderer interpolation, and banking behavior specifications
-- **Inline Documentation**: All source files (`src/**/*.ts` and `src/**/*.tsx`) are fully documented with JSDoc comments. Hover over symbols in your IDE to see usage details, parameters, and return types.
+- **Inline Documentation**: Many core modules include JSDoc comments. Hover over symbols in your IDE to see usage details, parameters, and return types.
 
 ## Project layout
 
@@ -45,6 +55,8 @@ Edit TypeScript sources in `src/` only. Key folders:
 - `src/components/` — React / R3F components for rendering (Ship, Projectile, HUD)
 - `src/types/` — canonical types including `GameState` (single source of runtime state types)
 - `src/utils/` — seeded RNG and shared helpers
+- `src/data/` — data tables (for example ship stats)
+- `src/worker/` — optional worker-simulation protocol and transforms layout helpers
 - `src/styles/` and `src/ui.html` — minimal UI templates and global styles
 
 Build artifacts and generated files live in `dist/` (do not edit).

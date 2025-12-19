@@ -1,6 +1,6 @@
 # Source (src) structure
 
-Updated on: 2025-09-30
+Updated on: 2025-12-19
 
 This document lists the files and folders under `src/` with a concise
 purpose summary for each entry. It's intended to help new contributors find
@@ -118,20 +118,34 @@ key exports, and any notable dependencies or behaviors.
 
 - `AGENTS.md` — Agents guide for the game simulation layer.
 - `README.md` — World configuration and setup notes.
+- `SimulationBridge.ts` — Worker simulation bridge (feature-flagged); streams snapshots to the renderer.
 - `progression.ts` — Ship progression system (XP, levels, subsystems).
+- `progression/` — Progression helpers and subsystem implementations.
 - `metrics.ts` — AI decision and performance metrics tracking.
+- `metrics/` — Metrics helpers and aggregation utilities.
 - `explosions.ts` — Explosion event management and pooling.
 - `context.tsx` — React context for `GameState` provider.
 - `config.ts` — World bounds, AI flags, and simulation parameters.
-- `ships.ts` — Ship stats, spawning, and blueprint handling.
+- `ships.ts` — Ship creation/spawning; turret setup; re-exports `SHIP_STATS`.
+- `createGameState.ts` — Constructs the canonical `GameState` (Rapier init, ECS queries, RNG seed).
+- `entityLifecycle.ts` — `destroyEntity` / `disposeGameState` cleanup utilities.
+- `spawnFleets.ts` — `spawnInitialFleets` / `spawnRandomShip` implementation.
+- `resetGame.ts` — `resetGame` plus `requestReset` (post-physics scheduling).
+- `simulationQueue.ts` — Deferred mutation queues, diagnostics recording, debug snapshot publishing.
+- `safeSnapshot.ts` — Defensive snapshot used by subsystem guards.
+- `subsystems.ts` — Shared subsystem naming/helpers for profiling and diagnostics.
 - `aiTraits.ts` — Deterministic AI trait generation from seeds.
-- `aiScenarioHarness.ts` — _Moved to `test/support/aiScenarioHarness.ts`; `src/` no longer ships the harness runtime._
-- `state.ts` — `GameState` creation, disposal, and fleet spawning.
+- `aiDoctrine.ts` — AI doctrine state and defaults.
+- `aiState.ts` — AI state helpers and initialization.
+- `state.ts` — Barrel exports for `GameState` lifecycle (create/dispose/spawn/reset); implementations live in the modules above.
 - `validation.ts` — Motion stats validation utilities.
 - `uiStore.ts` — Zustand store for UI state (pause, toggles).
 - `turretRegistry.ts` — Turret entity registration and cleanup.
-- Harness utilities (`integration.ts`, `types.ts`, `metricsSummary.ts`, `logging.ts`, `aiDefaults.ts`, `rapierShim.ts`, `stateFactory.ts`,
-  `shipFactory.ts`) now live under `test/support/aiScenarioHarness/` alongside deterministic fixtures.
+
+- `combat/` — Combat helpers and coordination utilities.
+- `physics/` — Rapier integration utilities and safe mutation helpers.
+- `systems/` — Per-tick simulation systems and AI decision logic.
+- `utils/` — Small deterministic helpers used by simulation modules.
 
 - `aiProfiles.ts` — AI profile presets and deterministic seeds used by
   scenario harnesses and tests.

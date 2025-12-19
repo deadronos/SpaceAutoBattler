@@ -11,14 +11,14 @@ This index lists the short searchable memory summaries generated for the `src/` 
 
 ## Per-file memories
 
-- [core-gameState.md](./core-gameState.md) — `src/game/state.ts` (GameState factory, Rapier init, entity lifecycle helpers like createGameState, destroyEntity, spawnInitialFleets).
+- [core-gameState.md](./core-gameState.md) — `src/game/state.ts` (barrel exports for GameState lifecycle; implementations in `createGameState.ts`, `entityLifecycle.ts`, `spawnFleets.ts`, `resetGame.ts`).
 - [core-systems.md](./core-systems.md) — `src/game/systems.ts` (simulation step ordering: prepareShips, advanceProjectiles, syncTransforms, resolveProjectiles; AI decision ordering and exported test hooks).
 - [core-ships.md](./core-ships.md) — `src/game/ships.ts` (SHIP_STATS, spawnShip, turret ECS creation and registration, progression seeding, range variance logic).
 - [core-physics.md](./core-physics.md) — `src/game/state.ts` & `src/game/systems.ts` (Rapier initialization, main-thread stepping, pending reset semantics with `requestReset`).
 - [core-assets.md](./core-assets.md) — `src/utils/patchGltfLoader.ts` and `src/assets/ships.ts` (GLTF loader guard and model asset mappings used by renderer; `patchGltfLoader` imported in `main.tsx`).
 - [core-rng.md](./core-rng.md) — `src/utils/rng.ts` (seeded deterministic RNG used by simulation and spawn randomization).
 - [core-aiProfiles.md](./core-aiProfiles.md) — `src/game/aiProfiles.ts` (behavior profile definitions + hull-to-profile mapping for AI v2).
-- [core-aiScenarioHarness.md](./core-aiScenarioHarness.md) — `src/game/aiScenarioHarness.ts` (headless scenario runner feeding deterministic AI command logs and fixtures).
+- [core-aiScenarioHarness.md](./core-aiScenarioHarness.md) — `test/support/aiScenarioHarness.ts` (headless scenario runner feeding deterministic AI command logs and fixtures; test-only).
 
 - [projectbrief.md](./projectbrief.md) — Project brief describing goals, constraints, and success criteria.
 - [productContext.md](./productContext.md) — Users, stakeholders, and high-level assumptions.
