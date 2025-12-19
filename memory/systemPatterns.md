@@ -12,13 +12,15 @@ Overview
 
 Common patterns
 
-- createGameState()/disposeGameState() factory: `src/game/state.ts` provides lifecycle for Rapier world, Miniplex world, and seeded RNG. `createGameState()` calls `Rapier.init({})`, constructs `physicsWorld` and `eventQueue`, applies small Miniplex backwards-compatible shims (`createEntity`/`destroyEntity`/`archetype`), creates `state.turretsByShip` (Map) for efficient turret cascade removal, and initialises `state.rng = new SeededRng(1337)` and the `simulation` clock (`step = 1/20`, `maxSubSteps = 5`, `lastTickDuration = 1/20`).
+- GameState lifecycle via barrel exports: `src/game/state.ts` re-exports `createGameState`, `disposeGameState`, `destroyEntity`, `spawnInitialFleets`, and reset helpers. Implementations live in `src/game/createGameState.ts`, `src/game/entityLifecycle.ts`, `src/game/spawnFleets.ts`, and `src/game/resetGame.ts`.
+- GameState init defaults: `createGameState()` calls `Rapier.init({})`, constructs `physicsWorld` and an `eventQueue` with `{ auto: true }`, creates `state.turretsByShip = new Map()`, and initialises `state.rng = new SeededRng(1337)` and `state.simulation` (fixed step `1/20`, `maxSubSteps = 5`, plus profiling/guard flags and `subsystemTimings`).
 - Systems composition: `src/game/systems.ts` composes small, focused functions (prepareShips, advanceProjectiles, syncTransforms, resolveProjectiles) executed each tick via `updateGame(state, delta)`.
 - Safe mutation pattern: Use `state.simulation.deferredMutations` and `state.simulation.postStepMutations` and the helpers in `src/game/simulationQueue.ts` to schedule Rapier-sensitive operations and avoid in-step mutations.
 - Seeded RNG: The `SeededRng` (see `src/utils/rng.ts`) is a Lehmer-style generator. Use the provided helpers (`reset(seed)`, `next()`, `range(min,max)`, `int(min,max)`, `pick(values)`, `normal(mean, stdDev)`) for all simulation randomness to ensure replay determinism.
 - Safe kinematics helpers: Prefer `src/game/physics/safeKinematics.ts` wrappers when writing kinematic transforms from systems that may run during physics steps.
 - Testing hooks: Decision and AI subsystems expose test helpers (e.g., `__aiTestHooks`) and exported tick runners so unit tests can assert internal scoring and tie-break behavior without widening the public API.
 - Per-entity buffers: Ship entities maintain a small `shieldRipples` buffer for renderer-driven visual ripples; capped length to avoid unbounded memory growth.
+- Optional worker simulation: a feature-flagged `SimulationBridge` can run simulation ticks in a Web Worker and stream snapshots back to the renderer. When worker render-only mode is active, `BattlefieldSystems` skips main-thread ticking.
 
 Testing & CI
 

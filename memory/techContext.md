@@ -5,8 +5,8 @@ Tech stack and notable dependencies:
 - TypeScript (strict) — source in `src/` and unit tests in `test/` (Vitest).
 - React 19 + React Three Fiber + Drei — renderer and scene graph management.
 - Three.js — underlying 3D engine; always dispose resources you create.
-- Rapier3D — deterministic physics on the main thread (stepped in R3F `useFrame`). `createGameState()` calls `Rapier.init({})` and constructs a `new Rapier.World({ x:0,y:0,z:0 })` and `new Rapier.EventQueue({ auto: true })`. The project uses deferred mutation queues and safe kinematic wrappers (`src/game/simulationQueue.ts`, `src/game/physics/safeKinematics.ts`) to avoid in-step Rapier mutable-borrow errors.
-- Miniplex — lightweight ECS for entity management and queries (v2 shim helpers applied in `createGameState()` for compatibility). `createGameState()` also applies small backwards-compat shims so older code calling `createEntity`/`destroyEntity`/`archetype` still works with the newer `add`/`remove`/`with` API.
+- Rapier3D — deterministic physics (stepped from the simulation loop). `createGameState()` calls `Rapier.init({})` and constructs a `new Rapier.World({ x:0,y:0,z:0 })` and `new Rapier.EventQueue({ auto: true })`. The main loop calls `state.physicsWorld.step()` (no explicit eventQueue passed) because the auto-managed queue is owned by Rapier and passing it can trigger recursive-use errors. Deferred mutation queues and safe kinematic wrappers (`src/game/simulationQueue.ts`, `src/game/physics/safeKinematics.ts`) are used to avoid in-step Rapier mutable-borrow errors.
+- Miniplex — lightweight ECS for entity management and queries; systems use `world.with(...)` queries and operate on plain JS objects typed as `GameEntity`.
 - Zustand — UI store (pause, timeScale).
 - Vitest — unit testing framework.
 - Playwright — end-to-end and visual regression testing; specs live under `test/playwright/` and baselines are captured to `playwright-debug/` or `playwright-report/`.
@@ -18,6 +18,9 @@ Developer workflow notes:
 - Optional static analysis: `pyright` is added to `devDependencies` to enable fast static checks; use `npx pyright` as needed for IDE/linting assistance.
 - For physics-related features, consult `src/game/simulationQueue.ts` and `src/game/physics/safeKinematics.ts` to ensure safe mutation patterns and diagnostic recording.
 - Rapier diagnostics are recorded to `state.simulation.rapierDiagnostics` to help triage guard trips and step panics in both tests and Playwright captures.
+- Simulation can be driven in two modes:
+  - Main thread: `src/components/BattlefieldSystems.tsx` advances fixed-step ticks inside R3F `useFrame`.
+  - Worker (feature-flagged): `src/game/SimulationBridge.ts` can run ticks in a Web Worker and stream snapshots; when render-only mode is active, the main-thread tick is skipped.
 - E2E/visual tests can be run via `npm run test:playwright` (see `playwright.config.cjs` for configuration).
 - Use `src/game/ships.ts` and `src/config/renderer.ts` for tuning ship stats and shield visuals.
 - Keep all runtime state on `GameState` (`src/types/index.ts`).

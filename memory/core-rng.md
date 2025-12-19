@@ -20,7 +20,7 @@ Implementation notes (authoritative)
 - Public API:
   - `constructor(seed: number)` — creates the RNG and calls `reset(seed)`.
   - `reset(seed: number): void` — sets internal state, normalized to a non-zero unsigned int.
-  - `next(): number` — returns a deterministic float in (0, 1].
+  - `next(): number` — returns a deterministic float in [0, 1).
   - `range(min: number, max: number): number` — returns a continuous number between min (inclusive) and max (exclusive).
   - `int(min: number, max: number): number` — returns an integer sampled between min and max, inclusive.
   - `pick<T>(values: readonly T[]): T` — returns an item from the array using a seeded index.

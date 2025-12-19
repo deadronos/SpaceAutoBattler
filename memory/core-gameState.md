@@ -6,7 +6,7 @@ Last-Reviewed: 2025-10-03
 
 Summary:
 
-- Location: `src/game/state.ts`.
+- Location: `src/game/state.ts` (barrel exports; implementations in `src/game/createGameState.ts`, `src/game/entityLifecycle.ts`, `src/game/spawnFleets.ts`, `src/game/resetGame.ts`).
 - Purpose: Canonical GameState factory, lifecycle helpers, and the single source of truth for all runtime simulation data used by systems, tests, and the renderer.
 
 Primary exports and responsibilities:
@@ -14,7 +14,8 @@ Primary exports and responsibilities:
 - `createGameState(): Promise<GameState>`
   - Initializes Rapier (`await Rapier.init({})`), constructs the Rapier `World` and `EventQueue` (created with `{ auto: true }`), a Miniplex ECS world, and returns a fully-formed `GameState` object ready for use.
   - Instantiates a deterministic RNG on the state: `state.rng = new SeededRng(1337)` by default.
-  - Creates `state.queries` (ships, projectiles, turrets) and the `simulation` bookkeeping used for fixed-step integration.
+  - Creates `state.queries` (ships, shipsWithCommands, projectiles, turrets) and the `simulation` bookkeeping used for fixed-step integration.
+  - Notes on Rapier stepping: `EventQueue({ auto: true })` is owned by Rapier and the main loop calls `state.physicsWorld.step()` (no explicit `eventQueue` argument) to avoid recursive-use errors.
 
 - `disposeGameState(state: GameState): void`
   - Safely tears down the Rapier world, disposes resources and destroys ECS entities via `destroyEntity` to avoid leaking physical bodies or render resources.
@@ -31,7 +32,7 @@ Key runtime fields and patterns (authoritative)
   - The canonical seeded RNG `state.rng` provides deterministic randomness for spawning, weapon-range variance, AI tie-breakers, etc. Tests should set/reset the RNG when producing golden fixtures.
 
 - Simulation clock & queues
-  - `state.simulation` contains: `step` (fixed step duration), `accumulator`, `maxSubSteps`, `alpha`, `lastTickIndex`, `lastTickStart`, `lastTickDuration`, and two mutation queues: `deferredMutations` (pre-physics flush) and `postStepMutations` (post-physics flush).
+  - `state.simulation` contains: `step` (fixed step duration), `accumulator`, `maxSubSteps`, `alpha`, `lastTickIndex`, `lastTickStart`, `lastTickDuration`, profiling/guard flags (`profileSubsystems`, `profileSampleRate`, `enableSubsystemGuards`), `subsystemTimings`, and two mutation queues: `deferredMutations` (pre-physics flush) and `postStepMutations` (post-physics flush).
   - Systems enqueue expensive or Rapier-sensitive operations (spawn/despawn, collider changes) into these queues to avoid Rapier mutable-borrow panics during iteration.
 
 - Rapier integration and diagnostics

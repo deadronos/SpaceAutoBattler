@@ -4,10 +4,10 @@ This document summarizes recent analysis and recommended experiments to increase
 
 ## Key findings
 
-- AI V2 flattens commanded headings to the horizontal plane in the low-level steering: see `executeAICommand(...)` in `src/game/systems.ts` where the heading is forced to a yaw-only vector (Y component zeroed). Additionally `updateAngularMotion(...)` in `src/game/systems/motion.ts` projects headings to XZ when computing yaw.
-- Spawns are not strictly 2D — `spawnInitialFleets` and `spawnRandomShip` (in `src/game/state.ts`) already sample Y from the seeded `SeededRng`, but the effective vertical spread is modest relative to `WORLD_SIZE`.
-- Ship mobility tuning lives in `src/game/ships.ts` (`SHIP_STATS.<hull>.motion`) and AI behavior profiles in `src/game/aiProfiles.ts` (fields: `desiredRange`, `aggression`, `patience`, `orbit`, `dodgeFreq`).
-- The world cube size and clamping are controlled by `WORLD_SIZE`/`WORLD_HALF` and `clampToWorld(...)` in `src/game/config.ts` (current `WORLD_SIZE = 4000`).
+- AI V2 steering is yaw-only (ships don't pitch/roll), but vertical maneuvering is supported behind `AI_CONFIG.verticalEnabled` (see `src/game/config.ts`). Command execution is in `src/game/systems/shipControl/` (`executeAICommand(...)` delegates to `executeShipAi(...)` and `applyShipMovement(...)`).
+- Spawns are not strictly 2D — `spawnInitialFleets` and `spawnRandomShip` (exported from `src/game/state.ts`, implemented in `src/game/spawnFleets.ts`) sample Y from the seeded `SeededRng`. Vertical dispersion is scaled by `SPAWN_CONFIG.verticalSpreadFactor`.
+- Ship mobility tuning lives in `src/data/shipStats.ts` (re-exported as `SHIP_STATS` from `src/game/ships.ts`) and AI behavior profiles in `src/game/aiProfiles.ts` (fields: `desiredRange`, `aggression`, `patience`, `orbit`, `dodgeFreq`).
+- The world cube size and clamping are controlled by `WORLD_SIZE`/`WORLD_HALF` and `clampToWorld(...)` in `src/game/config.ts` (current `WORLD_SIZE = 8000`).
 
 ## Why both fleets "hold" (probable causes)
 
@@ -27,7 +27,7 @@ This document summarizes recent analysis and recommended experiments to increase
 
 1. Low-risk visual verticality (fast)
 
-- Option: preserve heading.y for linear movement while keeping rotation yaw-only. Implement behind `AI_CONFIG.allowVerticalMovement` toggle.
+- Option: flip `AI_CONFIG.verticalEnabled` (or override via the UI store `aiVerticalEnabled`) to validate whether the current intent generation produces visible altitude variation.
 
 - Effect: ships will move vertically (3D crossing) with minimal control changes.
 
@@ -51,15 +51,13 @@ This document summarizes recent analysis and recommended experiments to increase
 
 1. Spawn spacing & vertical spread (medium)
 
-- File: `src/game/state.ts`
+- Files: `src/game/config.ts` (`SPAWN_CONFIG`) and `src/game/spawnFleets.ts` (how spacing is derived)
 
 - Changes:
 
-- `baseSpacing`: try reducing to `WORLD_HALF * 0.08` to bring fleets closer.
-
-- `anchorX`: reduce from `WORLD_HALF * 0.35` → `WORLD_HALF * 0.25`.
-
-- `verticalSpread`: increase from `WORLD_HALF * 0.12` → `WORLD_HALF * 0.18` to increase altitude variance.
+- `SPAWN_CONFIG.initialSeparationFactor`: decrease to bring fleets closer initially (note: it's multiplied by max weapon range).
+- `SPAWN_CONFIG.verticalSpreadFactor`: increase to expand altitude variance (scaled by `WORLD_HALF`).
+- `SPAWN_CONFIG.anchorYRandomization`: toggle to decide whether each team gets a different altitude anchor.
 
 1. Increase AI reactivity (low risk)
 
@@ -82,7 +80,7 @@ All experiments should be run deterministically (same SeededRng seed) for before
 
 ## Minimal rollback-safe change to try first
 
-- Add `AI_CONFIG.allowVerticalMovement` boolean and, when true, skip the line that overwrites `heading.y = 0` in `executeAICommand`. This gives immediate visible altitude behavior while retaining yaw-only rotation and is reversible.
+- Use the existing `AI_CONFIG.verticalEnabled` experiment toggle (or set `useUiStore().aiVerticalEnabled`) to compare deterministic runs with vertical maneuvers on vs off. This gives immediate, reversible altitude behavior without adding new config fields.
 
 ## Next steps
 

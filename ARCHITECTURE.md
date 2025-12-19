@@ -18,7 +18,7 @@ SpaceAutoBattler is a deterministic 3D space combat simulator built with strict 
 
 ### 2. Simulation/Renderer Separation
 
-```
+```text
 ┌─────────────────────────────────────────────────────────┐
 │                    Presentation Layer                    │
 │   React Components + R3F + Three.js (src/components/)   │
@@ -41,7 +41,7 @@ SpaceAutoBattler is a deterministic 3D space combat simulator built with strict 
 - **Library**: Miniplex v2 (lightweight ECS)
 - **Entity Management**: `state.world` manages all entities (ships, projectiles, turrets)
 - **Queries**: Systems use archetype queries to efficiently process entities
-- **Lifecycle**: `createEntity()` / `destroyEntity()` helpers ensure proper cleanup
+- **Lifecycle**: Entities are typically created via domain helpers (e.g., ship/projectile spawners) and removed via `destroyEntity(state, entity)` to ensure physics resources and lookup maps are cleaned up.
 
 ### 4. Physics Integration
 
@@ -52,7 +52,7 @@ SpaceAutoBattler is a deterministic 3D space combat simulator built with strict 
 
 ## High-Level Directory Structure
 
-```
+```text
 src/
 ├── main.tsx                  # Application entry point, React bootstrap
 ├── App.tsx                   # Top-level React component, canvas + HUD
@@ -249,20 +249,20 @@ rng.normal(mean, stdDev); // Gaussian distribution (Box-Muller)
 
 The `updateGame(state, delta)` function in `src/game/systems.ts` orchestrates the simulation:
 
-1. **Preparation**: Process deferred mutations, update AI blackboards
-2. **Physics Step**: Rapier world steps forward (`physicsWorld.step()`)
-3. **Systems Execution**: Sequential system updates
-   - Motion system: Integrate velocities, update transforms
-   - Sensors: Update target tracking
-   - Ship control: Execute AI decisions, apply thrust/weapons
-   - Combat: Resolve engagements, arbitrate targets
-   - Projectiles: Update trajectories, detect collisions
-   - Carriers: Manage fighter launches and recoveries
-   - Turrets: Update turret states and firing
-4. **Post-Step**: Apply post-step mutations, sync renderer data
-5. **Cleanup**: Process entity destruction, explosion events
+1. **AI decisions**: `updateDecisionSystem` refreshes the blackboard and selects intents/commands.
+2. **Ship control**: `prepareShips` executes AI commands and applies per-ship bookkeeping.
+3. **Carriers**: `updateCarrierLaunchSystem` schedules launches via deferred mutation queues.
+4. **Turrets**: `updateTurrets` aims/fires and updates turret lifecycle state.
+5. **Motion**: `updateMotionSystem` computes velocities and enqueues kinematic updates.
+6. **Projectiles (pre-step)**: `advanceProjectiles` advances non-physics projectile motion.
+7. **Deferred flush (pre-physics)**: `flushDeferredMutations` runs queued safe mutations.
+8. **Physics step**: Rapier advances via `physicsWorld.step()`.
+9. **Deferred flush (post-physics)**: `flushPostPhysicsMutations` runs post-step mutations.
+10. **Sync**: `syncTransforms` copies Rapier transforms back to ECS components.
+11. **Damage**: `resolveProjectiles` applies hits, shields, and enqueues entity removal.
+12. **Explosions**: `updateExplosions` advances explosion lifecycles for the renderer.
 
-Each system is a pure function reading and updating `GameState`.
+When enabled, the loop can wrap subsystems in guards (to record diagnostics and continue) and sample per-subsystem timings.
 
 ### Physics Integration (Rapier3D)
 
@@ -275,17 +275,19 @@ Each system is a pure function reading and updating `GameState`.
 **Safe Mutation Pattern**:
 
 ```typescript
-import { scheduleDeferredMutation } from './simulationQueue';
+import { enqueueDeferredMutation } from './simulationQueue';
+import { deferSetNextKinematicTranslation } from './physics/safeKinematics';
 
 // Instead of directly mutating:
 // rigidbody.setTranslation({ x, y, z }); // ❌ May panic mid-step
 
-// Use deferred mutation:
-scheduleDeferredMutation(state, {
-  type: 'setTranslation',
-  rigidbody,
-  position: { x, y, z },
-}); // ✅ Applied safely between steps
+// Option A: enqueue an arbitrary safe mutation:
+enqueueDeferredMutation(state, () => {
+  rigidbody.setNextKinematicTranslation({ x, y, z });
+});
+
+// Option B: prefer the dedicated safe wrappers for common Rapier setters:
+deferSetNextKinematicTranslation(state, rigidbody, x, y, z);
 ```
 
 Helpers in `src/game/physics/safeKinematics.ts` wrap common operations.
@@ -294,7 +296,7 @@ Helpers in `src/game/physics/safeKinematics.ts` wrap common operations.
 
 **Architecture**: Intent-based AI with blackboard pattern
 
-```
+```text
 Decision Flow:
   1. Blackboard updates (shared AI state)
   2. Intent generation (combat, tactical, formation)
@@ -314,7 +316,7 @@ Decision Flow:
 
 **R3F Integration**: React Three Fiber wraps Three.js in React components
 
-```
+```text
 Battlefield.tsx (Canvas root)
   ├─ Lighting setup
   ├─ BattlefieldSystems (simulation loop integration)
@@ -341,8 +343,8 @@ Battlefield.tsx (Canvas root)
 **Lifecycle**:
 
 1. Damage/destruction triggers explosion event in simulation
-2. Event stored in `state.explosionEvents` queue
-3. `ExplosionRenderer` consumes events, spawns instanced effects
+2. Event stored in `state.explosions` and advanced each tick by `updateExplosions`
+3. `ExplosionRenderer` reads `state.explosions` and spawns/updates instanced effects
 4. `DynamicLightManager` creates transient point lights
 5. Particles (debris, sparks, flash) updated each frame
 6. Effects expire after configured lifetime
@@ -573,7 +575,7 @@ npm run bench:projectiles # Projectile stress benchmark
 ### ✅ Do
 
 - Use `state.rng` for all simulation randomness
-- Schedule physics mutations via `scheduleDeferredMutation()`
+- Schedule physics mutations via `enqueueDeferredMutation()` / `enqueuePostPhysicsMutation()` or the safe kinematic wrappers (`defer*` / `post*`)
 - Store all state in `GameState`
 - Edit source files in `src/` only
 - Run `npm run typecheck && npm test` before committing

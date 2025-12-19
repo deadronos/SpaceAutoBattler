@@ -133,7 +133,7 @@ Phase 8 — Intercept & Reposition — DONE
 
 Phase 9 — Scenario Harness & Visual QA — DONE
 
-- Implemented `src/game/aiScenarioHarness.ts` headless runner plus golden log fixture (`ai-escort-scenario.json`) exercised by `ai-scenario-harness.spec.ts`. Harness integrates simple kinematics and posture logging for reproducible QA traces.
+- Implemented `test/support/aiScenarioHarness.ts` headless runner plus golden log fixture (`ai-escort-scenario.json`) exercised by `ai-scenario-harness.spec.ts`. Harness integrates deterministic simulation stepping and posture logging for reproducible QA traces.
 - Docs/memory refreshed with harness usage; HUD overlay capture remains manual follow-up but harness provides deterministic baseline for QA.
 
 Phase 10 — Rollout & Automation — DONE
