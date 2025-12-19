@@ -7,7 +7,7 @@
 
 ## Edit Scope
 
-- Modify source only under `src/` (TypeScript). Never touch `dist/` artifacts or generated files unless explicitly asked.
+- Never touch `dist/` artifacts or generated files unless explicitly asked.
 - Keep runtime state changes aligned with the canonical `GameState` defined in `src/types/index.ts`; avoid new module-level state.
 - Preserve deterministic behavior by using the seeded RNG utilities in `src/utils/rng.ts` for any simulation or AI randomness.
 

@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import { useGameState } from '../game/context.js';
 import { updateGame } from '../game/systems.js';
 import { useUiStore } from '../game/uiStore.js';
+import { shouldRenderWorkerShipsOnly } from '../game/SimulationBridge.js';
 
 export const MAX_ALLOWED_SIMULATION_SUBSTEPS = 5;
 
@@ -27,10 +28,16 @@ export function BattlefieldSystems(): React.ReactElement {
   const state = useGameState();
   const paused = useUiStore((s) => s.paused);
   const timeScale = useUiStore((s) => s.timeScale);
+  const disableMainTick = shouldRenderWorkerShipsOnly();
 
   useFrame((_, delta) => {
     state.paused = paused;
     state.timeScale = timeScale;
+
+    if (disableMainTick) {
+      state.simulation.alpha = 0;
+      return;
+    }
 
     if (paused) {
       state.simulation.alpha = 0;

@@ -46,7 +46,7 @@ export default (env = {}, argv) => {
     output: {
       path: path.resolve(__dirname, 'dist'),
       filename: isProd ? '[name].[contenthash].js' : '[name].js',
-      chunkFilename: isProd ? 'workers/[name].[contenthash].js' : 'workers/[name].js',
+      chunkFilename: isProd ? '[name].[contenthash].js' : '[name].js',
       clean: true,
       publicPath: './'
     },
@@ -190,32 +190,11 @@ export default (env = {}, argv) => {
       splitChunks: {
         chunks: 'all',
         cacheGroups: {
-          // Instead of extracting Rapier into its own shared chunk, prefer
-          // bundling Rapier into the same chunk that imports it (for example
-          // the sim worker chunk). This avoids cross-chunk initialization
-          // ordering issues where Rapier's runtime may not be fully ready
-          // when a different chunk tries to use it.
-          rapierInImporterChunk: {
+          rapier: {
             test: /[\\/]node_modules[\\/]@dimforge[\\/]rapier3d-compat[\\/]/,
-            // Use the importing chunk's name when available so rapier ends up
-            // in the same emitted file as the importer (worker).
-            name(module, chunks, cacheGroupKey) {
-              try {
-                if (Array.isArray(chunks) && chunks.length > 0) {
-                  // Prefer the first chunk's name if present
-                  const first = chunks.find((c) => typeof c.name === 'string' && c.name.length > 0);
-                  if (first && typeof first.name === 'string') return first.name;
-                }
-              } catch (_e) {
-                /* ignore and fall back */
-              }
-              // Fallback name: keep rapier as a dedicated chunk if necessary
-              return cacheGroupKey;
-            },
+            name: 'rapier',
             chunks: 'all',
-            priority: 60,
-            enforce: true,
-            reuseExistingChunk: true
+            priority: 40
           },
           three: {
             test: /[\\/]node_modules[\\/]three[\\/]/,
@@ -230,7 +209,12 @@ export default (env = {}, argv) => {
             priority: 20
           },
           vendors: {
-            test: /[\\/]node_modules[\\/]/,
+            test: (module) => {
+              const resource = module && module.resource;
+              if (typeof resource !== 'string') return false;
+              if (!resource.includes(`${path.sep}node_modules${path.sep}`)) return false;
+              return !resource.includes(`${path.sep}@dimforge${path.sep}rapier3d-compat${path.sep}`);
+            },
             name: 'vendors',
             chunks: 'all',
             priority: -10
