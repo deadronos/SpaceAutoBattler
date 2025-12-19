@@ -4,6 +4,7 @@ import { Vector3 } from 'three';
 import type { ShipEntity, StatusEffectTag } from '../types/index.js';
 import { useGameState } from '../game/context.js';
 import { useUiStore } from '../game/uiStore.js';
+import { clamp01 } from '../utils/math.js';
 import { useHudOverlayStore, type ShipHudOverlaySnapshot } from '../renderer/hudOverlayStore.js';
 
 const tmpPosition = new Vector3();
@@ -78,7 +79,7 @@ function safeRatio(value: number, max: number): number {
   if (!Number.isFinite(value) || !Number.isFinite(max) || max <= 0) {
     return 0;
   }
-  return Math.min(Math.max(value / max, 0), 1);
+  return clamp01(value / max);
 }
 
 function resolveStatusEffects(ship: ShipEntity, shieldRatio: number): StatusEffectTag[] {

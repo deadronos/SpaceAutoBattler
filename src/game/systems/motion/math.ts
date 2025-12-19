@@ -1,16 +1,4 @@
-/**
- * Calculates the shortest signed angle between two angles in radians.
- *
- * @param {number} from - The start angle.
- * @param {number} to - The end angle.
- * @returns {number} The shortest difference in [-PI, PI].
- */
-export function shortestAngle(from: number, to: number): number {
-  let diff = to - from;
-  while (diff > Math.PI) diff -= 2 * Math.PI;
-  while (diff < -Math.PI) diff += 2 * Math.PI;
-  return diff;
-}
+export { shortestAngle } from '../../../utils/math.js';
 
 /**
  * Calculates a damping factor for a given time step.

@@ -1,4 +1,5 @@
 import { Quaternion, Vector3 } from 'three';
+import { clamp01 } from '../utils/math.js';
 import { orientQuaternionFromDirection } from '../utils/steering.js';
 
 export interface Vector3Like {
@@ -85,7 +86,7 @@ export function computeViewAlignment(
 
   target.x = Number.isFinite(viewX) ? viewX : 0;
   target.y = Number.isFinite(viewY) ? viewY : 0;
-  const clampedFacing = Number.isFinite(facing) ? Math.min(Math.max(facing, 0), 1) : 0;
+  const clampedFacing = Number.isFinite(facing) ? clamp01(facing) : 0;
   target.z = clampedFacing;
   return target;
 }

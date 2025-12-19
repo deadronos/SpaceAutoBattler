@@ -9,6 +9,7 @@ import {
   SphereGeometry,
   Vector3,
 } from 'three';
+import { clamp01 } from '../../utils/math.js';
 import type { ShipEntity, ShipHull } from '../../types/index.js';
 import { THRUSTER_GLOW_CONFIG } from '../../config/renderer.js';
 import { useBloomRegistration } from '../../renderer/bloom/index.js';
@@ -134,7 +135,7 @@ export function ThrusterInstancedManager({
     let saturated = false;
 
     for (const ship of ships) {
-      const throttle = Math.min(Math.max(ship.ai?.command?.thrust ?? 0, 0), 1);
+      const throttle = clamp01(ship.ai?.command?.thrust ?? 0);
       const anchors = getAnchors(ship.ship.hull);
       const hullScale = Math.max(ship.transform.scale, 0.1);
       const baseScale = hullScale * (THRUSTER_GLOW_CONFIG.glowMeshSize * 50);
