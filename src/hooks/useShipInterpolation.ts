@@ -4,6 +4,7 @@ import type { RefObject } from 'react';
 import type { Group } from 'three';
 import type { ShipEntity } from '../types/index.js';
 import { useOptionalGameState } from '../game/context.js';
+import { clamp01 } from '../utils/math.js';
 import { createSmoothingConfig, type SmoothingConfig } from './interpolation/config.js';
 import {
   createInterpolationState,
@@ -63,7 +64,7 @@ export function useShipInterpolation(
 
     const sim = state?.simulation;
     const tickIndex = sim?.lastTickIndex ?? lastTickIndexRef.current;
-    const alpha = sim ? Math.min(Math.max(sim.alpha, 0), 1) : 1;
+    const alpha = sim ? clamp01(sim.alpha) : 1;
     const time = state?.time ?? 0;
 
     updateInterpolation(

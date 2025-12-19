@@ -1,4 +1,5 @@
 import type { InstancedMesh } from 'three';
+import { clamp } from '../../utils/math.js';
 
 import { createInstancedLayerManager } from '../layers/instancedLayer.js';
 import type { InstancedLayerManager } from '../layers/types.js';
@@ -172,7 +173,7 @@ export class ExplosionsInstancedManager {
       // Support legacy commit-based counts: prefer explicit committed counts
       // if present, otherwise fall back to allocator-derived count.
       const committed = this.counts[key] ?? 0;
-      const count = Math.min(Math.max(summary.count, committed), capacity);
+      const count = clamp(summary.count, committed, capacity);
       mesh.count = count;
       mesh.visible = count > 0;
       markMatrixDirty(mesh);
