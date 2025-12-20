@@ -69,14 +69,7 @@ export function advanceProjectiles(state: GameState, delta: number): void {
         buffers.r_values[i4 + 3] = rotation.w;
         buffers.r_count++;
       } else {
-        deferSetNextKinematicRotation(
-          state,
-          body,
-          rotation.x,
-          rotation.y,
-          rotation.z,
-          rotation.w,
-        );
+        deferSetNextKinematicRotation(state, body, rotation.x, rotation.y, rotation.z, rotation.w);
       }
     }
   }

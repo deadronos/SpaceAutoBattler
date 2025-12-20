@@ -28,7 +28,9 @@ test.describe('Worker simulation E2E', () => {
         const status = api?.getWorkerStatus?.();
         if (status?.error) return true;
         const snap = api?.sampleWorkerShipMotion?.(1);
-        return Boolean(snap && snap.ships && snap.ships.length >= 1 && typeof snap.tick === 'number');
+        return Boolean(
+          snap && snap.ships && snap.ships.length >= 1 && typeof snap.tick === 'number',
+        );
       },
       undefined,
       { timeout: 45_000 },

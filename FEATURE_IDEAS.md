@@ -12,7 +12,7 @@ Currently, the game supports standard projectiles (bullets, missiles, torpedos, 
 - **Railgun:** High-velocity, shield-piercing kinetic weapon with long reload.
 - **EMP Missile:** Low hull damage but high shield damage and potential subsystem stun duration.
 
-**Implementation Status:** A "Flak Cannon" with proximity fuse logic has been implemented as a proof-of-concept in this PR. It introduces `proximityFuse` configuration to projectiles and handles proximity detonation in the damage system.  
+**Implementation Status:** A "Flak Cannon" with proximity fuse logic has been implemented as a proof-of-concept in this PR. It introduces `proximityFuse` configuration to projectiles and handles proximity detonation in the damage system.
 
 See design: `memory/designs/DESIGN064-flak-cannon.md` and follow-up task: `memory/tasks/TASK155-flak-cannon-implementation.md`.
 
