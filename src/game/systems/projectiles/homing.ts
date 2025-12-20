@@ -55,11 +55,9 @@ export function steerProjectileTowardTarget(
     TEMP_TARGET,
   );
 
-  const { newDir, angle } = steerDirection(currentDir, desired, homing.turnRate, delta, currentDir);
+  const angle = steerDirection(currentDir, desired, homing.turnRate, delta, currentDir);
   if (angle < 1e-5) {
     return;
   }
-
-  projectile.direction = newDir;
-  orientQuaternionFromDirection(newDir, FORWARD, projectile.transform.rotation);
+  orientQuaternionFromDirection(currentDir, FORWARD, projectile.transform.rotation);
 }
