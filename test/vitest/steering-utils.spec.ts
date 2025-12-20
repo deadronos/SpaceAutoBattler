@@ -52,15 +52,17 @@ describe('steering utilities', () => {
   it('steers direction respecting turn limits', () => {
     const current = new Vector3(1, 0, 0);
     const desired = new Vector3(0, 1, 0);
-    const { newDir, angle } = steerDirection(current, desired, Math.PI, 0.1, new Vector3());
+    const out = new Vector3();
+    const angle = steerDirection(current, desired, Math.PI, 0.1, out);
     expect(angle).toBeCloseTo(Math.PI / 2, 5);
-    expect(newDir.length()).toBeCloseTo(1, 6);
-    expect(newDir.x).toBeGreaterThan(0);
-    expect(newDir.y).toBeGreaterThan(0);
+    expect(out.length()).toBeCloseTo(1, 6);
+    expect(out.x).toBeGreaterThan(0);
+    expect(out.y).toBeGreaterThan(0);
 
-    const { newDir: limited } = steerDirection(current, desired, 0, 0.1, new Vector3());
-    expect(limited.x).toBeCloseTo(1, 6);
-    expect(limited.y).toBeCloseTo(0, 6);
+    const outLimited = new Vector3();
+    steerDirection(current, desired, 0, 0.1, outLimited);
+    expect(outLimited.x).toBeCloseTo(1, 6);
+    expect(outLimited.y).toBeCloseTo(0, 6);
   });
 
   it('clamps angles within bounds with wrapping', () => {

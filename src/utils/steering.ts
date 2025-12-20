@@ -100,23 +100,23 @@ export function steerDirection(
   turnRate: number,
   delta: number,
   out: Vector3 = new Vector3(),
-): { newDir: Vector3; angle: number } {
+): number {
   const angle = currentDir.angleTo(desiredDir);
   if (!Number.isFinite(angle) || angle < 1e-6) {
     safeNormalize(out, currentDir, desiredDir);
-    return { newDir: out, angle: Math.max(angle, 0) };
+    return Math.max(angle, 0);
   }
 
   const maxTurn = Math.max(0, turnRate) * Math.max(delta, 0);
   if (maxTurn <= 0) {
     safeNormalize(out, currentDir, desiredDir);
-    return { newDir: out, angle };
+    return angle;
   }
 
   const t = Math.min(1, maxTurn / angle);
   out.copy(currentDir).lerp(desiredDir, t);
   safeNormalize(out, out, desiredDir);
-  return { newDir: out, angle };
+  return angle;
 }
 
 /**
