@@ -24,11 +24,11 @@ The renderer previously assumed `camera.layers` is always present and attempted 
 
 ### Subtasks
 
-| ID | Description | Status | Updated | Notes |
-|---|------------|-------|--------|------|
-| 1.1 | Add defensive checks for `camera.layers` in Postprocessing | Complete | 2025-12-12 | Guarding `camera.layers` before accessing mask |
-| 1.2 | Wrap `enableCameraLayers` in robust try/catch with diagnostics | Complete | 2025-12-12 | Avoids runtime throws and logs via reportMaterialError |
-| 1.3 | Add unit test reproducing missing camera.layers path | Complete | 2025-12-12 | `test/components/postprocessing/bug-undefined-camera-layers.spec.tsx` added and passing |
+| ID  | Description                                                    | Status   | Updated    | Notes                                                                                   |
+| --- | -------------------------------------------------------------- | -------- | ---------- | --------------------------------------------------------------------------------------- |
+| 1.1 | Add defensive checks for `camera.layers` in Postprocessing     | Complete | 2025-12-12 | Guarding `camera.layers` before accessing mask                                          |
+| 1.2 | Wrap `enableCameraLayers` in robust try/catch with diagnostics | Complete | 2025-12-12 | Avoids runtime throws and logs via reportMaterialError                                  |
+| 1.3 | Add unit test reproducing missing camera.layers path           | Complete | 2025-12-12 | `test/components/postprocessing/bug-undefined-camera-layers.spec.tsx` added and passing |
 
 ## Progress Log
 
@@ -36,4 +36,4 @@ The renderer previously assumed `camera.layers` is always present and attempted 
 
 - Added guards to Postprocessing; composer renders in test harness even with missing camera layers. Tests and typecheck pass.
 
-*** EOF
+\*\*\* EOF

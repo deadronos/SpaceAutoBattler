@@ -124,8 +124,8 @@ These artifacts simplify root-cause analysis (mesh missing vs uniform mismatch v
 
 ## Implementation status (2025-12-15)
 
-- Proof-of-concept implemented: `test/playwright/pages/ship-renderer.js` now supports runtime `setOptions` for dynamic hull/option switching, `test/playwright/ship-hulls.spec.ts` includes engine & shield checks, and `test/playwright/shield-visual-baseline.spec.ts` supports baseline generation and comparison.  
-- A baseline generation helper script exists at `scripts/generate-playwright-baselines.ts`.  
+- Proof-of-concept implemented: `test/playwright/pages/ship-renderer.js` now supports runtime `setOptions` for dynamic hull/option switching, `test/playwright/ship-hulls.spec.ts` includes engine & shield checks, and `test/playwright/shield-visual-baseline.spec.ts` supports baseline generation and comparison.
+- A baseline generation helper script exists at `scripts/generate-playwright-baselines.ts`.
 - Next tracked action: validate PoC locally, generate representative baselines (fighter/frigate/carrier), commit selected baselines, and add `playwright-ship-screenshots` CI job (see TASK156).
 
 ## Implementation Plan (phased)

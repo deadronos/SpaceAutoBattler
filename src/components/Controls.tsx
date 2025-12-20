@@ -1,4 +1,5 @@
-import React from 'react';
+import { useState, useEffect } from 'react';
+import type React from 'react';
 import { useOptionalGameState } from '../game/context.js';
 import { useUiStore } from '../game/uiStore.js';
 import { requestReset, spawnRandomShip } from '../game/state.js';
@@ -14,18 +15,60 @@ export function Controls(): React.ReactElement {
   const timeScale = useUiStore((s) => s.timeScale);
   const togglePause = useUiStore((s) => s.togglePause);
   const setTimeScale = useUiStore((s) => s.setTimeScale);
+  const [resetConfirm, setResetConfirm] = useState(false);
+
+  useEffect(() => {
+    if (resetConfirm) {
+      const timer = setTimeout(() => setResetConfirm(false), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [resetConfirm]);
 
   const addShip = (team: 'red' | 'blue') => {
     if (!state) return;
     spawnRandomShip(state, team);
   };
 
+  const handleReset = () => {
+    if (!state) return;
+    if (resetConfirm) {
+      requestReset(state);
+      setResetConfirm(false);
+    } else {
+      setResetConfirm(true);
+    }
+  };
+
   return (
     <div className="controls-bar">
-      <button onClick={togglePause}>{paused ? 'Resume' : 'Pause'}</button>
-      <button onClick={() => state && requestReset(state)}>Reset</button>
-      <button onClick={() => addShip('red')}>+ Red</button>
-      <button onClick={() => addShip('blue')}>+ Blue</button>
+      <button
+        onClick={togglePause}
+        aria-label={paused ? 'Resume simulation' : 'Pause simulation'}
+        title={paused ? 'Resume simulation' : 'Pause simulation'}
+      >
+        {paused ? 'Resume' : 'Pause'}
+      </button>
+      <button
+        onClick={handleReset}
+        aria-label="Reset simulation"
+        title="Reset simulation"
+      >
+        {resetConfirm ? 'Confirm?' : 'Reset'}
+      </button>
+      <button
+        onClick={() => addShip('red')}
+        aria-label="Spawn Red ship"
+        title="Spawn Red ship"
+      >
+        + Red
+      </button>
+      <button
+        onClick={() => addShip('blue')}
+        aria-label="Spawn Blue ship"
+        title="Spawn Blue ship"
+      >
+        + Blue
+      </button>
       {/* Simulation modifiers moved to HUD settings */}
       <div className="speed">
         <label htmlFor="speedSelect">Speed:</label>

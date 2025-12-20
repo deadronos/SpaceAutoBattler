@@ -13,10 +13,10 @@ Currently, the simulation (Rapier3D physics + Miniplex ECS + AI logic) runs on t
 
 ### 2.1 Split Responsibilities
 
-| **Context**       | **Responsibilities**                                      | **State**                                        |
-|-------------------|-----------------------------------------------------------|--------------------------------------------------|
-| **Worker Thread** | Physics (Rapier), AI Logic, ECS (Game World), Game Loop   | `GameState` (Canonical Source of Truth)          |
-| **Main Thread**   | Rendering (R3F), UI (React), Input Capture, Audio         | `RenderState` (Mirror/Proxy of Game World)       |
+| **Context**       | **Responsibilities**                                    | **State**                                  |
+| ----------------- | ------------------------------------------------------- | ------------------------------------------ |
+| **Worker Thread** | Physics (Rapier), AI Logic, ECS (Game World), Game Loop | `GameState` (Canonical Source of Truth)    |
+| **Main Thread**   | Rendering (R3F), UI (React), Input Capture, Audio       | `RenderState` (Mirror/Proxy of Game World) |
 
 ### 2.1.1 Repo-Specific Constraints
 
@@ -46,7 +46,7 @@ Minimum MVP layout:
 
 Each renderable entity is assigned a stable `slot` index for the lifetime of that entity.
 
-*Note: SharedArrayBuffer requires `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp` headers (dev server + production hosting).*
+_Note: SharedArrayBuffer requires `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp` headers (dev server + production hosting)._
 
 Fallback:
 
@@ -77,7 +77,7 @@ The Main Thread will maintain its own Miniplex World (`RenderWorld`).
 
 Implementation detail:
 
-- The mirror entities will *not* contain Rapier `RigidBody` / `Collider` instances. These are worker-only.
+- The mirror entities will _not_ contain Rapier `RigidBody` / `Collider` instances. These are worker-only.
 - In TypeScript, the mirror entities may carry stubbed `rigidBody/collider` fields to satisfy existing renderer typing, but must not be used on the main thread.
 
 ## 3. Rapier Integration
@@ -99,7 +99,7 @@ User interactions (clicks, key presses) occur on the Main Thread.
 
 - UI components dispatch actions.
 - A `SimulationBridge` service intercepts these actions and posts them to the Worker.
-- Determinism note: The Worker will process inputs at the start of the *next* tick.
+- Determinism note: The Worker will process inputs at the start of the _next_ tick.
 
 ## 5. Migration Strategy
 

@@ -23,18 +23,18 @@ describe('math utils', () => {
   });
 
   describe('clampRatio', () => {
-      it('clamps value between 0 and 1', () => {
-        expect(clampRatio(0.5)).toBe(0.5);
-        expect(clampRatio(-0.5)).toBe(0);
-        expect(clampRatio(1.5)).toBe(1);
-      });
-
-      it('handles non-finite values', () => {
-        expect(clampRatio(NaN)).toBe(0);
-        expect(clampRatio(Infinity)).toBe(0);
-        expect(clampRatio(-Infinity)).toBe(0);
-      });
+    it('clamps value between 0 and 1', () => {
+      expect(clampRatio(0.5)).toBe(0.5);
+      expect(clampRatio(-0.5)).toBe(0);
+      expect(clampRatio(1.5)).toBe(1);
     });
+
+    it('handles non-finite values', () => {
+      expect(clampRatio(NaN)).toBe(0);
+      expect(clampRatio(Infinity)).toBe(0);
+      expect(clampRatio(-Infinity)).toBe(0);
+    });
+  });
 
   describe('shortestAngle', () => {
     it('returns 0 for same angle', () => {

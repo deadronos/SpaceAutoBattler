@@ -1,6 +1,6 @@
 # [TASK156] - Validate Playwright ship screenshots harness & CI integration
 
-**Status:** In Progress  
+**Status:** In Progress
 **Added:** 2025-12-15
 **Owner:** TBD
 
@@ -50,13 +50,13 @@ Validate the Playwright ship hull visual regression PoC, generate initial baseli
 
 ### Subtasks
 
-| ID  | Description                                         | Status     | Updated    | Notes |
-| --- | --------------------------------------------------- | ---------- | ---------- | ----- |
-| 1.1 | Run PoC locally & generate baseline images          | In Progress | 2025-12-15 | Start with `fighter, frigate, carrier` |
-| 1.2 | Commit selected baselines and document workflow     | Not Started |            | Ensure PR checklist is concise |
-| 1.3 | Add CI job for PR-level subset                      | Not Started |            | Use software GL for determinism |
-| 1.4 | Add nightly full-hull job                           | Not Started |            | Optional advanced step |
-| 1.5 | Add per-hull tolerance config                       | Not Started |            | Optional hardening |
+| ID  | Description                                     | Status      | Updated    | Notes                                  |
+| --- | ----------------------------------------------- | ----------- | ---------- | -------------------------------------- |
+| 1.1 | Run PoC locally & generate baseline images      | In Progress | 2025-12-15 | Start with `fighter, frigate, carrier` |
+| 1.2 | Commit selected baselines and document workflow | Not Started |            | Ensure PR checklist is concise         |
+| 1.3 | Add CI job for PR-level subset                  | Not Started |            | Use software GL for determinism        |
+| 1.4 | Add nightly full-hull job                       | Not Started |            | Optional advanced step                 |
+| 1.5 | Add per-hull tolerance config                   | Not Started |            | Optional hardening                     |
 
 ## Acceptance Criteria
 
@@ -70,5 +70,7 @@ Validate the Playwright ship hull visual regression PoC, generate initial baseli
 - Design: `memory/designs/DESIGN019-ship-mock-test.md`
 - Script: `scripts/generate-playwright-baselines.ts`
 - Tests: `test/playwright/ship-hulls.spec.ts`, `test/playwright/shield-visual-baseline.spec.ts`
+
+```
 
 ```

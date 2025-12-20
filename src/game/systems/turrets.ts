@@ -116,7 +116,7 @@ export function updateTurrets(state: GameState, delta: number): void {
       origin.y,
       origin.z,
     );
-    let target = findNearestEnemy(state, ship);
+    let target: ShipEntity | null = null;
     if (t.turret.priority && t.turret.priority !== 'any') {
       const ships = state.queries.ships.entities as ShipEntity[];
       const preferSmall = t.turret.priority === 'antiFighter';
@@ -146,7 +146,11 @@ export function updateTurrets(state: GameState, delta: number): void {
           best = s;
         }
       }
-      if (best) target = best;
+      target = best;
+    }
+
+    if (!target) {
+      target = findNearestEnemy(state, ship);
     }
     t.turret.cooldown = Math.max(0, t.turret.cooldown - delta);
     if (!target || t.turret.cooldown > 0) continue;

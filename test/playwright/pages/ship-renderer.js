@@ -158,7 +158,7 @@ function createShieldHexShaderMaterial(hull, team) {
       uEdgeWidth: { value: edgeWidth },
       uMaxAlpha: { value: maxAlpha },
       // Added for test verification
-      shieldAlpha: { value: 1.0 }
+      shieldAlpha: { value: 1.0 },
     },
     vertexShader: `
       varying vec3 vWorldPos;

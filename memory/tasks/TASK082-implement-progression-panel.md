@@ -36,17 +36,17 @@ The implementation will be display-only and read from canonical GameState withou
 
 ### Subtasks
 
-| ID   | Description                                   | Status   | Updated    | Notes                               |
-| ---- | --------------------------------------------- | -------- | ---------- | ----------------------------------- |
-| 1.1  | Create task file and update memory bank index | Complete | 2025-01-27 | Task created following template     |
-| 1.2  | Add progression panel state to UI store       | Complete | 2025-01-27 | Added toggle with state management  |
-| 1.3  | Add toggle to settings drawer configuration   | Complete | 2025-01-27 | Added to SETTINGS_TOGGLES array     |
-| 1.4  | Create ProgressionPanel component structure   | Complete | 2025-01-27 | Component with ship cards/events    |
-| 1.5  | Implement progression event tracking system   | Complete | 2025-01-27 | Events stored in GameState Map      |
-| 1.6  | Add data transformation utilities             | Complete | 2025-01-27 | Ship to panel format conversion     |
-| 1.7  | Integrate component into HUD system           | Complete | 2025-01-27 | Added to Hud.tsx overlay layer      |
-| 1.8  | Add unit tests for data transformation        | Complete | 2025-01-27 | 3 tests for core logic pass         |
-| 1.9  | Add integration tests for UI components       | Complete | 2025-12-12 | Integration tests pass and assertions updated |
+| ID   | Description                                   | Status   | Updated    | Notes                                                 |
+| ---- | --------------------------------------------- | -------- | ---------- | ----------------------------------------------------- |
+| 1.1  | Create task file and update memory bank index | Complete | 2025-01-27 | Task created following template                       |
+| 1.2  | Add progression panel state to UI store       | Complete | 2025-01-27 | Added toggle with state management                    |
+| 1.3  | Add toggle to settings drawer configuration   | Complete | 2025-01-27 | Added to SETTINGS_TOGGLES array                       |
+| 1.4  | Create ProgressionPanel component structure   | Complete | 2025-01-27 | Component with ship cards/events                      |
+| 1.5  | Implement progression event tracking system   | Complete | 2025-01-27 | Events stored in GameState Map                        |
+| 1.6  | Add data transformation utilities             | Complete | 2025-01-27 | Ship to panel format conversion                       |
+| 1.7  | Integrate component into HUD system           | Complete | 2025-01-27 | Added to Hud.tsx overlay layer                        |
+| 1.8  | Add unit tests for data transformation        | Complete | 2025-01-27 | 3 tests for core logic pass                           |
+| 1.9  | Add integration tests for UI components       | Complete | 2025-12-12 | Integration tests pass and assertions updated         |
 | 1.10 | Manual validation and screenshot capture      | Complete | 2025-12-12 | Manual validation and baselines captured where needed |
 
 ## Progress Log
