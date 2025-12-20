@@ -11,7 +11,8 @@ export function shouldEnableWorkerSimulation(): boolean {
     if (typeof window === 'undefined') return false;
     const params = new URLSearchParams(window.location.search);
     const enabled = params.get('sim_worker') === '1' || params.get('sim_worker') === 'true';
-    const render = params.get('sim_worker_render') === '1' || params.get('sim_worker_render') === 'true';
+    const render =
+      params.get('sim_worker_render') === '1' || params.get('sim_worker_render') === 'true';
     return enabled || render;
   } catch {
     return false;
@@ -22,7 +23,8 @@ export function shouldRenderWorkerShips(): boolean {
   try {
     if (typeof window === 'undefined') return false;
     const params = new URLSearchParams(window.location.search);
-    const render = params.get('sim_worker_render') === '1' || params.get('sim_worker_render') === 'true';
+    const render =
+      params.get('sim_worker_render') === '1' || params.get('sim_worker_render') === 'true';
     const renderOnly =
       params.get('sim_worker_render_only') === '1' ||
       params.get('sim_worker_render_only') === 'true';

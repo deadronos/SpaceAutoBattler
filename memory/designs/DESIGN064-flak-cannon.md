@@ -1,7 +1,7 @@
 # DESIGN064 — Flak Cannon (Proximity Fuse) Feature Design
 
-- **Status:** In Progress (PoC implemented)  
-- **Owner:** TBD  
+- **Status:** In Progress (PoC implemented)
+- **Owner:** TBD
 - **Created:** 2025-12-15
 - **Confidence Score:** 70% (PoC exists; integration and balance to validate)
 
@@ -75,5 +75,7 @@ Introduce a tactically interesting area-of-effect anti-swarm weapon ("Flak Canno
 
 - TASK119 (flak-proximity test alignment) — Completed (type/test alignment).
 - Create TASK155 to track Flak Cannon stabilization, tests, balancing, and AI integration.
+
+```
 
 ```

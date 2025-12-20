@@ -3,13 +3,11 @@
 This file summarizes recent work and maintenance actions performed on the memory bank.
 
 - 2025-12-17: Worker simulation offload milestones (TASK157) — validated by `npm run typecheck`, `npm test`, `npm run build`, and Playwright worker E2E
-
   - Added worker-driven ships rendering MVP and a render-only mode flag that disables the main-thread simulation tick while keeping the scene visually driven by worker snapshots.
   - Fixed Webpack chunking/output paths so worker `importScripts` can load split chunks (notably Rapier) in production builds.
   - Hardened the Playwright worker E2E spec by fixing `waitForFunction` usage and exposing worker status/errors to avoid opaque timeouts.
 
 - 2025-12-12: Misc UI, systems, and tests landed — validated by `npm run typecheck` + `npm test` (unit suites passing)
-
   - `src/components/Hud.tsx`: Added accessibility attributes on HUD progress bars (role=progressbar + aria attributes) and grouped HUD controls. `test/components/Hud.spec.tsx` added.
   - `src/components/ProgressionPanel.tsx`: Progression panel supports drag-to-reposition (persisted position via UI store), formats XP with decimal precision (one decimal), exposes aria-live, and has additional UI refinements. `test/components/ProgressionPanel.spec.tsx` added.
   - `src/components/Postprocessing.tsx`: Guard added for missing `camera.layers` to prevent composer errors; `test/components/postprocessing/bug-undefined-camera-layers.spec.tsx` added.
