@@ -1,7 +1,7 @@
 import { memo, useMemo } from 'react';
-import { useTexture } from '@react-three/drei';
 import { BackSide, LinearFilter, LinearMipmapLinearFilter, SRGBColorSpace } from 'three';
-import { SKYSPHERE_TEXTURE_PATHS, type SkyspherTextureKey } from '../../assets/skysphere.js';
+import { SKYSPHERE_TEXTURE_PATHS, SKYSPHERE_LOWRES_TEXTURE_PATHS, type SkyspherTextureKey } from '../../assets/skysphere.js';
+import { useProgressiveTexture } from '../../hooks/useProgressiveTexture.js';
 
 interface SkysphereProps {
   /** Key to select skysphere texture */
@@ -17,8 +17,11 @@ export const Skysphere = memo(function Skysphere({
   radius = 50000, 
   opacity = 1.0 
 }: SkysphereProps): React.ReactElement {
-  // Load the skysphere texture
-  const texture = useTexture(SKYSPHERE_TEXTURE_PATHS[textureKey]);
+  // Load the skysphere texture progressively (low-res first, then high-res)
+  const { texture } = useProgressiveTexture(
+    SKYSPHERE_LOWRES_TEXTURE_PATHS[textureKey],
+    SKYSPHERE_TEXTURE_PATHS[textureKey]
+  );
 
   // Configure texture for optimal skysphere rendering
   useMemo(() => {
