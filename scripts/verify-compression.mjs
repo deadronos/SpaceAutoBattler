@@ -4,13 +4,40 @@
  * 
  * Usage: node scripts/verify-compression.mjs [url]
  * 
- * If no URL is provided, uses the default GitHub Pages URL for this repo.
+ * If no URL is provided, attempts to derive it from package.json repository field.
  */
 
 import https from 'https';
 import http from 'http';
+import { readFileSync } from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname, resolve } from 'path';
 
-const DEFAULT_URL = 'https://deadronos.github.io/SpaceAutoBattler/';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Attempt to derive GitHub Pages URL from package.json
+function getDefaultUrl() {
+  try {
+    const packageJsonPath = resolve(__dirname, '..', 'package.json');
+    const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8'));
+    
+    if (packageJson.repository && packageJson.repository.url) {
+      const repoUrl = packageJson.repository.url;
+      // Extract owner/repo from git URL (e.g., "git+https://github.com/owner/repo.git")
+      const match = repoUrl.match(/github\.com[/:]([\w-]+)\/([\w-]+)/);
+      if (match) {
+        const [, owner, repo] = match;
+        return `https://${owner}.github.io/${repo}/`;
+      }
+    }
+  } catch (error) {
+    // Fallback if package.json can't be read or parsed
+  }
+  
+  // Fallback URL - users should provide URL via command line for forked repos
+  return 'https://deadronos.github.io/SpaceAutoBattler/';
+}
 
 async function checkCompression(url) {
   return new Promise((resolve, reject) => {
@@ -43,7 +70,7 @@ async function checkCompression(url) {
 }
 
 async function main() {
-  const baseUrl = process.argv[2] || DEFAULT_URL;
+  const baseUrl = process.argv[2] || getDefaultUrl();
   
   console.log('=== GitHub Pages Compression Verification ===\n');
   console.log(`Testing: ${baseUrl}\n`);

@@ -186,7 +186,7 @@ export default (env = {}, argv) => {
           configFile: path.resolve(__dirname, 'tsconfig.json')
         }
       }),
-      // Add gzip compression for production builds
+      // Add gzip and brotli compression for production builds
       ...(isProd ? [
         new CompressionPlugin({
           filename: '[path][base].gz',

@@ -3,6 +3,10 @@
   "version": "0.1.0",
   "type": "module",
   "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/deadronos/SpaceAutoBattler.git"
+  },
   "scripts": {
     "lint-staged": "lint-staged",
     "test": "vitest --environment happy-dom",
