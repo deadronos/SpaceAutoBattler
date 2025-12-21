@@ -8,6 +8,7 @@ import { BundleAnalyzerPlugin } from 'webpack-bundle-analyzer';
 import webpack from 'webpack';
 import ForkTsCheckerWebpackPlugin from 'fork-ts-checker-webpack-plugin';
 import { defineReactCompilerLoaderOption, reactCompilerLoader } from 'react-compiler-webpack';
+import CompressionPlugin from 'compression-webpack-plugin';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -184,7 +185,26 @@ export default (env = {}, argv) => {
         typescript: {
           configFile: path.resolve(__dirname, 'tsconfig.json')
         }
-      })
+      }),
+      // Add gzip compression for production builds
+      ...(isProd ? [
+        new CompressionPlugin({
+          filename: '[path][base].gz',
+          algorithm: 'gzip',
+          test: /\.(js|css|html|svg|wasm)$/,
+          threshold: 10240, // Only compress files larger than 10KB
+          minRatio: 0.8, // Only compress if compression ratio is better than 80%
+          deleteOriginalAssets: false
+        }),
+        new CompressionPlugin({
+          filename: '[path][base].br',
+          algorithm: 'brotliCompress',
+          test: /\.(js|css|html|svg|wasm)$/,
+          threshold: 10240,
+          minRatio: 0.8,
+          deleteOriginalAssets: false
+        })
+      ] : [])
     ],
     optimization: {
       splitChunks: {
