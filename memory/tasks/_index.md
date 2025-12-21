@@ -107,3 +107,9 @@ This folder contains canonical task documents named using the pattern `TASKNNN-t
 ## Abandoned
 
 - _None tracked._
+
+## Recently Added (Performance Review v2.0.5g)
+
+- [TASK158](TASK158-enable-server-compression.md) — Enable gzip/brotli compression on deployment server for 60-70% bundle size reduction. (Pending - High Impact/Low Effort) (2025-12-21)
+- [TASK159](TASK159-progressive-texture-loading.md) — Implement progressive texture loading to improve initial load time by 3-5 seconds. (Pending - High Impact/Medium Effort) (2025-12-21)
+- [TASK160](TASK160-particle-trail-determinism.md) — Replace Math.random() in ParticleTrails with SeededRng for determinism and replay consistency. (Pending - Low Impact/Low Effort) (2025-12-21)
