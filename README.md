@@ -139,6 +139,17 @@ git push origin v1.0.0
 
 The site will be available at `https://[username].github.io/SpaceAutoBattler/` after deployment completes.
 
+### Compression
+
+Production builds automatically generate compressed versions of all assets:
+
+- **Gzip** (`.gz` files): ~70% size reduction
+- **Brotli** (`.br` files): ~80% size reduction
+
+This reduces the total bundle size from 6.2 MiB to approximately 1.5 MiB (with brotli) for significantly faster page loads. GitHub Pages automatically serves the compressed files to clients that support them.
+
+See [`docs/compression.md`](docs/compression.md) for detailed compression ratios and configuration.
+
 ### Local Testing
 
 Test the deployment build process locally:
@@ -146,6 +157,12 @@ Test the deployment build process locally:
 ```powershell
 npm run build:deploy
 npm run serve
+```
+
+Verify compression is working on the deployed site:
+
+```powershell
+node scripts/verify-compression.mjs
 ```
 
 ## Contributing
