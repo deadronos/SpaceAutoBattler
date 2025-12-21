@@ -4,14 +4,22 @@ import { useProgressiveTexture } from '../../src/hooks/useProgressiveTexture.js'
 import * as THREE from 'three';
 
 // Mock @react-three/fiber
-vi.mock('@react-three/fiber', () => ({
-  useLoader: vi.fn((loader, url) => {
-    // Return a mock texture for low-res URL
-    const texture = new THREE.Texture();
-    texture.name = url.includes('2048') ? 'lowres' : 'highres';
-    return texture;
-  }),
-}));
+vi.mock('@react-three/fiber', () => {
+  // Cache textures by URL so repeated calls return the same object
+  const cache: Map<string, THREE.Texture> = new Map();
+
+  return {
+    useLoader: vi.fn((loader, url: string) => {
+      if (!cache.has(url)) {
+        const texture = new THREE.Texture();
+        // If filename contains a typical high-res dimension, mark as highres
+        texture.name = /2048|4096|high/i.test(url) ? 'highres' : 'lowres';
+        cache.set(url, texture);
+      }
+      return cache.get(url) as THREE.Texture;
+    }),
+  };
+});
 
 describe('useProgressiveTexture', () => {
   beforeEach(() => {
