@@ -11,10 +11,10 @@ import type {
 import { AI_CONFIG, getEffectiveAIConfig } from '../../config.js';
 import { hashToInt } from './utils.js';
 import { computeEffectiveDesiredRange } from './hysteresis.js';
-import { clamp } from '../../../utils/math.js';
-// TEMP_RNG and resetTempRng are re-exported below for backward compatibility.
-// Avoid importing them here to prevent unused-variable lint errors.
-import { getForwardFromQuaternion } from '../../../utils/vector.js';
+import {
+  getShipVelocity,
+  computeInterceptHeadingVector,
+} from '../../combat/aiming.js';
 
 export const TEMP_DIR = new Vector3();
 export const TEMP_POS = new Vector3();
@@ -124,19 +124,7 @@ export function compareIntentCandidates(a: IntentCandidate, b: IntentCandidate):
   return aIndex - bIndex;
 }
 
-export function getShipVelocity(ship: ShipEntity, out: Vector3): Vector3 {
-  const component = ship.ship;
-  const velocity = component?.velocity;
-  if (!velocity) {
-    out.set(0, 0, 0);
-    return out;
-  }
-  const x = Number.isFinite(velocity.x) ? velocity.x : 0;
-  const y = Number.isFinite(velocity.y) ? velocity.y : 0;
-  const z = Number.isFinite(velocity.z) ? velocity.z : 0;
-  out.set(x, y, z);
-  return out;
-}
+export { getShipVelocity };
 
 export function getSpeedMagnitude(ship: ShipEntity): number {
   const velocity = getShipVelocity(ship, TEMP_TARGET_VEL);
@@ -177,53 +165,7 @@ export function computeBandPreferenceBonus(
   return normalized * 60;
 }
 
-export function computeInterceptHeadingVector(
-  ship: ShipEntity,
-  target: ShipEntity,
-  out: Vector3,
-): Vector3 {
-  const projectileSpeed = Math.max(1, Math.max(ship.ship.projectileSpeed, ship.ship.speed * 0.75));
-  const relativePos = TEMP_REL_POS.copy(target.transform.position).sub(ship.transform.position);
-  const targetVel = getShipVelocity(target, TEMP_TARGET_VEL);
-  const shipVel = getShipVelocity(ship, TEMP_SHIP_VEL);
-  const relativeVel = TEMP_REL_VEL.copy(targetVel).sub(shipVel);
-
-  const a = relativeVel.lengthSq() - projectileSpeed * projectileSpeed;
-  const b = 2 * relativeVel.dot(relativePos);
-  const c = relativePos.lengthSq();
-
-  let t = 0;
-  if (Math.abs(a) < 1e-5) {
-    t = b !== 0 ? Math.max(0, -c / b) : 0;
-  } else {
-    const discriminant = b * b - 4 * a * c;
-    if (discriminant >= 0) {
-      const sqrt = Math.sqrt(discriminant);
-      const t1 = (-b - sqrt) / (2 * a);
-      const t2 = (-b + sqrt) / (2 * a);
-      t = Math.min(t1, t2);
-      if (t < 0) t = Math.max(t1, t2);
-      if (t < 0) t = 0;
-    } else {
-      t = Math.max(0, -b / (2 * a));
-    }
-  }
-
-  t = clamp(t, 0, 2.5);
-  const future = out.copy(target.transform.position).addScaledVector(targetVel, t);
-  future.sub(ship.transform.position);
-  if (future.lengthSq() < 1e-5) {
-    out.copy(relativePos);
-  } else {
-    out.copy(future);
-  }
-  if (out.lengthSq() < 1e-5) {
-    getForwardFromQuaternion(ship.transform.rotation, out);
-  } else {
-    out.normalize();
-  }
-  return out;
-}
+export { computeInterceptHeadingVector };
 
 /**
  * Breaks a tie between top-scoring candidates using deterministic randomness.

@@ -1,4 +1,10 @@
-import type { AIIntent, AIMetrics, ShipHull } from '../../types/index.js';
+import type {
+  AIIntent,
+  AIMetrics,
+  ShipHull,
+  GameState,
+  ShipEntity,
+} from '../../types/index.js';
 import { MAX_INTENT_TIMELINE_ENTRIES } from './constants.js';
 import { addToHistogram } from './factories.js';
 import { appendCappedMutable } from '../../utils/cappedBuffer.js';
@@ -84,4 +90,38 @@ export function recordShotMetrics(
       metrics.verticalAboveThreshold += 1;
     }
   }
+}
+
+/**
+ * Helper function to record shot metrics if metrics tracking is enabled.
+ * Handles extracting metrics from state and calculating distance/deltaY if needed.
+ *
+ * @param {GameState} state - The game state.
+ * @param {ShipEntity} ship - The ship firing the shot.
+ * @param {ShipEntity | null} target - The target ship (optional).
+ * @param {number} [distance] - The distance to the target (optional).
+ */
+export function recordShotHelper(
+  state: GameState,
+  ship: ShipEntity,
+  target: ShipEntity | null,
+  distance?: number,
+): void {
+  const metrics = state.ai?.metrics;
+  if (!metrics) return;
+
+  const dist =
+    distance ??
+    (target ? ship.transform.position.distanceTo(target.transform.position) : undefined);
+  const deltaY = target
+    ? target.transform.position.y - ship.transform.position.y
+    : undefined;
+
+  recordShotMetrics(metrics, {
+    shipId: ship.id,
+    hull: ship.ship.hull,
+    time: state.time,
+    distance: dist,
+    deltaY,
+  });
 }

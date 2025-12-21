@@ -4,7 +4,7 @@ import {
   deferSetNextKinematicRotation,
   deferSetNextKinematicTranslation,
 } from '../../physics/safeKinematics.js';
-import { findNearestEnemy } from '../turrets.js';
+import { findNearestEnemy } from '../../utils/targetSelection.js';
 
 const missingAiShips = new Set<number>();
 let warnedAiDisableInShips = false;

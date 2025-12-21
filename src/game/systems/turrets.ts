@@ -1,9 +1,10 @@
 import { Quaternion, Vector3 } from 'three';
 import type { GameState, ShipEntity, TurretEntity, TurretState } from '../../types/index.js';
-import { recordShotMetrics } from '../metrics.js';
+import { recordShotHelper } from '../metrics.js';
 import { fireProjectile, TEMP_POS } from './projectiles.js';
 import type { KinematicBody } from '../physics/safeKinematics.js';
 import { deferSetNextKinematicTranslation } from '../physics/safeKinematics.js';
+import { findNearestEnemy } from '../utils/targetSelection.js';
 
 const TEMP_TURRET_DIR = new Vector3();
 const TEMP_QUAT = new Quaternion();
@@ -12,52 +13,6 @@ const TEMP_LOCAL_DIR = new Vector3();
 // Hull size classification for turret priority targeting
 const SMALL_HULLS = new Set(['fighter', 'corvette']);
 const LARGE_HULLS = new Set(['frigate', 'destroyer', 'carrier']);
-
-/**
- * Helper function to record shot metrics if metrics tracking is enabled.
- */
-function recordShotIfMetrics(
-  state: GameState,
-  ship: ShipEntity,
-  target: ShipEntity,
-  dist: number,
-): void {
-  const metrics = state.ai?.metrics;
-  if (metrics) {
-    recordShotMetrics(metrics, {
-      shipId: ship.id,
-      hull: ship.ship.hull,
-      time: state.time,
-      distance: dist,
-      deltaY: target.transform.position.y - ship.transform.position.y,
-    });
-  }
-}
-
-/**
- * Finds the nearest enemy ship to a given origin ship.
- *
- * @param {GameState} state - The game state.
- * @param {ShipEntity} origin - The searching ship.
- * @returns {ShipEntity | null} The nearest enemy, or null if none found.
- */
-export function findNearestEnemy(state: GameState, origin: ShipEntity): ShipEntity | null {
-  const ships = state.queries.ships.entities as ShipEntity[];
-  let closest: ShipEntity | null = null;
-  let shortestSq = Number.POSITIVE_INFINITY;
-
-  for (const ship of ships) {
-    if (ship === origin) continue;
-    if (ship.ship.team === origin.ship.team) continue;
-    const distanceSq = origin.transform.position.distanceToSquared(ship.transform.position);
-    if (distanceSq < shortestSq) {
-      shortestSq = distanceSq;
-      closest = ship;
-    }
-  }
-
-  return closest;
-}
 
 function getTurretWorldPosition(ship: ShipEntity, turret: TurretState): Vector3 {
   const world = TEMP_POS.copy(turret.offset).multiplyScalar(ship.transform.scale);
@@ -81,7 +36,7 @@ export function runEmbeddedTurrets(state: GameState, ship: ShipEntity, target: S
     if (dist > turret.range) continue;
     if (dist > 1e-5) toTarget.divideScalar(dist);
     else toTarget.set(0, 0, 1);
-    recordShotIfMetrics(state, ship, target, dist);
+    recordShotHelper(state, ship, target, dist);
     fireProjectile(state, ship, toTarget, {
       originPosition: turretOrigin,
       override: {
@@ -168,7 +123,7 @@ export function updateTurrets(state: GameState, delta: number): void {
     const minPitch = t.turret.minPitch ?? -Math.PI / 2;
     const maxPitch = t.turret.maxPitch ?? Math.PI / 2;
     if (yaw < minYaw || yaw > maxYaw || pitch < minPitch || pitch > maxPitch) continue;
-    recordShotIfMetrics(state, ship, target, dist);
+    recordShotHelper(state, ship, target, dist);
     fireProjectile(state, ship, toTarget, {
       originPosition: origin,
       override: {

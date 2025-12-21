@@ -1,6 +1,6 @@
 import { Vector3 } from 'three';
 import type { GameState, ShipEntity } from '../../../types/index.js';
-import { recordShotMetrics } from '../../metrics.js';
+import { recordShotHelper } from '../../metrics.js';
 import { fireProjectile } from '../projectiles.js';
 import type { ShipDecision } from './aiExecutor.js';
 import { TEMP_DIR } from './sharedTemps.js';
@@ -35,20 +35,7 @@ export function handleShipWeapons(
   if (fireDir.lengthSq() < 1e-5) fireDir.set(0, 0, 1);
   else fireDir.normalize();
 
-  const distanceToTarget = preferredTarget
-    ? ship.transform.position.distanceTo(preferredTarget.transform.position)
-    : undefined;
-  const deltaY = preferredTarget
-    ? preferredTarget.transform.position.y - ship.transform.position.y
-    : undefined;
-
-  recordShotMetrics(state.ai.metrics, {
-    shipId: ship.id,
-    hull: ship.ship.hull,
-    time: state.time,
-    distance: distanceToTarget,
-    deltaY,
-  });
+  recordShotHelper(state, ship, preferredTarget);
 
   fireProjectile(state, ship, fireDir);
   ship.ship.cooldown = ship.ship.fireRate;
