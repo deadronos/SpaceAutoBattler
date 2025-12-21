@@ -20,7 +20,8 @@ import {
 } from './systems/decision/intents.js';
 import { prepareShips, executeAICommand } from './systems/shipControl.js';
 import { fireProjectile, advanceProjectiles } from './systems/projectiles.js';
-import { findNearestEnemy, updateTurrets } from './systems/turrets.js';
+import { updateTurrets } from './systems/turrets.js';
+import { findNearestEnemy } from './utils/targetSelection.js';
 import { resolveProjectiles } from './systems/damage.js';
 import { syncTransforms } from './systems/sync.js';
 import {
