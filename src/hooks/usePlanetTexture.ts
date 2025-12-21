@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useThree } from '@react-three/fiber';
+import type { WebGLRenderer } from 'three';
 import { LinearFilter, LinearMipmapLinearFilter, SRGBColorSpace, Texture, TextureLoader } from 'three';
 import { PLANET_TEXTURE_PATHS, PLANET_LOWRES_TEXTURE_PATHS, type PlanetTextureKey } from '../assets/planets.js';
 
@@ -113,7 +114,7 @@ export function usePlanetTexture(key: PlanetTextureKey | undefined): PlanetTextu
   }, [key, textures, isHighResLoaded]);
 }
 
-function configureTexture(texture: Texture, gl: any): void {
+function configureTexture(texture: Texture, gl: WebGLRenderer): void {
   const maxAniso = Math.min(APPLY_MAX_ANISOTROPY, gl.capabilities.getMaxAnisotropy());
   texture.colorSpace = SRGBColorSpace;
   texture.minFilter = LinearMipmapLinearFilter;
