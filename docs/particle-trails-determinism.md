@@ -42,6 +42,8 @@ All particle properties that use randomness are generated using the seeded RNG:
    ```typescript
    trailResources.arrays.scale[idx] = 
      1 - scaleJitter + rngRef.current.next() * 2 * scaleJitter;
+   // Produces values in range [1 - scaleJitter, 1 + scaleJitter]
+   // Example: with scaleJitter=0.2, range is [0.8, 1.2]
    ```
 
 ### Memory Efficiency
