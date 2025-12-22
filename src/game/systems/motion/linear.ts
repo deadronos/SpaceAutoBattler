@@ -1,5 +1,5 @@
 import type { AICommand, ShipEntity } from '../../../types/index.js';
-import { getEffectiveStats } from '../../progression.js';
+import { getSubsystemMultiplier } from '../../progression.js';
 import { TEMP_FORWARD, TEMP_RIGHT, TEMP_VELOCITY_CHANGE } from './sharedTemps.js';
 import { getForwardFromQuaternion, getRightFromQuaternion } from '../../../utils/vector.js';
 import { clamp } from '../../../utils/math.js';
@@ -38,10 +38,12 @@ export function updateLinearMotion(ship: ShipEntity, command: AICommand, dt: num
   const dampingFactor = Math.exp(-motion.linearDamping * dt);
   velocity.multiplyScalar(dampingFactor);
 
-  const effectiveStats = getEffectiveStats(ship.ship);
-  const effectiveMaxSpeed = motion.maxSpeed * effectiveStats.speedMultiplier;
+  // OPTIMIZATION: Use direct subsystem multiplier lookup to avoid allocating
+  // a full stats object via getEffectiveStats() every frame.
+  const speedMultiplier = getSubsystemMultiplier('engine', ship.ship.subsystems.engine.status);
+  const effectiveMaxSpeed = motion.maxSpeed * speedMultiplier;
   const effectiveMaxReverseSpeed = motion.maxReverseSpeed
-    ? motion.maxReverseSpeed * effectiveStats.speedMultiplier
+    ? motion.maxReverseSpeed * speedMultiplier
     : undefined;
 
   const forwardSpeed = velocity.dot(TEMP_FORWARD);
