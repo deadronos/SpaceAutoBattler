@@ -922,3 +922,97 @@
   white-space: nowrap;
   flex: 1;
 }
+
+/* Responsive adjustments for smaller screens (Mobile/Tablet) */
+@media (max-width: 768px) {
+  .hud {
+    /* Move HUD panel to bottom center */
+    align-items: flex-end;
+    justify-content: center;
+    padding: 16px 16px 32px; /* Extra bottom padding for safe area */
+  }
+
+  .hud-panel {
+    width: 100%;
+    max-width: 420px;
+    margin: 0;
+    /* Remove shadow that points down, maybe add one pointing up or all around */
+    box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.5);
+  }
+
+  /* Hide the subtitle to save space */
+  .hud-panel .subtitle {
+    display: none;
+  }
+
+  /* Make team grid more compact */
+  .team-grid {
+    gap: 8px;
+  }
+
+  .team-card {
+    padding: 10px;
+  }
+
+  .team-name {
+    font-size: 0.9rem;
+  }
+
+  .stat {
+    font-size: 0.8rem;
+  }
+
+  /* Controls Bar: Top, wrap if needed, larger touch targets */
+  .controls-bar {
+    right: 16px;
+    width: auto;
+    max-width: none;
+    flex-wrap: wrap;
+    justify-content: center;
+    padding: 8px;
+  }
+
+  .controls-bar button,
+  .controls-bar select {
+    padding: 8px 12px;
+    min-height: 40px; /* Touch friendly */
+    font-size: 0.9rem;
+  }
+
+  /* Hide the label "Speed:" to save space, user can infer from dropdown */
+  .controls-bar .speed label {
+    display: none;
+  }
+
+  /* Progression Panel: Centered modal-like override */
+  .progression-panel {
+    /* Override inline styles from JS */
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%);
+    width: 90% !important;
+    max-width: 360px;
+    max-height: 70vh;
+    z-index: 100; /* Above everything */
+  }
+
+  /* AI Debug Overlay: Stacked below controls or scrollable */
+  .ai-debug-overlay {
+    top: 80px;
+    left: 16px;
+    right: 16px;
+    width: auto;
+    max-height: 60vh;
+    overflow-y: auto;
+    z-index: 50;
+  }
+
+  /* Drawers: Open upwards since HUD is at bottom */
+  .hud-toggle-drawer__panel {
+    top: auto;
+    bottom: 120%; /* Shift up above the trigger */
+    right: -10px; /* Adjust alignment */
+    max-height: 50vh;
+    overflow-y: auto;
+  }
+}
