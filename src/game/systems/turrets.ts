@@ -63,7 +63,7 @@ export function updateTurrets(state: GameState, delta: number): void {
   const turrets = state.queries.turrets.entities as TurretEntity[];
   for (const t of turrets) {
     const ship = t.turret.parent;
-    const origin = getTurretWorldPosition(ship, { offset: t.turret.offset } as TurretState);
+    const origin = getTurretWorldPosition(ship, t.turret);
     deferSetNextKinematicTranslation(
       state,
       t.rigidBody as unknown as KinematicBody,
@@ -71,6 +71,10 @@ export function updateTurrets(state: GameState, delta: number): void {
       origin.y,
       origin.z,
     );
+
+    t.turret.cooldown = Math.max(0, t.turret.cooldown - delta);
+    if (t.turret.cooldown > 0) continue;
+
     let target: ShipEntity | null = null;
     if (t.turret.priority && t.turret.priority !== 'any') {
       const ships = state.queries.ships.entities as ShipEntity[];
@@ -107,8 +111,7 @@ export function updateTurrets(state: GameState, delta: number): void {
     if (!target) {
       target = findNearestEnemy(state, ship);
     }
-    t.turret.cooldown = Math.max(0, t.turret.cooldown - delta);
-    if (!target || t.turret.cooldown > 0) continue;
+    if (!target) continue;
     const toTarget = TEMP_TURRET_DIR.copy(target.transform.position).sub(origin);
     const dist = toTarget.length();
     if (dist > t.turret.range) continue;
