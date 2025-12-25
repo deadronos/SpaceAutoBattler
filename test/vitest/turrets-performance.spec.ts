@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { updateTurrets } from '../../src/game/systems/turrets';
-import { GameState, TurretEntity, ShipEntity } from '../../src/types/index';
-import * as targetSelection from '../../src/game/utils/targetSelection';
+import { updateTurrets } from '../../src/game/systems/turrets.js';
+import { GameState, TurretEntity, ShipEntity } from '../../src/types/index.js';
+import * as targetSelection from '../../src/game/utils/targetSelection.js';
 import { Vector3, Quaternion } from 'three';
-import * as progression from '../../src/game/progression';
+import * as progression from '../../src/game/progression.js';
 
 describe('updateTurrets performance', () => {
   let state: any;
