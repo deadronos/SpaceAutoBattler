@@ -4,6 +4,7 @@ import type { AIKpiSummary, ShipEntity } from '../types/index.js';
 import { useOptionalGameState } from '../game/context.js';
 import { useUiStore } from '../game/uiStore.js';
 import { resolveBehaviorProfile } from '../game/aiProfiles.js';
+import { formatPercent, formatSeconds } from '../utils/format.js';
 
 interface SnapshotRow {
   id: number;
@@ -37,11 +38,6 @@ export function AiDebugOverlay(): React.ReactElement | null {
   const aiEnabled = useUiStore((s) => s.aiV2Enabled);
   const debugEnabled = useUiStore((s) => s.aiDebugEnabled);
   const [refreshTick, setRefreshTick] = useState(0);
-
-  const formatPercent = (value: number | null): string =>
-    value == null ? '—' : `${(value * 100).toFixed(1)}%`;
-  const formatSeconds = (value: number | null): string =>
-    value == null ? '—' : `${value.toFixed(1)}s`;
 
   useEffect(() => {
     if (!debugEnabled) return undefined;
