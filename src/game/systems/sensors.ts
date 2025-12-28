@@ -8,7 +8,7 @@ import type {
 } from '../../types/index.js';
 import { ensureDoctrineState, getDoctrineSensorModifiers } from '../aiDoctrine.js';
 import { getForwardFromQuaternion } from '../../utils/vector.js';
-import { clamp } from '../../utils/math.js';
+import { clamp, clamp01 } from '../../utils/math.js';
 
 const TMP_FORWARD = new Vector3();
 const TMP_VECTOR = new Vector3();
@@ -79,7 +79,7 @@ function decayContacts(
 ): void {
   for (const team of ['blue', 'red'] as const) {
     const map = sensorState.visibilityByTeam[team];
-    const retentionScale = Math.max(0.25, Math.min(2, retention[team] ?? 1));
+    const retentionScale = clamp(retention[team] ?? 1, 0.25, 2);
     for (const [id, vis] of map) {
       if (vis.lastSeenTick === state.ai.tickIndex) continue;
       vis.strength *= Math.pow(sensorState.staleDecay, retentionScale);
@@ -165,8 +165,8 @@ export function updateSensorSystem(state: GameState, ships: ShipEntity[]): void 
       const occluded = computeOccluded(source, target, ships, TMP_DIRECTION, distance);
       const occlusionFactor = occluded ? 0.6 : 1;
 
-      const targetDoctrineStealth = Math.max(0, Math.min(0.8, stealthBonus[target.ship.team] ?? 0));
-      const intrinsicStealth = Math.max(0, Math.min(0.8, target.ship.stealth ?? 0));
+      const targetDoctrineStealth = clamp01(stealthBonus[target.ship.team] ?? 0);
+      const intrinsicStealth = clamp01(target.ship.stealth ?? 0);
       const signature = target.ship.sensorSignature ?? 1;
       const stealthFactor = Math.max(
         0.15,

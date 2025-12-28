@@ -1,6 +1,7 @@
 import type { AIMetrics, ShipHull } from '../../types/index.js';
 import { SHIP_HULLS } from './constants.js';
 import { percentile } from './factories.js';
+import { clamp01 } from '../../utils/math.js';
 
 /**
  * Aggregates raw metrics into Key Performance Indicators (KPIs).
@@ -62,8 +63,8 @@ export function aggregateKpis(metrics: AIMetrics, tick: number): void {
   metrics.kpis.focusFire.samples = metrics.focusFireSamples;
   if (metrics.focusFireSamples > 0) {
     const avg = metrics.focusFireRatioSum / metrics.focusFireSamples;
-    metrics.kpis.focusFire.ratioAvg = Math.min(1, Math.max(0, avg));
-    metrics.kpis.focusFire.ratioMax = Math.min(1, Math.max(0, metrics.focusFireRatioMax));
+    metrics.kpis.focusFire.ratioAvg = clamp01(avg);
+    metrics.kpis.focusFire.ratioMax = clamp01(metrics.focusFireRatioMax);
   } else {
     metrics.kpis.focusFire.ratioAvg = null;
     metrics.kpis.focusFire.ratioMax = null;
