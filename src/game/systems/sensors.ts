@@ -8,7 +8,7 @@ import type {
 } from '../../types/index.js';
 import { ensureDoctrineState, getDoctrineSensorModifiers } from '../aiDoctrine.js';
 import { getForwardFromQuaternion } from '../../utils/vector.js';
-import { clamp, clamp01 } from '../../utils/math.js';
+import { clamp } from '../../utils/math.js';
 
 const TMP_FORWARD = new Vector3();
 const TMP_VECTOR = new Vector3();
