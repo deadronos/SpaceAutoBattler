@@ -165,8 +165,8 @@ export function updateSensorSystem(state: GameState, ships: ShipEntity[]): void 
       const occluded = computeOccluded(source, target, ships, TMP_DIRECTION, distance);
       const occlusionFactor = occluded ? 0.6 : 1;
 
-      const targetDoctrineStealth = clamp01(stealthBonus[target.ship.team] ?? 0);
-      const intrinsicStealth = clamp01(target.ship.stealth ?? 0);
+      const targetDoctrineStealth = clamp(stealthBonus[target.ship.team] ?? 0, 0, 0.8);
+      const intrinsicStealth = clamp(target.ship.stealth ?? 0, 0, 0.8);
       const signature = target.ship.sensorSignature ?? 1;
       const stealthFactor = Math.max(
         0.15,
