@@ -1,5 +1,6 @@
 import type { GameState, ShipEntity, BehaviorProfile, AIState } from '../../types/index.js';
 import { AI_CONFIG } from '../config.js';
+import { clamp } from '../../utils/math.js';
 
 /**
  * Compute the effective vertical clamp for the given ship/profile/AI state.
@@ -41,14 +42,14 @@ export function computeVerticalClamp(
   }
 
   const amplitudeScale = 0.8 + Math.min(0.6, (profile.verticalManeuver ?? 0) * 0.5);
-  let clamp = baseClamp * scale * amplitudeScale;
+  let clampValue = baseClamp * scale * amplitudeScale;
   const heavyCap = Number(clampCfg.default ?? baseClamp);
   const agilityCap = Number(clampCfg.highAgility ?? clampCfg.default ?? baseClamp);
   if (hull === 'destroyer' || hull === 'carrier') {
-    clamp = Math.min(clamp, heavyCap);
+    clampValue = Math.min(clampValue, heavyCap);
   } else {
-    clamp = Math.min(clamp, agilityCap);
+    clampValue = Math.min(clampValue, agilityCap);
   }
-  clamp = Math.max(0.1, Math.min(clamp, 0.7));
-  return clamp;
+  clampValue = clamp(clampValue, 0.1, 0.7);
+  return clampValue;
 }

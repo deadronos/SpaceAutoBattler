@@ -1,10 +1,4 @@
-import type {
-  AIIntent,
-  AIMetrics,
-  ShipHull,
-  GameState,
-  ShipEntity,
-} from '../../types/index.js';
+import type { AIIntent, AIMetrics, ShipHull, GameState, ShipEntity } from '../../types/index.js';
 import { MAX_INTENT_TIMELINE_ENTRIES } from './constants.js';
 import { addToHistogram } from './factories.js';
 import { appendCappedMutable } from '../../utils/cappedBuffer.js';
@@ -113,9 +107,7 @@ export function recordShotHelper(
   const dist =
     distance ??
     (target ? ship.transform.position.distanceTo(target.transform.position) : undefined);
-  const deltaY = target
-    ? target.transform.position.y - ship.transform.position.y
-    : undefined;
+  const deltaY = target ? target.transform.position.y - ship.transform.position.y : undefined;
 
   recordShotMetrics(metrics, {
     shipId: ship.id,

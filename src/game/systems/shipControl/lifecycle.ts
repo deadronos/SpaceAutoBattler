@@ -1,5 +1,9 @@
 import type { GameState, ShipEntity } from '../../../types/index.js';
-import { updateCaptainAbilities, repairSubsystems, getSubsystemMultiplier } from '../../progression.js';
+import {
+  updateCaptainAbilities,
+  repairSubsystems,
+  getSubsystemMultiplier,
+} from '../../progression.js';
 
 const MUZZLE_FLASH_LIFETIME = 0.25;
 

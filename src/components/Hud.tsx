@@ -9,6 +9,8 @@ import { HudHealthLayer } from './HudHealthLayer.js';
 import { ProgressionPanel } from './ProgressionPanel.js';
 import { useUiStore } from '../game/uiStore.js';
 import { SettingsDrawer, DebugDrawer } from './HudToggleDrawer.js';
+import { formatPercentRounded } from '../utils/format.js';
+import { clamp } from '../utils/math.js';
 
 interface TeamSummary {
   team: 'blue' | 'red';
@@ -57,7 +59,7 @@ export function Hud(): React.ReactElement {
         <p className="hint">Ships automatically maneuver, acquire targets, and fire when in range.</p>
         {hudHealthBarsEnabled ? null : (
           <p className="hud-health-fallback" role="status">
-            HUD health overlays disabled — average hull integrity: Alliance {formatPercent(blue)} · Reavers {formatPercent(red)}.
+            HUD health overlays disabled — average hull integrity: Alliance {formatTeamPercent(blue)} · Reavers {formatTeamPercent(red)}.
           </p>
         )}
       </div>
@@ -108,8 +110,8 @@ function TeamCard({ summary }: { summary: TeamSummary }): React.ReactElement {
 
 // Ripple debug panel removed
 
-function formatPercent(summary: TeamSummary): string {
+function formatTeamPercent(summary: TeamSummary): string {
   if (summary.maxHp <= 0) return '0%';
-  const ratio = Math.max(0, Math.min(1, summary.hp / summary.maxHp));
-  return `${Math.round(ratio * 100)}%`;
+  const ratio = clamp(summary.hp / summary.maxHp, 0, 1);
+  return formatPercentRounded(ratio);
 }

@@ -9,14 +9,15 @@ Progressive texture loading improves initial load time by loading low-resolution
 ### Asset Strategy
 
 We maintain two versions of each texture:
+
 - **Low-res**: Fast to load, displayed immediately
 - **High-res**: Full quality, loaded in background
 
-| Asset | Low-Res | High-Res | Size Reduction |
-|-------|---------|----------|----------------|
-| Skysphere | 2048x1024 (1.3MB) | 8192x4096 (8.2MB) | ~84% |
-| Ice Planet | 512x256 (173KB) | 2048x1024 (2.37MB) | ~93% |
-| Gas Giant | 512x256 (123KB) | 2048x1024 (735KB) | ~83% |
+| Asset      | Low-Res           | High-Res           | Size Reduction |
+| ---------- | ----------------- | ------------------ | -------------- |
+| Skysphere  | 2048x1024 (1.3MB) | 8192x4096 (8.2MB)  | ~84%           |
+| Ice Planet | 512x256 (173KB)   | 2048x1024 (2.37MB) | ~93%           |
+| Gas Giant  | 512x256 (123KB)   | 2048x1024 (735KB)  | ~83%           |
 
 **Total initial load reduction**: ~9.67 MB deferred to background
 
@@ -25,18 +26,17 @@ We maintain two versions of each texture:
 Located in `src/hooks/useProgressiveTexture.ts`
 
 ```typescript
-const { texture, isHighResLoaded, progress } = useProgressiveTexture(
-  lowResUrl,
-  highResUrl
-);
+const { texture, isHighResLoaded, progress } = useProgressiveTexture(lowResUrl, highResUrl);
 ```
 
 **Returns:**
+
 - `texture`: Current texture (low-res initially, then high-res)
 - `isHighResLoaded`: Boolean indicating if high-res is loaded
 - `progress`: Loading progress (0-100)
 
 **Behavior:**
+
 1. Immediately loads low-res texture via `useLoader` (blocking)
 2. Starts async load of high-res texture via `TextureLoader`
 3. Swaps to high-res when loaded
@@ -52,7 +52,7 @@ import { SKYSPHERE_TEXTURE_PATHS, SKYSPHERE_LOWRES_TEXTURE_PATHS } from '../../a
 
 const { texture } = useProgressiveTexture(
   SKYSPHERE_LOWRES_TEXTURE_PATHS[textureKey],
-  SKYSPHERE_TEXTURE_PATHS[textureKey]
+  SKYSPHERE_TEXTURE_PATHS[textureKey],
 );
 ```
 
@@ -69,10 +69,12 @@ const { texture, isHighResLoaded } = usePlanetTexture('icePlanet1');
 ## Performance Impact
 
 ### Before Progressive Loading
+
 - Initial load: ~11.27 MB of textures
 - Blocking load time: 3-8 seconds on slow connections
 
 ### After Progressive Loading
+
 - Initial load: ~1.6 MB of low-res textures
 - Background load: ~9.67 MB of high-res textures
 - Initial display time: 0.5-2 seconds (improved by 3-5 seconds)
@@ -90,6 +92,7 @@ The implementation includes proper memory management:
 ### Unit Tests
 
 Tests are located in `test/vitest/progressive-texture.spec.ts`:
+
 - Texture loading behavior
 - Progress tracking
 - State management
@@ -113,17 +116,19 @@ To test with network throttling:
 To add progressive loading for new textures:
 
 1. **Generate low-res variant** using ImageMagick:
+
    ```bash
    convert input-high-res.png -resize 512x256 -quality 95 input-low-res.png
    ```
 
 2. **Update asset registry**:
+
    ```typescript
    // In src/assets/yourTextures.ts
    export const YOUR_TEXTURE_PATHS = {
      myTexture: highResUrl,
    };
-   
+
    export const YOUR_LOWRES_TEXTURE_PATHS = {
      myTexture: lowResUrl,
    };
@@ -133,13 +138,14 @@ To add progressive loading for new textures:
    ```typescript
    const { texture } = useProgressiveTexture(
      YOUR_LOWRES_TEXTURE_PATHS.myTexture,
-     YOUR_TEXTURE_PATHS.myTexture
+     YOUR_TEXTURE_PATHS.myTexture,
    );
    ```
 
 ## Future Enhancements
 
 Potential improvements:
+
 - Loading progress UI indicator
 - Configurable fade transitions between resolutions
 - Adaptive quality based on connection speed

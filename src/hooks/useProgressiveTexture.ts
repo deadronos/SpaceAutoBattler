@@ -18,7 +18,7 @@ export interface ProgressiveTextureResult {
  */
 export function useProgressiveTexture(
   lowResUrl: string,
-  highResUrl: string
+  highResUrl: string,
 ): ProgressiveTextureResult {
   const [currentTexture, setCurrentTexture] = useState<Texture | null>(null);
   const [isHighResLoaded, setIsHighResLoaded] = useState(false);
@@ -75,7 +75,7 @@ export function useProgressiveTexture(
         if (!isDisposed.current) {
           setProgress(100);
         }
-      }
+      },
     );
 
     return () => {
