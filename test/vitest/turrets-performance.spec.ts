@@ -24,8 +24,8 @@ describe('updateTurrets performance', () => {
         team: 1,
         hull: 'frigate',
         subsystems: {
-           weapons: { status: 'ok' }
-        }
+          weapons: { status: 'ok' },
+        },
       },
       transform: {
         position: new Vector3(0, 0, 0),

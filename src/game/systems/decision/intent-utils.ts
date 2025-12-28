@@ -11,10 +11,7 @@ import type {
 import { AI_CONFIG, getEffectiveAIConfig } from '../../config.js';
 import { hashToInt } from './utils.js';
 import { computeEffectiveDesiredRange } from './hysteresis.js';
-import {
-  getShipVelocity,
-  computeInterceptHeadingVector,
-} from '../../combat/aiming.js';
+import { getShipVelocity, computeInterceptHeadingVector } from '../../combat/aiming.js';
 
 export const TEMP_DIR = new Vector3();
 export const TEMP_POS = new Vector3();

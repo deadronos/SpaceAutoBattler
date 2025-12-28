@@ -11,5 +11,6 @@
 **Action:** Use persistent TypedArrays and batched updates (via `WeakMap<GameState, Buffers>`) to eliminate per-projectile allocations in hot loops.
 
 ## 2024-05-22 - [Optimizing Turret Targeting Logic]
+
 **Learning:** Turret targeting was performing two full O(N) scans when a priority target was sought: one for "nearest enemy" (fallback) and one for the priority target.
 **Action:** Inverted the logic to scan for priority targets first. If a target is found, the generic "nearest enemy" scan is skipped. If no priority target is found, the fallback scan is executed to ensure the turret still fires. This reduced turret update time by ~25% in benchmarks.

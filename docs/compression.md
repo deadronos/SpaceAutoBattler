@@ -38,26 +38,31 @@ The compressed files are uploaded to GitHub Pages as part of the deployment arti
 ### Measured Compression Ratios (v0.1.0)
 
 **Main Bundle:**
+
 - Uncompressed: 248 KiB
 - Gzip: 75 KiB (70.0% reduction)
 - Brotli: 58 KiB (80.0% reduction)
 
 **Vendors Bundle:**
+
 - Uncompressed: 3.1 MiB
 - Gzip: 964 KiB (70.0% reduction)
 - Brotli: 637 KiB (80.0% reduction)
 
 **Rapier Physics Bundle:**
+
 - Uncompressed: 2.2 MiB
 - Gzip: 811 KiB (70.0% reduction)
 - Brotli: 601 KiB (80.0% reduction)
 
 **Three.js Bundle:**
+
 - Uncompressed: 762 KiB
 - Gzip: 194 KiB (80.0% reduction)
 - Brotli: 156 KiB (80.0% reduction)
 
 **CSS Styles:**
+
 - Uncompressed: 22 KiB
 - Gzip: 4.5 KiB (80.0% reduction)
 - Brotli: 3.8 KiB (83.0% reduction)
@@ -120,28 +125,31 @@ The compression configuration is in `webpack.config.mjs`. Key settings:
 
 ```javascript
 new CompressionPlugin({
-  filename: '[path][base].gz',      // Output filename pattern
-  algorithm: 'gzip',                 // or 'brotliCompress'
+  filename: '[path][base].gz', // Output filename pattern
+  algorithm: 'gzip', // or 'brotliCompress'
   test: /\.(js|css|html|svg|wasm)$/, // File types to compress
-  threshold: 10240,                  // 10KB minimum file size
-  minRatio: 0.8,                     // 80% compression ratio minimum
-  deleteOriginalAssets: false        // Keep uncompressed files
-})
+  threshold: 10240, // 10KB minimum file size
+  minRatio: 0.8, // 80% compression ratio minimum
+  deleteOriginalAssets: false, // Keep uncompressed files
+});
 ```
 
 ### Troubleshooting
 
 **Compressed files not generated?**
+
 - Check that `isProd` is true (production mode)
 - Verify files meet the size threshold (>10KB)
 - Ensure compression ratio meets minimum (better than 80%)
 
 **Compressed files not served?**
+
 - GitHub Pages automatically handles this
 - Client must send `Accept-Encoding: gzip, br` header
 - Check DevTools Network tab for `content-encoding` response header
 
 **Bundle size still too large?**
+
 - Consider code splitting for larger features
 - Review and optimize dependencies
 - Use dynamic imports for infrequently used modules

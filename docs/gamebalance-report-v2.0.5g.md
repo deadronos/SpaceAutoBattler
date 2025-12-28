@@ -17,6 +17,7 @@ Date: 2025-12-21
 ### Ship Balance Overview
 
 #### Fighter
+
 - **Stats**: 40 HP, 43 shield, 7.0 regen
 - **Primary weapon**: 8 damage @ 0.9s = ~8.9 DPS (bullet:laser)
 - **Turrets**:
@@ -26,6 +27,7 @@ Date: 2025-12-21
 - **Assessment**: Light and fast, but vulnerable to PD. Torpedo provides anti-capital punch but slow fire rate limits sustained damage.
 
 #### Corvette
+
 - **Stats**: 75 HP, 104 shield, 11.5 regen
 - **Primary weapon**: 12 damage @ 1.2s = 10.0 DPS (bullet:plasma)
 - **Turrets**:
@@ -37,6 +39,7 @@ Date: 2025-12-21
 - **Assessment**: Strong mid-tier hull with high burst potential from missiles. PD provides good fighter defense but at high DPS cost.
 
 #### Frigate
+
 - **Stats**: 120 HP, 123 shield, 12.0 regen
 - **Primary weapon**: 16 damage @ 1.5s = ~10.7 DPS (bullet:plasma)
 - **Turrets**:
@@ -49,6 +52,7 @@ Date: 2025-12-21
 - **Assessment**: High sustained DPS with excellent anti-fighter capability. PD at factory defaults (5 dmg @ 0.35s) is a high-DPS outlier.
 
 #### Destroyer
+
 - **Stats**: 250 HP, 433 shield, 24.0 regen
 - **Primary weapon**: 30 damage @ 1.8s = ~16.7 DPS (bullet:heavy)
 - **Turrets**:
@@ -59,6 +63,7 @@ Date: 2025-12-21
 - **Assessment**: Capital ship with massive shields and high regen. Turret cluster produces very high sustained damage. Shield regen (24.0) allows prolonged engagements.
 
 #### Carrier
+
 - **Stats**: 320 HP, 255 shield, 13.0 regen
 - **Primary weapon**: 28 damage @ 2.2s = ~12.7 DPS (bullet:ion)
 - **Turrets**:
@@ -71,6 +76,7 @@ Date: 2025-12-21
 ## Quantitative DPS Analysis
 
 ### Point-Defense Assessment
+
 - **Corvette PD**: 4 damage @ 0.35s = ~11.4 DPS
 - **Frigate PD**: 5 damage @ 0.35s = ~14.3 DPS
 - **Factory default PD**: 5 damage @ 0.35s = ~14.3 DPS
@@ -78,6 +84,7 @@ Date: 2025-12-21
 **Issue**: PD turrets remain high-DPS outliers. While slightly reduced from v2.0.4 recommendations, PD still delivers comparable DPS to primary weapons while also intercepting projectiles. This makes fighters ineffective unless massed or tactically supported.
 
 ### Torpedo & AOE Analysis
+
 - **Fighter torpedo**: 26 damage @ 4.5s, AOE radius: 12
 - **Destroyer torpedo**: 42 damage @ 5.0s, AOE radius: 12
 - **Torpedo config**: `aoeRadius: 12` (unchanged from v2.0.4)
@@ -85,13 +92,16 @@ Date: 2025-12-21
 **Issue**: AOE radius of 12 combined with high damage creates multi-kill potential in clustered formations. A single destroyer torpedo hit (42 damage + 12 radius) can devastate multiple light hulls.
 
 ### Missile Burst Damage
+
 - **Corvette/Frigate missiles**: 20 damage @ 2.8s cooldown
 - **Carrier missiles**: 22 damage @ ~3.0s cooldown
 
 **Issue**: While DPS is moderate (~7 DPS), missiles with homing capability and 20+ damage create burst damage spikes that can quickly eliminate shields on smaller hulls.
 
 ### Damage Type Effectiveness Matrix
+
 From `src/config/progression.ts`:
+
 ```
 kinetic:   hull 1.0, shield 0.8, armor 1.2
 plasma:    hull 1.1, shield 0.9, armor 1.3
@@ -99,7 +109,8 @@ ion:       hull 0.7, shield 1.4, armor 0.9
 explosive: hull 1.2, shield 0.6, armor 1.1
 ```
 
-**Analysis**: 
+**Analysis**:
+
 - Ion turrets (carriers) gain 40% effectiveness vs shields - very strong counter
 - Explosive weapons lose 40% effectiveness vs shields - situational
 - Plasma and kinetic show moderate differentiation
@@ -108,9 +119,11 @@ explosive: hull 1.2, shield 0.6, armor 1.1
 ## Balance Issues & Risks
 
 ### 1. Point-Defense Dominance (High Priority)
+
 **Impact**: Fighters become non-viable in 1v1 or small engagements against corvette/frigate with PD.
 
-**Evidence**: 
+**Evidence**:
+
 - Frigate PD alone delivers ~14.3 raw DPS, comparable to the frigate's primary weapon
 - Combined with PD's projectile interception role, this creates double value
 - Fighter combined DPS (~20.8) is only marginally higher than a single PD turret
@@ -118,18 +131,22 @@ explosive: hull 1.2, shield 0.6, armor 1.1
 **Risk**: Reduces tactical depth and limits composition variety. Fighter swarms become mandatory rather than tactical choice.
 
 ### 2. Torpedo AOE Multi-Kill Potential (Medium Priority)
+
 **Impact**: Clustered formations suffer catastrophic losses from single torpedo hits.
 
 **Evidence**:
+
 - AOE radius of 12 with 42 damage (destroyer) can eliminate multiple fighters (40 HP each)
 - Encourages degenerate formations (excessive spacing) rather than tactical positioning
 
 **Risk**: Reduces engagement variety and creates "one-shot" scenarios that feel unfair.
 
 ### 3. Destroyer Sustainability (Medium Priority)
+
 **Impact**: Destroyers with 433 shields + 24.0 regen can sustain indefinitely against equal or smaller forces.
 
 **Evidence**:
+
 - 24.0 shield regen = 24 HP/s regeneration
 - Requires sustained 24+ DPS to prevent shield recovery
 - Most single ships cannot penetrate this regen rate
@@ -137,9 +154,11 @@ explosive: hull 1.2, shield 0.6, armor 1.1
 **Risk**: Prolonged stalemates and difficulty balancing destroyer encounters.
 
 ### 4. AI Profile Oscillation (Low-Medium Priority)
+
 **Impact**: Brawler profile with high aggression (0.9) and low patience (0.3) creates approach/retreat cycling.
 
 **Evidence** (from `src/game/aiProfiles.ts`):
+
 ```javascript
 brawler: {
   desiredRange: [120, 220],
@@ -152,18 +171,22 @@ brawler: {
 **Risk**: Visual "bobbing" and heading oscillations reduce combat feel and can cause ships to disengage unintentionally.
 
 ### 5. Burst Damage vs Sustained Balance
+
 **Impact**: High-burst weapons (missiles, torpedoes) combined with high-sustained turrets create TTK compression.
 
 **Evidence**:
+
 - Corvette/frigate can deliver 20 damage missile + sustained turret fire simultaneously
 - Time-to-kill (TTK) for fighters becomes very short (2-3 seconds under focused fire)
 
 **Risk**: Reduces tactical decision-making window and increases RNG impact (who shoots first wins).
 
 ### 6. Progression Scaling Amplification
+
 **Impact**: Level bonuses multiply existing imbalances.
 
 **Evidence** (from `src/config/progression.ts`):
+
 - Damage: +3% per level (cap +30% at level 10)
 - FireRate: +2% per level (cap +15% at level 8)
 - Combined effect: ~50% DPS increase at max level
@@ -175,12 +198,14 @@ brawler: {
 ### Priority 1: Point-Defense Moderation (Safe, High-Impact)
 
 **Option A (Preferred): Reduce fire rate**
+
 - **Change**: Increase PD `fireRate` from `0.35` → `0.45` to `0.50`
 - **File**: `src/data/ships/turret-factory.ts` (`createPointDefenseTurret`)
 - **Impact**: Reduces DPS from ~14.3 → ~10-11 DPS while maintaining interception capability
 - **Reasoning**: PD remains effective against projectiles but no longer out-DPS's primary weapons
 
 **Option B: Reduce damage**
+
 - **Change**: Reduce PD `damage` from `5` → `4` (or `3`)
 - **File**: `src/data/ships/turret-factory.ts` (`createPointDefenseTurret`)
 - **Impact**: Proportional DPS reduction
@@ -189,6 +214,7 @@ brawler: {
 ### Priority 2: Torpedo AOE Reduction (Safe, High-Impact)
 
 **Change**: Reduce `aoeRadius` from `12` → `8`
+
 - **File**: `src/config/projectiles.ts` (line 91)
 - **Impact**: Reduces multi-kill radius by 33%, requires better positioning
 - **Alternative**: Reduce torpedo damage from `42` → `36` in `turret-factory.ts` (line 142)
@@ -196,7 +222,8 @@ brawler: {
 ### Priority 3: Missile Burst Smoothing (Medium-Impact)
 
 **Change**: Reduce corvette/frigate missile damage from `20` → `16` or increase `fireRate` from `2.8` → `3.2`
-- **Files**: 
+
+- **Files**:
   - `src/data/ships/corvette.ts` (if hull-specific override)
   - `src/data/ships/turret-factory.ts` (`createMissileTurret` defaults)
 - **Impact**: Smooths burst damage, reduces instant-kill scenarios
@@ -205,6 +232,7 @@ brawler: {
 ### Priority 4: Destroyer Shield Sustainability (Conservative)
 
 **Change**: Reduce destroyer `shieldRegen` from `24.0` → `18.0` or `20.0`
+
 - **File**: `src/data/ships/destroyer.ts` (line 16)
 - **Impact**: Makes destroyer vulnerable to sustained fire, reduces indefinite sustain
 - **Reasoning**: 18 HP/s regen still strong but allows massed corvettes to overcome it
@@ -212,10 +240,12 @@ brawler: {
 ### Priority 5: AI Brawler Profile Smoothing (Low-Risk)
 
 **Option A**: Reduce aggression
+
 - **Change**: `brawler.aggression` from `0.9` → `0.75` or `0.8`
 - **File**: `src/game/aiProfiles.ts` (line 166)
 
 **Option B**: Increase patience
+
 - **Change**: `brawler.patience` from `0.3` → `0.4` or `0.45`
 - **File**: `src/game/aiProfiles.ts` (line 167)
 
@@ -225,7 +255,8 @@ brawler: {
 ### Priority 6: Progression Fire Rate Cap Audit
 
 **Review**: Verify fire rate bonuses don't trivialize balance
-- **Files**: 
+
+- **Files**:
   - `src/config/progression.ts` (line 38: `fireRate: { bonus: 0.02, cap: 0.15 }`)
   - `src/game/progression/leveling.ts`
 - **Action**: Ensure +15% fire rate cap doesn't cause PD or burst weapons to become dominant at high levels
@@ -268,6 +299,7 @@ Use `test/support/aiScenarioHarness.ts` to build automated validation suite. Run
 ### Metrics to Collect
 
 Via `collectTestMetrics` helper:
+
 - **TTK**: Time-to-kill (median, p90, p99)
 - **timeToFirstShot**: Engagement latency
 - **timeToFirstKill**: Time to first casualty
@@ -279,6 +311,7 @@ Via `collectTestMetrics` helper:
 ### Validation Gates
 
 Before/after tuning comparisons:
+
 - Fighter 1v1 survivability improvement >25%
 - Torpedo multi-kill rate reduction >30%
 - Destroyer engagement time reduction >20%
@@ -286,26 +319,28 @@ Before/after tuning comparisons:
 
 ## Code Locations Quick Reference
 
-| Area | File | Purpose |
-|------|------|---------|
-| Ship stats | `src/data/ships/*.ts` | Hull HP, shields, regen, primary weapons |
-| Turret factory | `src/data/ships/turret-factory.ts` | Default turret configurations (PD, missiles, etc) |
-| Projectile config | `src/config/projectiles.ts` | AOE radius, arming time, homing, colliders |
-| Progression | `src/config/progression.ts` | Level bonuses, damage effectiveness, XP scaling |
-| AI profiles | `src/game/aiProfiles.ts` | Behavior weights, ranges, oscillation parameters |
-| Combat math | `src/game/combat/damage.ts` | Damage distribution, armor absorption |
-| Testing harness | `test/support/aiScenarioHarness.ts` | Deterministic scenario testing framework |
+| Area              | File                                | Purpose                                           |
+| ----------------- | ----------------------------------- | ------------------------------------------------- |
+| Ship stats        | `src/data/ships/*.ts`               | Hull HP, shields, regen, primary weapons          |
+| Turret factory    | `src/data/ships/turret-factory.ts`  | Default turret configurations (PD, missiles, etc) |
+| Projectile config | `src/config/projectiles.ts`         | AOE radius, arming time, homing, colliders        |
+| Progression       | `src/config/progression.ts`         | Level bonuses, damage effectiveness, XP scaling   |
+| AI profiles       | `src/game/aiProfiles.ts`            | Behavior weights, ranges, oscillation parameters  |
+| Combat math       | `src/game/combat/damage.ts`         | Damage distribution, armor absorption             |
+| Testing harness   | `test/support/aiScenarioHarness.ts` | Deterministic scenario testing framework          |
 
 ## Changes from v2.0.4
 
 Based on inspection of current codebase vs v2.0.4 report findings:
 
 ### Observed Changes
+
 1. **Corvette PD**: Now uses `damage: 4` (reduced from default 5)
 2. **Torpedo values**: Remain at 42 damage, 12 AOE radius (no change)
 3. **AI profiles**: Brawler profile unchanged (aggression: 0.9, patience: 0.3)
 
 ### Outstanding v2.0.4 Recommendations
+
 - ❌ PD fire rate increase (0.35 → 0.55): Not implemented
 - ❌ Torpedo AOE reduction (12 → 8): Not implemented
 - ⚠️ Corvette missile tuning: Missiles remain at 20 damage
@@ -315,18 +350,21 @@ Based on inspection of current codebase vs v2.0.4 report findings:
 ## Recommended Action Plan
 
 ### Phase 1: Conservative Safety Changes (Low Risk)
+
 **Goal**: Address highest-impact issues with minimal disruption
 
 1. ✅ Increase PD fire rate to 0.45-0.50
 2. ✅ Reduce torpedo AOE radius to 8-9
 3. ✅ Document baseline metrics with current values
 
-**Expected Impact**: 
+**Expected Impact**:
+
 - Fighter viability +20-30%
 - Torpedo multi-kill reduction -30-40%
 - No risk of over-nerfing capital ships
 
 ### Phase 2: Sustained DPS Smoothing (Medium Risk)
+
 **Goal**: Address burst damage and sustainability issues
 
 1. Reduce missile damage to 16-18
@@ -334,10 +372,12 @@ Based on inspection of current codebase vs v2.0.4 report findings:
 3. Run validation scenarios
 
 **Expected Impact**:
+
 - Smoother TTK curves
 - Destroyer vulnerability to massed fire
 
 ### Phase 3: AI Behavioral Tuning (Low Risk)
+
 **Goal**: Improve combat feel and reduce oscillations
 
 1. Adjust brawler aggression to 0.75-0.8
@@ -345,6 +385,7 @@ Based on inspection of current codebase vs v2.0.4 report findings:
 3. Validate with harness metrics
 
 **Expected Impact**:
+
 - Reduced heading/thrust oscillations
 - Smoother engagement patterns
 
@@ -370,18 +411,21 @@ Files:
 **Choose One:**
 
 **A) Apply Conservative Changes Now**
+
 - Implement Phase 1 changes (PD + torpedo AOE)
 - Run baseline and post-change metrics
 - Document results in follow-up report
 - **Recommended**: Lowest risk, fast iteration
 
 **B) Run Baseline Metrics First**
+
 - Execute deterministic harness scenarios with current values
 - Capture comprehensive KPI baseline
 - Use data to prioritize changes
 - **Recommended**: For data-driven approach
 
 **C) Create Balance Tuning Playbook**
+
 - Document all tuning knobs with expected impacts
 - Provide lookup table for rapid designer iteration
 - Include harness scenarios and validation gates
