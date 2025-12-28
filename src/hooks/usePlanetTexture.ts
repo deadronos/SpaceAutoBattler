@@ -100,8 +100,10 @@ export function usePlanetTexture(key: PlanetTextureKey | undefined): PlanetTextu
       return { texture: null, fallbackColor: FALLBACK_COLOR };
     }
 
-    const texture = textures[key];
-    if (!texture) {
+    // Textures are loaded asynchronously; on first renders a valid key will not
+    // have a value in `textures` yet. Only treat keys as invalid if they don't
+    // exist in the canonical registry.
+    if (!Object.prototype.hasOwnProperty.call(PLANET_TEXTURE_PATHS, key)) {
       return {
         texture: null,
         fallbackColor: FALLBACK_COLOR,
@@ -110,7 +112,7 @@ export function usePlanetTexture(key: PlanetTextureKey | undefined): PlanetTextu
       };
     }
 
-    return { texture, fallbackColor: FALLBACK_COLOR, isHighResLoaded };
+    return { texture: textures[key] ?? null, fallbackColor: FALLBACK_COLOR, isHighResLoaded };
   }, [key, textures, isHighResLoaded]);
 }
 

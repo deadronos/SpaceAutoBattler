@@ -5,6 +5,7 @@ import {
   SHOT_DELTA_Y_BUCKETS,
   SHOT_DISTANCE_BUCKETS,
 } from './constants.js';
+import { clamp01 } from '../../utils/math.js';
 
 export type InBandAccumulator = { samples: number; satisfied: number };
 export type InBandSummary = { samples: number; satisfied: number; ratio: number | null };
@@ -141,7 +142,7 @@ export function addToHistogram(hist: AIShotHistogram, value: number): void {
 export function percentile(sortedValues: number[], p: number): number {
   if (sortedValues.length === 0) return 0;
   if (sortedValues.length === 1) return sortedValues[0];
-  const clamped = Math.max(0, Math.min(1, p));
+  const clamped = clamp01(p);
   const index = Math.floor((sortedValues.length - 1) * clamped);
   return sortedValues[index];
 }
