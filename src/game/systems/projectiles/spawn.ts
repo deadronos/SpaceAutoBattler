@@ -6,7 +6,7 @@ import type {
   ProjectileHomingConfig,
 } from '../../../types/combat.js';
 import { AI_CONFIG } from '../../config.js';
-import { getEffectiveStats } from '../../progression.js';
+import { getSubsystemMultiplier } from '../../progression.js';
 import { adjustProjectileSpeedForHullAndBullet } from '../../utils/rangePolicy.js';
 import {
   resolveProjectileInfo,
@@ -129,9 +129,10 @@ export function fireProjectile(
 
   let speed = opts?.override?.projectileSpeed ?? origin.ship.projectileSpeed;
   speed = resolveProjectileSpeed(origin, speed, info.key, opts?.override);
+  // OPTIMIZATION: Avoid object allocation by querying subsystem multiplier directly
   const damage =
     (opts?.override?.damage ?? origin.ship.damage) *
-    getEffectiveStats(origin.ship).damageMultiplier;
+    getSubsystemMultiplier('weapons', origin.ship.subsystems.weapons.status);
   const range = opts?.override?.range ?? origin.ship.range;
   const lifetime = speed > 0 ? Math.min(range / speed, 30) : (info.beamConfig?.ttl ?? 0.4);
 

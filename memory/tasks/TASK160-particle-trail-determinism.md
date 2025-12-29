@@ -14,6 +14,7 @@ From performance review v2.0.5g: Replace Math.random() usage in ParticleTrails w
 File: `src/components/ParticleTrails.tsx`
 
 **Discovered State**: The code already implements full determinism:
+
 - ✅ SeededRng already in use (line 38)
 - ✅ No Math.random() calls exist
 - ✅ No clone() calls in hot paths
@@ -39,17 +40,18 @@ The issue mentioned in the performance review has already been addressed in prio
 
 ### Subtasks
 
-| ID  | Description           | Status                                     | Updated | Notes                |
-| --- | --------------------- | ------------------------------------------ | ------- | -------------------- |
-| 3.1 | Add SeededRng to component | Complete | 2025-12-21 | Already implemented (line 38) |
+| ID  | Description                 | Status   | Updated    | Notes                                 |
+| --- | --------------------------- | -------- | ---------- | ------------------------------------- |
+| 3.1 | Add SeededRng to component  | Complete | 2025-12-21 | Already implemented (line 38)         |
 | 3.2 | Replace Math.random() calls | Complete | 2025-12-21 | None found - already using rng.next() |
-| 3.3 | Replace Vector3 clones | Complete | 2025-12-21 | Already using temp vectors |
-| 3.4 | Add determinism tests | Complete | 2025-12-21 | 5 comprehensive tests added |
-| 3.5 | Validate with scenarios | Complete | 2025-12-21 | Tests pass, typecheck passes |
+| 3.3 | Replace Vector3 clones      | Complete | 2025-12-21 | Already using temp vectors            |
+| 3.4 | Add determinism tests       | Complete | 2025-12-21 | 5 comprehensive tests added           |
+| 3.5 | Validate with scenarios     | Complete | 2025-12-21 | Tests pass, typecheck passes          |
 
 ## Progress Log
 
 ### 2025-12-21 (Completion)
+
 - Analyzed ParticleTrails.tsx implementation
 - **Discovery**: Code already fully deterministic with SeededRng
 - Verified no Math.random() or clone() calls exist
@@ -65,5 +67,6 @@ The issue mentioned in the performance review has already been addressed in prio
 - Task completed: No code changes needed, only validation and documentation
 
 ### 2025-12-21 (Initial)
+
 - Task created from performance review v2.0.5g
 - Identified as determinism improvement opportunity

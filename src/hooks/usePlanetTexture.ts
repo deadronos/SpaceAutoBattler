@@ -1,8 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useThree } from '@react-three/fiber';
 import type { WebGLRenderer } from 'three';
-import { LinearFilter, LinearMipmapLinearFilter, SRGBColorSpace, Texture, TextureLoader } from 'three';
-import { PLANET_TEXTURE_PATHS, PLANET_LOWRES_TEXTURE_PATHS, type PlanetTextureKey } from '../assets/planets.js';
+import {
+  LinearFilter,
+  LinearMipmapLinearFilter,
+  SRGBColorSpace,
+  Texture,
+  TextureLoader,
+} from 'three';
+import {
+  PLANET_TEXTURE_PATHS,
+  PLANET_LOWRES_TEXTURE_PATHS,
+  type PlanetTextureKey,
+} from '../assets/planets.js';
 
 const FALLBACK_COLOR = '#2e3142';
 
@@ -47,7 +57,7 @@ export function usePlanetTexture(key: PlanetTextureKey | undefined): PlanetTextu
           (error) => {
             console.warn(`[usePlanetTexture] Failed to load low-res texture ${textureKey}:`, error);
             resolve();
-          }
+          },
         );
       });
     });
@@ -70,7 +80,7 @@ export function usePlanetTexture(key: PlanetTextureKey | undefined): PlanetTextu
                 loadedTextures[textureKey] = texture;
                 configureTexture(texture, gl);
                 setTextures({ ...loadedTextures });
-                
+
                 // Check if all high-res textures are loaded
                 const allHighResLoaded = highResUrls.every(([k]) => loadedTextures[k]);
                 if (allHighResLoaded) {
@@ -80,8 +90,11 @@ export function usePlanetTexture(key: PlanetTextureKey | undefined): PlanetTextu
             },
             undefined,
             (error) => {
-              console.warn(`[usePlanetTexture] Failed to load high-res texture ${textureKey}:`, error);
-            }
+              console.warn(
+                `[usePlanetTexture] Failed to load high-res texture ${textureKey}:`,
+                error,
+              );
+            },
           );
         });
       }
@@ -100,8 +113,10 @@ export function usePlanetTexture(key: PlanetTextureKey | undefined): PlanetTextu
       return { texture: null, fallbackColor: FALLBACK_COLOR };
     }
 
-    const texture = textures[key];
-    if (!texture) {
+    // Textures are loaded asynchronously; on first renders a valid key will not
+    // have a value in `textures` yet. Only treat keys as invalid if they don't
+    // exist in the canonical registry.
+    if (!Object.prototype.hasOwnProperty.call(PLANET_TEXTURE_PATHS, key)) {
       return {
         texture: null,
         fallbackColor: FALLBACK_COLOR,
@@ -110,7 +125,7 @@ export function usePlanetTexture(key: PlanetTextureKey | undefined): PlanetTextu
       };
     }
 
-    return { texture, fallbackColor: FALLBACK_COLOR, isHighResLoaded };
+    return { texture: textures[key] ?? null, fallbackColor: FALLBACK_COLOR, isHighResLoaded };
   }, [key, textures, isHighResLoaded]);
 }
 

@@ -1,5 +1,9 @@
 import type { GameState, ShipEntity } from '../../../types/index.js';
-import { updateCaptainAbilities, repairSubsystems, getEffectiveStats } from '../../progression.js';
+import {
+  updateCaptainAbilities,
+  repairSubsystems,
+  getSubsystemMultiplier,
+} from '../../progression.js';
 
 const MUZZLE_FLASH_LIFETIME = 0.25;
 
@@ -22,8 +26,10 @@ export function updateShipLifecycle(state: GameState, ship: ShipEntity, delta: n
   updateCaptainAbilities(ship.ship, state.time, delta);
   repairSubsystems(ship.ship, delta);
 
-  const effectiveStats = getEffectiveStats(ship.ship);
-  const regen = (ship.ship.shieldRegen ?? 0) * effectiveStats.shieldRegenMultiplier;
+  // OPTIMIZATION: Use direct subsystem multiplier lookup to avoid allocating
+  // a full stats object via getEffectiveStats() every frame.
+  const regenMultiplier = getSubsystemMultiplier('shields', ship.ship.subsystems.shields.status);
+  const regen = (ship.ship.shieldRegen ?? 0) * regenMultiplier;
   if (regen > 0 && ship.ship.shield < ship.ship.maxShield) {
     ship.ship.shield = Math.min(ship.ship.maxShield, ship.ship.shield + regen * delta);
   }

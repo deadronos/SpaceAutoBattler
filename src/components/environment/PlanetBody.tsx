@@ -61,7 +61,7 @@ export const PlanetBody = memo(function PlanetBody({ config }: PlanetBodyProps):
   const hideRingsParam = false;
 
   if (error) {
-    console.warn('[PlanetBody] Missing texture key', config.id, error);
+    console.warn('[PlanetBody] Unknown planet texture key', { id: config.id, textureKey: config.textureKey }, error);
   }
 
   return (

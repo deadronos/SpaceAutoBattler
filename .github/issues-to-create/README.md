@@ -14,6 +14,7 @@ gh issue create --title "$(grep '^title:' issue-file.md | cut -d: -f2-)" \
 ```
 
 Or create them manually:
+
 1. Go to https://github.com/deadronos/SpaceAutoBattler/issues/new
 2. Copy the title and body from each issue file
 3. Add the specified labels

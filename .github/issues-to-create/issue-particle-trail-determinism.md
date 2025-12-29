@@ -1,17 +1,20 @@
 ---
 title: Replace Math.random() in ParticleTrails for Determinism
-labels: ["code-quality", "determinism", "priority: low"]
+labels: ['code-quality', 'determinism', 'priority: low']
 ---
 
 ## Summary
+
 Replace `Math.random()` usage in ParticleTrails with `SeededRng` to maintain determinism and replay consistency.
 
 ## Context
+
 From performance review v2.0.5g (TASK160):
 
 **File**: `src/components/ParticleTrails.tsx`
 
 **Current issues**:
+
 - Uses `Math.random()` in fallback path (non-deterministic)
 - Occasional `clone()` calls in fallback (minor allocation overhead)
 - Breaks deterministic replay when fallback is triggered
@@ -44,9 +47,11 @@ This is a **minor issue** with low performance impact but affects the determinis
    - Verify determinism maintained
 
 ## Priority
+
 **Low Impact / Low Effort** - Code quality improvement for determinism consistency.
 
 ## Acceptance Criteria
+
 - [ ] No `Math.random()` usage in ParticleTrails component
 - [ ] All randomness uses `SeededRng` from game state
 - [ ] Temp vectors preallocated and reused (no per-frame `clone()`)
@@ -55,11 +60,13 @@ This is a **minor issue** with low performance impact but affects the determinis
 - [ ] Visual quality unchanged
 
 ## Technical Notes
+
 - Follow existing patterns in motion system and AI code for temp vector reuse
 - Use `state.rng` to maintain consistency with rest of simulation
 - Ensure fallback path still provides reasonable visuals
 
 ## References
+
 - Performance Review: `docs/performance-review-v2.0.5g.md`
 - Task Details: `memory/tasks/TASK160-particle-trail-determinism.md`
 - Best Practices: `docs/performance-best-practices.md`
