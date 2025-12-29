@@ -12,6 +12,7 @@ import { ParticleTrails } from './ParticleTrails.js';
 import { HudOverlayCollector } from './HudOverlayCollector.js';
 import { ExplosionsLayer } from './explosions/ExplosionRendererCore.js';
 import { PerfMonitorOverlay } from './PerfMonitorOverlay.js';
+import DynamicResScaler from './DynamicResScaler.js';
 import { CelestialEnvironment } from './environment/CelestialEnvironment.js';
 import { BattlefieldSystems } from './BattlefieldSystems.js';
 import { ShipsLayer } from './layers/ShipsLayer.js';
@@ -107,7 +108,7 @@ export function Battlefield(): React.ReactElement {
         near: CAMERA_DEFAULTS.near,
         far: CAMERA_DEFAULTS.far,
       }}
-      dpr={[1, 2]}
+      dpr={[0.5, 2]}
       onCreated={({ gl }) => {
         gl.outputColorSpace = SRGBColorSpace;
         gl.toneMapping = NoToneMapping;
@@ -123,6 +124,7 @@ export function Battlefield(): React.ReactElement {
     >
       <StarsField />
       <BattleSceneContent ppEnabled={ppEnabled} />
+      <DynamicResScaler />
       <PerfMonitorOverlay />
     </Canvas>
   );
