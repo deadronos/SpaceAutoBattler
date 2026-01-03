@@ -5,9 +5,7 @@ import { isCopilotDebugEnabled } from '../utils/copilotDebug.js';
 if (typeof window !== 'undefined') {
   type GlLog = { time: number; type: string; details: string | number | object | null };
   const win = window as Window & { __copilot_glLogs?: Array<GlLog> & { __installed?: boolean } };
-  const debugEnabled =
-    (typeof process !== 'undefined' && process.env && process.env.NODE_ENV !== 'production') ||
-    isCopilotDebugEnabled();
+  const debugEnabled = !import.meta.env.PROD || isCopilotDebugEnabled();
   if (debugEnabled) {
     try {
       win.__copilot_glLogs = win.__copilot_glLogs || [];

@@ -97,7 +97,9 @@ export class SimulationBridge {
       this.sharedViews = createTransformSoAViews(this.layout, this.sharedBuffer);
     }
 
-    this.worker = new Worker(new URL('../worker/simulation.worker.ts', import.meta.url));
+    this.worker = new Worker(new URL('../worker/simulation.worker.ts', import.meta.url), {
+      type: 'module',
+    });
 
     this.readyPromise = new Promise<void>((resolve, reject) => {
       this.readyResolve = resolve;
