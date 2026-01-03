@@ -38,7 +38,14 @@ Minimal acceptance checklist before merge:
 
 If blocked: re-run Analyze → adjust Confidence Score → pick PoC if medium/low confidence.
 
-End.
+## Detailed Phases
+
+### **Phase 1: ANALYZE**
+
+- Gather facts and requirements.
+- Write 2–5 EARS-style requirements.
+
+### **Phase 2: DESIGN**
 
 - Create a comprehensive technical design and a detailed implementation plan.
 
@@ -204,37 +211,4 @@ End.
 
 ```text
 **Title**: [Technical Debt] - [Brief Description]
----
-description: 'Spec-driven workflow — condensed 6-phase checklist + PR/requirement templates (Cookbook style).'
-applyTo: '**'
----
-
-# Spec-Driven Workflow — Quick Loop
-
-Receipt: "Follow a 6-phase spec-driven loop: Analyze → Design → Implement → Validate → Reflect → Handoff."
-
-6-phase micro-plan (one sentence each):
-- Analyze: gather facts, write 2–5 EARS-style requirements.
-- Design: write a short design (diagram + interfaces) and tasks list.
-- Implement: small commits, tests, and update tasks.md as you go.
-- Validate: run automated tests, manual checks, and performance verifications.
-- Reflect: refactor, update docs, and record technical debt.
-- Handoff: prepare PR with executive summary, changelog, tests, and artifacts.
-
-Quick templates
-- Requirement (EARS): WHEN <event>, THE SYSTEM SHALL <behavior> [Acceptance: how to test].
-- PR summary (3 lines): 1) Goal: <one-line> 2) Key changes: <files/functions> 3) Validation: <tests/metrics>. Attach decision records if any.
-
-Minimal acceptance checklist before merge:
-- [ ] 2–5 testable requirements written.
-- [ ] Design doc linked in PR.
-- [ ] Tests for each requirement (unit/integration).
-- [ ] Performance baseline if applicable.
-- [ ] Decision records for non-trivial trade-offs.
-- [ ] Exec summary and streamlined action log included.
-
-If blocked: re-run Analyze → adjust Confidence Score → pick PoC if medium/low confidence.
-
-End.
-**EARS (Easy Approach to Requirements Syntax)** - Standard format for requirements:
 ```
