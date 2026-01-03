@@ -1,5 +1,5 @@
-// Import GLB assets directly; webpack emits them under dist/models with hashes
-// thanks to the asset/resource rule and returns the final URL string.
+// Import GLB assets directly; Vite treats these as build assets and returns the final URL string.
+// Output placement/hashing is configured in vite.config.ts (dist/models/*).
 import fighterUrl from '../assets/gltf/fighter.glb';
 import corvetteUrl from '../assets/gltf/corvette.glb';
 import frigateUrl from '../assets/gltf/frigate.glb';

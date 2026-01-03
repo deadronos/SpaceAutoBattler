@@ -28,7 +28,7 @@ async function testFile(file) {
   }
 
   // Serve dist and run Playwright to look for clamp warning.
-  const server = spawn('npx', ['http-server', './dist', '-p', '8081', '-c-1'], { shell: true, stdio: 'inherit' });
+  const server = spawn('npx', ['vite', 'preview', '--port', '8081', '--strictPort'], { shell: true, stdio: 'inherit' });
   // Give server time to start
   await new Promise(r => setTimeout(r, 800));
 

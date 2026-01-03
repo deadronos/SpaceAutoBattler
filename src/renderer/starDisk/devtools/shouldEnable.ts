@@ -4,5 +4,5 @@ export const shouldEnableStarDiskDevHelpers = (): boolean => {
   if (isCopilotDebugEnabled()) {
     return true;
   }
-  return process.env.NODE_ENV !== 'production';
+  return !import.meta.env.PROD;
 };

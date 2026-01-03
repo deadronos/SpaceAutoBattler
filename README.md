@@ -11,7 +11,7 @@ SpaceAutoBattler is a lightweight, research-oriented 3D space combat simulator. 
 - Physics: Rapier (`@dimforge/rapier3d-compat`)
 - ECS: Miniplex
 - UI state: Zustand
-- Tooling: webpack, ESLint, Prettier
+- Tooling: Vite, ESLint, Prettier
 - Tests: Vitest (unit/integration) and Playwright (E2E/visual)
 
 ## Quick start
@@ -23,17 +23,14 @@ git clone https://github.com/deadronos/SpaceAutoBattler.git
 Set-Location SpaceAutoBattler
 npm install
 
-# Development (webpack dev server, opens browser)
-npm start
+# Development (Vite dev server)
+npm run dev
 
-# Build a production bundle (webpack -> `dist/`)
+# Build a production bundle (Vite -> `dist/`)
 npm run build
 
-# Serve the built files (serves `./dist` on :8080)
-npm run serve
-
-# Serve repository root (useful for static previews)
-npm run serve:root
+# Preview the built files (serves `./dist` on :8080)
+npm run preview
 ```
 
 Open the local server at <http://localhost:8080> (or the URL printed by the serve script).
@@ -57,7 +54,7 @@ Edit TypeScript sources in `src/` only. Key folders:
 - `src/utils/` — seeded RNG and shared helpers
 - `src/data/` — data tables (for example ship stats)
 - `src/worker/` — optional worker-simulation protocol and transforms layout helpers
-- `src/styles/` and `src/ui.html` — minimal UI templates and global styles
+- `src/styles/` and `spaceautobattler.html` — global styles and HTML entry points
 
 Build artifacts and generated files live in `dist/` (do not edit).
 
@@ -66,11 +63,13 @@ Build artifacts and generated files live in `dist/` (do not edit).
 The project provides a set of npm scripts to run tests, checks and builds. Common ones:
 
 - `npm install` — install dependencies
-- `npm start` — webpack dev server (opens browser)
-- `npm run build` — production webpack build (runs `prebuild` first)
-- `npm run build:dev` — development webpack build
-- `npm run serve` — simple static server that serves `./dist` on port 8080
-- `npm run serve:root` — serve the repository root on port 8080
+- `npm run dev` — Vite dev server on port 8080
+- `npm start` — alias for `npm run dev`
+- `npm run build` — production Vite build (runs `prebuild` first)
+- `npm run build:dev` — development build (`vite build --mode development`)
+- `npm run preview` — serve `./dist` on port 8080
+- `npm run serve` — alias for `npm run preview`
+- `npm run serve:e2e` — serves `dist/` + repository root for Playwright pages
 - `npm test` — run unit tests (Vitest, node/happy-dom environment)
 - `npm run test:browser` — run Vitest configured for browser tests
 - `npm run test:e2e` — run Playwright end-to-end tests
@@ -141,12 +140,8 @@ The site will be available at `https://[username].github.io/SpaceAutoBattler/` a
 
 ### Compression
 
-Production builds automatically generate compressed versions of all assets:
-
-- **Gzip** (`.gz` files): ~70% size reduction
-- **Brotli** (`.br` files): ~80% size reduction
-
-This reduces the total bundle size from 6.2 MiB to approximately 1.5 MiB (with brotli) for significantly faster page loads. GitHub Pages automatically serves the compressed files to clients that support them.
+Production builds generate pre-compressed versions of eligible assets (`.gz` and `.br`). Whether clients
+receive these depends on your hosting/CDN configuration.
 
 See [`docs/compression.md`](docs/compression.md) for detailed compression ratios and configuration.
 

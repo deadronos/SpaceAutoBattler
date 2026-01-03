@@ -50,7 +50,7 @@ This summarizes the public surface of the rewrite’s core modules to help navig
 
 ## Assets and utilities
 
-- `assets/ships.ts` — map of hull -> GLB URL emitted by webpack.
+- `assets/ships.ts` — map of hull -> GLB URL emitted by the build pipeline.
 - `utils/patchGltfLoader.ts` — development-time guard for invalid GLTF URLs (examples + stdlib loaders).
 - `utils/rng.ts` — seeded RNG used by game logic.
 

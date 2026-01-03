@@ -22,7 +22,7 @@ let frame = parseInt(params.get('frame') || '0', 10);
 let shieldEnabled = params.get('shield') === 'true';
 let engineEnabled = params.get('engine') === 'true';
 let postprocessing = params.get('postprocessing') !== 'false';
-// Optional explicit model path passed by the test runner (useful when filenames are webpack-hashed)
+// Optional explicit model path passed by the test runner (useful when filenames are build-hashed)
 let explicitModelPath = params.get('model') || null;
 // Support Playwright inlined-page mode where init params can be injected before module runs
 try {
