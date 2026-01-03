@@ -64,6 +64,6 @@ If a deployment fails or has issues:
 The deployed `dist/` folder should contain:
 
 - `index.html` (copied from `spaceautobattler.html`)
-- `spaceautobattler.html` (original webpack output)
+- `spaceautobattler.html` (application entry point)
 - Asset folders: `assets/`, `models/`, `styles/`, `workers/`
 - JavaScript bundles with content hashes

@@ -3,6 +3,7 @@ import path from 'path';
 import { defineConfig, type Plugin, type UserConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import reactCompiler from 'babel-plugin-react-compiler';
+import compression from 'vite-plugin-compression';
 
 function createJsToTsResolvePlugin(): Plugin {
   const srcDir = path.resolve(process.cwd(), 'src');
@@ -162,6 +163,20 @@ export default defineConfig(({ mode }) => {
             ],
           };
         },
+      }),
+      compression({
+        algorithm: 'gzip',
+        ext: '.gz',
+        threshold: 10 * 1024,
+        deleteOriginFile: false,
+        filter: /\.(js|mjs|css|html|svg|wasm)$/i,
+      }),
+      compression({
+        algorithm: 'brotliCompress',
+        ext: '.br',
+        threshold: 10 * 1024,
+        deleteOriginFile: false,
+        filter: /\.(js|mjs|css|html|svg|wasm)$/i,
       }),
     ],
     resolve: {

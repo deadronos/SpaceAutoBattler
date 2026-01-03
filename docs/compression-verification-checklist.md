@@ -90,8 +90,8 @@ Verify CSS files are also compressed:
 
 **Solution:**
 
-- Check webpack build output for warnings
-- Verify `threshold` and `minRatio` settings in `webpack.config.mjs`
+- Check build output for warnings
+- Verify compression settings in `vite.config.ts`
 - Some files naturally don't compress well
 
 ### Issue: 404 errors for bundles

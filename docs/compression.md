@@ -2,13 +2,13 @@
 
 ## Overview
 
-The SpaceAutoBattler deployment uses pre-compressed assets with both gzip and brotli compression to significantly reduce bundle delivery sizes. This is implemented via webpack plugins that generate compressed versions of assets during the production build.
+SpaceAutoBattler can generate pre-compressed assets with both gzip and brotli compression to reduce bundle delivery sizes. This is implemented via Vite build plugins that emit `.gz` and `.br` files alongside the original assets during a production build.
 
 ## Implementation
 
-### Webpack Configuration
+### Vite Configuration
 
-The compression is configured in `webpack.config.mjs` using the `compression-webpack-plugin`:
+The compression is configured in `vite.config.ts` using `vite-plugin-compression`:
 
 - **Gzip compression**: Generates `.gz` files alongside original assets
 - **Brotli compression**: Generates `.br` files alongside original assets
@@ -27,11 +27,7 @@ During production builds (`npm run build`), the compression plugins automaticall
 
 ### Deployment
 
-The compressed files are uploaded to GitHub Pages as part of the deployment artifact. GitHub Pages' CDN automatically:
-
-1. Detects the Accept-Encoding headers from client requests
-2. Serves the appropriate compressed version (brotli preferred, gzip fallback)
-3. Falls back to uncompressed files for clients that don't support compression
+Whether clients actually receive the pre-compressed files depends on your hosting/CDN configuration. Many hosts compress responses automatically, but serving pre-compressed `*.br` / `*.gz` assets often requires explicit configuration.
 
 ## Compression Results
 
@@ -113,24 +109,23 @@ npm run build
 ls -lh dist/*.js.gz
 ls -lh dist/*.js.br
 
-# Serve locally with compression support (requires http-server with compression)
-npx http-server dist -g -b -c-1
+# Serve locally
+npm run preview
 ```
 
 ## Maintenance
 
 ### Updating Compression Configuration
 
-The compression configuration is in `webpack.config.mjs`. Key settings:
+The compression configuration is in `vite.config.ts`. Key settings:
 
 ```javascript
-new CompressionPlugin({
-  filename: '[path][base].gz', // Output filename pattern
-  algorithm: 'gzip', // or 'brotliCompress'
-  test: /\.(js|css|html|svg|wasm)$/, // File types to compress
-  threshold: 10240, // 10KB minimum file size
-  minRatio: 0.8, // 80% compression ratio minimum
-  deleteOriginalAssets: false, // Keep uncompressed files
+compression({
+  algorithm: 'gzip',
+  ext: '.gz',
+  threshold: 10 * 1024,
+  deleteOriginFile: false,
+  filter: /\.(js|mjs|css|html|svg|wasm)$/i,
 });
 ```
 
@@ -144,8 +139,8 @@ new CompressionPlugin({
 
 **Compressed files not served?**
 
-- GitHub Pages automatically handles this
 - Client must send `Accept-Encoding: gzip, br` header
+- Your server/CDN must be configured to serve pre-compressed `*.br` / `*.gz` (or compress dynamically)
 - Check DevTools Network tab for `content-encoding` response header
 
 **Bundle size still too large?**
@@ -156,6 +151,6 @@ new CompressionPlugin({
 
 ## References
 
-- [compression-webpack-plugin Documentation](https://webpack.js.org/plugins/compression-webpack-plugin/)
+- [vite-plugin-compression](https://github.com/vbenjs/vite-plugin-compression)
 - [GitHub Pages Documentation](https://docs.github.com/en/pages)
 - [Brotli Compression Specification](https://tools.ietf.org/html/rfc7932)

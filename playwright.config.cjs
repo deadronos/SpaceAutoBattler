@@ -31,7 +31,10 @@ module.exports = {
   // navigate to the built dist output deterministically. We build first to
   // ensure dist/spaceautobattler.html exists, then serve the root on port 8080.
   webServer: {
-    command: process.env.E2E_BUILD === 'false' ? 'npm run preview' : 'npm run build && npm run preview',
+    command:
+      process.env.E2E_BUILD === 'false'
+        ? 'node ./scripts/e2e-static-server.mjs --port 8080'
+        : 'npm run build && node ./scripts/e2e-static-server.mjs --port 8080',
     port: 8080,
     reuseExistingServer: true,
     timeout: 60 * 1000,
