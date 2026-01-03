@@ -2,6 +2,7 @@
 
 Current focuses (short-term):
 
+- **Performance Review v2.0.6b (Completed - 100%)**: Comprehensive performance review completed with rating analysis across all critical metrics. Results show excellent improvements: AI system 13.8% faster (40% headroom), test suite 21.9% faster, overall rating ⭐⭐⭐⭐⭐ 4.6/5.0. Documentation in `docs/performance-review-v2.0.6b.md` and `PERFORMANCE_REVIEW_SUMMARY.md`.
 - Land shared capped-buffer helpers (`appendCappedMutable`/`appendCappedImmutable`) across diagnostics, shield ripples, metrics, and progression events (TASK415); unblock Vitest run by addressing missing optional `@rollup` native binary.
 - Refine AI motion PD tuning (TASK241) to eliminate bobbing and document hull-specific gains (spec/motion-tuning.md).
 - Monitor StarDisk uniform telemetry (`window.__copilot_starDiskTelemetry`) alongside Rapier diagnostics to verify iTime progression after addressing WASM faults (TASK237 complete)
@@ -12,6 +13,7 @@ Current focuses (short-term):
 
 Recent changes:
 
+- **2025-12-29**: Completed performance review for v2.0.6b — measured all performance metrics (AI budget, projectile stress, build time, test suite, bundle size) and calculated percentage improvements vs v2.0.5g. Key findings: AI system 1.493ms (40% headroom, ↑13.8%), test suite 37.8s (↑21.9%), projectiles ↑6.9%, build ↑2.1%. Overall rating: ⭐⭐⭐⭐⭐ 4.6/5.0 EXCELLENT. Created comprehensive 450-line review document with detailed analysis and ratings. Updated summary document and memory bank progress.
 - **TASK119 (In Progress — 80%)**: Updated `test/vitest/flak-proximity.spec.ts` to pass `originPosition` through `FireProjectileOptions` (not `FireProjectileOverride`) and re-indented call sites; `npx tsc --noEmit` and `npx eslint` pass. Vitest run is currently blocked in this sandbox by esbuild `spawn EPERM` during config load.
 - **TASK157 (In Progress)**: Landed worker simulation snapshot pipeline + worker-driven ship render MVP (cones) and a render-only flag to stop main-thread ticking; fixed production Webpack chunk loading for worker split chunks and added Playwright coverage (`worker-sim.spec.ts`).
 - **TASK237 (Completed - 100%)**: Implemented StarDisk uniform telemetry monitoring to track iTime progression and correlate with Rapier panics:

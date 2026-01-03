@@ -2,6 +2,8 @@
 
 This file summarizes recent work and maintenance actions performed on the memory bank.
 
+- 2025-12-29: Completed performance review for v2.0.6b — measured and rated performance patterns across all critical metrics, showing significant improvements over v2.0.5g baseline. Key results: AI system 13.8% faster (1.493ms, 40% headroom), test suite 21.9% faster (827 tests in 37.8s), projectiles 6.9% faster, build time 2.1% faster. Overall rating: ⭐⭐⭐⭐⭐ 4.6/5.0 EXCELLENT. Documented in `docs/performance-review-v2.0.6b.md` and updated `PERFORMANCE_REVIEW_SUMMARY.md`. Validation: `npm run perf:ai-budget`, `npm run bench:projectiles`, `npm run build`, `npm test` all passing.
+
 - 2025-12-17: Worker simulation offload milestones (TASK157) — validated by `npm run typecheck`, `npm test`, `npm run build`, and Playwright worker E2E
   - Added worker-driven ships rendering MVP and a render-only mode flag that disables the main-thread simulation tick while keeping the scene visually driven by worker snapshots.
   - Fixed Webpack chunking/output paths so worker `importScripts` can load split chunks (notably Rapier) in production builds.

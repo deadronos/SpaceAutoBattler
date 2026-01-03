@@ -121,7 +121,7 @@ Instructions for building high-quality ReactJS applications with modern patterns
 
 - Write unit tests for components using React Testing Library
 - Test component behavior, not implementation details
-- Use Jest for test runner and assertion library
+- Use **Vitest** for test runner (replaces Jest in this project)
 - Implement integration tests for complex component interactions
 - Mock external dependencies and API calls appropriately
 - Test accessibility features and keyboard navigation
