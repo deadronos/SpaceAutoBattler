@@ -87,6 +87,7 @@ export const PROJECTILE_CONFIG: Record<string, ProjectileConfigItem> = {
     colliderRadius: 0.7,
     baseGeometryRadius: 0.5,
     visualMultiplier: 1.15,
+    homing: { turnRate: Math.PI / 3, lead: true },
     armingTime: 0.8,
     aoeRadius: 12,
   },

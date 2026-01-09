@@ -4,6 +4,10 @@ import {
   FORWARD,
   clampAngle,
   computeLeadDirection,
+  computeSeekDirection,
+  computeArriveDirection,
+  computeInterceptDirection,
+  computeEvadeDirection,
   orientQuaternionFromDirection,
   safeNormalize,
   steerDirection,
@@ -47,6 +51,44 @@ describe('steering utilities', () => {
 
     const noLead = computeLeadDirection(targetPos, sourcePos, velocity, 0);
     expect(noLead.y).toBeCloseTo(0, 6);
+  });
+
+  it('computes seek and arrive directions safely', () => {
+    const seekDir = computeSeekDirection(
+      new Vector3(10, 0, 0),
+      new Vector3(0, 0, 0),
+    );
+    expect(seekDir.length()).toBeCloseTo(1, 6);
+    expect(seekDir.x).toBeGreaterThan(0.9);
+
+    const arrive = computeArriveDirection(
+      new Vector3(0, 0, 0),
+      new Vector3(0, 0, 0),
+      5,
+      1,
+    );
+    expect(arrive.speedScale).toBe(0);
+    expect(arrive.direction.length()).toBeCloseTo(1, 6);
+  });
+
+  it('computes intercept and evade directions', () => {
+    const intercept = computeInterceptDirection(
+      new Vector3(10, 0, 0),
+      new Vector3(0, 0, 0),
+      new Vector3(0, 2, 0),
+      6,
+    );
+    expect(intercept.length()).toBeCloseTo(1, 6);
+    expect(intercept.y).toBeGreaterThan(0.1);
+
+    const evade = computeEvadeDirection(
+      new Vector3(10, 0, 0),
+      new Vector3(0, 0, 0),
+      new Vector3(0, 0, 0),
+      4,
+    );
+    expect(evade.length()).toBeCloseTo(1, 6);
+    expect(evade.x).toBeLessThan(0);
   });
 
   it('steers direction respecting turn limits', () => {

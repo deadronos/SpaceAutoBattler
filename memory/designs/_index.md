@@ -4,6 +4,7 @@ This folder contains canonical design documents named using the pattern `DESIGNN
 
 ## In Progress
 
+- [DESIGN066](DESIGN066-projectile-steering-point-defense.md) — Steering helpers, torpedo homing default, and point-defense projectile targeting. (Proposed) (2026-01-09)
 - [DESIGN055](DESIGN055-capped-buffer-helper.md) — Shared capped-buffer helpers centralize history trimming across debug and metrics surfaces. (In Progress — implementation underway) (2025-10-29)
 - [DESIGN048](DESIGN048-renderer-large-file-plan.md) — Plan to split large renderer files into focused modules with clear test boundaries and a migration plan. (In Progress — implementation planning) (2025-10-27)
 - [DESIGN019](DESIGN019-ship-mock-test.md) — Playwright ship mock render tests (PoC implemented; follow-up: generate baselines, CI job). (In Progress — PoC implemented 2025-12-15)

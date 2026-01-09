@@ -2,7 +2,8 @@ import type { GameState, ProjectileEntity, ShipEntity } from '../../../types/ind
 import type { ProjectileHomingConfig } from '../../../types/combat.js';
 import {
   FORWARD,
-  computeLeadDirection,
+  computeInterceptDirection,
+  computeSeekDirection,
   orientQuaternionFromDirection,
   steerDirection,
 } from '../../../utils/steering.js';
@@ -47,13 +48,19 @@ export function steerProjectileTowardTarget(
     return;
   }
 
-  const desired = computeLeadDirection(
-    target.transform.position,
-    projectile.transform.position,
-    target.ship.velocity,
-    homing.lead ? 0.5 : 0,
-    TEMP_TARGET,
-  );
+  const desired = homing.lead
+    ? computeInterceptDirection(
+        target.transform.position,
+        projectile.transform.position,
+        target.ship.velocity,
+        projectile.projectile.speed,
+        TEMP_TARGET,
+      )
+    : computeSeekDirection(
+        target.transform.position,
+        projectile.transform.position,
+        TEMP_TARGET,
+      );
 
   const angle = steerDirection(currentDir, desired, homing.turnRate, delta, currentDir);
   if (angle < 1e-5) {
