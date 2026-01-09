@@ -55,7 +55,7 @@ export function createPointDefenseTurret(
     maxYaw: Math.PI * 0.85,
     minPitch: -Math.PI * 0.35,
     maxPitch: Math.PI * 0.55,
-    priority: 'antiFighter',
+    priority: 'antiProjectile',
     ...options,
   };
 }

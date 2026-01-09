@@ -349,4 +349,19 @@ describe('extended projectile behaviours', () => {
     expect(target.ship.hp).toBeLessThan(initialHpPrimary);
     expect(secondaryTarget.ship.hp).toBeLessThan(initialHpSecondary);
   });
+
+  it('spawns torpedoes with default homing configuration', () => {
+    attacker.ship.bulletType = 'torpedo:standard';
+    attacker.ship.projectileSpeed = 55;
+
+    fireProjectile(state, attacker, new Vector3(0, 0, 1), {
+      originPosition: attacker.transform.position.clone(),
+      targetId: target.id,
+    });
+
+    flushPostPhysicsMutations(state);
+    const spawned = (state.queries.projectiles.entities as ProjectileEntity[])[0];
+    expect(spawned.projectile.homing).toBeDefined();
+    expect(spawned.projectile.homing?.turnRate).toBeCloseTo(Math.PI / 3, 5);
+  });
 });
