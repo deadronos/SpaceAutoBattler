@@ -5,6 +5,7 @@ This folder contains canonical task documents named using the pattern `TASKNNN-t
 ## In Progress
 
 - [TASK161](TASK161-projectile-steering-point-defense.md) — Steering helpers, torpedo homing default, and point-defense projectile targeting. (In Progress — implementation complete; validation pending) (2026-01-09)
+- [TASK162](TASK162-dynamic-res-scaler-tuning.md) — Tune `DynamicResScaler` defaults, add telemetry/HUD controls, add Playwright baselines for DPR transitions, and document behavior (In Progress — initial unit tests present; integration/telemetry pending) (2026-01-09)
 - [TASK119](TASK119-flak-proximity-type-alignment.md) — Align flak proximity Vitest call sites with `FireProjectileOptions` so lint/type/test pipelines pass (design: DESIGN063). (In Progress — implementation underway) (2025-12-10)
 - [TASK156](TASK156-playwright-ship-screenshots.md) — Validate Playwright ship harness, generate representative baselines (fighter/frigate/carrier), and add a CI job to run a representative subset. (In Progress — validate PoC & generate baselines) (2025-12-15)
 - [TASK157](TASK157-offloading-simulation.md) — Offload simulation to a Web Worker (Rapier + ECS + AI), stream ship snapshots, and add worker-driven render debug modes (design: DESIGN065). (In Progress — worker sim + snapshot + render MVP landed; event sync pending) (2025-12-17)
