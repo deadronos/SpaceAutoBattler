@@ -117,7 +117,7 @@ export interface TurretSpec {
   /** Optional upper pitch limit in radians relative to parent forward. */
   maxPitch?: number;
   /** Optional targeting priority for turret AI. */
-  priority?: 'any' | 'antiFighter' | 'antiCapital';
+  priority?: 'any' | 'antiFighter' | 'antiCapital' | 'antiProjectile';
   /** Optional canonical projectile category override for behaviour hints. */
   projectileCategory?: ProjectileCategory;
 }
@@ -149,7 +149,7 @@ export interface TurretComponent extends TurretSpec {
   /** Upper pitch limit in radians. */
   maxPitch?: number;
   /** Targeting priority for turret AI. */
-  priority?: 'any' | 'antiFighter' | 'antiCapital';
+  priority?: 'any' | 'antiFighter' | 'antiCapital' | 'antiProjectile';
 }
 
 /** Parameters for a short-lived muzzle flash event emitted when a weapon fires. */

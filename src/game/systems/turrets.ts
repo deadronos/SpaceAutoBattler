@@ -1,10 +1,17 @@
 import { Quaternion, Vector3 } from 'three';
-import type { GameState, ShipEntity, TurretEntity, TurretState } from '../../types/index.js';
+import type {
+  GameState,
+  ProjectileEntity,
+  ShipEntity,
+  TurretEntity,
+  TurretState,
+} from '../../types/index.js';
 import { recordShotHelper } from '../metrics.js';
 import { fireProjectile, TEMP_POS } from './projectiles.js';
+import { destroyEntity } from '../state.js';
 import type { KinematicBody } from '../physics/safeKinematics.js';
 import { deferSetNextKinematicTranslation } from '../physics/safeKinematics.js';
-import { findNearestEnemy } from '../utils/targetSelection.js';
+import { findNearestEnemy, findPointDefenseTarget } from '../utils/targetSelection.js';
 
 const TEMP_TURRET_DIR = new Vector3();
 const TEMP_QUAT = new Quaternion();
@@ -31,12 +38,24 @@ export function runEmbeddedTurrets(state: GameState, ship: ShipEntity, target: S
   for (const turret of ship.turrets ?? []) {
     if (turret.cooldown > 0) continue;
     const turretOrigin = getTurretWorldPosition(ship, turret);
-    const toTarget = TEMP_TURRET_DIR.copy(target.transform.position).sub(turretOrigin);
+    const projectileTarget =
+      turret.priority === 'antiProjectile'
+        ? findPointDefenseTarget(state, {
+            origin: turretOrigin,
+            team: ship.ship.team,
+            maxRange: turret.range,
+            preferTargetId: ship.id,
+          })
+        : null;
+    const targetPos = projectileTarget
+      ? projectileTarget.transform.position
+      : target.transform.position;
+    const toTarget = TEMP_TURRET_DIR.copy(targetPos).sub(turretOrigin);
     const dist = toTarget.length();
     if (dist > turret.range) continue;
     if (dist > 1e-5) toTarget.divideScalar(dist);
     else toTarget.set(0, 0, 1);
-    recordShotHelper(state, ship, target, dist);
+    recordShotHelper(state, ship, projectileTarget ? null : target, dist);
     fireProjectile(state, ship, toTarget, {
       originPosition: turretOrigin,
       override: {
@@ -44,11 +63,14 @@ export function runEmbeddedTurrets(state: GameState, ship: ShipEntity, target: S
         projectileSpeed: turret.projectileSpeed,
         range: turret.range,
         bulletType: turret.bulletType,
-        targetId: target.id,
+        targetId: projectileTarget ? undefined : target.id,
         projectileCategory: turret.projectileCategory,
       },
-      targetId: target.id,
+      targetId: projectileTarget ? undefined : target.id,
     });
+    if (projectileTarget) {
+      destroyEntity(state, projectileTarget);
+    }
     turret.cooldown = turret.fireRate;
   }
 }
@@ -76,7 +98,17 @@ export function updateTurrets(state: GameState, delta: number): void {
     if (t.turret.cooldown > 0) continue;
 
     let target: ShipEntity | null = null;
-    if (t.turret.priority && t.turret.priority !== 'any') {
+    let projectileTarget: ProjectileEntity | null = null;
+    if (t.turret.priority === 'antiProjectile') {
+      projectileTarget = findPointDefenseTarget(state, {
+        origin,
+        team: ship.ship.team,
+        maxRange: t.turret.range,
+        preferTargetId: ship.id,
+      });
+    }
+
+    if (!projectileTarget && t.turret.priority && t.turret.priority !== 'any') {
       const ships = state.queries.ships.entities as ShipEntity[];
       const preferSmall = t.turret.priority === 'antiFighter';
       let bestScore = Number.POSITIVE_INFINITY;
@@ -108,11 +140,14 @@ export function updateTurrets(state: GameState, delta: number): void {
       target = best;
     }
 
-    if (!target) {
+    if (!projectileTarget && !target) {
       target = findNearestEnemy(state, ship);
     }
-    if (!target) continue;
-    const toTarget = TEMP_TURRET_DIR.copy(target.transform.position).sub(origin);
+    if (!projectileTarget && !target) continue;
+    const targetPos = projectileTarget
+      ? projectileTarget.transform.position
+      : target!.transform.position;
+    const toTarget = TEMP_TURRET_DIR.copy(targetPos).sub(origin);
     const dist = toTarget.length();
     if (dist > t.turret.range) continue;
     if (dist > 1e-5) toTarget.divideScalar(dist);
@@ -126,7 +161,7 @@ export function updateTurrets(state: GameState, delta: number): void {
     const minPitch = t.turret.minPitch ?? -Math.PI / 2;
     const maxPitch = t.turret.maxPitch ?? Math.PI / 2;
     if (yaw < minYaw || yaw > maxYaw || pitch < minPitch || pitch > maxPitch) continue;
-    recordShotHelper(state, ship, target, dist);
+    recordShotHelper(state, ship, projectileTarget ? null : target, dist);
     fireProjectile(state, ship, toTarget, {
       originPosition: origin,
       override: {
@@ -134,11 +169,14 @@ export function updateTurrets(state: GameState, delta: number): void {
         projectileSpeed: t.turret.projectileSpeed,
         range: t.turret.range,
         bulletType: t.turret.bulletType,
-        targetId: target.id,
+        targetId: projectileTarget ? undefined : target!.id,
         projectileCategory: t.turret.projectileCategory,
       },
-      targetId: target.id,
+      targetId: projectileTarget ? undefined : target!.id,
     });
+    if (projectileTarget) {
+      destroyEntity(state, projectileTarget);
+    }
     t.turret.cooldown = t.turret.fireRate;
   }
 }

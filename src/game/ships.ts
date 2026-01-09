@@ -80,6 +80,8 @@ export function spawnShip(state: GameState, blueprint: ShipBlueprint): ShipEntit
       projectileSpeed: t.projectileSpeed,
       range: applyRangeVariance(t.range, aiState.traitSeed, idx + 1),
       bulletType: t.bulletType,
+      projectileCategory: t.projectileCategory,
+      priority: t.priority ?? 'any',
       cooldown: t.fireRate * state.rng.next(),
     })),
     ai: aiState,

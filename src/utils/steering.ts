@@ -6,6 +6,9 @@ export const FORWARD = new Vector3(0, 0, 1);
 const DEFAULT_FALLBACK = new Vector3(0, 0, 1);
 const TEMP_DIR = new Vector3();
 const TEMP_LEAD = new Vector3();
+const TEMP_SEEK = new Vector3();
+const TEMP_INTERCEPT = new Vector3();
+const TEMP_INTERCEPT_TARGET = new Vector3();
 
 /**
  * Normalizes a vector safely, handling zero-length vectors by falling back to a default.
@@ -82,6 +85,145 @@ export function computeLeadDirection(
   }
 
   return out;
+}
+
+/**
+ * Computes a direction that seeks a target position.
+ *
+ * @param {Vector3} targetPos - The target position.
+ * @param {Vector3} sourcePos - The current position.
+ * @param {Vector3} [out=new Vector3()] - The vector to store the result.
+ * @param {Vector3} [fallback=FORWARD] - Fallback direction if target is co-located.
+ * @returns {Vector3} The normalized seek direction.
+ */
+export function computeSeekDirection(
+  targetPos: Vector3,
+  sourcePos: Vector3,
+  out: Vector3 = new Vector3(),
+  fallback: Vector3 = FORWARD,
+): Vector3 {
+  TEMP_SEEK.copy(targetPos).sub(sourcePos);
+  return safeNormalize(out, TEMP_SEEK, fallback);
+}
+
+/**
+ * Computes an arrival direction and speed scale based on distance thresholds.
+ *
+ * @param {Vector3} targetPos - The target position.
+ * @param {Vector3} sourcePos - The current position.
+ * @param {number} slowRadius - Distance at which to start slowing.
+ * @param {number} [stopRadius=0] - Distance at which to stop.
+ * @param {Vector3} [out=new Vector3()] - The vector to store the direction.
+ * @param {Vector3} [fallback=FORWARD] - Fallback direction if target is co-located.
+ * @returns {{ direction: Vector3; speedScale: number; distance: number }} Result object.
+ */
+export function computeArriveDirection(
+  targetPos: Vector3,
+  sourcePos: Vector3,
+  slowRadius: number,
+  stopRadius = 0,
+  out: Vector3 = new Vector3(),
+  fallback: Vector3 = FORWARD,
+): { direction: Vector3; speedScale: number; distance: number } {
+  TEMP_SEEK.copy(targetPos).sub(sourcePos);
+  const distance = TEMP_SEEK.length();
+  const slow = Math.max(0, slowRadius);
+  const stop = Math.max(0, stopRadius);
+  let speedScale = 1;
+
+  if (!Number.isFinite(distance) || distance <= stop) {
+    speedScale = 0;
+  } else if (slow > stop && distance < slow) {
+    speedScale = (distance - stop) / (slow - stop);
+  }
+
+  safeNormalize(out, TEMP_SEEK, fallback);
+  return { direction: out, speedScale, distance };
+}
+
+/**
+ * Computes an intercept direction for a moving target given source speed.
+ *
+ * @param {Vector3} targetPos - The target position.
+ * @param {Vector3} sourcePos - The current position.
+ * @param {Vector3} targetVelocity - The target velocity vector.
+ * @param {number} sourceSpeed - The source speed.
+ * @param {Vector3} [out=new Vector3()] - The vector to store the result.
+ * @param {Vector3} [fallback=FORWARD] - Fallback direction if intercept fails.
+ * @returns {Vector3} The normalized intercept direction.
+ */
+export function computeInterceptDirection(
+  targetPos: Vector3,
+  sourcePos: Vector3,
+  targetVelocity: Vector3,
+  sourceSpeed: number,
+  out: Vector3 = new Vector3(),
+  fallback: Vector3 = FORWARD,
+): Vector3 {
+  TEMP_INTERCEPT.copy(targetPos).sub(sourcePos);
+  const speed = Math.max(0, sourceSpeed);
+  if (speed <= 1e-6) {
+    return safeNormalize(out, TEMP_INTERCEPT, fallback);
+  }
+
+  const a = targetVelocity.lengthSq() - speed * speed;
+  const b = 2 * TEMP_INTERCEPT.dot(targetVelocity);
+  const c = TEMP_INTERCEPT.lengthSq();
+  let t = 0;
+
+  if (Math.abs(a) < 1e-6) {
+    if (Math.abs(b) > 1e-6) {
+      t = -c / b;
+    }
+  } else {
+    const discriminant = b * b - 4 * a * c;
+    if (discriminant >= 0) {
+      const sqrt = Math.sqrt(discriminant);
+      const t1 = (-b - sqrt) / (2 * a);
+      const t2 = (-b + sqrt) / (2 * a);
+      t = Math.min(t1, t2);
+      if (t < 0) t = Math.max(t1, t2);
+    }
+  }
+
+  if (!Number.isFinite(t) || t <= 0) {
+    return safeNormalize(out, TEMP_INTERCEPT, fallback);
+  }
+
+  TEMP_INTERCEPT_TARGET.copy(targetPos).addScaledVector(targetVelocity, t);
+  TEMP_INTERCEPT_TARGET.sub(sourcePos);
+  return safeNormalize(out, TEMP_INTERCEPT_TARGET, fallback);
+}
+
+/**
+ * Computes an evasion direction away from an intercept path.
+ *
+ * @param {Vector3} threatPos - The threat position.
+ * @param {Vector3} sourcePos - The current position.
+ * @param {Vector3} threatVelocity - The threat velocity vector.
+ * @param {number} sourceSpeed - The source speed.
+ * @param {Vector3} [out=new Vector3()] - The vector to store the result.
+ * @param {Vector3} [fallback=FORWARD] - Fallback direction if evasion fails.
+ * @returns {Vector3} The normalized evasion direction.
+ */
+export function computeEvadeDirection(
+  threatPos: Vector3,
+  sourcePos: Vector3,
+  threatVelocity: Vector3,
+  sourceSpeed: number,
+  out: Vector3 = new Vector3(),
+  fallback: Vector3 = FORWARD,
+): Vector3 {
+  computeInterceptDirection(
+    threatPos,
+    sourcePos,
+    threatVelocity,
+    sourceSpeed,
+    out,
+    fallback,
+  );
+  out.multiplyScalar(-1);
+  return safeNormalize(out, out, fallback);
 }
 
 /**

@@ -1,5 +1,12 @@
 # Requirements
 
+## 2026-01-09 — Steering Helpers, Torpedo Homing, Point Defense
+
+1. **WHEN** steering callers request seek/arrive/pursuit/evade outputs, **THE SYSTEM SHALL** provide helper functions that return normalized directions (and arrive speed scaling) while safely handling zero-length vectors with fallbacks. _(Acceptance: `test/vitest/steering-utils.spec.ts` covers the new helpers and edge conditions.)_
+2. **WHEN** a `torpedo:standard` projectile is spawned without overrides, **THE SYSTEM SHALL** apply the default torpedo homing configuration so torpedoes steer toward assigned targets. _(Acceptance: unit coverage confirms the torpedo config includes homing and spawned torpedoes inherit it.)_
+3. **WHEN** a turret is configured with priority `antiProjectile`, **THE SYSTEM SHALL** select the nearest enemy missile/torpedo within range, preferring projectiles targeting the parent ship, and attempt interception. _(Acceptance: turret unit test verifies the projectile is selected/cleared and a shot is recorded.)_
+4. **WHEN** no eligible projectile exists for `antiProjectile`, **THE SYSTEM SHALL** fall back to the existing ship targeting logic so turrets remain active. _(Acceptance: turret unit test asserts fallback ship targeting.)_
+
 ## 2025-10-29 — Debug History Capping Unification (TASK415)
 
 1. **WHEN** a debug, telemetry, or metrics buffer records a new entry, **THE SYSTEM SHALL** append via a shared capped-buffer helper that enforces the configured maximum length. _(Acceptance: `test/utils/cappedArray.spec.ts` appends beyond the cap and asserts the tail length equals the limit.)_
