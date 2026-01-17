@@ -184,7 +184,7 @@ importers:
         specifier: ^4.55.1
         version: 4.55.1
       ts-node:
-        specifier: ^1.7.1
+        specifier: ^1.7.3
         version: 1.7.3
       tsx:
         specifier: ^4.21.0
