@@ -24,6 +24,11 @@ const rootDir = path.dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
   plugins: [glslLoaderPlugin()],
   assetsInclude: ['**/*.glb', '**/*.glsl'],
+  resolve: {
+    alias: {
+      three: path.resolve(rootDir, 'node_modules/three'),
+    },
+  },
   test: {
     include: [
       'test/vitest/*.spec.ts',

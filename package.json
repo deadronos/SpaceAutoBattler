@@ -34,6 +34,11 @@
     "bench:projectiles": "node scripts/bench/projectile-stress.mjs",
     "build:deploy": "npm run typecheck && npm test && npm run build && cp dist/spaceautobattler.html dist/index.html"
   },
+  "pnpm": {
+    "overrides": {
+      "three": "$three"
+    }
+  },
   "devDependencies": {
     "@babel/preset-env": "^7.28.6",
     "@eslint/css": "^0.14.1",
