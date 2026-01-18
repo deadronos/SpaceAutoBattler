@@ -52,6 +52,32 @@ export function buildSpatialHash<T>(
 }
 
 /**
+ * Clears and repopulates an existing spatial hash in-place.
+ * Avoids allocating a new Map by reusing the existing grid.
+ *
+ * @template T - The type of item stored.
+ * @param {SpatialHash<T>} hash - The spatial hash to clear and repopulate.
+ * @param {readonly T[]} items - The items to index.
+ */
+export function clearSpatialHash<T>(hash: SpatialHash<T>, items: readonly T[]): void {
+  hash.grid.clear();
+  for (const item of items) {
+    const pos = hash.getPosition(item);
+    const key = toKey(
+      toCellIndex(pos.x, hash.cellSize),
+      toCellIndex(pos.y, hash.cellSize),
+      toCellIndex(pos.z, hash.cellSize),
+    );
+    const bucket = hash.grid.get(key);
+    if (bucket) {
+      bucket.push(item);
+    } else {
+      hash.grid.set(key, [item]);
+    }
+  }
+}
+
+/**
  * Queries the spatial hash for items within a radius of a position.
  * Note: This implementation is approximate (checks cells overlapping the bounding box of the sphere).
  *

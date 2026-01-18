@@ -2,7 +2,7 @@
 
 Targeting `[Violation] 'requestAnimationFrame' handler took Xms` issues.
 
-## 1. Prevent Simulation "Death Spiral"
+## 1. ~~Prevent Simulation "Death Spiral"~~ ✅ DONE
 
 **Location:** `src/components/BattlefieldSystems.tsx`
 
@@ -12,7 +12,7 @@ Targeting `[Violation] 'requestAnimationFrame' handler took Xms` issues.
   - Break the `while` loop if the budget is exceeded.
   - Dynamically reduce `MAX_ALLOWED_SIMULATION_SUBSTEPS` if FPS is consistently low.
 
-## 2. Optimize Spatial Hash Rebuilding
+## 2. ~~Optimize Spatial Hash Rebuilding~~ ✅ DONE
 
 **Location:** `src/game/systems/damage.ts` -> `resolveProjectiles`
 

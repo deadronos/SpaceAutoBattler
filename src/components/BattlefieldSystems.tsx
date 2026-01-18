@@ -8,6 +8,12 @@ import { shouldRenderWorkerShipsOnly } from '../game/SimulationBridge.js';
 export const MAX_ALLOWED_SIMULATION_SUBSTEPS = 5;
 
 /**
+ * Time budget in milliseconds for the simulation loop per frame.
+ * If exceeded, the loop breaks early to prevent death spirals.
+ */
+export const SIMULATION_TIME_BUDGET_MS = 12;
+
+/**
  * Limits the number of substeps to prevent death spirals on slow frames.
  *
  * @param {number} value - The requested number of substeps.
@@ -67,11 +73,15 @@ export function BattlefieldSystems(): React.ReactElement {
       /* ignore */
     }
 
+    const loopStart = performance.now();
     let steps = 0;
     while (sim.accumulator >= step && steps < maxSteps) {
       updateGame(state, step);
       sim.accumulator -= step;
       steps += 1;
+      if (performance.now() - loopStart > SIMULATION_TIME_BUDGET_MS) {
+        break;
+      }
     }
 
     sim.alpha = step > 0 ? Math.min(sim.accumulator / step, 1) : 0;
