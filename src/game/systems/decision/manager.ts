@@ -13,6 +13,12 @@ import {
 import { evaluateShip, applyEvaluationResult } from './evaluator.js';
 import { getEffectiveProfile } from './profile-adjustment.js';
 
+/**
+ * Throttle interval for expensive O(N²) sensor and blackboard updates.
+ * Running every 2nd AI tick reduces CPU load by ~50%.
+ */
+const SENSOR_UPDATE_INTERVAL = 2;
+
 function runShipDecisions(
   state: GameState,
   ships: ShipEntity[],
@@ -118,8 +124,11 @@ export function updateDecisionSystem(state: GameState, delta: number): void {
   const entityById = new Map<number, ShipEntity>();
   for (const ship of ships) entityById.set(ship.id, ship);
 
-  updateSensorSystem(state, ships);
-  refreshBlackboard(state, ships);
+  // Throttle expensive O(N²) sensor and blackboard operations
+  if (manager.tickIndex % SENSOR_UPDATE_INTERVAL === 0) {
+    updateSensorSystem(state, ships);
+    refreshBlackboard(state, ships);
+  }
   assignTeamRoles(state, ships);
   processInterruptQueue(manager, entityById);
 

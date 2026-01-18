@@ -22,7 +22,7 @@ Targeting `[Violation] 'requestAnimationFrame' handler took Xms` issues.
   - Implement an incremental update or clearer/dirty system.
   - Alternatively, throttle the rebuild to run only every N frames (e.g., every 3-5 frames) and accept slight inaccuracy for collision detection flexibility.
 
-## 3. Throttle Global AI & Sensor Updates
+## 3. ~~Throttle Global AI & Sensor Updates~~ ✅ DONE
 
 **Location:** `src/game/systems/decision/manager.ts`
 
