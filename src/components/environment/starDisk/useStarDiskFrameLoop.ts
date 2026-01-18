@@ -148,36 +148,48 @@ export function useStarDiskFrameLoop({
   const lastUniformTimeRef = useRef(0);
   const previousUniformTimeRef = useRef(0);
 
+  // Optimization: Reused objects
+  const uniformUpdateRef = useRef<MainSequenceStarUniformUpdate>({
+    time: 0,
+    resolution: { width: 1, height: 1 },
+    viewAlignment: { x: 0, y: 0, z: 1 },
+    starNorth: 0,
+    cameraRoll: 0,
+  });
+
   useFrame((state, delta) => {
     if (!enabled) {
       return;
     }
 
-    const debugWin =
-      debugEnabled && typeof window !== 'undefined' ? (window as CopilotDebugWindow) : undefined;
+    let debugWin: CopilotDebugWindow | undefined;
+    if (import.meta.env.DEV) {
+      debugWin =
+        debugEnabled && typeof window !== 'undefined' ? (window as CopilotDebugWindow) : undefined;
 
-    if (debugWin && debugWin.__copilot_forceStarOpaqueRequest) {
-      try {
-        debugWin.__copilot_forceStarOpaque = true;
-      } catch {
-        /* ignore */
-      }
-      const pendingMat = shaderMaterialRef.current;
-      if (pendingMat) {
+      if (debugWin && debugWin.__copilot_forceStarOpaqueRequest) {
         try {
-          pendingMat.needsUpdate = true;
+          debugWin.__copilot_forceStarOpaque = true;
         } catch {
           /* ignore */
         }
-        try {
-          debugWin.__copilot_forceStarOpaqueApplied = Date.now();
-        } catch {
-          /* ignore */
-        }
-        try {
-          debugWin.__copilot_forceStarOpaqueRequest = false;
-        } catch {
-          /* ignore */
+        const pendingMat = shaderMaterialRef.current;
+        if (pendingMat) {
+          try {
+            pendingMat.needsUpdate = true;
+          } catch {
+            /* ignore */
+          }
+          try {
+            debugWin.__copilot_forceStarOpaqueApplied = Date.now();
+          } catch {
+            /* ignore */
+          }
+          try {
+            debugWin.__copilot_forceStarOpaqueRequest = false;
+          } catch {
+            /* ignore */
+          }
         }
       }
     }
@@ -187,7 +199,7 @@ export function useStarDiskFrameLoop({
       return;
     }
 
-    if (debugWin) {
+    if (import.meta.env.DEV && debugWin) {
       const meshLocal = meshRef.current;
       if (meshLocal) {
         try {
@@ -234,6 +246,7 @@ export function useStarDiskFrameLoop({
 
     const { camera, viewport } = state;
     if (
+      import.meta.env.DEV &&
       debugWin &&
       debugWin.__copilot_rotateCameraDeltaDeg !== undefined &&
       debugWin.__copilot_rotateCameraDeltaDeg !== null
@@ -302,7 +315,7 @@ export function useStarDiskFrameLoop({
     lastUniformTimeRef.current = rawElapsed;
     const { wrapped: wrappedElapsed, cycles: wrapCycles } = wrapStarTime(rawElapsed);
 
-    if (isCopilotDebugEnabled()) {
+    if (import.meta.env.DEV && isCopilotDebugEnabled()) {
       const now = Date.now();
       const deltaTime = rawElapsed - previousUniformTimeRef.current;
       const isProgressing = deltaTime > 0;
@@ -365,13 +378,11 @@ export function useStarDiskFrameLoop({
       aspectWarnedRef.current = true;
     }
     const { width, height } = state.size;
-    const uniformUpdate: MainSequenceStarUniformUpdate = {
-      time: wrappedElapsed,
-      resolution: {
-        width: Number.isFinite(width) && width > 0 ? width : 1,
-        height: Number.isFinite(height) && height > 0 ? height : 1,
-      },
-    };
+
+    const uniformUpdate = uniformUpdateRef.current;
+    uniformUpdate.time = wrappedElapsed;
+    uniformUpdate.resolution.width = Number.isFinite(width) && width > 0 ? width : 1;
+    uniformUpdate.resolution.height = Number.isFinite(height) && height > 0 ? height : 1;
 
     const alignment = viewAlignmentRef.current;
     alignment.x = 0;
@@ -396,7 +407,7 @@ export function useStarDiskFrameLoop({
         alignment,
       );
 
-      if (debugEnabled) {
+      if (import.meta.env.DEV && debugEnabled) {
         try {
           const pos = meshWorldPosition.clone();
           const proj = pos.project(camera);
@@ -454,7 +465,12 @@ export function useStarDiskFrameLoop({
     }
     updateMainSequenceStarUniforms(mat, uniformUpdate);
 
-    if (debugEnabled && debugWin && debugWin.__copilot_dumpStarDebug === true) {
+    if (
+      import.meta.env.DEV &&
+      debugEnabled &&
+      debugWin &&
+      debugWin.__copilot_dumpStarDebug === true
+    ) {
       try {
         const meshLocal = meshRef.current;
         const matCurrent = shaderMaterialRef.current;
@@ -507,7 +523,12 @@ export function useStarDiskFrameLoop({
       }
     }
 
-    if (debugEnabled && debugWin && debugWin.__copilot_forceStarOnTopRequest) {
+    if (
+      import.meta.env.DEV &&
+      debugEnabled &&
+      debugWin &&
+      debugWin.__copilot_forceStarOnTopRequest
+    ) {
       try {
         const meshLocal = meshRef.current;
         if (meshLocal) {
@@ -537,7 +558,12 @@ export function useStarDiskFrameLoop({
       }
     }
 
-    if (debugEnabled && debugWin && debugWin.__copilot_forceStarOpaqueRequest) {
+    if (
+      import.meta.env.DEV &&
+      debugEnabled &&
+      debugWin &&
+      debugWin.__copilot_forceStarOpaqueRequest
+    ) {
       const matImmediate = shaderMaterialRef.current;
       if (matImmediate) {
         try {
@@ -563,7 +589,7 @@ export function useStarDiskFrameLoop({
       }
     }
 
-    if (debugEnabled && debugWin) {
+    if (import.meta.env.DEV && debugEnabled && debugWin) {
       const meshLocal = meshRef.current;
       if (debugWin.__copilot_forceBasicMaterialRequest && meshLocal) {
         const userData = getCopilotUserData(meshLocal);
@@ -612,7 +638,7 @@ export function useStarDiskFrameLoop({
       }
     }
 
-    if (debugEnabled && debugWin && mesh) {
+    if (import.meta.env.DEV && debugEnabled && debugWin && mesh) {
       if (!debugWin.__copilot_setStarBasicMaterial) {
         debugWin.__copilot_setStarBasicMaterial = (opts: { color?: string } = {}) => {
           try {
@@ -743,7 +769,12 @@ export function useStarDiskFrameLoop({
       }
     }
 
-    if (debugEnabled && debugWin && debugWin.__copilot_forceBasicMaterialActive) {
+    if (
+      import.meta.env.DEV &&
+      debugEnabled &&
+      debugWin &&
+      debugWin.__copilot_forceBasicMaterialActive
+    ) {
       const meshLocal = meshRef.current;
       if (meshLocal) {
         const userData = getCopilotUserData(meshLocal);

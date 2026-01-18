@@ -2,7 +2,7 @@
 
 Targeting `[Violation] 'requestAnimationFrame' handler took Xms` issues.
 
-## 1. Prevent Simulation "Death Spiral"
+## 1. ~~Prevent Simulation "Death Spiral"~~ ✅ DONE
 
 **Location:** `src/components/BattlefieldSystems.tsx`
 
@@ -12,7 +12,7 @@ Targeting `[Violation] 'requestAnimationFrame' handler took Xms` issues.
   - Break the `while` loop if the budget is exceeded.
   - Dynamically reduce `MAX_ALLOWED_SIMULATION_SUBSTEPS` if FPS is consistently low.
 
-## 2. Optimize Spatial Hash Rebuilding
+## 2. ~~Optimize Spatial Hash Rebuilding~~ ✅ DONE
 
 **Location:** `src/game/systems/damage.ts` -> `resolveProjectiles`
 
@@ -22,7 +22,7 @@ Targeting `[Violation] 'requestAnimationFrame' handler took Xms` issues.
   - Implement an incremental update or clearer/dirty system.
   - Alternatively, throttle the rebuild to run only every N frames (e.g., every 3-5 frames) and accept slight inaccuracy for collision detection flexibility.
 
-## 3. Throttle Global AI & Sensor Updates
+## 3. ~~Throttle Global AI & Sensor Updates~~ ✅ DONE
 
 **Location:** `src/game/systems/decision/manager.ts`
 
@@ -32,21 +32,21 @@ Targeting `[Violation] 'requestAnimationFrame' handler took Xms` issues.
   - Only update sensors for the specific batch of ships being processed that tick.
   - Cache blackboard metrics and update them incrementally or at a lower frequency (e.g., 10Hz instead of 60Hz).
 
-## 4. Optimize Particle Trails
+## 4. ~~Optimize Particle Trails~~ ✅ DONE
 
 **Location:** `src/components/ParticleTrails.tsx`
 
 - **Issue:** Iterates over every single ship and calculates thruster positions in world space on the CPU every frame.
 - **Action:**
-  - **Frustum Culling:** Skip processing for ships that are not visible to the camera.
-  - **LOD:** Disable trails or reduce particle count for distant ships.
-  - **GPU Offload:** Move the thruster position calculation to a compute shader or vertex shader if possible to remove the CPU overhead entirely.
+  - **Frustum Culling:** Implemented. Skip processing for ships that are not visible to the camera.
+  - **LOD:** Implemented. Disable trails for distant ships (> 500 units).
+  - **GPU Offload:** (Decided against for now as Culling/LOD was sufficient)
 
-## 5. Production Optimizations & Debug Stripping
+## 5. ~~Production Optimizations & Debug Stripping~~ ✅ DONE
 
 **Location:** `src/components/environment/starDisk/useStarDiskFrameLoop.ts` & others
 
 - **Issue:** Excessive object allocation (`new Vector3`, `new Map`) and debug checks running in the hot loop.
 - **Action:**
-  - Wrap all debug logic in `if (import.meta.env.DEV) { ... }` blocks so they are dead-code eliminated in production.
-  - Use object pooling for `Vector3` / `Quaternion` calculations in `useFrame` loops to reduce Garbage Collection pressure.
+  - **Debug Logic:** Wrapped all debug tools/telemetry in `import.meta.env.DEV` to ensure dead-code elimination in production.
+  - **Object Pooling:** Reused `uniformUpdate` object to reduce GC pressure.
