@@ -1,6 +1,6 @@
 import React, { useRef, useMemo, useEffect } from 'react';
-import { useFrame } from '@react-three/fiber';
-import { Vector3, Mesh, InstancedBufferGeometry, ShaderMaterial } from 'three';
+import { useFrame, useThree } from '@react-three/fiber';
+import { Vector3, Mesh, InstancedBufferGeometry, ShaderMaterial, Frustum, Matrix4 } from 'three';
 import type { ShipEntity } from '../types/index.js';
 import { THRUSTER_GLOW_CONFIG, PARTICLE_TRAILS_CONFIG } from '../config/effects.js';
 import { SeededRng } from '../utils/rng.js';
@@ -40,6 +40,11 @@ export function ParticleTrails({ ships, resources }: ParticleTrailProps): React.
   const anchorCache = useRef<Map<number, Vector3[]>>(new Map());
   const backward = useMemo(() => new Vector3(), []);
   const anchorLocalsByHull = useThrusterAnchors();
+
+  // Optimization: Reused objects for culling
+  const frustum = useMemo(() => new Frustum(), []);
+  const projScreenMatrix = useMemo(() => new Matrix4(), []);
+  const camera = useThree((s) => s.camera);
 
   const ownsResources = resources == null;
   const trailResources = useMemo(() => {
@@ -96,6 +101,11 @@ export function ParticleTrails({ ships, resources }: ParticleTrailProps): React.
     const time = state.clock.getElapsedTime();
     trailResources.material.uniforms.uTime.value = time;
 
+    // Update Frustum
+    // We update every frame because the camera moves
+    projScreenMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+    frustum.setFromProjectionMatrix(projScreenMatrix);
+
     const spawnRatePerAnchor = PARTICLE_TRAILS_CONFIG.spawnRatePerAnchor;
     const minThrottle = PARTICLE_TRAILS_CONFIG.minThrottle;
     const backwardMin = PARTICLE_TRAILS_CONFIG.backwardSpeed.min;
@@ -106,6 +116,10 @@ export function ParticleTrails({ ships, resources }: ParticleTrailProps): React.
     const lifetimeBase = PARTICLE_TRAILS_CONFIG.lifetime;
     const maxParticles = PARTICLE_TRAILS_CONFIG.maxParticles;
 
+    // LOD Settings
+    const LOD_DISTANCE_SQ = 500 * 500; // Distance squared for LOD culling (500 units)
+    const cameraPos = camera.position;
+
     const activeShipIds = new Set<number>();
     let spawnedThisFrame = false;
 
@@ -113,6 +127,22 @@ export function ParticleTrails({ ships, resources }: ParticleTrailProps): React.
       activeShipIds.add(ship.id);
       const throttle = ship.ai?.command?.thrust ?? 0;
       if (throttle < minThrottle) continue;
+
+      const shipPos = ship.transform.position;
+      
+      // 1. Distance LOD
+      const distSq = cameraPos.distanceToSquared(shipPos);
+      if (distSq > LOD_DISTANCE_SQ) {
+        continue;
+      }
+
+      // 2. Frustum Culling
+      // Simple check: is the ship position within the frustum?
+      // We could add a radius to containsPoint for better accuracy, but point check is faster
+      // and "good enough" for trails usually.
+      if (!frustum.containsPoint(shipPos)) {
+        continue;
+      }
 
       const anchors = resolveThrusterAnchorsWorld(ship);
       if (anchors.length === 0) continue;
