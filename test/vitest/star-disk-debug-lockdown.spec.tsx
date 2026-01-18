@@ -151,6 +151,12 @@ describe('StarDisk debug lockdown', () => {
     setSearch('?copilot_debug=1');
     const materialModule = await import('../../src/renderer/starDiskMaterial.js');
     const updateSpy = vi.spyOn(materialModule, 'updateMainSequenceStarUniforms');
+    const timeValues: number[] = [];
+    updateSpy.mockImplementation((_, updates) => {
+      if (typeof updates.time === 'number') {
+        timeValues.push(updates.time);
+      }
+    });
 
     const { container } = await renderStarDisk();
     const meshEl = container.querySelector('mesh') as any;
@@ -188,9 +194,6 @@ describe('StarDisk debug lockdown', () => {
       0.018,
     );
 
-    const timeValues = updateSpy.mock.calls
-      .map((call) => call?.[1]?.time)
-      .filter((value): value is number => typeof value === 'number');
     expect(timeValues.length).toBeGreaterThanOrEqual(3);
     for (let i = 1; i < timeValues.length; i += 1) {
       expect(timeValues[i]).toBeGreaterThan(timeValues[i - 1]);
@@ -203,6 +206,12 @@ describe('StarDisk debug lockdown', () => {
     gameStateMock.current = { simulation };
     const materialModule = await import('../../src/renderer/starDiskMaterial.js');
     const updateSpy = vi.spyOn(materialModule, 'updateMainSequenceStarUniforms');
+    const timeValues: number[] = [];
+    updateSpy.mockImplementation((_, updates) => {
+      if (typeof updates.time === 'number') {
+        timeValues.push(updates.time);
+      }
+    });
 
     const { container } = await renderStarDisk();
     const meshEl = container.querySelector('mesh') as any;
@@ -224,9 +233,6 @@ describe('StarDisk debug lockdown', () => {
     frame?.(state, 0.018);
     frame?.(state, 0.02);
 
-    const timeValues = updateSpy.mock.calls
-      .map((call) => call?.[1]?.time)
-      .filter((value): value is number => typeof value === 'number');
     expect(timeValues.length).toBeGreaterThanOrEqual(3);
     for (let i = 1; i < timeValues.length; i += 1) {
       expect(timeValues[i]).toBeGreaterThan(timeValues[i - 1]);
@@ -239,6 +245,12 @@ describe('StarDisk debug lockdown', () => {
     gameStateMock.current = { simulation };
     const materialModule = await import('../../src/renderer/starDiskMaterial.js');
     const updateSpy = vi.spyOn(materialModule, 'updateMainSequenceStarUniforms');
+    const timeValues: number[] = [];
+    updateSpy.mockImplementation((_, updates) => {
+      if (typeof updates.time === 'number') {
+        timeValues.push(updates.time);
+      }
+    });
 
     const { container } = await renderStarDisk();
     const meshEl = container.querySelector('mesh') as any;
@@ -261,9 +273,6 @@ describe('StarDisk debug lockdown', () => {
     simulation.alpha = 0;
     frame?.(state, 0.02);
 
-    const timeValues = updateSpy.mock.calls
-      .map((call) => call?.[1]?.time)
-      .filter((value): value is number => typeof value === 'number');
     expect(timeValues.length).toBeGreaterThanOrEqual(2);
     const last = timeValues[timeValues.length - 1];
     expect(last).toBeCloseTo(0.75, 6);
@@ -274,6 +283,12 @@ describe('StarDisk debug lockdown', () => {
   it('uses the render clock when available', async () => {
     const materialModule = await import('../../src/renderer/starDiskMaterial.js');
     const updateSpy = vi.spyOn(materialModule, 'updateMainSequenceStarUniforms');
+    const timeValues: number[] = [];
+    updateSpy.mockImplementation((_, updates) => {
+      if (typeof updates.time === 'number') {
+        timeValues.push(updates.time);
+      }
+    });
 
     const { container } = await renderStarDisk();
     const meshEl = container.querySelector('mesh') as any;
@@ -297,9 +312,7 @@ describe('StarDisk debug lockdown', () => {
     frame?.(state, 0.016);
     clock.getElapsedTime.mockReturnValue(0.42);
     frame?.(state, 0.016);
-    const timeValues = updateSpy.mock.calls
-      .map((call) => call?.[1]?.time)
-      .filter((value): value is number => typeof value === 'number');
+
     expect(timeValues.length).toBeGreaterThanOrEqual(2);
     expect(timeValues[timeValues.length - 1]).toBeCloseTo(0.42, 6);
     expect(timeValues[timeValues.length - 1]).toBeGreaterThan(timeValues[timeValues.length - 2]);

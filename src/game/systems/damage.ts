@@ -24,10 +24,14 @@ import type { ProjectileCategory } from '../../types/combat.js';
 import { safeNormalize } from '../../utils/steering.js';
 import { appendCappedMutable } from '../../utils/cappedBuffer.js';
 import type { SpatialHash } from '../utils/spatialHash.js';
-import { buildSpatialHash, querySpatialHash } from '../utils/spatialHash.js';
+import { buildSpatialHash, clearSpatialHash, querySpatialHash } from '../utils/spatialHash.js';
 
 const TEMP_RIPPLE_DIR = new Vector3();
 const SHIP_GRID_CELL_SIZE = 12;
+
+// Cached instances to avoid per-frame allocations
+let cachedShipHash: SpatialHash<ShipEntity> | null = null;
+const cachedShipsById = new Map<number, ShipEntity>();
 
 /**
  * Result of applying projectile damage.
@@ -213,15 +217,21 @@ function applyAoeDamage(
  */
 export function resolveProjectiles(state: GameState, delta: number): void {
   const ships = state.queries.ships.entities as ShipEntity[];
-  const shipSpatialHash: SpatialHash<ShipEntity> = buildSpatialHash(
-    ships,
-    SHIP_GRID_CELL_SIZE,
-    (ship) => ship.transform.position,
-  );
-  const shipsById = new Map<number, ShipEntity>();
-  for (const ship of ships) {
-    shipsById.set(ship.id, ship);
+
+  // Reuse cached spatial hash to avoid allocations
+  if (!cachedShipHash) {
+    cachedShipHash = buildSpatialHash(ships, SHIP_GRID_CELL_SIZE, (ship) => ship.transform.position);
+  } else {
+    clearSpatialHash(cachedShipHash, ships);
   }
+  const shipSpatialHash = cachedShipHash;
+
+  // Reuse cached shipsById map
+  cachedShipsById.clear();
+  for (const ship of ships) {
+    cachedShipsById.set(ship.id, ship);
+  }
+  const shipsById = cachedShipsById;
   const maxShipImpactRadius = ships.reduce(
     (radius, ship) => Math.max(radius, ship.transform.scale * 0.9),
     0,

@@ -11,12 +11,21 @@ const frameCallbacks: Array<
   (state: { clock: { getElapsedTime: () => number } }, delta: number) => void
 > = [];
 
+import { Matrix4 } from 'three';
+
+const mockCamera = {
+  position: new Vector3(0, 0, 50),
+  projectionMatrix: new Matrix4().makePerspective(-1, 1, 1, -1, 0.1, 1000),
+  matrixWorldInverse: new Matrix4().makeTranslation(0, 0, -50),
+};
+
 vi.mock('@react-three/fiber', () => ({
   useFrame: (
     callback: (state: { clock: { getElapsedTime: () => number } }, delta: number) => void,
   ) => {
     frameCallbacks.push(callback);
   },
+  useThree: (selector: (s: any) => any) => selector({ camera: mockCamera }),
 }));
 
 vi.mock('@react-three/drei', () => ({

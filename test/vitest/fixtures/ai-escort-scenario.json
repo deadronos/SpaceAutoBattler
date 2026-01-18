@@ -12,75 +12,111 @@
       "commands": [
         {
           "id": 1,
-          "intent": "Attack",
-          "targetId": 4,
-          "thrust": 0.35,
+          "intent": "Reposition",
+          "thrust": 0.55,
           "fire": false,
-          "heading": [0.992, 0.038, -0.124],
-          "lod": 0,
-          "score": 1367.6
+          "heading": [
+            0,
+            0.028,
+            1
+          ],
+          "lod": 2,
+          "score": 325
         },
         {
           "id": 2,
-          "intent": "Intercept",
-          "targetId": 4,
-          "thrust": 1,
+          "intent": "Escort",
+          "targetId": 1,
+          "thrust": 0.8,
           "fire": false,
-          "heading": [1, 0.14, 0],
-          "lod": 1,
-          "score": 1601.4
+          "heading": [
+            -0.018,
+            0.183,
+            0.999
+          ],
+          "lod": 2,
+          "score": 849.4
         },
         {
           "id": 3,
-          "intent": "Attack",
-          "targetId": 4,
-          "thrust": 0.35,
+          "intent": "Regroup",
+          "thrust": 0.984,
           "fire": false,
-          "heading": [0.977, 0.112, -0.212],
-          "lod": 0,
-          "score": 1355.8
+          "heading": [
+            0.919,
+            0.102,
+            -0.394
+          ],
+          "lod": 2,
+          "score": 818.4
         },
         {
           "id": 4,
-          "intent": "Intercept",
-          "targetId": 1,
-          "thrust": 1,
+          "intent": "Reposition",
+          "thrust": 0.55,
           "fire": false,
-          "heading": [-0.992, 0.101, 0.124],
-          "lod": 1,
-          "score": 1103.3
+          "heading": [
+            -0.992,
+            0.101,
+            0.124
+          ],
+          "lod": 2,
+          "score": 482.8
         },
         {
           "id": 5,
-          "intent": "Intercept",
-          "targetId": 1,
-          "thrust": 1,
+          "intent": "Reposition",
+          "thrust": 0.55,
           "fire": false,
-          "heading": [-0.97, -0.01, -0.243],
-          "lod": 1,
-          "score": 883.8
+          "heading": [
+            -0.97,
+            -0.02,
+            -0.243
+          ],
+          "lod": 2,
+          "score": 483.6
         }
       ],
       "positions": [
         {
           "id": 1,
-          "position": [0, 0, 0]
+          "position": [
+            0,
+            0,
+            0
+          ]
         },
         {
           "id": 2,
-          "position": [-60, 0, -40]
+          "position": [
+            -60,
+            0,
+            -40
+          ]
         },
         {
           "id": 3,
-          "position": [-140, 0, 60]
+          "position": [
+            -140,
+            0,
+            60
+          ]
         },
         {
           "id": 4,
-          "position": [320, 0, -40]
+          "position": [
+            320,
+            0,
+            -40
+          ]
         },
         {
           "id": 5,
-          "position": [560, 0, 140]
+          "position": [
+            560,
+            0,
+            140
+          ]
         }
       ]
     },
@@ -95,11 +131,15 @@
           "id": 1,
           "intent": "Attack",
           "targetId": 4,
-          "thrust": 0.6,
+          "thrust": 0.35,
           "fire": true,
-          "heading": [0.992, 0.038, -0.124],
+          "heading": [
+            0.992,
+            -0.008,
+            -0.129
+          ],
           "lod": 0,
-          "score": 1201.3
+          "score": 1335.6
         },
         {
           "id": 2,
@@ -107,9 +147,13 @@
           "targetId": 4,
           "thrust": 1,
           "fire": false,
-          "heading": [1, 0.14, 0],
+          "heading": [
+            1,
+            0.06,
+            -0.007
+          ],
           "lod": 1,
-          "score": 1601.4
+          "score": 1570.2
         },
         {
           "id": 3,
@@ -117,51 +161,81 @@
           "targetId": 4,
           "thrust": 0.35,
           "fire": false,
-          "heading": [0.977, 0.112, -0.212],
+          "heading": [
+            0.978,
+            0.018,
+            -0.211
+          ],
           "lod": 0,
-          "score": 1296.2
+          "score": 1414.4
         },
         {
           "id": 4,
-          "intent": "Intercept",
-          "targetId": 1,
-          "thrust": 1,
+          "intent": "Reposition",
+          "thrust": 0.55,
           "fire": false,
-          "heading": [-0.992, 0.101, 0.124],
-          "lod": 1,
-          "score": 1103.3
+          "heading": [
+            -0.992,
+            0.101,
+            0.124
+          ],
+          "lod": 2,
+          "score": 482.8
         },
         {
           "id": 5,
-          "intent": "Intercept",
-          "targetId": 1,
-          "thrust": 1,
+          "intent": "Reposition",
+          "thrust": 0.55,
           "fire": false,
-          "heading": [-0.97, -0.01, -0.243],
-          "lod": 1,
-          "score": 883.8
+          "heading": [
+            -0.97,
+            -0.02,
+            -0.243
+          ],
+          "lod": 2,
+          "score": 483.6
         }
       ],
       "positions": [
         {
           "id": 1,
-          "position": [1.388, 0.053, -0.174]
+          "position": [
+            0,
+            0.062,
+            2.199
+          ]
         },
         {
           "id": 2,
-          "position": [-55.049, 0.695, -40]
+          "position": [
+            -60.069,
+            0.722,
+            -36.066
+          ]
         },
         {
           "id": 3,
-          "position": [-138.641, 0.157, 59.704]
+          "position": [
+            -136.4,
+            0.401,
+            58.457
+          ]
         },
         {
           "id": 4,
-          "position": [313.051, 0.4, -38.506]
+          "position": [
+            314.828,
+            0.22,
+            -38.728
+          ]
         },
         {
           "id": 5,
-          "position": [556.12, -0.04, 139.03]
+          "position": [
+            557.866,
+            -0.044,
+            139.467
+          ]
         }
       ]
     },
@@ -178,9 +252,13 @@
           "targetId": 4,
           "thrust": 0.6,
           "fire": true,
-          "heading": [0.992, 0.038, -0.124],
+          "heading": [
+            0.992,
+            -0.008,
+            -0.129
+          ],
           "lod": 0,
-          "score": 1149
+          "score": 1297.6
         },
         {
           "id": 2,
@@ -188,9 +266,13 @@
           "targetId": 4,
           "thrust": 1,
           "fire": false,
-          "heading": [1, 0.137, 0.008],
+          "heading": [
+            1,
+            0.06,
+            -0.007
+          ],
           "lod": 1,
-          "score": 1457.9
+          "score": 1570.2
         },
         {
           "id": 3,
@@ -198,51 +280,81 @@
           "targetId": 4,
           "thrust": 0.35,
           "fire": false,
-          "heading": [0.977, 0.112, -0.212],
+          "heading": [
+            0.978,
+            0.018,
+            -0.211
+          ],
           "lod": 0,
-          "score": 1350.6
+          "score": 1457.5
         },
         {
           "id": 4,
-          "intent": "Intercept",
-          "targetId": 3,
-          "thrust": 1,
+          "intent": "Reposition",
+          "thrust": 0.55,
           "fire": false,
-          "heading": [-0.977, 0.105, 0.213],
-          "lod": 1,
-          "score": 1418.4
+          "heading": [
+            -0.992,
+            0.101,
+            0.124
+          ],
+          "lod": 2,
+          "score": 482.8
         },
         {
           "id": 5,
-          "intent": "Intercept",
-          "targetId": 3,
-          "thrust": 1,
+          "intent": "Reposition",
+          "thrust": 0.55,
           "fire": false,
-          "heading": [-0.994, 0.009, -0.113],
-          "lod": 1,
-          "score": 1164
+          "heading": [
+            -0.97,
+            -0.02,
+            -0.243
+          ],
+          "lod": 2,
+          "score": 483.6
         }
       ],
       "positions": [
         {
           "id": 1,
-          "position": [3.768, 0.144, -0.471]
+          "position": [
+            1.388,
+            0.05,
+            2.019
+          ]
         },
         {
           "id": 2,
-          "position": [-50.097, 1.391, -40]
+          "position": [
+            -55.078,
+            1.02,
+            -36.102
+          ]
         },
         {
           "id": 3,
-          "position": [-137.281, 0.313, 59.409]
+          "position": [
+            -135.031,
+            0.426,
+            58.162
+          ]
         },
         {
           "id": 4,
-          "position": [306.102, 0.801, -37.013]
+          "position": [
+            309.656,
+            0.44,
+            -37.457
+          ]
         },
         {
           "id": 5,
-          "position": [552.239, -0.08, 138.06]
+          "position": [
+            555.732,
+            -0.088,
+            138.933
+          ]
         }
       ]
     },
@@ -259,9 +371,13 @@
           "targetId": 4,
           "thrust": 0.6,
           "fire": true,
-          "heading": [0.992, 0.038, -0.124],
+          "heading": [
+            0.992,
+            -0.008,
+            -0.129
+          ],
           "lod": 0,
-          "score": 1096.9
+          "score": 1141.1
         },
         {
           "id": 2,
@@ -269,9 +385,13 @@
           "targetId": 4,
           "thrust": 1,
           "fire": false,
-          "heading": [1, 0.137, 0.008],
+          "heading": [
+            1,
+            0.142,
+            0
+          ],
           "lod": 1,
-          "score": 1457.9
+          "score": 1435
         },
         {
           "id": 3,
@@ -279,51 +399,81 @@
           "targetId": 4,
           "thrust": 0.35,
           "fire": false,
-          "heading": [0.977, 0.112, -0.212],
+          "heading": [
+            0.978,
+            0.018,
+            -0.211
+          ],
           "lod": 0,
-          "score": 1405.1
+          "score": 1386.5
         },
         {
           "id": 4,
-          "intent": "Intercept",
-          "targetId": 3,
-          "thrust": 1,
+          "intent": "Reposition",
+          "thrust": 0.55,
           "fire": false,
-          "heading": [-0.977, 0.105, 0.213],
-          "lod": 1,
-          "score": 1418.4
+          "heading": [
+            -0.992,
+            0.101,
+            0.124
+          ],
+          "lod": 2,
+          "score": 482.8
         },
         {
           "id": 5,
-          "intent": "Intercept",
-          "targetId": 3,
-          "thrust": 1,
+          "intent": "Reposition",
+          "thrust": 0.55,
           "fire": false,
-          "heading": [-0.994, 0.009, -0.113],
-          "lod": 1,
-          "score": 1164
+          "heading": [
+            -0.97,
+            -0.02,
+            -0.243
+          ],
+          "lod": 2,
+          "score": 483.6
         }
       ],
       "positions": [
         {
           "id": 1,
-          "position": [6.148, 0.235, -0.768]
+          "position": [
+            3.768,
+            0.031,
+            1.709
+          ]
         },
         {
           "id": 2,
-          "position": [-45.143, 2.068, -39.958]
+          "position": [
+            -50.087,
+            1.319,
+            -36.137
+          ]
         },
         {
           "id": 3,
-          "position": [-135.922, 0.47, 59.113]
+          "position": [
+            -133.663,
+            0.45,
+            57.868
+          ]
         },
         {
           "id": 4,
-          "position": [299.214, 1.217, -35.167]
+          "position": [
+            304.484,
+            0.66,
+            -36.185
+          ]
         },
         {
           "id": 5,
-          "position": [548.265, -0.043, 137.607]
+          "position": [
+            553.598,
+            -0.132,
+            138.4
+          ]
         }
       ]
     },
@@ -340,9 +490,13 @@
           "targetId": 4,
           "thrust": 0.6,
           "fire": true,
-          "heading": [0.992, 0.038, -0.124],
+          "heading": [
+            0.992,
+            -0.008,
+            -0.129
+          ],
           "lod": 0,
-          "score": 1044.7
+          "score": 1098.7
         },
         {
           "id": 2,
@@ -350,9 +504,13 @@
           "targetId": 4,
           "thrust": 1,
           "fire": false,
-          "heading": [1, 0.128, 0.02],
+          "heading": [
+            1,
+            0.142,
+            0
+          ],
           "lod": 1,
-          "score": 1401.1
+          "score": 1435
         },
         {
           "id": 3,
@@ -360,19 +518,27 @@
           "targetId": 4,
           "thrust": 0.35,
           "fire": false,
-          "heading": [0.977, 0.112, -0.212],
+          "heading": [
+            0.978,
+            0.018,
+            -0.211
+          ],
           "lod": 0,
-          "score": 1459.6
+          "score": 1429.6
         },
         {
           "id": 4,
-          "intent": "Attack",
+          "intent": "Intercept",
           "targetId": 1,
           "thrust": 1,
-          "fire": false,
-          "heading": [-0.994, -0.063, 0.113],
+          "fire": true,
+          "heading": [
+            -0.992,
+            -0.061,
+            0.123
+          ],
           "lod": 0,
-          "score": 1032.4
+          "score": 1017
         },
         {
           "id": 5,
@@ -380,31 +546,55 @@
           "targetId": 1,
           "thrust": 0.35,
           "fire": false,
-          "heading": [-0.968, -0.023, -0.25],
+          "heading": [
+            -0.97,
+            -0.024,
+            -0.243
+          ],
           "lod": 1,
-          "score": 942.1
+          "score": 888.6
         }
       ],
       "positions": [
         {
           "id": 1,
-          "position": [8.527, 0.326, -1.066]
+          "position": [
+            6.148,
+            0.011,
+            1.4
+          ]
         },
         {
           "id": 2,
-          "position": [-40.19, 2.745, -39.917]
+          "position": [
+            -45.137,
+            2.02,
+            -36.138
+          ]
         },
         {
           "id": 3,
-          "position": [-134.562, 0.626, 58.818]
+          "position": [
+            -132.295,
+            0.475,
+            57.573
+          ]
         },
         {
           "id": 4,
-          "position": [292.327, 1.633, -33.322]
+          "position": [
+            299.312,
+            0.881,
+            -34.914
+          ]
         },
         {
           "id": 5,
-          "position": [544.291, -0.006, 137.153]
+          "position": [
+            551.464,
+            -0.175,
+            137.866
+          ]
         }
       ]
     }
@@ -412,14 +602,14 @@
   "metrics": {
     "kpis": {
       "firstShot": {
-        "samples": 1,
+        "samples": 2,
         "p50": 0.1,
         "p90": 0.1
       },
       "openingAggression": {
-        "total": 19,
-        "aggressive": 19,
-        "ratio": 1
+        "total": 17,
+        "aggressive": 12,
+        "ratio": 0.7058823529411765
       },
       "inBand": {
         "overall": {
@@ -456,25 +646,30 @@
         }
       },
       "vertical": {
-        "samples": 1,
+        "samples": 2,
         "aboveThreshold": 0,
         "threshold": 100,
         "ratio": 0
       },
       "decisionLatency": {
-        "buckets": [2, 0, 0, 0],
-        "total": 2
+        "buckets": [
+          3,
+          0,
+          0,
+          0
+        ],
+        "total": 3
       },
       "focusFire": {
-        "samples": 19,
-        "ratioAvg": 0.7368421052631579,
+        "samples": 12,
+        "ratioAvg": 0.6388888888888888,
         "ratioMax": 1
       },
       "headingAmplitude": {
         "samples": 11,
-        "avg": 0.07876619279244854,
-        "min": 0.009237877823671666,
-        "max": 0.140441118905827
+        "avg": 0.06785120883919989,
+        "min": 0.00808372412875711,
+        "max": 0.18336702458940238
       },
       "ties": {
         "decisions": 0,
@@ -482,14 +677,18 @@
         "ratio": 0
       }
     },
-    "firstShotTimes": [0.1],
+    "firstShotTimes": [
+      0.1,
+      0.4
+    ],
     "intentTimeline": [
       {
         "tick": 1,
         "time": 0,
         "counts": {
-          "Attack": 2,
-          "Intercept": 3
+          "Reposition": 3,
+          "Escort": 1,
+          "Regroup": 1
         },
         "total": 5
       },
@@ -497,88 +696,209 @@
         "tick": 2,
         "time": 0.1,
         "counts": {
-          "Attack": 2
+          "Attack": 2,
+          "Intercept": 1
         },
-        "total": 2
+        "total": 3
       },
       {
         "tick": 3,
         "time": 0.2,
         "counts": {
-          "Attack": 2,
-          "Intercept": 3
-        },
-        "total": 5
-      },
-      {
-        "tick": 4,
-        "time": 0.30000000000000004,
-        "counts": {
           "Attack": 2
         },
         "total": 2
       },
       {
+        "tick": 4,
+        "time": 0.30000000000000004,
+        "counts": {
+          "Attack": 2,
+          "Intercept": 1
+        },
+        "total": 3
+      },
+      {
         "tick": 5,
         "time": 0.4,
         "counts": {
-          "Attack": 4,
+          "Attack": 3,
           "Intercept": 1
         },
-        "total": 5
+        "total": 4
       }
     ],
     "shotDistance": {
       "fighter": {
-        "buckets": [150, 300, 450, 600],
-        "counts": [0, 0, 0, 0, 0],
+        "buckets": [
+          150,
+          300,
+          450,
+          600
+        ],
+        "counts": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
         "total": 0
       },
       "corvette": {
-        "buckets": [150, 300, 450, 600],
-        "counts": [0, 0, 0, 0, 0],
-        "total": 0
+        "buckets": [
+          150,
+          300,
+          450,
+          600
+        ],
+        "counts": [
+          0,
+          1,
+          0,
+          0,
+          0
+        ],
+        "total": 1
       },
       "frigate": {
-        "buckets": [150, 300, 450, 600],
-        "counts": [0, 0, 0, 0, 0],
+        "buckets": [
+          150,
+          300,
+          450,
+          600
+        ],
+        "counts": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
         "total": 0
       },
       "destroyer": {
-        "buckets": [150, 300, 450, 600],
-        "counts": [0, 0, 0, 0, 0],
+        "buckets": [
+          150,
+          300,
+          450,
+          600
+        ],
+        "counts": [
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
         "total": 0
       },
       "carrier": {
-        "buckets": [150, 300, 450, 600],
-        "counts": [0, 0, 1, 0, 0],
+        "buckets": [
+          150,
+          300,
+          450,
+          600
+        ],
+        "counts": [
+          0,
+          0,
+          1,
+          0,
+          0
+        ],
         "total": 1
       }
     },
     "shotDeltaY": {
       "fighter": {
-        "buckets": [50, 100, 150, 200, 300],
-        "counts": [0, 0, 0, 0, 0, 0],
+        "buckets": [
+          50,
+          100,
+          150,
+          200,
+          300
+        ],
+        "counts": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
         "total": 0
       },
       "corvette": {
-        "buckets": [50, 100, 150, 200, 300],
-        "counts": [0, 0, 0, 0, 0, 0],
-        "total": 0
+        "buckets": [
+          50,
+          100,
+          150,
+          200,
+          300
+        ],
+        "counts": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "total": 1
       },
       "frigate": {
-        "buckets": [50, 100, 150, 200, 300],
-        "counts": [0, 0, 0, 0, 0, 0],
+        "buckets": [
+          50,
+          100,
+          150,
+          200,
+          300
+        ],
+        "counts": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
         "total": 0
       },
       "destroyer": {
-        "buckets": [50, 100, 150, 200, 300],
-        "counts": [0, 0, 0, 0, 0, 0],
+        "buckets": [
+          50,
+          100,
+          150,
+          200,
+          300
+        ],
+        "counts": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
         "total": 0
       },
       "carrier": {
-        "buckets": [50, 100, 150, 200, 300],
-        "counts": [1, 0, 0, 0, 0, 0],
+        "buckets": [
+          50,
+          100,
+          150,
+          200,
+          300
+        ],
+        "counts": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
         "total": 1
       }
     }
