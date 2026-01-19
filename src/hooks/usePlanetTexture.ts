@@ -13,6 +13,7 @@ import {
   PLANET_LOWRES_TEXTURE_PATHS,
   type PlanetTextureKey,
 } from '../assets/planets.js';
+import { applyTextureSettings, computeMaxAnisotropy } from '../utils/textureUtils.js';
 
 const FALLBACK_COLOR = '#2e3142';
 
@@ -49,7 +50,20 @@ export function usePlanetTexture(key: PlanetTextureKey | undefined): PlanetTextu
           (texture) => {
             if (!disposed) {
               loadedTextures[textureKey] = texture;
-              configureTexture(texture, gl);
+              applyTextureSettings(
+                texture,
+                {
+                  colorSpace: SRGBColorSpace,
+                  minFilter: LinearMipmapLinearFilter,
+                  magFilter: LinearFilter,
+                  anisotropy: computeMaxAnisotropy(
+                    gl as WebGLRenderer | undefined,
+                    APPLY_MAX_ANISOTROPY,
+                  ),
+                  needsUpdate: true,
+                },
+                gl as WebGLRenderer | undefined,
+              );
             }
             resolve();
           },
@@ -78,7 +92,20 @@ export function usePlanetTexture(key: PlanetTextureKey | undefined): PlanetTextu
                   loadedTextures[textureKey].dispose();
                 }
                 loadedTextures[textureKey] = texture;
-                configureTexture(texture, gl);
+                applyTextureSettings(
+                  texture,
+                  {
+                    colorSpace: SRGBColorSpace,
+                    minFilter: LinearMipmapLinearFilter,
+                    magFilter: LinearFilter,
+                    anisotropy: computeMaxAnisotropy(
+                      gl as WebGLRenderer | undefined,
+                      APPLY_MAX_ANISOTROPY,
+                    ),
+                    needsUpdate: true,
+                  },
+                  gl as WebGLRenderer | undefined,
+                );
                 setTextures({ ...loadedTextures });
 
                 // Check if all high-res textures are loaded
@@ -127,13 +154,4 @@ export function usePlanetTexture(key: PlanetTextureKey | undefined): PlanetTextu
 
     return { texture: textures[key] ?? null, fallbackColor: FALLBACK_COLOR, isHighResLoaded };
   }, [key, textures, isHighResLoaded]);
-}
-
-function configureTexture(texture: Texture, gl: WebGLRenderer): void {
-  const maxAniso = Math.min(APPLY_MAX_ANISOTROPY, gl.capabilities.getMaxAnisotropy());
-  texture.colorSpace = SRGBColorSpace;
-  texture.minFilter = LinearMipmapLinearFilter;
-  texture.magFilter = LinearFilter;
-  texture.anisotropy = maxAniso;
-  texture.needsUpdate = true;
 }
