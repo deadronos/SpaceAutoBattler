@@ -11,6 +11,7 @@ import {
 } from './uniforms.js';
 import { FALLBACK_NOISE, FALLBACK_ORGANIC, resolveTexture } from './textures.js';
 import { installDevHelpers, shouldEnableStarDiskDevHelpers } from './devHelpers.js';
+import { applyTextureSettings } from '../../utils/textureUtils.js';
 
 interface MainSequenceUniformMap {
   iTime: { value: number };
@@ -72,9 +73,9 @@ export function createMainSequenceStarMaterial(
   options: MainSequenceStarMaterialOptions,
 ): ShaderMaterial {
   const organicTexture = resolveTexture(options.organic, FALLBACK_ORGANIC);
-  organicTexture.anisotropy = 16;
+  applyTextureSettings(organicTexture, { anisotropy: 16 });
   const noiseTexture = resolveTexture(options.noise, FALLBACK_NOISE);
-  noiseTexture.anisotropy = 16;
+  applyTextureSettings(noiseTexture, { anisotropy: 16 });
 
   const fragmentShader = COMMON_GLSL + '\n' + fragmentShaderRaw;
 
