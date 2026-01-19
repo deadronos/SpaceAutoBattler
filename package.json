@@ -78,7 +78,7 @@
     "pyright": "^1.1.408",
     "react-test-renderer": "^19.2.3",
     "rollup": "^4.55.1",
-    "ts-node": "^1.7.1",
+    "ts-node": "^10.9.2",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.53.0",
