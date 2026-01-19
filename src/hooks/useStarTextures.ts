@@ -18,6 +18,7 @@ import {
   SRGBColorSpace,
 } from 'three';
 import { STAR_DISK_TEXTURE_PATHS, type StarDiskTextureKey } from '../assets/starDiskTextures.js';
+import { applyTextureSettings, computeMaxAnisotropy } from '../utils/textureUtils.js';
 
 /**
  * Load and configure star disk textures.
@@ -37,25 +38,37 @@ export function useStarTextures(): {
   const noiseTexture = starTextures.noiseRgba;
 
   useEffect(() => {
-    const maxAniso = Math.min(8, gl.capabilities.getMaxAnisotropy());
+    if (!gl) return;
 
     if (organicTexture) {
-      organicTexture.wrapS = RepeatWrapping;
-      organicTexture.wrapT = ClampToEdgeWrapping;
-      organicTexture.minFilter = LinearMipmapLinearFilter;
-      organicTexture.magFilter = LinearFilter;
-      organicTexture.anisotropy = maxAniso;
-      organicTexture.colorSpace = SRGBColorSpace;
-      organicTexture.needsUpdate = true;
+      applyTextureSettings(
+        organicTexture,
+        {
+          wrapS: RepeatWrapping,
+          wrapT: ClampToEdgeWrapping,
+          minFilter: LinearMipmapLinearFilter,
+          magFilter: LinearFilter,
+          anisotropy: computeMaxAnisotropy(gl, 8),
+          colorSpace: SRGBColorSpace,
+          needsUpdate: true,
+        },
+        gl,
+      );
     }
 
     if (noiseTexture) {
-      noiseTexture.wrapS = RepeatWrapping;
-      noiseTexture.wrapT = RepeatWrapping;
-      noiseTexture.minFilter = NearestFilter;
-      noiseTexture.magFilter = NearestFilter;
-      noiseTexture.generateMipmaps = false;
-      noiseTexture.needsUpdate = true;
+      applyTextureSettings(
+        noiseTexture,
+        {
+          wrapS: RepeatWrapping,
+          wrapT: RepeatWrapping,
+          minFilter: NearestFilter,
+          magFilter: NearestFilter,
+          generateMipmaps: false,
+          needsUpdate: true,
+        },
+        gl,
+      );
     }
   }, [gl, organicTexture, noiseTexture]);
 

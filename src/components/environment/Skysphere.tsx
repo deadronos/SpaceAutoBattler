@@ -1,7 +1,12 @@
-import { memo, useMemo } from 'react';
+import { memo, useEffect } from 'react';
 import { BackSide, LinearFilter, LinearMipmapLinearFilter, SRGBColorSpace } from 'three';
-import { SKYSPHERE_TEXTURE_PATHS, SKYSPHERE_LOWRES_TEXTURE_PATHS, type SkyspherTextureKey } from '../../assets/skysphere.js';
+import {
+  SKYSPHERE_TEXTURE_PATHS,
+  SKYSPHERE_LOWRES_TEXTURE_PATHS,
+  type SkyspherTextureKey,
+} from '../../assets/skysphere.js';
 import { useProgressiveTexture } from '../../hooks/useProgressiveTexture.js';
+import { applyTextureSettings } from '../../utils/textureUtils.js';
 
 interface SkysphereProps {
   /** Key to select skysphere texture */
@@ -12,25 +17,27 @@ interface SkysphereProps {
   opacity?: number;
 }
 
-export const Skysphere = memo(function Skysphere({ 
-  textureKey, 
-  radius = 50000, 
-  opacity = 1.0 
+export const Skysphere = memo(function Skysphere({
+  textureKey,
+  radius = 50000,
+  opacity = 1.0,
 }: SkysphereProps): React.ReactElement {
   // Load the skysphere texture progressively (low-res first, then high-res)
   const { texture } = useProgressiveTexture(
     SKYSPHERE_LOWRES_TEXTURE_PATHS[textureKey],
-    SKYSPHERE_TEXTURE_PATHS[textureKey]
+    SKYSPHERE_TEXTURE_PATHS[textureKey],
   );
 
   // Configure texture for optimal skysphere rendering
-  useMemo(() => {
+  useEffect(() => {
     if (texture) {
-      texture.colorSpace = SRGBColorSpace;
-      texture.minFilter = LinearMipmapLinearFilter;
-      texture.magFilter = LinearFilter;
-      texture.flipY = false; // Equirectangular textures typically don't need Y flip
-      texture.needsUpdate = true;
+      applyTextureSettings(texture, {
+        colorSpace: SRGBColorSpace,
+        minFilter: LinearMipmapLinearFilter,
+        magFilter: LinearFilter,
+        flipY: false,
+        needsUpdate: true,
+      });
     }
   }, [texture]);
 

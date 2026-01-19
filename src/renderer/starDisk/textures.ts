@@ -9,6 +9,7 @@ import {
   Texture,
   UnsignedByteType,
 } from 'three';
+import { applyTextureSettings } from '../../utils/textureUtils.js';
 
 export const FALLBACK_ORGANIC = (() => {
   const data = new Uint8Array([
@@ -19,12 +20,14 @@ export const FALLBACK_ORGANIC = (() => {
   ]);
   const texture = new DataTexture(data, 4, 4, RGBAFormat, UnsignedByteType);
   texture.name = 'MainSequenceOrganicFallback';
-  texture.wrapS = RepeatWrapping;
-  texture.wrapT = ClampToEdgeWrapping;
-  texture.minFilter = LinearFilter;
-  texture.magFilter = LinearFilter;
-  texture.colorSpace = SRGBColorSpace;
-  texture.needsUpdate = true;
+  applyTextureSettings(texture, {
+    wrapS: RepeatWrapping,
+    wrapT: ClampToEdgeWrapping,
+    minFilter: LinearFilter,
+    magFilter: LinearFilter,
+    colorSpace: SRGBColorSpace,
+    needsUpdate: true,
+  });
   return texture;
 })();
 
@@ -37,12 +40,14 @@ export const FALLBACK_NOISE = (() => {
   ]);
   const texture = new DataTexture(data, 4, 4, RGBAFormat, UnsignedByteType);
   texture.name = 'MainSequenceNoiseFallback';
-  texture.wrapS = RepeatWrapping;
-  texture.wrapT = RepeatWrapping;
-  texture.minFilter = NearestFilter;
-  texture.magFilter = NearestFilter;
-  texture.generateMipmaps = false;
-  texture.needsUpdate = true;
+  applyTextureSettings(texture, {
+    wrapS: RepeatWrapping,
+    wrapT: RepeatWrapping,
+    minFilter: NearestFilter,
+    magFilter: NearestFilter,
+    generateMipmaps: false,
+    needsUpdate: true,
+  });
   return texture;
 })();
 
