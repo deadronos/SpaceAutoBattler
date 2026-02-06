@@ -7,16 +7,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v5
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        version: 10.28.2
+        run_install: false
     - uses: actions/setup-node@v6
       with:
         node-version: lts/*
         cache: 'pnpm'
         cache-dependency-path: pnpm-lock.yaml
-    - name: Install pnpm & deps
-      run: |
-        corepack enable
-        corepack prepare pnpm@10.28.2 --activate
-        pnpm install --frozen-lockfile
+    - name: Install deps
+      run: pnpm install --frozen-lockfile
     - name: Install Playwright Browsers
       run: pnpm exec playwright install --with-deps
     - name: Run Playwright tests
