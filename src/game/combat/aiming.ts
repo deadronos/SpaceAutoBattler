@@ -52,7 +52,7 @@ export function computeInterceptHeadingVector(
   const b = 2 * relativeVel.dot(relativePos);
   const c = relativePos.lengthSq();
 
-  let t = 0;
+  let t = Math.max(0, -b / (2 * a));
   if (Math.abs(a) < 1e-5) {
     t = b !== 0 ? Math.max(0, -c / b) : 0;
   } else {
@@ -64,8 +64,6 @@ export function computeInterceptHeadingVector(
       t = Math.min(t1, t2);
       if (t < 0) t = Math.max(t1, t2);
       if (t < 0) t = 0;
-    } else {
-      t = Math.max(0, -b / (2 * a));
     }
   }
 
