@@ -96,9 +96,8 @@ export function computeEffectiveDesiredRange(
       // boundary.
       if (distance >= exitLower) {
         nextDecision = 'inside';
-      } else {
-        nextDecision = 'below';
       }
+      // else: keep nextDecision as 'below' (already set from s.lastDecision)
     } else {
       // No prior strong opinion; use the nominal thresholds to decide.
       if (distance > approachThreshold) {

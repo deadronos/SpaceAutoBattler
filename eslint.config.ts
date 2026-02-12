@@ -318,5 +318,5 @@ export default defineConfig([
     language: 'markdown/gfm',
     extends: ['markdown/recommended'],
   },
-  { files: ['**/*.css'], plugins: { css }, language: 'css/css', extends: ['css/recommended'] },
+  { files: ['**/*.css'], plugins: { css: css as unknown as any }, language: 'css/css', extends: ['css/recommended'] },
 ]);
