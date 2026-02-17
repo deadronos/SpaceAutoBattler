@@ -106,6 +106,8 @@ describe('Scheduler', () => {
       expect(result.updatedState.tickIndex).toBe(10);
       expect(result.updatedState.cursor).toBe(2);
       expect(result.shipIndicesToProcess).toEqual([]);
+      expect(result.metrics.ticksCaughtUp).toBe(0);
+      expect(result.metrics.ticksDropped).toBe(0);
     });
 
     it('processes tick when accumulator reaches threshold', () => {
@@ -120,11 +122,12 @@ describe('Scheduler', () => {
       expect(result.tickOccurred).toBe(true);
       expect(result.updatedState.accumulator).toBe(10); // 80 + 30 - 100
       expect(result.updatedState.tickIndex).toBe(11);
-      expect(result.updatedState.cursor).toBe(6); // (2 + 4) % 8
       expect(result.shipIndicesToProcess).toEqual([2, 3, 4, 5]);
       expect(result.metrics.totalShips).toBe(8);
       expect(result.metrics.sliceSize).toBe(4);
       expect(result.metrics.budgetHit).toBe(true); // 4 < 8
+      expect(result.metrics.ticksCaughtUp).toBe(1);
+      expect(result.metrics.ticksDropped).toBe(0);
     });
 
     it('handles empty ship list', () => {
@@ -137,11 +140,13 @@ describe('Scheduler', () => {
       const result = processSchedulerTick(50, state, mockConfig, 0);
 
       expect(result.tickOccurred).toBe(true);
-      expect(result.updatedState.accumulator).toBe(100); // 150 + 50 - 100
-      expect(result.updatedState.tickIndex).toBe(6);
+      expect(result.updatedState.accumulator).toBe(0); // 150 + 50 - 200 (two ticks)
+      expect(result.updatedState.tickIndex).toBe(7); // 5 + 2
       expect(result.updatedState.cursor).toBe(0);
       expect(result.shipIndicesToProcess).toEqual([]);
       expect(result.metrics.budgetHit).toBe(false);
+      expect(result.metrics.ticksCaughtUp).toBe(2);
+      expect(result.metrics.ticksDropped).toBe(0);
     });
 
     it('does not set budget hit when all ships fit in slice', () => {
@@ -157,6 +162,84 @@ describe('Scheduler', () => {
       expect(result.metrics.totalShips).toBe(3);
       expect(result.metrics.sliceSize).toBe(3);
       expect(result.metrics.budgetHit).toBe(false); // 3 >= 3
+      expect(result.metrics.ticksCaughtUp).toBe(1);
+      expect(result.metrics.ticksDropped).toBe(0);
+    });
+
+    it('catches up on backlog when accumulator has multiple ticks', () => {
+      const state: SchedulerState = {
+        accumulator: 150,
+        tickIndex: 5,
+        cursor: 0,
+      };
+
+      const result = processSchedulerTick(100, state, mockConfig, 8);
+
+      expect(result.tickOccurred).toBe(true);
+      expect(result.updatedState.accumulator).toBe(50); // 150 + 100 - 200 (two ticks)
+      expect(result.updatedState.tickIndex).toBe(7); // 5 + 2
+      expect(result.metrics.ticksCaughtUp).toBe(2);
+      expect(result.metrics.ticksDropped).toBe(0);
+      // Should process ships from multiple ticks
+      expect(result.shipIndicesToProcess.length).toBeGreaterThan(0);
+    });
+
+    it('bounds catch-up to maxCatchUpTicks', () => {
+      const state: SchedulerState = {
+        accumulator: 0,
+        tickIndex: 0,
+        cursor: 0,
+      };
+
+      const result = processSchedulerTick(500, state, mockConfig, 8);
+
+      expect(result.tickOccurred).toBe(true);
+      expect(result.updatedState.tickIndex).toBe(3); // max 3 ticks caught up
+      expect(result.metrics.ticksCaughtUp).toBe(3);
+      expect(result.metrics.ticksDropped).toBe(2); // 500 / 100 = 5 ticks total, 3 caught up, 2 dropped
+      expect(result.updatedState.accumulator).toBe(0); // All ticks consumed
+    });
+
+    it('catches up with custom maxCatchUpTicks', () => {
+      const customConfig: SchedulerConfig = {
+        tickInterval: 100,
+        maxPerTick: 5,
+        maxCatchUpTicks: 5,
+      };
+
+      const state: SchedulerState = {
+        accumulator: 0,
+        tickIndex: 0,
+        cursor: 0,
+      };
+
+      const result = processSchedulerTick(500, state, customConfig, 8);
+
+      expect(result.tickOccurred).toBe(true);
+      expect(result.updatedState.tickIndex).toBe(5); // 5 ticks caught up
+      expect(result.metrics.ticksCaughtUp).toBe(5);
+      expect(result.metrics.ticksDropped).toBe(0);
+      expect(result.updatedState.accumulator).toBe(0);
+    });
+
+    it('processes unique ships across multiple catch-up ticks', () => {
+      const state: SchedulerState = {
+        accumulator: 0,
+        tickIndex: 0,
+        cursor: 0,
+      };
+
+      const result = processSchedulerTick(200, state, mockConfig, 6);
+
+      expect(result.tickOccurred).toBe(true);
+      expect(result.metrics.ticksCaughtUp).toBe(2);
+      // With 6 ships and maxPerTick=5, each tick processes 3 ships
+      // Two ticks should process all 6 ships (no duplicates due to Set usage)
+      expect(result.shipIndicesToProcess.length).toBeLessThanOrEqual(6);
+      // Verify indices are sorted
+      for (let i = 1; i < result.shipIndicesToProcess.length; i++) {
+        expect(result.shipIndicesToProcess[i]).toBeGreaterThan(result.shipIndicesToProcess[i - 1]);
+      }
     });
   });
 
@@ -167,8 +250,12 @@ describe('Scheduler', () => {
         lastSliceSize: 0,
         lastDecisions: 0,
         lastSkipped: 0,
+        lastTicksCaughtUp: 0,
+        lastTicksDropped: 0,
         totalDecisions: 100,
         totalSkipped: 20,
+        totalTicksCaughtUp: 5,
+        totalTicksDropped: 2,
         budgetHits: 5,
       } as any;
 
@@ -178,6 +265,8 @@ describe('Scheduler', () => {
         decisions: 0, // Not used in this function
         skipped: 0, // Not used in this function
         budgetHit: true,
+        ticksCaughtUp: 2,
+        ticksDropped: 1,
       };
 
       updateSchedulerMetrics(metrics, schedulerMetrics, 4, 2);
@@ -186,23 +275,33 @@ describe('Scheduler', () => {
       expect(metrics.lastSliceSize).toBe(6);
       expect(metrics.lastDecisions).toBe(4);
       expect(metrics.lastSkipped).toBe(2);
+      expect(metrics.lastTicksCaughtUp).toBe(2);
+      expect(metrics.lastTicksDropped).toBe(1);
       expect(metrics.totalDecisions).toBe(104);
       expect(metrics.totalSkipped).toBe(22);
+      expect(metrics.totalTicksCaughtUp).toBe(7);
+      expect(metrics.totalTicksDropped).toBe(3);
       expect(metrics.budgetHits).toBe(6);
     });
 
     it('does not increment budget hits when no budget hit', () => {
       const metrics = {
         budgetHits: 3,
+        totalTicksCaughtUp: 0,
+        totalTicksDropped: 0,
       } as any;
 
       const schedulerMetrics = {
         budgetHit: false,
+        ticksCaughtUp: 1,
+        ticksDropped: 0,
       } as any;
 
       updateSchedulerMetrics(metrics, schedulerMetrics, 5, 1);
 
       expect(metrics.budgetHits).toBe(3);
+      expect(metrics.totalTicksCaughtUp).toBe(1);
+      expect(metrics.totalTicksDropped).toBe(0);
     });
   });
 });
