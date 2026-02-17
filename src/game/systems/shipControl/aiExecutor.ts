@@ -27,7 +27,7 @@ export interface ShipAiResult {
  */
 export function getShipById(state: GameState, id: number | undefined): ShipEntity | null {
   if (id == null) return null;
-  return state.shipById.get(id) ?? null;
+  return state.shipById?.get(id) ?? null;
 }
 
 /**

@@ -129,6 +129,8 @@ describe('AI metrics aggregation', () => {
 
     const ships = state.queries.ships.entities as ShipEntity[];
     ships.push(shooter, target);
+    state.shipById.set(shooter.id, shooter);
+    state.shipById.set(target.id, target);
 
     const result = executeAICommand(state, shooter, 0.1);
     expect(result).toBe(target);
@@ -358,6 +360,7 @@ function createStubState(): GameState {
     physicsWorld: physicsWorldStub as unknown as GameState['physicsWorld'],
     eventQueue: {} as never,
     colliderLookup: new Map(),
+    shipById: new Map(),
     rapier: rapierStub as unknown as GameState['rapier'],
     nextEntityId: 1,
     time: 5,
