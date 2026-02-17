@@ -144,8 +144,10 @@ export function applyDamageResultToShip(
   }
 
   let hullDamage = 0;
+  let wasAlive = true; // Track if ship was alive before this damage application
   if (damageResult.hullDamage > 0) {
     const prevHp = component.hp;
+    wasAlive = prevHp > 0;
     component.hp = Math.max(0, prevHp - damageResult.hullDamage);
     hullDamage = Math.max(0, prevHp - component.hp);
 
@@ -169,8 +171,10 @@ export function applyDamageResultToShip(
     callbacks?.onDamageApplied?.(context);
   }
 
+  // Check if ship transitioned to dead state (was alive, now dead)
+  // This ensures onKill fires only once on the killing blow, not on subsequent hits
   const destroyed = component.hp <= 0;
-  if (destroyed) {
+  if (destroyed && wasAlive) {
     callbacks?.onKill?.(context);
   }
 
