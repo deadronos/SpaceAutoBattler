@@ -80,43 +80,68 @@ export class SpatialGrid {
   }
 
   /**
-   * Queries potential occluders between source and target.
-   * Only checks cells along the line between source and target.
+   * Checks whether any ship occludes the line segment from source to target.
+   * Returns early as soon as an occluder is found.
    */
-  queryLineSegment(
+  hasOccluderOnSegment(
     source: Vector3,
     target: Vector3,
+    direction: Vector3,
+    maxDistance: number,
     excludeSource: ShipEntity,
     excludeTarget: ShipEntity,
-  ): ShipEntity[] {
-    const results: ShipEntity[] = [];
-    const seen = new Set<ShipEntity>();
+    cosThreshold: number,
+  ): boolean {
+    if (maxDistance <= 1e-5) {
+      return false;
+    }
 
-    // Walk along the line segment and check cells
-    const direction = new Vector3().subVectors(target, source);
-    const distance = direction.length();
-    direction.normalize();
+    const distanceSq = maxDistance * maxDistance;
+    const deltaX = target.x - source.x;
+    const deltaY = target.y - source.y;
+    const deltaZ = target.z - source.z;
+    const steps = Math.max(1, Math.ceil(maxDistance / this.cellSize));
+    const invSteps = 1 / steps;
 
-    // Sample points along the line
-    const steps = Math.ceil(distance / this.cellSize) + 1;
+    let previousKey = '';
     for (let i = 0; i <= steps; i++) {
-      const t = (i / steps) * distance;
-      const px = source.x + direction.x * t;
-      const py = source.y + direction.y * t;
-      const pz = source.z + direction.z * t;
+      const t = i * invSteps;
+      const px = source.x + deltaX * t;
+      const py = source.y + deltaY * t;
+      const pz = source.z + deltaZ * t;
 
       const key = this.getCellKey(px, py, pz);
+      if (key === previousKey) {
+        continue;
+      }
+      previousKey = key;
+
       const cell = this.cells.get(key);
       if (!cell) continue;
 
       for (const ship of cell) {
         if (ship === excludeSource || ship === excludeTarget) continue;
-        if (seen.has(ship)) continue;
-        seen.add(ship);
-        results.push(ship);
+
+        const obstacleX = ship.transform.position.x - source.x;
+        const obstacleY = ship.transform.position.y - source.y;
+        const obstacleZ = ship.transform.position.z - source.z;
+        const obstacleDistanceSq =
+          obstacleX * obstacleX + obstacleY * obstacleY + obstacleZ * obstacleZ;
+
+        if (obstacleDistanceSq <= 1e-10 || obstacleDistanceSq >= distanceSq) {
+          continue;
+        }
+
+        const invObstacleDistance = 1 / Math.sqrt(obstacleDistanceSq);
+        const cos =
+          (obstacleX * direction.x + obstacleY * direction.y + obstacleZ * direction.z) *
+          invObstacleDistance;
+        if (cos > cosThreshold) {
+          return true;
+        }
       }
     }
 
-    return results;
+    return false;
   }
 }

@@ -14,20 +14,15 @@ import { SpatialGrid } from '../../utils/spatialGrid.js';
 const TMP_FORWARD = new Vector3();
 const TMP_VECTOR = new Vector3();
 const TMP_DIRECTION = new Vector3();
-const TMP_OBSTACLE = new Vector3();
 
-// Spatial grid cell size tuned for typical engagement ranges (300 units).
-// This value balances grid granularity with query efficiency:
-// - Sensor detection ranges are typically 600-720 units
-// - Cell size of 300 means ~2-3 cells per sensor range
-// - Smaller cells = more precise culling but more memory/query overhead
-const SPATIAL_GRID_CELL_SIZE = 300;
+const DEFAULT_SPATIAL_GRID_CELL_SIZE = 300;
+const MIN_SPATIAL_GRID_CELL_SIZE = 40;
+const MAX_SPATIAL_GRID_CELL_SIZE = 300;
+const TARGET_SHIPS_PER_CELL = 8;
 
 // Spatial grid for broad-phase culling
 let spatialGrid: SpatialGrid | null = null;
-
-// Occlusion cache to avoid redundant checks within a frame
-const occlusionCache = new Map<string, boolean>();
+let spatialGridCellSize = DEFAULT_SPATIAL_GRID_CELL_SIZE;
 
 function ensureVisibleMaps(state: GameState): void {
   if (!state.blackboard.visibleEnemies) {
@@ -72,36 +67,49 @@ function computeOccluded(
   distance: number,
   grid: SpatialGrid,
 ): boolean {
-  // Check cache first
-  const cacheKey = `${source.id}-${target.id}`;
-  const cached = occlusionCache.get(cacheKey);
-  if (cached !== undefined) {
-    return cached;
-  }
-
   const cosThreshold = Math.cos(0.14);
-  
-  // Use spatial grid to only check nearby potential occluders
-  const obstacles = grid.queryLineSegment(
+
+  return grid.hasOccluderOnSegment(
     source.transform.position,
     target.transform.position,
+    direction,
+    distance,
     source,
     target,
+    cosThreshold,
   );
+}
 
-  for (const obstacle of obstacles) {
-    TMP_OBSTACLE.copy(obstacle.transform.position).sub(source.transform.position);
-    const obstacleDistance = TMP_OBSTACLE.length();
-    if (obstacleDistance <= 1e-5 || obstacleDistance >= distance) continue;
-    TMP_OBSTACLE.multiplyScalar(1 / obstacleDistance);
-    if (TMP_OBSTACLE.dot(direction) > cosThreshold) {
-      occlusionCache.set(cacheKey, true);
-      return true;
-    }
+function computeAdaptiveGridCellSize(ships: ShipEntity[]): number {
+  if (ships.length <= 1) {
+    return DEFAULT_SPATIAL_GRID_CELL_SIZE;
   }
-  
-  occlusionCache.set(cacheKey, false);
-  return false;
+
+  let minX = Number.POSITIVE_INFINITY;
+  let minY = Number.POSITIVE_INFINITY;
+  let minZ = Number.POSITIVE_INFINITY;
+  let maxX = Number.NEGATIVE_INFINITY;
+  let maxY = Number.NEGATIVE_INFINITY;
+  let maxZ = Number.NEGATIVE_INFINITY;
+
+  for (const ship of ships) {
+    const { x, y, z } = ship.transform.position;
+    if (x < minX) minX = x;
+    if (y < minY) minY = y;
+    if (z < minZ) minZ = z;
+    if (x > maxX) maxX = x;
+    if (y > maxY) maxY = y;
+    if (z > maxZ) maxZ = z;
+  }
+
+  const spanX = Math.max(1, maxX - minX);
+  const spanY = Math.max(1, maxY - minY);
+  const spanZ = Math.max(1, maxZ - minZ);
+  const battlefieldVolume = spanX * spanY * spanZ;
+  const targetCellVolume = (battlefieldVolume * TARGET_SHIPS_PER_CELL) / ships.length;
+  const rawCellSize = Math.cbrt(Math.max(1, targetCellVolume));
+
+  return clamp(rawCellSize, MIN_SPATIAL_GRID_CELL_SIZE, MAX_SPATIAL_GRID_CELL_SIZE);
 }
 
 function decayContacts(
@@ -135,19 +143,16 @@ export function updateSensorSystem(state: GameState, ships: ShipEntity[]): void 
   const tick = manager.tickIndex;
   sensorState.lastUpdateTick = tick;
 
-  // Initialize spatial grid if needed
-  if (!spatialGrid) {
-    spatialGrid = new SpatialGrid(SPATIAL_GRID_CELL_SIZE);
+  const nextCellSize = computeAdaptiveGridCellSize(ships);
+  if (!spatialGrid || Math.abs(nextCellSize - spatialGridCellSize) > 1e-3) {
+    spatialGrid = new SpatialGrid(nextCellSize);
+    spatialGridCellSize = nextCellSize;
   }
-  
-  // Clear and populate spatial grid for this frame
+
   spatialGrid.clear();
   for (const ship of ships) {
     spatialGrid.insert(ship);
   }
-  
-  // Clear occlusion cache for this frame
-  occlusionCache.clear();
 
   const detectionMultiplier: Record<Team, number> = {
     blue: getDoctrineSensorModifiers(manager, 'blue')?.detectionMultiplier ?? 1,

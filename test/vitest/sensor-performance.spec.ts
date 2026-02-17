@@ -219,6 +219,55 @@ describe('Sensor performance', () => {
     expect(state.blackboard.visibleEnemies!.red.size).toBeGreaterThan(0);
   });
 
+  it('handles dense fleet formations without severe regression', () => {
+    const state = createState();
+    ensureSensorState(state);
+
+    const ships: ShipEntity[] = [];
+    for (let i = 0; i < 100; i++) {
+      const x = (i % 10) * 10;
+      const z = Math.floor(i / 10) * 10;
+
+      const bluePos = new Vector3(x, 0, z);
+      const redPos = new Vector3(x + 5, 0, z + 5);
+
+      const blueShip = createShip(i * 2, 'blue', bluePos);
+      const redShip = createShip(i * 2 + 1, 'red', redPos);
+      blueShip.ship.sensor = {
+        detectionRange: 1200,
+        trackingRange: 1500,
+        coneAngle: Math.PI * 0.95,
+        falloff: 0.8,
+      };
+      redShip.ship.sensor = {
+        detectionRange: 1200,
+        trackingRange: 1500,
+        coneAngle: Math.PI * 0.95,
+        falloff: 0.8,
+      };
+
+      ships.push(blueShip, redShip);
+    }
+
+    // Warm up once to avoid first-run JIT noise.
+    updateSensorSystem(state, ships);
+
+    const samples: number[] = [];
+    for (let i = 0; i < 5; i++) {
+      state.ai.tickIndex = i;
+      const startTime = performance.now();
+      updateSensorSystem(state, ships);
+      samples.push(performance.now() - startTime);
+    }
+
+    samples.sort((a, b) => a - b);
+    const median = samples[Math.floor(samples.length / 2)];
+
+    expect(median).toBeLessThan(40);
+    expect(state.blackboard.visibleEnemies!.blue.size).toBeGreaterThan(0);
+    expect(state.blackboard.visibleEnemies!.red.size).toBeGreaterThan(0);
+  });
+
   it('maintains functional equivalence with occlusion', () => {
     const state = createState();
     ensureSensorState(state);
