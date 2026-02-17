@@ -1,7 +1,7 @@
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Grid } from '@react-three/drei';
 import { AxesHelper, NoToneMapping, SRGBColorSpace, type WebGLRenderer } from 'three';
-import { Suspense } from 'react';
+import { Suspense, useEffect, useMemo } from 'react';
 import type React from 'react';
 import { useOptionalGameState } from '../game/context.js';
 import { CAMERA_DEFAULTS, FOG_DEFAULTS, WORLD_SIZE } from '../game/config.js';
@@ -33,6 +33,8 @@ function BattleSceneContent({ ppEnabled }: BattleSceneContentProps): React.React
   if (!state) return <></>;
   const renderWorkerShipsOnly = shouldRenderWorkerShipsOnly();
   const renderWorkerShips = shouldRenderWorkerShips();
+  const axesHelper = useMemo(() => new AxesHelper(200), []);
+  useEffect(() => () => axesHelper.dispose(), [axesHelper]);
   // Expose a local `ships` binding to make particle integration explicit for static checks
   const ships = state.queries.ships;
 
@@ -70,7 +72,7 @@ function BattleSceneContent({ ppEnabled }: BattleSceneContentProps): React.React
         transparent
         opacity={ppEnabled ? undefined : 0.1}
       />
-      <primitive object={new AxesHelper(200)} position={[0, 0, 0]} />
+      <primitive object={axesHelper} position={[0, 0, 0]} />
     </>
   );
 
