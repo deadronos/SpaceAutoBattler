@@ -9,11 +9,20 @@ import type {
 import { ensureDoctrineState, getDoctrineSensorModifiers } from '../aiDoctrine.js';
 import { getForwardFromQuaternion } from '../../utils/vector.js';
 import { clamp } from '../../utils/math.js';
+import { SpatialGrid } from '../../utils/spatialGrid.js';
 
 const TMP_FORWARD = new Vector3();
 const TMP_VECTOR = new Vector3();
 const TMP_DIRECTION = new Vector3();
-const TMP_OBSTACLE = new Vector3();
+
+const DEFAULT_SPATIAL_GRID_CELL_SIZE = 300;
+const MIN_SPATIAL_GRID_CELL_SIZE = 40;
+const MAX_SPATIAL_GRID_CELL_SIZE = 300;
+const TARGET_SHIPS_PER_CELL = 8;
+
+// Spatial grid for broad-phase culling
+let spatialGrid: SpatialGrid | null = null;
+let spatialGridCellSize = DEFAULT_SPATIAL_GRID_CELL_SIZE;
 
 function ensureVisibleMaps(state: GameState): void {
   if (!state.blackboard.visibleEnemies) {
@@ -54,22 +63,53 @@ export function ensureSensorState(state: GameState): SensorState {
 function computeOccluded(
   source: ShipEntity,
   target: ShipEntity,
-  ships: ShipEntity[],
   direction: Vector3,
   distance: number,
+  grid: SpatialGrid,
 ): boolean {
   const cosThreshold = Math.cos(0.14);
-  for (const obstacle of ships) {
-    if (obstacle === source || obstacle === target) continue;
-    TMP_OBSTACLE.copy(obstacle.transform.position).sub(source.transform.position);
-    const obstacleDistance = TMP_OBSTACLE.length();
-    if (obstacleDistance <= 1e-5 || obstacleDistance >= distance) continue;
-    TMP_OBSTACLE.multiplyScalar(1 / obstacleDistance);
-    if (TMP_OBSTACLE.dot(direction) > cosThreshold) {
-      return true;
-    }
+
+  return grid.hasOccluderOnSegment(
+    source.transform.position,
+    target.transform.position,
+    direction,
+    distance,
+    source,
+    target,
+    cosThreshold,
+  );
+}
+
+function computeAdaptiveGridCellSize(ships: ShipEntity[]): number {
+  if (ships.length <= 1) {
+    return DEFAULT_SPATIAL_GRID_CELL_SIZE;
   }
-  return false;
+
+  let minX = Number.POSITIVE_INFINITY;
+  let minY = Number.POSITIVE_INFINITY;
+  let minZ = Number.POSITIVE_INFINITY;
+  let maxX = Number.NEGATIVE_INFINITY;
+  let maxY = Number.NEGATIVE_INFINITY;
+  let maxZ = Number.NEGATIVE_INFINITY;
+
+  for (const ship of ships) {
+    const { x, y, z } = ship.transform.position;
+    if (x < minX) minX = x;
+    if (y < minY) minY = y;
+    if (z < minZ) minZ = z;
+    if (x > maxX) maxX = x;
+    if (y > maxY) maxY = y;
+    if (z > maxZ) maxZ = z;
+  }
+
+  const spanX = Math.max(1, maxX - minX);
+  const spanY = Math.max(1, maxY - minY);
+  const spanZ = Math.max(1, maxZ - minZ);
+  const battlefieldVolume = spanX * spanY * spanZ;
+  const targetCellVolume = (battlefieldVolume * TARGET_SHIPS_PER_CELL) / ships.length;
+  const rawCellSize = Math.cbrt(Math.max(1, targetCellVolume));
+
+  return clamp(rawCellSize, MIN_SPATIAL_GRID_CELL_SIZE, MAX_SPATIAL_GRID_CELL_SIZE);
 }
 
 function decayContacts(
@@ -102,6 +142,17 @@ export function updateSensorSystem(state: GameState, ships: ShipEntity[]): void 
   ensureDoctrineState(manager);
   const tick = manager.tickIndex;
   sensorState.lastUpdateTick = tick;
+
+  const nextCellSize = computeAdaptiveGridCellSize(ships);
+  if (!spatialGrid || Math.abs(nextCellSize - spatialGridCellSize) > 1e-3) {
+    spatialGrid = new SpatialGrid(nextCellSize);
+    spatialGridCellSize = nextCellSize;
+  }
+
+  spatialGrid.clear();
+  for (const ship of ships) {
+    spatialGrid.insert(ship);
+  }
 
   const detectionMultiplier: Record<Team, number> = {
     blue: getDoctrineSensorModifiers(manager, 'blue')?.detectionMultiplier ?? 1,
@@ -162,7 +213,7 @@ export function updateSensorSystem(state: GameState, ships: ShipEntity[]): void 
       }
       if (distanceFactor <= 0) continue;
 
-      const occluded = computeOccluded(source, target, ships, TMP_DIRECTION, distance);
+      const occluded = computeOccluded(source, target, TMP_DIRECTION, distance, spatialGrid);
       const occlusionFactor = occluded ? 0.6 : 1;
 
       const targetDoctrineStealth = clamp(stealthBonus[target.ship.team] ?? 0, 0, 0.8);
