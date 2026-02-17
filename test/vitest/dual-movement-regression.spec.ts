@@ -13,7 +13,7 @@ import { updateGame } from '../../src/game/systems.js';
  * and the new updateMotionSystem were active in the same tick, causing
  * duplicate physics writes and inconsistent behavior.
  *
- * See: CODE_REVIEW.md finding #3, issue #[Code Review] Consolidate movement pipeline
+ * See: CODE_REVIEW.md finding #3
  */
 
 function setupTestState(): { state: GameState; ship: ShipEntity } {
@@ -105,7 +105,8 @@ describe('Dual Movement System Regression', () => {
     const translationSpy = (ship.rigidBody as any).setNextKinematicTranslation;
 
     // Store calls from first run
-    const firstRunCalls: any[] = [];
+    type TranslationCall = Array<[{ x: number; y: number; z: number }]>;
+    const firstRunCalls: TranslationCall[] = [];
 
     // Run 5 ticks
     for (let i = 0; i < 5; i++) {
