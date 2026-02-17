@@ -11,10 +11,11 @@
      `test/simulationQueue.spec.ts`, `test/safeSnapshot.spec.ts`, `test/game/subsystems.spec.ts`, `test/game/progression.spec.ts`, `test/progression/*.spec.ts`, `test/config/*.spec.ts`, `test/renderer/*.spec.ts`.
    - This creates silent coverage gaps in core simulation, config, and renderer modules.
 
-3. **High: Two movement systems are active in the same tick path**
-   - `prepareShips` calls `executeAICommand`, which calls legacy `applyShipMovement` (`src/game/systems/shipControl/index.ts:54`, `src/game/systems/shipControl/movementApply.ts:17`).
-   - Same frame then runs new motion system (`src/game/systems.ts:124`, `src/game/systems/motion/index.ts:42`).
-   - This duplicates queued physics writes and risks inconsistent movement semantics.
+3. **~High: Two movement systems are active in the same tick path~ [RESOLVED]**
+   - **Status**: Fixed - legacy `applyShipMovement` call removed from `executeAICommand`.
+   - **Solution**: Motion system (`src/game/systems/motion/`) is now the sole authoritative movement path.
+   - **Validation**: Added regression test (`test/vitest/dual-movement-regression.spec.ts`) ensuring exactly one physics write per ship per tick.
+   - Previously: `prepareShips` called `executeAICommand`, which called legacy `applyShipMovement` (`src/game/systems/shipControl/index.ts:54`, `src/game/systems/shipControl/movementApply.ts:17`), and same frame then ran new motion system (`src/game/systems.ts:124`, `src/game/systems/motion/index.ts:42`), duplicating queued physics writes.
 
 4. **Medium-High: AI scheduler drops backlog on long frames**
    - `processSchedulerTick` only consumes one interval even if accumulator is much larger (`src/game/systems/decision/scheduler.ts:88`, `src/game/systems/decision/scheduler.ts:107`).
@@ -59,7 +60,7 @@
 
 1. Missing execution of 13 unit/spec files is the biggest immediate quality risk (see finding #2).
 2. No obvious targeted test for “single kill side-effect per entity per tick” in projectile collision fan-in path.
-3. No obvious regression test enforcing one active movement pipeline (legacy vs motion system).
+3. ~No obvious regression test enforcing one active movement pipeline (legacy vs motion system). [RESOLVED - test/vitest/dual-movement-regression.spec.ts added]
 
 ## Execution Constraints
 

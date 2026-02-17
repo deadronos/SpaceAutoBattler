@@ -4,7 +4,7 @@ This document summarizes recent analysis and recommended experiments to increase
 
 ## Key findings
 
-- AI V2 steering is yaw-only (ships don't pitch/roll), but vertical maneuvering is supported behind `AI_CONFIG.verticalEnabled` (see `src/game/config.ts`). Command execution is in `src/game/systems/shipControl/` (`executeAICommand(...)` delegates to `executeShipAi(...)` and `applyShipMovement(...)`).
+- AI V2 steering is yaw-only (ships don't pitch/roll), but vertical maneuvering is supported behind `AI_CONFIG.verticalEnabled` (see `src/game/config.ts`). Command execution is in `src/game/systems/shipControl/` (`executeAICommand(...)` delegates to `executeShipAi(...)`), and movement is handled by the motion system in `src/game/systems/motion/`.
 - Spawns are not strictly 2D — `spawnInitialFleets` and `spawnRandomShip` (exported from `src/game/state.ts`, implemented in `src/game/spawnFleets.ts`) sample Y from the seeded `SeededRng`. Vertical dispersion is scaled by `SPAWN_CONFIG.verticalSpreadFactor`.
 - Ship mobility tuning lives in `src/data/shipStats.ts` (re-exported as `SHIP_STATS` from `src/game/ships.ts`) and AI behavior profiles in `src/game/aiProfiles.ts` (fields: `desiredRange`, `aggression`, `patience`, `orbit`, `dodgeFreq`).
 - The world cube size and clamping are controlled by `WORLD_SIZE`/`WORLD_HALF` and `clampToWorld(...)` in `src/game/config.ts` (current `WORLD_SIZE = 8000`).
