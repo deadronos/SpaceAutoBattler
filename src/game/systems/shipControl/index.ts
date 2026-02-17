@@ -1,7 +1,6 @@
 import type { GameState, ShipEntity } from '../../../types/index.js';
 import { ensureAiEnabled } from './aiSafety.js';
 import { executeShipAi } from './aiExecutor.js';
-import { applyShipMovement } from './movementApply.js';
 import { handleShipWeapons } from './weapons.js';
 import { updateShipLifecycle } from './lifecycle.js';
 import { runEmbeddedTurrets } from '../turrets.js';
@@ -34,7 +33,7 @@ export function prepareShips(state: GameState, delta: number): void {
 
 /**
  * Executes the AI command for a single ship.
- * Applies movement and handles weapon firing.
+ * Handles weapon firing. Movement is handled by the motion system.
  *
  * @param {GameState} state - The game state.
  * @param {ShipEntity} ship - The ship entity.
@@ -51,7 +50,6 @@ export function executeAICommand(
     return preferredTarget;
   }
 
-  applyShipMovement(state, ship, decision, delta);
   handleShipWeapons(state, ship, decision, preferredTarget);
 
   return preferredTarget;
