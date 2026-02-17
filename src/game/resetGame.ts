@@ -23,7 +23,9 @@ export function resetGame(state: GameState): void {
   state.ai.accumulator = 0;
   state.ai.tickIndex = 0;
   state.ai.assignments.escorts.clear();
-  state.ai.interrupts?.splice(0, state.ai.interrupts.length);
+  if (state.ai.interrupts) {
+    state.ai.interrupts.length = 0;
+  }
   if (state.ai.interruptState) {
     state.ai.interruptState.cooldownTick.clear();
     state.ai.interruptState.damageThisTick.clear();

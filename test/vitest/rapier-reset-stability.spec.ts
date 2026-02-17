@@ -99,9 +99,21 @@ describe('Rapier Reset Stability', () => {
               }
             : null,
         }))
-        .sort((a: SpawnSnapshotEntry, b: SpawnSnapshotEntry) =>
-          JSON.stringify(a).localeCompare(JSON.stringify(b))
-        );
+        .sort((a: SpawnSnapshotEntry, b: SpawnSnapshotEntry) => {
+          const teamCompare = (a.team ?? '').localeCompare(b.team ?? '');
+          if (teamCompare !== 0) return teamCompare;
+          const hullCompare = (a.hull ?? '').localeCompare(b.hull ?? '');
+          if (hullCompare !== 0) return hullCompare;
+          const ax = a.position?.x ?? 0;
+          const bx = b.position?.x ?? 0;
+          if (ax !== bx) return ax - bx;
+          const ay = a.position?.y ?? 0;
+          const by = b.position?.y ?? 0;
+          if (ay !== by) return ay - by;
+          const az = a.position?.z ?? 0;
+          const bz = b.position?.z ?? 0;
+          return az - bz;
+        });
     const initialSpawn = toSpawnSnapshot();
 
     state.ai.interrupts?.push({ shipId: 1, reason: 'manual', tick: 1 });
