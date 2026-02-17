@@ -128,6 +128,8 @@ describe('Scheduler', () => {
       expect(result.metrics.budgetHit).toBe(true); // 4 < 8
       expect(result.metrics.ticksCaughtUp).toBe(1);
       expect(result.metrics.ticksDropped).toBe(0);
+      // Cursor should advance by sliceSize (4) from starting position (2)
+      expect(result.updatedState.cursor).toBe(6);
     });
 
     it('handles empty ship list', () => {
@@ -240,6 +242,22 @@ describe('Scheduler', () => {
       for (let i = 1; i < result.shipIndicesToProcess.length; i++) {
         expect(result.shipIndicesToProcess[i]).toBeGreaterThan(result.shipIndicesToProcess[i - 1]);
       }
+    });
+
+    it('advances cursor correctly during catch-up', () => {
+      const state: SchedulerState = {
+        accumulator: 0,
+        tickIndex: 0,
+        cursor: 0,
+      };
+
+      const result = processSchedulerTick(200, state, mockConfig, 8);
+
+      expect(result.tickOccurred).toBe(true);
+      expect(result.metrics.ticksCaughtUp).toBe(2);
+      // With 8 ships and maxPerTick=5, each tick processes 4 ships
+      // After 2 ticks starting at cursor 0, cursor should be at (0 + 4 + 4) % 8 = 0
+      expect(result.updatedState.cursor).toBe(0);
     });
   });
 

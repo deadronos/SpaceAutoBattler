@@ -150,7 +150,7 @@ export function processSchedulerTick(
     ticksDropped += 1;
   }
 
-  // Handle empty ship list case
+  // Handle empty ship list case (fallback if no ships were processed during catch-up)
   if (totalShips === 0) {
     return {
       tickOccurred: true,
@@ -170,7 +170,7 @@ export function processSchedulerTick(
 
   // Convert set to array for ship indices to process
   const shipIndicesToProcess = Array.from(allShipIndices).sort((a, b) => a - b);
-  
+
   // Compute final slice parameters for metrics
   const { slices, sliceSize } = computeSliceParameters(totalShips, config.maxPerTick);
   const budgetHit = slices > 1;
