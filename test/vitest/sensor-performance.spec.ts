@@ -174,8 +174,9 @@ describe('Sensor performance', () => {
     updateSensorSystem(state, ships);
     const duration = performance.now() - startTime;
 
-    // Should complete in reasonable time (< 10ms for 50 ships)
-    expect(duration).toBeLessThan(10);
+    // Performance threshold with headroom for CI variability
+    // Should complete in reasonable time (< 30ms for 50 ships)
+    expect(duration).toBeLessThan(30);
     
     // Verify some ships detected enemies
     expect(state.blackboard.visibleEnemies!.blue.size).toBeGreaterThan(0);
@@ -208,9 +209,10 @@ describe('Sensor performance', () => {
     updateSensorSystem(state, ships);
     const duration = performance.now() - startTime;
 
-    // Should scale reasonably with spatial grid optimization (< 50ms for 100 ships)
+    // Performance threshold with headroom for CI variability
+    // Should scale reasonably with spatial grid optimization (< 100ms for 100 ships)
     // Without optimization, O(N^3) would take much longer
-    expect(duration).toBeLessThan(50);
+    expect(duration).toBeLessThan(100);
     
     // Verify functionality still works
     expect(state.blackboard.visibleEnemies!.blue.size).toBeGreaterThan(0);

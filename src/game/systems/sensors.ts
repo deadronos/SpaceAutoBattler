@@ -16,7 +16,14 @@ const TMP_VECTOR = new Vector3();
 const TMP_DIRECTION = new Vector3();
 const TMP_OBSTACLE = new Vector3();
 
-// Spatial grid for broad-phase culling (cell size tuned for typical engagement ranges)
+// Spatial grid cell size tuned for typical engagement ranges (300 units).
+// This value balances grid granularity with query efficiency:
+// - Sensor detection ranges are typically 600-720 units
+// - Cell size of 300 means ~2-3 cells per sensor range
+// - Smaller cells = more precise culling but more memory/query overhead
+const SPATIAL_GRID_CELL_SIZE = 300;
+
+// Spatial grid for broad-phase culling
 let spatialGrid: SpatialGrid | null = null;
 
 // Occlusion cache to avoid redundant checks within a frame
@@ -128,9 +135,9 @@ export function updateSensorSystem(state: GameState, ships: ShipEntity[]): void 
   const tick = manager.tickIndex;
   sensorState.lastUpdateTick = tick;
 
-  // Initialize spatial grid if needed (cell size = 300 units, typical engagement range)
+  // Initialize spatial grid if needed
   if (!spatialGrid) {
-    spatialGrid = new SpatialGrid(300);
+    spatialGrid = new SpatialGrid(SPATIAL_GRID_CELL_SIZE);
   }
   
   // Clear and populate spatial grid for this frame
