@@ -144,7 +144,9 @@ export function applyDamageResultToShip(
   }
 
   let hullDamage = 0;
-  let wasAlive = true; // Track if ship was alive before this damage application
+  // Track if ship was alive before this damage application
+  // Default to false if no hull damage, check actual HP if hull damage is dealt
+  let wasAlive = false;
   if (damageResult.hullDamage > 0) {
     const prevHp = component.hp;
     wasAlive = prevHp > 0;

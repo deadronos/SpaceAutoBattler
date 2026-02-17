@@ -286,4 +286,82 @@ describe('Duplicate kill side-effects prevention', () => {
     // onKill should be called on the transition
     expect(onKillSpy).toHaveBeenCalledTimes(1);
   });
+
+  it('should not trigger onKill when dealing non-hull damage to already-dead ship', () => {
+    const state: Partial<GameState> = {
+      time: 0,
+    };
+
+    const ship = {
+      id: 4,
+      transform: {
+        position: new Vector3(0, 0, 0),
+        rotation: new Vector3(0, 0, 0),
+        scale: 1,
+      },
+      ship: {
+        team: 1,
+        hull: 'fighter' as any,
+        hp: 0, // Already dead
+        maxHp: 100,
+        shield: 10, // Has some shield
+        maxShield: 100,
+        armor: 0,
+        cooldown: 0,
+        fireRate: 1,
+        damage: 10,
+        projectileSpeed: 100,
+        range: 100,
+        speed: 10,
+        velocity: new Vector3(0, 0, 0),
+        angularVelocity: new Vector3(0, 0, 0),
+        lateralAcceleration: 0,
+        motion: {
+          maxSpeed: 10,
+          acceleration: 5,
+          deceleration: 5,
+          turnRate: 1,
+          mass: 1,
+        },
+        sensor: {
+          detectionRange: 100,
+          trackingRange: 100,
+          lockTime: 0,
+        },
+        xp: 0,
+        level: 1,
+        xpToNext: 100,
+        damageType: 'kinetic',
+        levelBonuses: {
+          damage: 0,
+          hp: 0,
+          shield: 0,
+          speed: 0,
+          range: 0,
+          fireRate: 0,
+        },
+      },
+    } as unknown as ShipEntity;
+
+    const onKillSpy = vi.fn();
+
+    // Deal only shield damage to a dead ship
+    const result = applyDamageResultToShip({
+      state: state as GameState,
+      ship,
+      damageResult: {
+        shieldDamage: 5,
+        armorDamage: 0,
+        hullDamage: 0,
+      },
+      callbacks: {
+        onKill: onKillSpy,
+      },
+    });
+
+    expect(ship.ship.hp).toBe(0);
+    expect(result.destroyed).toBe(true);
+    // onKill should NOT be called since ship was already dead
+    expect(onKillSpy).not.toHaveBeenCalled();
+  });
 });
