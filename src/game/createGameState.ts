@@ -11,6 +11,8 @@ interface CreateGameStateOptions {
   renderOnly?: boolean;
 }
 
+export const DEFAULT_GAME_SEED = 1337;
+
 /**
  * Initializes the game state, including physics (Rapier), ECS world, and AI state.
  *
@@ -61,7 +63,7 @@ export async function createGameState(options: CreateGameStateOptions = {}): Pro
       projectiles: world.with('projectile'),
       turrets: world.with('turret'),
     },
-    rng: new SeededRng(1337),
+    rng: new SeededRng(DEFAULT_GAME_SEED),
     paused: false,
     timeScale: 1,
     uiFlags: {
