@@ -27,11 +27,7 @@ export interface ShipAiResult {
  */
 export function getShipById(state: GameState, id: number | undefined): ShipEntity | null {
   if (id == null) return null;
-  const ships = state.queries.ships.entities as ShipEntity[];
-  for (const ship of ships) {
-    if (ship.id === id) return ship;
-  }
-  return null;
+  return state.shipById?.get(id) ?? null;
 }
 
 /**
