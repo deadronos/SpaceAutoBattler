@@ -8,6 +8,7 @@ import {
   SimulationBridge,
   shouldDebugWorkerSimulation,
   shouldEnableWorkerSimulation,
+  shouldRenderWorkerShipsOnly,
 } from './SimulationBridge.js';
 import { reportE2EError, reportConfigError } from '../utils/errorReporting.js';
 
@@ -122,8 +123,11 @@ export function GameProvider({ children, fallback = null }: GameProviderProps): 
     let cancelled = false;
 
     (async () => {
-      const created = await createGameState();
-      spawnInitialFleets(created);
+      const renderWorkerOnly = shouldRenderWorkerShipsOnly();
+      const created = await createGameState({ renderOnly: renderWorkerOnly });
+      if (!renderWorkerOnly) {
+        spawnInitialFleets(created);
+      }
       // E2E-only debug surface: when the URL contains ?e2e=1, expose a minimal
       // introspection API on window for Playwright to poll entity counts. This
       // avoids adding app-visible UI and keeps all runtime state on GameState.
