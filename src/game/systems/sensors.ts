@@ -9,11 +9,18 @@ import type {
 import { ensureDoctrineState, getDoctrineSensorModifiers } from '../aiDoctrine.js';
 import { getForwardFromQuaternion } from '../../utils/vector.js';
 import { clamp } from '../../utils/math.js';
+import { SpatialGrid } from '../../utils/spatialGrid.js';
 
 const TMP_FORWARD = new Vector3();
 const TMP_VECTOR = new Vector3();
 const TMP_DIRECTION = new Vector3();
 const TMP_OBSTACLE = new Vector3();
+
+// Spatial grid for broad-phase culling (cell size tuned for typical engagement ranges)
+let spatialGrid: SpatialGrid | null = null;
+
+// Occlusion cache to avoid redundant checks within a frame
+const occlusionCache = new Map<string, boolean>();
 
 function ensureVisibleMaps(state: GameState): void {
   if (!state.blackboard.visibleEnemies) {
@@ -54,21 +61,39 @@ export function ensureSensorState(state: GameState): SensorState {
 function computeOccluded(
   source: ShipEntity,
   target: ShipEntity,
-  ships: ShipEntity[],
   direction: Vector3,
   distance: number,
+  grid: SpatialGrid,
 ): boolean {
+  // Check cache first
+  const cacheKey = `${source.id}-${target.id}`;
+  const cached = occlusionCache.get(cacheKey);
+  if (cached !== undefined) {
+    return cached;
+  }
+
   const cosThreshold = Math.cos(0.14);
-  for (const obstacle of ships) {
-    if (obstacle === source || obstacle === target) continue;
+  
+  // Use spatial grid to only check nearby potential occluders
+  const obstacles = grid.queryLineSegment(
+    source.transform.position,
+    target.transform.position,
+    source,
+    target,
+  );
+
+  for (const obstacle of obstacles) {
     TMP_OBSTACLE.copy(obstacle.transform.position).sub(source.transform.position);
     const obstacleDistance = TMP_OBSTACLE.length();
     if (obstacleDistance <= 1e-5 || obstacleDistance >= distance) continue;
     TMP_OBSTACLE.multiplyScalar(1 / obstacleDistance);
     if (TMP_OBSTACLE.dot(direction) > cosThreshold) {
+      occlusionCache.set(cacheKey, true);
       return true;
     }
   }
+  
+  occlusionCache.set(cacheKey, false);
   return false;
 }
 
@@ -102,6 +127,20 @@ export function updateSensorSystem(state: GameState, ships: ShipEntity[]): void 
   ensureDoctrineState(manager);
   const tick = manager.tickIndex;
   sensorState.lastUpdateTick = tick;
+
+  // Initialize spatial grid if needed (cell size = 300 units, typical engagement range)
+  if (!spatialGrid) {
+    spatialGrid = new SpatialGrid(300);
+  }
+  
+  // Clear and populate spatial grid for this frame
+  spatialGrid.clear();
+  for (const ship of ships) {
+    spatialGrid.insert(ship);
+  }
+  
+  // Clear occlusion cache for this frame
+  occlusionCache.clear();
 
   const detectionMultiplier: Record<Team, number> = {
     blue: getDoctrineSensorModifiers(manager, 'blue')?.detectionMultiplier ?? 1,
@@ -162,7 +201,7 @@ export function updateSensorSystem(state: GameState, ships: ShipEntity[]): void 
       }
       if (distanceFactor <= 0) continue;
 
-      const occluded = computeOccluded(source, target, ships, TMP_DIRECTION, distance);
+      const occluded = computeOccluded(source, target, TMP_DIRECTION, distance, spatialGrid);
       const occlusionFactor = occluded ? 0.6 : 1;
 
       const targetDoctrineStealth = clamp(stealthBonus[target.ship.team] ?? 0, 0, 0.8);
