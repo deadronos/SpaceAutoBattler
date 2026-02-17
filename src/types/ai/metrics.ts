@@ -134,6 +134,10 @@ export interface AIMetrics {
   lastSkipped: number;
   lastSliceSize: number;
   lastTotalShips: number;
+  totalTicksCaughtUp: number;
+  totalTicksDropped: number;
+  lastTicksCaughtUp: number;
+  lastTicksDropped: number;
   verticalSamples: number;
   verticalAboveThreshold: number;
   inBandSamples: number;
