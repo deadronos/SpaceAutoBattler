@@ -3,10 +3,12 @@ import { resetMetrics } from './metrics.js';
 import { enqueuePostPhysicsMutation } from './simulationQueue.js';
 import { destroyEntity } from './entityLifecycle.js';
 import { spawnInitialFleets } from './spawnFleets.js';
+import { DEFAULT_GAME_SEED } from './createGameState.js';
 
 /**
  * Resets the game state completely.
  * Destroys all entities, clears metrics, resets AI state, and respawns initial fleets.
+ * Reset semantics intentionally reseed RNG to the default game seed for deterministic fresh-match reproduction.
  *
  * @param {GameState} state - The game state to reset.
  */
@@ -15,11 +17,21 @@ export function resetGame(state: GameState): void {
     destroyEntity(state, entity);
   }
   resetMetrics(state.ai.metrics);
+  state.rng.reset(DEFAULT_GAME_SEED);
   spawnInitialFleets(state);
   state.ai.cursor = 0;
   state.ai.accumulator = 0;
   state.ai.tickIndex = 0;
   state.ai.assignments.escorts.clear();
+  if (state.ai.interrupts) {
+    state.ai.interrupts.length = 0;
+  }
+  if (state.ai.interruptState) {
+    state.ai.interruptState.cooldownTick.clear();
+    state.ai.interruptState.damageThisTick.clear();
+    state.ai.interruptState.lastDamageTick = -1;
+    state.ai.interruptState.vipThreatAssignments.clear();
+  }
   state.blackboard.nearestEnemy.clear();
   state.blackboard.threatToVip.clear();
   state.blackboard.teamPosture.blue = 'hold';

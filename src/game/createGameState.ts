@@ -7,21 +7,47 @@ import { createDefaultMetrics } from './metrics.js';
 import { AI_CONFIG } from './config.js';
 import { createDefaultDoctrineState } from './aiDoctrine.js';
 
+interface CreateGameStateOptions {
+  renderOnly?: boolean;
+}
+
+export const DEFAULT_GAME_SEED = 1337;
+
 /**
  * Initializes the game state, including physics (Rapier), ECS world, and AI state.
  *
  * @returns {Promise<GameState>} A promise that resolves to the initialized GameState.
  */
-export async function createGameState(): Promise<GameState> {
-  // Rapier 0.19+ expects an options object; calling without args triggers a deprecation warning.
-  // Passing an empty object keeps default behavior and removes the warning.
-  await Rapier.init({});
-  const physicsWorld = new Rapier.World({ x: 0, y: 0, z: 0 });
-  const eventQueue = new Rapier.EventQueue({ auto: true });
+export async function createGameState(options: CreateGameStateOptions = {}): Promise<GameState> {
+  const renderOnly = options.renderOnly === true;
+  let physicsWorld: GameState['physicsWorld'];
+  let eventQueue: GameState['eventQueue'];
+  let rapierModule: GameState['rapier'];
+  if (renderOnly) {
+    physicsWorld = {
+      integrationParameters: {
+        dt: 1 / 20,
+      },
+      free: () => {},
+      removeCollider: () => {},
+      removeRigidBody: () => {},
+    } as GameState['physicsWorld'];
+    eventQueue = {
+      free: () => {},
+    } as GameState['eventQueue'];
+    rapierModule = {} as GameState['rapier'];
+  } else {
+    // Rapier 0.19+ expects an options object; calling without args triggers a deprecation warning.
+    // Passing an empty object keeps default behavior and removes the warning.
+    await Rapier.init({});
+    physicsWorld = new Rapier.World({ x: 0, y: 0, z: 0 });
+    eventQueue = new Rapier.EventQueue({ auto: true });
+    rapierModule = Rapier;
+  }
   const world = new ECSWorld<GameEntity>();
 
   const state: GameState = {
-    rapier: Rapier,
+    rapier: rapierModule,
     physicsWorld,
     eventQueue,
     world,
@@ -37,7 +63,7 @@ export async function createGameState(): Promise<GameState> {
       projectiles: world.with('projectile'),
       turrets: world.with('turret'),
     },
-    rng: new SeededRng(1337),
+    rng: new SeededRng(DEFAULT_GAME_SEED),
     paused: false,
     timeScale: 1,
     uiFlags: {

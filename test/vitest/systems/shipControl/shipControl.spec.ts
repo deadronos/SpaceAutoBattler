@@ -38,6 +38,7 @@ function setupShip(): { ship: ShipEntity; state: GameState } {
   ship.ship.angularVelocity = new Vector3();
   const state = createTestGameState();
   state.queries.ships.entities.push(ship);
+  state.shipById.set(ship.id, ship);
   ship.rigidBody = {
     setNextKinematicTranslation: vi.fn(),
   } as never;
@@ -53,6 +54,7 @@ describe('shipControl module refactor', () => {
     const { ship, state } = setupShip();
     const enemy = createTestShip(2, 'red', new Vector3(0, 0, 50));
     state.queries.ships.entities.push(enemy);
+    state.shipById.set(enemy.id, enemy);
     ship.ai!.command.heading = new Vector3(1, 0, 0);
     ship.ai!.command.thrust = 0.5;
     ship.ai!.command.firePrimary = true;
@@ -63,6 +65,28 @@ describe('shipControl module refactor', () => {
     expect(result.preferredTarget?.id).toBe(enemy.id);
     expect(result.decision!.heading.length()).toBeCloseTo(1, 3);
     expect(result.decision!.thrust).toBeGreaterThan(0);
+  });
+
+  it('resolves preferred target from shipById even when query list is stale', () => {
+    const { ship, state } = setupShip();
+    const enemy = createTestShip(3, 'red', new Vector3(0, 0, 60));
+    state.shipById.set(enemy.id, enemy);
+    ship.ai!.targetId = enemy.id;
+
+    const result = executeShipAi(state, ship, 0.1);
+
+    expect(result.preferredTarget?.id).toBe(enemy.id);
+  });
+
+  it('ignores query-only targets missing from shipById', () => {
+    const { ship, state } = setupShip();
+    const enemy = createTestShip(4, 'red', new Vector3(0, 0, 60));
+    state.queries.ships.entities.push(enemy);
+    ship.ai!.targetId = enemy.id;
+
+    const result = executeShipAi(state, ship, 0.1);
+
+    expect(result.preferredTarget).toBeNull();
   });
 
   it('keeps ships stationary when movement thrust is zero', () => {
