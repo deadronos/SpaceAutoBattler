@@ -135,12 +135,12 @@ export function processSchedulerTick(
       updatedState.cursor,
       sliceSize,
     );
-    
+
     // Collect all ship indices (use Set to avoid duplicates)
     for (const idx of shipIndices) {
       allShipIndices.add(idx);
     }
-    
+
     updatedState.cursor = advanceCursor(updatedState.cursor, sliceSize, totalShips);
   }
 
