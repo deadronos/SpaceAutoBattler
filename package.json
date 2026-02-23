@@ -71,7 +71,7 @@
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-import": "^2.32.0",
     "globals": "^17.3.0",
-    "happy-dom": "^20.6.1",
+    "happy-dom": "^20.7.0",
     "jiti": "^2.6.1",
     "lint-staged": "^16.2.7",
     "pixelmatch": "^7.1.0",
