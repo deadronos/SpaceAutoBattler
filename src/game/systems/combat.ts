@@ -8,7 +8,7 @@
 export { fireProjectile, advanceProjectiles, TEMP_POS } from './projectiles.js';
 export { FORWARD } from '../../utils/steering.js';
 
-export { runEmbeddedTurrets, updateTurrets } from './turrets.js';
+export { updateTurrets } from './turrets.js';
 export { findNearestEnemy } from '../utils/targetSelection.js';
 
 export { resolveProjectiles } from './damage.js';
