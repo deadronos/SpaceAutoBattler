@@ -31,13 +31,7 @@ export default defineConfig({
   },
   test: {
     include: [
-      'test/vitest/*.spec.ts',
-      'test/vitest/*.test.ts',
-      'test/vitest/**/*.spec.ts',
-      'test/vitest/**/*.spec.tsx',
-      'test/components/**/*.spec.ts',
-      'test/components/**/*.spec.tsx',
-      'test/utils/**/*.spec.ts',
+      'test/**/*.{spec,test}.{ts,tsx}',
     ],
     exclude: ['test/playwright/**'],
     environment: 'happy-dom',
