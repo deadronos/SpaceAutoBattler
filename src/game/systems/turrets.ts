@@ -4,7 +4,7 @@ import type {
   ProjectileEntity,
   ShipEntity,
   TurretEntity,
-  TurretState,
+  TurretSpec,
 } from '../../types/index.js';
 import { recordShotHelper } from '../metrics.js';
 import { fireProjectile, TEMP_POS } from './projectiles.js';
@@ -21,58 +21,10 @@ const TEMP_LOCAL_DIR = new Vector3();
 const SMALL_HULLS = new Set(['fighter', 'corvette']);
 const LARGE_HULLS = new Set(['frigate', 'destroyer', 'carrier']);
 
-function getTurretWorldPosition(ship: ShipEntity, turret: TurretState): Vector3 {
+function getTurretWorldPosition(ship: ShipEntity, turret: TurretSpec): Vector3 {
   const world = TEMP_POS.copy(turret.offset).multiplyScalar(ship.transform.scale);
   world.applyQuaternion(ship.transform.rotation).add(ship.transform.position);
   return world;
-}
-
-/**
- * Runs logic for embedded turrets (not separate entities).
- *
- * @param {GameState} state - The game state.
- * @param {ShipEntity} ship - The ship with embedded turrets.
- * @param {ShipEntity} target - The current target.
- */
-export function runEmbeddedTurrets(state: GameState, ship: ShipEntity, target: ShipEntity): void {
-  for (const turret of ship.turrets ?? []) {
-    if (turret.cooldown > 0) continue;
-    const turretOrigin = getTurretWorldPosition(ship, turret);
-    const projectileTarget =
-      turret.priority === 'antiProjectile'
-        ? findPointDefenseTarget(state, {
-            origin: turretOrigin,
-            team: ship.ship.team,
-            maxRange: turret.range,
-            preferTargetId: ship.id,
-          })
-        : null;
-    const targetPos = projectileTarget
-      ? projectileTarget.transform.position
-      : target.transform.position;
-    const toTarget = TEMP_TURRET_DIR.copy(targetPos).sub(turretOrigin);
-    const dist = toTarget.length();
-    if (dist > turret.range) continue;
-    if (dist > 1e-5) toTarget.divideScalar(dist);
-    else toTarget.set(0, 0, 1);
-    recordShotHelper(state, ship, projectileTarget ? null : target, dist);
-    fireProjectile(state, ship, toTarget, {
-      originPosition: turretOrigin,
-      override: {
-        damage: turret.damage,
-        projectileSpeed: turret.projectileSpeed,
-        range: turret.range,
-        bulletType: turret.bulletType,
-        targetId: projectileTarget ? undefined : target.id,
-        projectileCategory: turret.projectileCategory,
-      },
-      targetId: projectileTarget ? undefined : target.id,
-    });
-    if (projectileTarget) {
-      destroyEntity(state, projectileTarget);
-    }
-    turret.cooldown = turret.fireRate;
-  }
 }
 
 /**

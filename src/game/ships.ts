@@ -3,7 +3,6 @@ import type {
   GameState,
   ShipBlueprint,
   ShipEntity,
-  TurretState,
   TurretEntity,
 } from '../types/index.js';
 import { SHIP_STATS } from '../data/shipStats.js';
@@ -73,17 +72,6 @@ export function spawnShip(state: GameState, blueprint: ShipBlueprint): ShipEntit
     },
     model: blueprint.hull,
     shieldRipples: [],
-    turrets: (stats.turrets ?? []).map<TurretState>((t, idx) => ({
-      offset: t.offset.clone(),
-      damage: t.damage,
-      fireRate: t.fireRate,
-      projectileSpeed: t.projectileSpeed,
-      range: applyRangeVariance(t.range, aiState.traitSeed, idx + 1),
-      bulletType: t.bulletType,
-      projectileCategory: t.projectileCategory,
-      priority: t.priority ?? 'any',
-      cooldown: t.fireRate * state.rng.next(),
-    })),
     ai: aiState,
   };
 

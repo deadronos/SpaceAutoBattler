@@ -3,7 +3,7 @@ import { Quaternion, Vector3 } from 'three';
 import { applyProgressionDefaults } from './helpers/progression.js';
 import { createDefaultMotionStats } from '../../src/game/ships.js';
 import { updateGame } from '../../src/game/systems.js';
-import type { GameState, ShipEntity, TurretState } from '../../src/types/index.js';
+import type { GameState, ShipEntity, TurretEntity, TurretSpec } from '../../src/types/index.js';
 
 function makeRigidBodyStub(init?: {
   pos?: { x: number; y: number; z: number };
@@ -188,9 +188,10 @@ function makeStateStub(): GameState {
 }
 
 function makeShipWithTurret(
+  state: GameState,
   team: 'red' | 'blue',
   pos: Vector3,
-  turret: Omit<TurretState, 'cooldown'> & { cooldown?: number },
+  turret: TurretSpec,
 ): ShipEntity {
   const rb = makeRigidBodyStub();
   const ship = {
@@ -223,20 +224,29 @@ function makeShipWithTurret(
     },
     model: 'corvette' as any,
     shieldRipples: [],
-    turrets: [
-      {
-        offset: turret.offset.clone(),
-        damage: turret.damage,
-        fireRate: turret.fireRate,
-        projectileSpeed: turret.projectileSpeed,
-        range: turret.range,
-        bulletType: turret.bulletType,
-        cooldown: turret.cooldown ?? 0,
-      },
-    ],
   } as unknown as ShipEntity;
 
   applyProgressionDefaults(ship.ship, { hull: 'corvette', maxHpOverride: ship.ship.maxHp });
+
+  // Create associated TurretEntity
+  const tRb = makeRigidBodyStub();
+  const turretEntity = {
+    id: state.nextEntityId++,
+    rigidBody: tRb as any,
+    collider: { handle: Math.floor(Math.random() * 10000), isValid: () => true } as any,
+    transform: {
+      position: pos.clone(),
+      rotation: new Quaternion(),
+      scale: 1,
+    },
+    turret: {
+      parent: ship,
+      ...turret,
+      cooldown: 0,
+    },
+  } as unknown as TurretEntity;
+  state.world.add(turretEntity);
+
   return ship;
 }
 
@@ -244,7 +254,7 @@ describe('Turret system', () => {
   it('fires turret with its own stats and origin', () => {
     const state = makeStateStub();
 
-    const friendly = makeShipWithTurret('blue', new Vector3(0, 0, 0), {
+    const friendly = makeShipWithTurret(state, 'blue', new Vector3(0, 0, 0), {
       offset: new Vector3(1, 0, 0),
       damage: 7,
       fireRate: 1.0,

@@ -122,12 +122,6 @@ export interface TurretSpec {
   projectileCategory?: ProjectileCategory;
 }
 
-/** Runtime turret state (derived from TurretSpec). Lives on the parent ship entity. */
-export interface TurretState extends TurretSpec {
-  /** Countdown timer until the turret can fire again. */
-  cooldown: number;
-}
-
 /** ECS component for a turret entity, referencing its parent ship. */
 export interface TurretComponent extends TurretSpec {
   /** The parent ship this turret is mounted on. */

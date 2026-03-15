@@ -29,7 +29,6 @@ export type {
   DamageEffectiveness,
   ProjectileComponent,
   TurretSpec,
-  TurretState,
   TurretComponent,
   MuzzleFlash,
 } from './combat.js';

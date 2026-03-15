@@ -17,7 +17,7 @@ import type {
   Captain,
   ProgressionEvent,
 } from './progression.js';
-import type { TurretState, MuzzleFlash } from './combat.js';
+import type { MuzzleFlash } from './combat.js';
 
 /**
  * Definition of a launch slot for a carrier.
@@ -178,8 +178,6 @@ export interface GameEntity extends TransformComponent {
   /** Recent shield ripple events, renderer-only consumption. Kept on GameState for determinism. */
   shieldRipples?: ShieldRipple[];
   /** Optional array of turrets mounted on this ship (if entity has a ShipComponent). */
-  turrets?: TurretState[];
-  /** Recent muzzle flash events; rendered client-side and naturally fade based on state.time. */
   muzzleFlashes?: MuzzleFlash[];
 }
 

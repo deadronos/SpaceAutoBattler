@@ -17,11 +17,6 @@ const MUZZLE_FLASH_LIFETIME = 0.25;
  */
 export function updateShipLifecycle(state: GameState, ship: ShipEntity, delta: number): void {
   ship.ship.cooldown = Math.max(0, ship.ship.cooldown - delta);
-  if (ship.turrets) {
-    for (const turret of ship.turrets) {
-      turret.cooldown = Math.max(0, turret.cooldown - delta);
-    }
-  }
 
   updateCaptainAbilities(ship.ship, state.time, delta);
   repairSubsystems(ship.ship, delta);

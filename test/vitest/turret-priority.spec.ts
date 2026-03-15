@@ -3,7 +3,7 @@ import { Quaternion, Vector3 } from 'three';
 import { updateTurrets } from '../../src/game/systems/turrets.js';
 import { createDefaultMotionStats } from '../../src/game/ships.js';
 import { createProgressionDefaults } from '../../src/game/progression.js';
-import type { GameState, ShipEntity, TurretEntity, TurretState } from '../../src/types/index.js';
+import type { GameState, ShipEntity, TurretEntity } from '../../src/types/index.js';
 
 // --- Mocks and Stubs (copied/adapted from turrets.spec.ts) ---
 
@@ -160,7 +160,6 @@ function createShip(
     },
     model: hull,
     shieldRipples: [],
-    turrets: [],
   } as unknown as ShipEntity;
 
   (state.queries.ships as any).entities.push(ship);

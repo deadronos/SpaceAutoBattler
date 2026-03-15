@@ -3,7 +3,6 @@ import { ensureAiEnabled } from './aiSafety.js';
 import { executeShipAi } from './aiExecutor.js';
 import { handleShipWeapons } from './weapons.js';
 import { updateShipLifecycle } from './lifecycle.js';
-import { runEmbeddedTurrets } from '../turrets.js';
 
 export { getShipById } from './aiExecutor.js';
 
@@ -23,11 +22,7 @@ export function prepareShips(state: GameState, delta: number): void {
 
   for (const ship of ships) {
     updateShipLifecycle(state, ship, delta);
-    const preferredTarget = executeAICommand(state, ship, delta);
-
-    if (state.queries.turrets.entities.length === 0 && ship.turrets && preferredTarget) {
-      runEmbeddedTurrets(state, ship, preferredTarget);
-    }
+    executeAICommand(state, ship, delta);
   }
 }
 
