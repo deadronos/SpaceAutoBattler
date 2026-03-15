@@ -23,11 +23,15 @@ describe('progression xp helpers', () => {
 
     awardDamageXp(ship, 50, state, 11, 'laser', 'beam');
 
-    expect(ship.xp).toBeCloseTo(50 * XP_CONFIG.damageXpMultiplier);
-    expect(state.progressionEvents.get(11)).toHaveLength(1);
+    // damageDealt (50) * multiplier (0.5) = 25 XP
+    // ship.xpToNext is 20, so it levels up.
+    // Remaining XP should be 25 - 20 = 5
+    expect(ship.xp).toBeCloseTo(5);
+    expect(ship.level).toBe(2);
+    expect(state.progressionEvents.get(11)).toHaveLength(2); // damage + levelup
     expect(state.progressionEvents.get(11)?.[0]).toMatchObject({
       type: 'damage',
-      deltaXp: 5,
+      deltaXp: 25,
       details: '50.0 damage dealt with laser [beam]',
     });
   });

@@ -143,6 +143,11 @@ export function getInstanceFriendlyMaterial(
   } = options;
 
   const entry = registry.get(key);
+  if (!entry) {
+    onFallback?.({ requestedKey: key, resolvedKey: null, reason: 'missing' });
+    return fallbackFactory();
+  }
+
   const info = createInstancedMaterial(key, fallbackFactory);
   if (!requireInstanceColor && !requireInstanceUv) {
     return info;
@@ -176,14 +181,10 @@ export function getInstanceFriendlyMaterial(
     }
   }
 
-  let reason: InstanceFriendlyFallbackDetails['reason'];
-  if (!entry) {
-    reason = 'missing';
-  } else if (!colorOk) {
-    reason = 'no-instance-color';
-  } else {
-    reason = 'no-instance-uv';
-  }
+  let reason: InstanceFriendlyFallbackDetails['reason'] = !colorOk
+    ? 'no-instance-color'
+    : 'no-instance-uv';
+
   onFallback?.({ requestedKey: key, resolvedKey: null, reason });
   info.material.dispose();
   return fallbackFactory();
