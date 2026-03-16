@@ -114,7 +114,7 @@
     "three": "^0.183.2",
     "three-mesh-bvh": "^0.9.9",
     "three-stdlib": "^2.36.1",
-    "zustand": "^5.0.11"
+    "zustand": "^5.0.12"
   },
   "packageManager": "pnpm@10.31.0"
 }
