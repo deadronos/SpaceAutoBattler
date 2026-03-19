@@ -12,9 +12,16 @@ export type ShieldTransmissionMaterialProps = {
   opacity: number;
 };
 
-export const ShieldTransmissionMaterial: React.FC<ShieldTransmissionMaterialProps> = ({ hull, team, opacity }) => {
+export const ShieldTransmissionMaterial: React.FC<ShieldTransmissionMaterialProps> = ({
+  hull,
+  team,
+  opacity,
+}) => {
   const cfg = getShieldVisuals(hull);
-  const tint = useMemo(() => colorFromConfig(team === 'blue' ? TEAM_COLORS.blue : SHIELD_TUNING.redTint), [team]);
+  const tint = useMemo(
+    () => colorFromConfig(team === 'blue' ? TEAM_COLORS.blue : SHIELD_TUNING.redTint),
+    [team],
+  );
   const alpha = Math.max(0, Math.min(1, opacity * cfg.maxAlpha));
   const matRef = useRef<Material>(null);
 

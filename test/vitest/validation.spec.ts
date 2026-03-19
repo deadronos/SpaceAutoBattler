@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { validateMotionStats } from '../../src/game/validation.js';
 import type { MotionStats } from '../../src/types/index.js';
 

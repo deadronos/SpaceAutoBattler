@@ -119,7 +119,7 @@ export function Battlefield(): React.ReactElement {
         // (no-op in production unless ?copilot_debug=1 is present)
         try {
           installWebGLDebugHooks(gl as unknown as WebGLRenderer);
-        } catch (e) {
+        } catch {
           // ignore debug-install failures
         }
       }}

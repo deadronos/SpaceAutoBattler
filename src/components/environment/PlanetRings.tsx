@@ -1,6 +1,14 @@
 import { useEffect, useMemo, useRef } from 'react';
-import type { Mesh, ShaderMaterial as ThreeShaderMaterial } from 'three';
-import { Color, Shape, ExtrudeGeometry, ShaderMaterial, DoubleSide, AdditiveBlending, NormalBlending, MeshBasicMaterial } from 'three';
+import type { Mesh } from 'three';
+import {
+  Shape,
+  ExtrudeGeometry,
+  ShaderMaterial,
+  DoubleSide,
+  AdditiveBlending,
+  NormalBlending,
+  MeshBasicMaterial,
+} from 'three';
 import { useFrame } from '@react-three/fiber';
 import { colorFromConfig } from '../../utils/color.js';
 import { RENDER_ORDER_TRANSLUCENT_ADDITIVE } from '../../renderer/sceneLayerOrder.js';
@@ -278,7 +286,26 @@ export function PlanetRings({
     }
 
     return mat;
-  }, [color, opacity, innerRadius, outerRadius, brightness, fresnelStrength, tintColor, tintMix, bloomOnly, bandFrequency, bandStrength, bandNoiseScale, bandDarkness, planetCenter, planetRadius, shadowStrength, penumbra, lightDir]);
+  }, [
+    color,
+    opacity,
+    innerRadius,
+    outerRadius,
+    brightness,
+    fresnelStrength,
+    tintColor,
+    tintMix,
+    bloomOnly,
+    bandFrequency,
+    bandStrength,
+    bandNoiseScale,
+    bandDarkness,
+    planetCenter,
+    planetRadius,
+    shadowStrength,
+    penumbra,
+    lightDir,
+  ]);
 
   const basicMaterial = useMemo(() => {
     const color = colorFromConfig(tintColor ?? '#d9efff');
@@ -310,7 +337,9 @@ export function PlanetRings({
   const materialToUse = postprocessingEnabled ? material : basicMaterial;
 
   // Type guard to check if material has uniforms (ShaderMaterial)
-  const isShaderMat = (mat: ShaderMaterial | MeshBasicMaterial): mat is ShaderMaterial & { uniforms: PlanetRingsUniforms } => {
+  const isShaderMat = (
+    mat: ShaderMaterial | MeshBasicMaterial,
+  ): mat is ShaderMaterial & { uniforms: PlanetRingsUniforms } => {
     return 'uniforms' in mat;
   };
 
@@ -319,7 +348,8 @@ export function PlanetRings({
     try {
       if (isShaderMat(materialToUse)) {
         const uniforms = materialToUse.uniforms;
-        const desiredTintMix = typeof tintMix === 'number' ? tintMix : (postprocessingEnabled ? 0.0 : 0.9);
+        const desiredTintMix =
+          typeof tintMix === 'number' ? tintMix : postprocessingEnabled ? 0.0 : 0.9;
         uniforms.uTintMix.value = desiredTintMix;
         uniforms.uTintColor.value = colorFromConfig(tintColor ?? '#d9efff');
         uniforms.uBrightness.value = postprocessingEnabled ? brightness : Math.max(brightness, 1.6);
@@ -339,7 +369,9 @@ export function PlanetRings({
           // Expected: Blending mode may be read-only
           reportMaterialError('blending', 'ringMaterial', error);
         }
-        try { materialToUse.needsUpdate = true; } catch (error) {
+        try {
+          materialToUse.needsUpdate = true;
+        } catch (error) {
           // Expected: Material may be disposed during React unmount cycle
           reportMaterialError('needsUpdate', 'ringMaterial', error);
         }
@@ -348,7 +380,23 @@ export function PlanetRings({
       // Expected: Material may be disposed during React unmount cycle
       reportMaterialError('uniformUpdate.postprocessing', 'ringMaterial', error);
     }
-  }, [materialToUse, postprocessingEnabled, opacity, brightness, bandFrequency, bandStrength, bandNoiseScale, bandDarkness, planetCenter, planetRadius, shadowStrength, penumbra, lightDir, tintColor, tintMix]);
+  }, [
+    materialToUse,
+    postprocessingEnabled,
+    opacity,
+    brightness,
+    bandFrequency,
+    bandStrength,
+    bandNoiseScale,
+    bandDarkness,
+    planetCenter,
+    planetRadius,
+    shadowStrength,
+    penumbra,
+    lightDir,
+    tintColor,
+    tintMix,
+  ]);
 
   // Keep uniforms in sync when props change
   useEffect(() => {
@@ -364,7 +412,9 @@ export function PlanetRings({
         uniforms.uPlanetCenter.value = [planetCenter.x, planetCenter.y, planetCenter.z];
         uniforms.uPlanetRadius.value = planetRadius;
         uniforms.uPenumbra.value = penumbra;
-        try { materialToUse.needsUpdate = true; } catch (error) {
+        try {
+          materialToUse.needsUpdate = true;
+        } catch (error) {
           // Expected: Material may be disposed during React unmount cycle
           reportMaterialError('needsUpdate', 'ringMaterial', error);
         }
@@ -373,13 +423,28 @@ export function PlanetRings({
       // Expected: Material may be disposed during React unmount cycle
       reportMaterialError('uniformUpdate.props', 'ringMaterial', error);
     }
-  }, [materialToUse, opacity, innerRadius, outerRadius, brightness, fresnelStrength, bandFrequency, planetCenter, planetRadius, penumbra]);
+  }, [
+    materialToUse,
+    opacity,
+    innerRadius,
+    outerRadius,
+    brightness,
+    fresnelStrength,
+    bandFrequency,
+    planetCenter,
+    planetRadius,
+    penumbra,
+  ]);
 
   // Debug window interface for ring material access
   interface CopilotDebugWindow extends Window {
     __copilot_ringMaterial?: ShaderMaterial | MeshBasicMaterial;
     __copilot_setRingOpacity?: (v: unknown) => { set: boolean; value?: number; reason?: string };
-    __copilot_setRingRenderOrder?: (v: unknown) => { set: boolean; value?: number; reason?: string };
+    __copilot_setRingRenderOrder?: (v: unknown) => {
+      set: boolean;
+      value?: number;
+      reason?: string;
+    };
   }
 
   // Attach debug helpers once the material exists so we can adjust uniforms
@@ -399,13 +464,17 @@ export function PlanetRings({
             } else if ('opacity' in materialToUse) {
               materialToUse.opacity = Math.max(0, Math.min(n, 1));
             }
-            try { materialToUse.needsUpdate = true; } catch (error) {
+            try {
+              materialToUse.needsUpdate = true;
+            } catch (error) {
               // Expected: Material may be disposed
               reportMaterialError('debug.needsUpdate', 'ringMaterial', error);
             }
             const resultValue = isShaderMat(materialToUse)
               ? materialToUse.uniforms.uOpacity.value
-              : ('opacity' in materialToUse ? materialToUse.opacity : undefined);
+              : 'opacity' in materialToUse
+                ? materialToUse.opacity
+                : undefined;
             return { set: true, value: resultValue };
           } catch (e) {
             return { set: false, reason: String(e) };
@@ -442,7 +511,15 @@ export function PlanetRings({
 
   // Rings use additive blending and translucent layer ordering to render after
   // opaque geometry (planets, star cores) while respecting depth occlusion.
-  return <mesh ref={meshRef} geometry={geometry} material={materialToUse} rotation={[-Math.PI / 2, 0, 0]} renderOrder={RENDER_ORDER_TRANSLUCENT_ADDITIVE} />;
+  return (
+    <mesh
+      ref={meshRef}
+      geometry={geometry}
+      material={materialToUse}
+      rotation={[-Math.PI / 2, 0, 0]}
+      renderOrder={RENDER_ORDER_TRANSLUCENT_ADDITIVE}
+    />
+  );
 }
 
 export default PlanetRings;

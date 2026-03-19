@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'vite-plus/test';
 import type { ProgressionEvent } from '../../src/types/index.js';
 import { createProgressionDefaults } from '../../src/game/progression.js';
 

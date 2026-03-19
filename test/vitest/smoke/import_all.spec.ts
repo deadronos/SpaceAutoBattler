@@ -1,6 +1,6 @@
-/// <reference types="vite/client" />
+/// <reference types="vite-plus/client" />
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi } from 'vite-plus/test';
 
 // Auto-generated smoke test. Tries to import many project modules to increase
 // coverage. We mock heavy external libs above so imports don't fail.

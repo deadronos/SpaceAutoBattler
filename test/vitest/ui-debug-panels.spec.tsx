@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
 import React from 'react';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { DebugDrawer } from '../../src/components/HudToggleDrawer.js';

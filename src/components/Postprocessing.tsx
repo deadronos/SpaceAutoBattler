@@ -1,17 +1,11 @@
 import React, { useCallback, useEffect, useRef } from 'react';
 import { useThree, useFrame } from '@react-three/fiber';
 import { type EffectComposer, type FXAAEffect, type SelectiveBloomEffect } from 'postprocessing';
-import { type WebGLRenderer, type Scene, type Camera, type WebGLRenderTarget, Color } from 'three';
+import { type WebGLRenderer, type Scene, type Camera, type WebGLRenderTarget } from 'three';
 import { useBloomContext } from '../renderer/bloom/index.js';
 import { POSTPROCESSING_CONFIG } from '../config/renderer.js';
-import {
-  createComposer,
-  type ComposerSetupResult,
-} from './postprocessing/createComposer.js';
-import {
-  buildEffects,
-  type BloomContextLike,
-} from './postprocessing/buildEffects.js';
+import { createComposer, type ComposerSetupResult } from './postprocessing/createComposer.js';
+import { buildEffects, type BloomContextLike } from './postprocessing/buildEffects.js';
 import { reportMaterialError, reportWebGLError } from '../utils/errorReporting.js';
 
 type Props = {
@@ -27,7 +21,7 @@ type Props = {
  * @returns {null} This component does not render DOM elements, but attaches to the R3F canvas.
  */
 export function Postprocessing({ enabled = false }: Props): null {
-  const { gl, scene, camera, size, invalidate } = useThree();
+  const { gl, scene, camera, size } = useThree();
   const effectiveEnabled = enabled;
   const composerRef = useRef<EffectComposer | null>(null);
   const composerSetupRef = useRef<ComposerSetupResult | null>(null);
@@ -98,14 +92,14 @@ export function Postprocessing({ enabled = false }: Props): null {
       // If instantiation fails, fail gracefully and keep composer disabled
       // so the default R3F renderer can render without interruption.
       // Log for debugging.
-      // eslint-disable-next-line no-console
+      // oxlint-disable-next-line no-console
       console.warn('Postprocessing init failed, skipping composer:', err);
     }
 
     return () => {
       cleanupComposer();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [
     enabled,
     bloomCtx ? bloomCtx.selections : null,
@@ -163,7 +157,7 @@ export function Postprocessing({ enabled = false }: Props): null {
           }
         }
       } catch (err) {
-        // eslint-disable-next-line no-console
+        // oxlint-disable-next-line no-console
         console.warn('Postprocessing render failed:', err);
       }
     }

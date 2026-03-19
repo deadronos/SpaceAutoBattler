@@ -18,11 +18,11 @@ const syncPatterns = [
   'writeFileSync',
   'appendFileSync',
   'unlinkSync',
-  'openSync'
+  'openSync',
 ];
 
 function containsSyncCall(text) {
-  return syncPatterns.some(p => text.includes(p));
+  return syncPatterns.some((p) => text.includes(p));
 }
 
 async function walk(dir) {
@@ -32,7 +32,7 @@ async function walk(dir) {
     const full = path.join(dir, e.name);
     if (e.isDirectory()) {
       if (e.name === 'node_modules' || e.name === 'dist' || e.name === '.git') continue;
-      files.push(...await walk(full));
+      files.push(...(await walk(full)));
     } else if (e.isFile()) {
       if (allowedExtensions.has(path.extname(e.name))) files.push(full);
     }
@@ -48,18 +48,22 @@ async function reportMatches(files) {
     const lines = content.split(/\r?\n/);
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
-      if (syncPatterns.some(p => line.includes(p))) {
+      if (syncPatterns.some((p) => line.includes(p))) {
         matches.push({ file: f, line: i + 1, text: line.trim() });
       }
     }
   }
 
   if (matches.length === 0) {
-    console.log('check-no-sync-reads: OK — no synchronous fs.*Sync calls found in src (quick-scan).');
+    console.log(
+      'check-no-sync-reads: OK — no synchronous fs.*Sync calls found in src (quick-scan).',
+    );
     return 0;
   }
 
-  console.error('check-no-sync-reads: Found synchronous fs calls (these may block the event loop):');
+  console.error(
+    'check-no-sync-reads: Found synchronous fs calls (these may block the event loop):',
+  );
   for (const m of matches) {
     console.error(`${m.file}:${m.line}: ${m.text}`);
   }

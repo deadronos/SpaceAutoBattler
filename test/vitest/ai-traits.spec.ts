@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { generateTraitsFromSeed } from '../../src/game/aiTraits.js';
 
 function withinRange(value: number, variance = 0.1): boolean {

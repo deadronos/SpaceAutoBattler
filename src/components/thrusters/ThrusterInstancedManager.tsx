@@ -1,14 +1,6 @@
 import { useFrame } from '@react-three/fiber';
 import React, { useEffect, useMemo, useRef } from 'react';
-import {
-  Color,
-  InstancedBufferAttribute,
-  InstancedMesh,
-  Matrix4,
-  Quaternion,
-  SphereGeometry,
-  Vector3,
-} from 'three';
+import { Color, InstancedMesh, Matrix4, Quaternion, SphereGeometry, Vector3 } from 'three';
 import { clamp01 } from '../../utils/math.js';
 import type { ShipEntity, ShipHull } from '../../types/index.js';
 import { THRUSTER_GLOW_CONFIG } from '../../config/renderer.js';
@@ -97,11 +89,13 @@ export function ThrusterInstancedManager({
   const tempQuat = useMemo(() => new Quaternion(), []);
   const tempColor = useMemo(() => new Color(THRUSTER_GLOW_CONFIG.defaultEmissiveColor), []);
   const baseColor = useMemo(() => new Color(THRUSTER_GLOW_CONFIG.defaultEmissiveColor), []);
-  const managerRef = useRef(createInstancedLayerManager<string>(meshRef, {
-    capacity,
-    supportsInstanceColor: true,
-    baseColor: baseColor,
-  }));
+  const managerRef = useRef(
+    createInstancedLayerManager<string>(meshRef, {
+      capacity,
+      supportsInstanceColor: true,
+      baseColor: baseColor,
+    }),
+  );
 
   useBloomRegistration(meshRef, { group: 'engines' });
 
@@ -113,13 +107,19 @@ export function ThrusterInstancedManager({
     };
   }, []);
 
-  useEffect(() => () => {
-    geometry.dispose();
-  }, [geometry]);
+  useEffect(
+    () => () => {
+      geometry.dispose();
+    },
+    [geometry],
+  );
 
-  useEffect(() => () => {
-    materialInfo.material.dispose();
-  }, [materialInfo.material]);
+  useEffect(
+    () => () => {
+      materialInfo.material.dispose();
+    },
+    [materialInfo.material],
+  );
 
   useFrame(() => {
     frameRef.current += 1;
@@ -189,4 +189,3 @@ export function ThrusterInstancedManager({
     />
   );
 }
-

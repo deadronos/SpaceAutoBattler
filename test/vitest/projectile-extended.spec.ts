@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vite-plus/test';
 import { Vector3, Quaternion } from 'three';
 import { advanceProjectiles, fireProjectile } from '../../src/game/systems/projectiles.js';
 import { resolveProjectiles } from '../../src/game/systems/damage.js';

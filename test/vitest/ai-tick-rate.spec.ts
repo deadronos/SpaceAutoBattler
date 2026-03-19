@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vite-plus/test';
 import { AI_CONFIG } from '../../src/game/config.js';
 import { createGameState, disposeGameState } from '../../src/game/state.js';
 import { updateGame } from '../../src/game/systems.js';

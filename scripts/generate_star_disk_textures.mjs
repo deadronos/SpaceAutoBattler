@@ -32,7 +32,11 @@ function fbm(x, y, seed, octaves = 5, lacunarity = 2.0, gain = 0.5) {
   let amplitudeSum = 0.0;
 
   for (let i = 0; i < octaves; i += 1) {
-    const noiseValue = pseudoRandom(Math.floor(x * frequency), Math.floor(y * frequency), seed + i * 101);
+    const noiseValue = pseudoRandom(
+      Math.floor(x * frequency),
+      Math.floor(y * frequency),
+      seed + i * 101,
+    );
     const centered = noiseValue * 2.0 - 1.0;
     sum += centered * amplitude;
     amplitudeSum += amplitude;

@@ -1,5 +1,5 @@
 import React from 'react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { cleanup, render } from '@testing-library/react';
 import { AxesHelper } from 'three';
 
@@ -36,18 +36,30 @@ vi.mock('../../src/renderer/bloom/index.js', () => ({
 vi.mock('../../src/components/PostprocessingLazy.js', () => ({ default: () => null }));
 vi.mock('../../src/components/ParticleTrails.js', () => ({ ParticleTrails: () => null }));
 vi.mock('../../src/components/HudOverlayCollector.js', () => ({ HudOverlayCollector: () => null }));
-vi.mock('../../src/components/explosions/ExplosionRendererCore.js', () => ({ ExplosionsLayer: () => null }));
+vi.mock('../../src/components/explosions/ExplosionRendererCore.js', () => ({
+  ExplosionsLayer: () => null,
+}));
 vi.mock('../../src/components/PerfMonitorOverlay.js', () => ({ PerfMonitorOverlay: () => null }));
 vi.mock('../../src/components/DynamicResScaler.js', () => ({ default: () => null }));
-vi.mock('../../src/components/environment/CelestialEnvironment.js', () => ({ CelestialEnvironment: () => null }));
+vi.mock('../../src/components/environment/CelestialEnvironment.js', () => ({
+  CelestialEnvironment: () => null,
+}));
 vi.mock('../../src/components/BattlefieldSystems.js', () => ({ BattlefieldSystems: () => null }));
 vi.mock('../../src/components/layers/ShipsLayer.js', () => ({ ShipsLayer: () => null }));
-vi.mock('../../src/components/layers/ProjectilesLayer.js', () => ({ ProjectilesLayer: () => null }));
-vi.mock('../../src/components/layers/MuzzleFlashInstancedLayer.js', () => ({ MuzzleFlashInstancedLayer: () => null }));
+vi.mock('../../src/components/layers/ProjectilesLayer.js', () => ({
+  ProjectilesLayer: () => null,
+}));
+vi.mock('../../src/components/layers/MuzzleFlashInstancedLayer.js', () => ({
+  MuzzleFlashInstancedLayer: () => null,
+}));
 vi.mock('../../src/components/layers/TurretsLayer.js', () => ({ TurretsLayer: () => null }));
 vi.mock('../../src/components/layers/StarsField.js', () => ({ StarsField: () => null }));
-vi.mock('../../src/components/layers/WorkerShipsLayer.js', () => ({ WorkerShipsLayer: () => null }));
-vi.mock('../../src/renderer/webglDebugWrapper.js', () => ({ installWebGLDebugHooks: () => undefined }));
+vi.mock('../../src/components/layers/WorkerShipsLayer.js', () => ({
+  WorkerShipsLayer: () => null,
+}));
+vi.mock('../../src/renderer/webglDebugWrapper.js', () => ({
+  installWebGLDebugHooks: () => undefined,
+}));
 vi.mock('../../src/game/SimulationBridge.js', () => ({
   shouldRenderWorkerShips: () => false,
   shouldRenderWorkerShipsOnly: () => false,

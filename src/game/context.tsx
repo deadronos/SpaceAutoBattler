@@ -92,7 +92,7 @@ export function GameProvider({ children, fallback = null }: GameProviderProps): 
       simBridgeRef.current = null;
       setSimBridge(null);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -154,13 +154,15 @@ export function GameProvider({ children, fallback = null }: GameProviderProps): 
               },
               getWorkerStatus: () => {
                 const bridge = simBridgeRef.current;
-                return bridge?.getStatus() ?? {
-                  ready: false,
-                  tick: null,
-                  shipCount: null,
-                  usingShared: false,
-                  error: null,
-                };
+                return (
+                  bridge?.getStatus() ?? {
+                    ready: false,
+                    tick: null,
+                    shipCount: null,
+                    usingShared: false,
+                    error: null,
+                  }
+                );
               },
               sampleShipMotion: () => {
                 try {
@@ -213,11 +215,13 @@ export function GameProvider({ children, fallback = null }: GameProviderProps): 
               sampleWorkerShipMotion: (limit = 10) => {
                 try {
                   const bridge = simBridgeRef.current;
-                  return bridge?.sampleWorkerShipMotion(limit) ?? {
-                    tick: null,
-                    shipCount: null,
-                    ships: [],
-                  };
+                  return (
+                    bridge?.sampleWorkerShipMotion(limit) ?? {
+                      tick: null,
+                      shipCount: null,
+                      ships: [],
+                    }
+                  );
                 } catch (error) {
                   reportE2EError('sampleWorkerShipMotion', error);
                   return { tick: null, shipCount: null, ships: [] };

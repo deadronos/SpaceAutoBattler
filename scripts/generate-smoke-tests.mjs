@@ -69,7 +69,7 @@ function generate() {
   const imports = files.map((f) => toImportPath(f));
 
   const content =
-    "import { describe, it, expect, vi } from 'vitest';\n\n" +
+    "import { describe, it, expect, vi } from 'vite-plus/test';\n\n" +
     '// Auto-generated smoke test. Tries to import many project modules to increase\n' +
     "// coverage. We mock heavy external libs above so imports don't fail.\n\n" +
     '// Mock heavy external deps at the top level\n' +

@@ -6,26 +6,21 @@ jobs:
     timeout-minutes: 60
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v5
-    - name: Setup pnpm
-      uses: pnpm/action-setup@v4
-      with:
-        version: 10.31.0
-        run_install: false
-    - uses: actions/setup-node@v6
-      with:
-        node-version: lts/*
-        cache: 'pnpm'
-        cache-dependency-path: pnpm-lock.yaml
-    - name: Install deps
-      run: pnpm install --frozen-lockfile
-    - name: Install Playwright Browsers
-      run: pnpm exec playwright install --with-deps
-    - name: Run Playwright tests
-      run: pnpm exec playwright test
-    - uses: actions/upload-artifact@v4
-      if: ${{ !cancelled() }}
-      with:
-        name: playwright-report
-        path: playwright-report/
-        retention-days: 30
+      - uses: actions/checkout@v5
+      - name: Setup Vite Plus
+        uses: voidzero-dev/setup-vp@v1
+        with:
+          node-version: lts/*
+          cache: true
+      - name: Install deps
+        run: vp install --frozen-lockfile
+      - name: Install Playwright Browsers
+        run: vp exec playwright install --with-deps
+      - name: Run Playwright tests
+        run: vp exec playwright test
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 30

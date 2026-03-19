@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { PLANET_TEXTURE_PATHS } from '../../src/assets/planets.js';
 import { CELESTIAL_ENVIRONMENT, PLANET_GEOMETRY_SEGMENTS } from '../../src/config/environment.js';
 

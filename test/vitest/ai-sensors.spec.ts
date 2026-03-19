@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { Vector3, Quaternion } from 'three';
 import { updateSensorSystem, ensureSensorState } from '../../src/game/systems/sensors.js';
 import { activateDoctrine, createDefaultDoctrineState } from '../../src/game/aiDoctrine.js';

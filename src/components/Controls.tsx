@@ -48,25 +48,13 @@ export function Controls(): React.ReactElement {
       >
         {paused ? 'Resume' : 'Pause'}
       </button>
-      <button
-        onClick={handleReset}
-        aria-label="Reset simulation"
-        title="Reset simulation"
-      >
+      <button onClick={handleReset} aria-label="Reset simulation" title="Reset simulation">
         {resetConfirm ? 'Confirm?' : 'Reset'}
       </button>
-      <button
-        onClick={() => addShip('red')}
-        aria-label="Spawn Red ship"
-        title="Spawn Red ship"
-      >
+      <button onClick={() => addShip('red')} aria-label="Spawn Red ship" title="Spawn Red ship">
         + Red
       </button>
-      <button
-        onClick={() => addShip('blue')}
-        aria-label="Spawn Blue ship"
-        title="Spawn Blue ship"
-      >
+      <button onClick={() => addShip('blue')} aria-label="Spawn Blue ship" title="Spawn Blue ship">
         + Blue
       </button>
       {/* Simulation modifiers moved to HUD settings */}

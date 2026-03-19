@@ -1,10 +1,5 @@
 import { Quaternion, Vector3 } from 'three';
-import type {
-  GameState,
-  ShipBlueprint,
-  ShipEntity,
-  TurretEntity,
-} from '../types/index.js';
+import type { GameState, ShipBlueprint, ShipEntity, TurretEntity } from '../types/index.js';
 import { SHIP_STATS } from '../data/shipStats.js';
 import { createInitialAIState } from './aiState.js';
 import { registerTurret } from './turretRegistry.js';

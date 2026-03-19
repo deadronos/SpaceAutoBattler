@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react';
-import { Color, Group, Material, Mesh, Object3D, MeshStandardMaterial } from 'three';
+import { Color, Group, Material, Mesh, Object3D } from 'three';
 import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { useGLTF } from '@react-three/drei';
 import type { ShipHull } from '../../types/index.js';
@@ -67,9 +67,7 @@ function isColoredMaterial(m: Material): m is ColoredMaterial {
  * @param {Group | null} scene - The scene to traverse.
  * @returns {React.MutableRefObject<HullMaterial[]>} A ref containing the list of materials.
  */
-export function useHullMaterials(
-  scene: Group | null,
-): React.MutableRefObject<HullMaterial[]> {
+export function useHullMaterials(scene: Group | null): React.MutableRefObject<HullMaterial[]> {
   const hullMaterialsRef = { current: [] as HullMaterial[] };
 
   useEffect(() => {
@@ -88,7 +86,9 @@ export function useHullMaterials(
             try {
               if (!m.userData) m.userData = {};
               (m as MaterialWithUserData).userData.__copilot_forceColorWrite = true;
-            } catch { /* defensive: ignore odd host objects */ }
+            } catch {
+              /* defensive: ignore odd host objects */
+            }
             const entry: HullMaterial = {
               material: m,
               originalColor: m.color.clone(),
@@ -131,13 +131,13 @@ export function applyHullTint(
     if (applyTint) {
       const target = entry.originalColor.clone().lerp(teamColor, tintStrength);
       m.color.copy(target);
-      
+
       if (m.emissive && typeof m.emissive.copy === 'function') {
         m.emissive.copy(target).multiplyScalar(0.08);
       }
     } else {
       m.color.copy(entry.originalColor);
-      
+
       if (m.emissive && entry.originalEmissive) {
         m.emissive.copy(entry.originalEmissive);
       } else if (m.emissive) {

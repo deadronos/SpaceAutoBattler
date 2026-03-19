@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'vite-plus/test';
 import { Vector3 } from 'three';
 import { smoothHeading, smoothThrust } from '../../src/game/systems/decision/smoothing.js';
 import type { AIState } from '../../src/types/index.js';

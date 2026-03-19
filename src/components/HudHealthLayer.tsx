@@ -56,7 +56,11 @@ export function HudHealthLayer(): React.ReactElement | null {
 
   const layout = useMemo(() => {
     if (!enabled) return [];
-    return layoutOverlays(overlays, { viewport, reserved: reservedRects, config: DEFAULT_HUD_HEALTH_OVERLAY_CONFIG });
+    return layoutOverlays(overlays, {
+      viewport,
+      reserved: reservedRects,
+      config: DEFAULT_HUD_HEALTH_OVERLAY_CONFIG,
+    });
   }, [enabled, overlays, reservedRects, viewport]);
 
   if (!enabled) return null;
@@ -68,7 +72,11 @@ export function HudHealthLayer(): React.ReactElement | null {
   return (
     <div className="hud-health-layer" aria-live="polite" aria-label="HUD health overlays">
       {layout.map((overlay) => (
-        <ShipHudOverlay key={overlay.id} overlay={overlay} config={DEFAULT_HUD_HEALTH_OVERLAY_CONFIG} />
+        <ShipHudOverlay
+          key={overlay.id}
+          overlay={overlay}
+          config={DEFAULT_HUD_HEALTH_OVERLAY_CONFIG}
+        />
       ))}
     </div>
   );
@@ -105,7 +113,10 @@ function useReservedRects(): ReservedRect[] {
   return rects;
 }
 
-export function layoutOverlays(overlays: ShipHudOverlaySnapshot[], ctx: LayoutContext): OverlayLayoutResult[] {
+export function layoutOverlays(
+  overlays: ShipHudOverlaySnapshot[],
+  ctx: LayoutContext,
+): OverlayLayoutResult[] {
   return overlays.map((overlay) => {
     const screen = placeOverlay(overlay, ctx);
     const limitedEffects = overlay.statusEffects.slice(0, MAX_BADGES);
@@ -130,11 +141,18 @@ export function layoutOverlays(overlays: ShipHudOverlaySnapshot[], ctx: LayoutCo
   });
 }
 
-function placeOverlay(overlay: ShipHudOverlaySnapshot, ctx: LayoutContext): { x: number; y: number; hidden: boolean } {
+function placeOverlay(
+  overlay: ShipHudOverlaySnapshot,
+  ctx: LayoutContext,
+): { x: number; y: number; hidden: boolean } {
   if (!overlay.visible) {
     // Even when hidden, return coordinates adjusted by the configured HUD offset so callers
     // see consistent screen positions for overlays.
-    return { x: overlay.x + ctx.config.hudOffsetX, y: overlay.y + ctx.config.hudOffsetY, hidden: true };
+    return {
+      x: overlay.x + ctx.config.hudOffsetX,
+      y: overlay.y + ctx.config.hudOffsetY,
+      hidden: true,
+    };
   }
   const { viewport, reserved, config } = ctx;
   // Apply configured HUD offset (in pixels) to the overlay's reported screen coordinates.
@@ -171,10 +189,16 @@ function placeOverlay(overlay: ShipHudOverlaySnapshot, ctx: LayoutContext): { x:
   return { x, y, hidden: false };
 }
 
-function overlayDimensions(overlay: ShipHudOverlaySnapshot, config: HudHealthOverlayConfig): { width: number; height: number } {
+function overlayDimensions(
+  overlay: ShipHudOverlaySnapshot,
+  config: HudHealthOverlayConfig,
+): { width: number; height: number } {
   const badgeCount = Math.min(MAX_BADGES, overlay.statusEffects.length);
   const overflow = overlay.statusEffects.length > badgeCount ? 1 : 0;
-  const statusWidth = badgeCount + overflow > 0 ? config.statusBadgeGap + (badgeCount + overflow) * config.statusBadgeSize : 0;
+  const statusWidth =
+    badgeCount + overflow > 0
+      ? config.statusBadgeGap + (badgeCount + overflow) * config.statusBadgeSize
+      : 0;
   // Include horizontal padding from the overlay (12px left + 12px right) so the placement math
   // matches the actual rendered box width the user sees on screen.
   const horizontalPadding = 12 + 12;

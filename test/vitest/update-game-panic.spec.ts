@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vite-plus/test';
 
 vi.mock('../../src/game/systems/carriers.js', () => ({ updateCarrierLaunchSystem: vi.fn() }));
 vi.mock('../../src/game/systems/motion.js', () => ({ updateMotionSystem: vi.fn() }));

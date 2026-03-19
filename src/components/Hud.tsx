@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import type { ShipEntity } from '../types/index.js';
 import { useOptionalGameState } from '../game/context.js';
 import { useArchetypeEntities } from '../hooks/useArchetypeEntities.js';
@@ -47,7 +47,7 @@ export function Hud(): React.ReactElement {
             <h2>Space Auto Battler</h2>
             <p className="subtitle">React Three Fiber · Miniplex · Rapier</p>
           </div>
-        <div className="hud-panel__actions" role="group" aria-label="HUD controls">
+          <div className="hud-panel__actions" role="group" aria-label="HUD controls">
             <SettingsDrawer />
             <DebugDrawer />
           </div>
@@ -56,10 +56,13 @@ export function Hud(): React.ReactElement {
           <TeamCard summary={blue} />
           <TeamCard summary={red} />
         </div>
-        <p className="hint">Ships automatically maneuver, acquire targets, and fire when in range.</p>
+        <p className="hint">
+          Ships automatically maneuver, acquire targets, and fire when in range.
+        </p>
         {hudHealthBarsEnabled ? null : (
           <p className="hud-health-fallback" role="status">
-            HUD health overlays disabled — average hull integrity: Alliance {formatTeamPercent(blue)} · Reavers {formatTeamPercent(red)}.
+            HUD health overlays disabled — average hull integrity: Alliance{' '}
+            {formatTeamPercent(blue)} · Reavers {formatTeamPercent(red)}.
           </p>
         )}
       </div>
@@ -70,7 +73,7 @@ export function Hud(): React.ReactElement {
 function summarize(ships: ShipEntity[]): [TeamSummary, TeamSummary] {
   const summary: Record<'blue' | 'red', TeamSummary> = {
     blue: { team: 'blue', ships: 0, hp: 0, maxHp: 0 },
-    red: { team: 'red', ships: 0, hp: 0, maxHp: 0 }
+    red: { team: 'red', ships: 0, hp: 0, maxHp: 0 },
   };
 
   for (const ship of ships) {
@@ -92,8 +95,12 @@ function TeamCard({ summary }: { summary: TeamSummary }): React.ReactElement {
   return (
     <div className={cls}>
       <h3 className="team-name">{teamName}</h3>
-      <div className="stat">Fleet strength: <strong>{summary.ships}</strong></div>
-      <div className="stat">Total hull integrity: <strong>{summary.hp.toFixed(0)}</strong></div>
+      <div className="stat">
+        Fleet strength: <strong>{summary.ships}</strong>
+      </div>
+      <div className="stat">
+        Total hull integrity: <strong>{summary.hp.toFixed(0)}</strong>
+      </div>
       <div
         className="progress"
         role="progressbar"

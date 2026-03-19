@@ -1,7 +1,7 @@
 # DESIGN066 - Steering Helpers, Torpedo Homing, Point Defense
 
 **Status:** Proposed  
-**Created:** 2026-01-09  
+**Created:** 2026-01-09
 
 ## Summary
 

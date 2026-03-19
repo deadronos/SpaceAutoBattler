@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'vite-plus/test';
 import { shortestAngle, dampingFactor } from '../../src/game/systems/motion.js';
 
 describe('Motion Math Utilities', () => {

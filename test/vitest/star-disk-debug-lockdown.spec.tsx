@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vite-plus/test';
 import React from 'react';
 import { render, cleanup } from '@testing-library/react';
 import { Vector3, MeshBasicMaterial } from 'three';
@@ -51,10 +51,10 @@ describe('StarDisk debug lockdown', () => {
     for (const key of Object.keys(window)) {
       if (key.startsWith('__copilot')) {
         try {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          // oxlint-disable-next-line @typescript-eslint/no-explicit-any
           delete (window as any)[key];
         } catch {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          // oxlint-disable-next-line @typescript-eslint/no-explicit-any
           (window as any)[key] = undefined;
         }
       }
@@ -76,7 +76,9 @@ describe('StarDisk debug lockdown', () => {
       direction: { x: 0, y: 0, z: -1 },
       distance: 1000,
     };
-    return render(<StarDisk config={config} enabled={true} size={500} opacity={0.8} distanceMultiplier={1} />);
+    return render(
+      <StarDisk config={config} enabled={true} size={500} opacity={0.8} distanceMultiplier={1} />,
+    );
   };
 
   it('scrubs debug helpers and overlays without the debug flag', async () => {

@@ -25,7 +25,7 @@ module.exports = {
     viewport: { width: 1280, height: 800 },
     actionTimeout: 10 * 1000,
     trace: 'on-first-retry',
-    screenshot: 'only-on-failure'
+    screenshot: 'only-on-failure',
   },
   // Start a local static server that serves the repository root so tests can
   // navigate to the built dist output deterministically. We build first to
@@ -42,6 +42,6 @@ module.exports = {
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
     { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
-    { name: 'webkit', use: { ...devices['Desktop Safari'] } }
-  ]
+    { name: 'webkit', use: { ...devices['Desktop Safari'] } },
+  ],
 };

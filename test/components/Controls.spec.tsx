@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent, act } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vite-plus/test';
 import { Controls } from '../../src/components/Controls';
 import * as GameContext from '../../src/game/context';
 import * as UiStore from '../../src/game/uiStore';

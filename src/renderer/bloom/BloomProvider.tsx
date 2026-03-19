@@ -14,9 +14,18 @@ import { POSTPROCESSING_CONFIG } from '../../config/renderer.js';
 import type { BloomContextValue, BloomRegistrationOptions, LayerAllocatorState } from './types.js';
 import { FALLBACK_GROUP, LAYER_START } from './constants.js';
 import { createAllocatorState, computeLayerMask } from './layerAllocator.js';
-import { ensureSelectionForGroup, addObjectToSelection, removeObjectFromSelection } from './selectionManager.js';
+import {
+  ensureSelectionForGroup,
+  addObjectToSelection,
+  removeObjectFromSelection,
+} from './selectionManager.js';
 import { saveLayerMasks, restoreLayerMasks, enableMainPassLayer } from './layerMaskManager.js';
-import { saveColorWriteState, applyBloomColorWrite, restoreColorWriteState, syncColorWriteForObjects } from './materialManager.js';
+import {
+  saveColorWriteState,
+  applyBloomColorWrite,
+  restoreColorWriteState,
+  syncColorWriteForObjects,
+} from './materialManager.js';
 import type { Selection } from 'postprocessing';
 import { reportMaterialError } from '../../utils/errorReporting.js';
 
@@ -28,7 +37,13 @@ const Ctx = createContext<BloomContextValue | null>(null);
  * @param enabled - Whether bloom postprocessing is active
  * @param children - Child components that can register for bloom
  */
-export function BloomProvider({ enabled, children }: { enabled: boolean; children?: React.ReactNode }): React.ReactElement | null {
+export function BloomProvider({
+  enabled,
+  children,
+}: {
+  enabled: boolean;
+  children?: React.ReactNode;
+}): React.ReactElement | null {
   const selectionsRef = useRef<Map<string, Selection>>(new Map());
   const objectGroupRef = useRef<Map<Object3D, string>>(new Map());
   const allocatorRef = useRef<LayerAllocatorState>(createAllocatorState(LAYER_START));
@@ -114,7 +129,9 @@ export function BloomProvider({ enabled, children }: { enabled: boolean; childre
         if (!camera?.layers) return 0;
         const prev = camera.layers.mask;
         const mask = computeLayerMask(selectionsRef.current);
-        try { camera.layers.mask = prev | mask; } catch (error) {
+        try {
+          camera.layers.mask = prev | mask;
+        } catch (error) {
           // Expected: Camera layers may be read-only in some contexts
           reportMaterialError('enableCameraLayers', 'camera', error);
         }

@@ -1,5 +1,5 @@
 import React from 'react';
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vite-plus/test';
 // import TestRenderer from 'react-test-renderer';
 
 // Mock useGLTF from @react-three/drei to return a fake GLTF with a scene

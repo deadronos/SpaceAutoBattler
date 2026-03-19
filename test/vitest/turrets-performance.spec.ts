@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vite-plus/test';
 import { updateTurrets } from '../../src/game/systems/turrets.js';
 import { GameState, TurretEntity, ShipEntity } from '../../src/types/index.js';
 import * as targetSelection from '../../src/game/utils/targetSelection.js';

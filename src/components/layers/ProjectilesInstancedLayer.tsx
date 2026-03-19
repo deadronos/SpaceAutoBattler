@@ -172,7 +172,10 @@ export function ProjectilesInstancedLayer({
     }
     lastTickRef.current = simTick;
 
-    if (projectiles.length >= HIGH_DENSITY_THRESHOLD && frameId % HIGH_DENSITY_UPDATE_INTERVAL === 0) {
+    if (
+      projectiles.length >= HIGH_DENSITY_THRESHOLD &&
+      frameId % HIGH_DENSITY_UPDATE_INTERVAL === 0
+    ) {
       return;
     }
     let totalAllocated = 0;

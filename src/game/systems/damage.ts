@@ -220,7 +220,11 @@ export function resolveProjectiles(state: GameState, delta: number): void {
 
   // Reuse cached spatial hash to avoid allocations
   if (!cachedShipHash) {
-    cachedShipHash = buildSpatialHash(ships, SHIP_GRID_CELL_SIZE, (ship) => ship.transform.position);
+    cachedShipHash = buildSpatialHash(
+      ships,
+      SHIP_GRID_CELL_SIZE,
+      (ship) => ship.transform.position,
+    );
   } else {
     clearSpatialHash(cachedShipHash, ships);
   }

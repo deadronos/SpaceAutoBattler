@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'vite-plus/test';
 import { Quaternion, Vector3 } from 'three';
 import type { Collider, GameEntity, GameState, RigidBody } from '../../src/types/index.js';
 import {

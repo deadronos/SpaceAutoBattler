@@ -58,8 +58,10 @@ export function ShipView({
       <group ref={visualRef}>
         <mesh castShadow receiveShadow>
           <coneGeometry args={[0.6, 1.6, 6]} />
-          <meshStandardMaterial 
-            color={entity.ship.team === 'blue' ? new Color(TEAM_COLORS.blue) : new Color(TEAM_COLORS.red)} 
+          <meshStandardMaterial
+            color={
+              entity.ship.team === 'blue' ? new Color(TEAM_COLORS.blue) : new Color(TEAM_COLORS.red)
+            }
           />
         </mesh>
       </group>

@@ -1,6 +1,6 @@
 /**
  * Star disk mesh component
- * 
+ *
  * Renders the star disk mesh with geometry, material (shader or fallback),
  * and optional debug helper visualizations.
  */
@@ -79,7 +79,11 @@ export function StarDiskMesh({
           {/* Opaque core that writes depth to create a stable occlusion surface */}
           <mesh renderOrder={RENDER_ORDER_OPAQUE_CORE}>
             <circleGeometry args={[coreRadius, 64]} />
-            <meshBasicMaterial color={config.color || '#ffffff'} depthWrite={true} depthTest={true} />
+            <meshBasicMaterial
+              color={config.color || '#ffffff'}
+              depthWrite={true}
+              depthTest={true}
+            />
           </mesh>
 
           {/* Halo / disk rendered with the shader material; preserve meshRef for
@@ -108,7 +112,9 @@ export function StarDiskMesh({
         <>
           {/* Dev helper: small red box at the star local origin to validate placement */}
           <mesh position={[0, 0, 0]} renderOrder={9999}>
-            <boxGeometry args={[Math.max(1, size * 0.05), Math.max(1, size * 0.05), Math.max(1, size * 0.05)]} />
+            <boxGeometry
+              args={[Math.max(1, size * 0.05), Math.max(1, size * 0.05), Math.max(1, size * 0.05)]}
+            />
             <meshBasicMaterial color="red" depthTest={false} depthWrite={false} />
           </mesh>
 

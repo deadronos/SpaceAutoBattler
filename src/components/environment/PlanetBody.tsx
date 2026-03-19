@@ -13,7 +13,9 @@ interface PlanetBodyProps {
   config: PlanetBodyConfig;
 }
 
-export const PlanetBody = memo(function PlanetBody({ config }: PlanetBodyProps): React.ReactElement {
+export const PlanetBody = memo(function PlanetBody({
+  config,
+}: PlanetBodyProps): React.ReactElement {
   const groupRef = useRef<Group>(null);
   const state = useOptionalGameState();
   const { texture, fallbackColor, error } = usePlanetTexture(config.textureKey);
@@ -22,14 +24,20 @@ export const PlanetBody = memo(function PlanetBody({ config }: PlanetBodyProps):
     if (!config.tilt) {
       return new Quaternion();
     }
-    return new Quaternion().setFromEuler(new Euler(config.tilt.x, config.tilt.y, config.tilt.z, 'XYZ'));
+    return new Quaternion().setFromEuler(
+      new Euler(config.tilt.x, config.tilt.y, config.tilt.z, 'XYZ'),
+    );
   }, [config.tilt?.x, config.tilt?.y, config.tilt?.z]);
 
   const rotationAxis = useMemo(() => {
     if (!config.rotation) {
       return null;
     }
-    return new Vector3(config.rotation.axis.x, config.rotation.axis.y, config.rotation.axis.z).normalize();
+    return new Vector3(
+      config.rotation.axis.x,
+      config.rotation.axis.y,
+      config.rotation.axis.z,
+    ).normalize();
   }, [config.rotation?.axis.x, config.rotation?.axis.y, config.rotation?.axis.z]);
 
   const workingQuat = useMemo(() => new Quaternion(), []);
@@ -54,20 +62,29 @@ export const PlanetBody = memo(function PlanetBody({ config }: PlanetBodyProps):
     group.quaternion.copy(workingQuat);
   });
 
-  const emissiveColor = useMemo(() => new Color(fallbackColor).multiplyScalar(1.2), [fallbackColor]);
+  const emissiveColor = useMemo(
+    () => new Color(fallbackColor).multiplyScalar(1.2),
+    [fallbackColor],
+  );
   const emissiveIntensity = config.emissiveBoost ?? 0.05;
   const useRimGlow = (config.rimStrength ?? 0) > 0;
 
   const hideRingsParam = false;
 
   if (error) {
-    console.warn('[PlanetBody] Unknown planet texture key', { id: config.id, textureKey: config.textureKey }, error);
+    console.warn(
+      '[PlanetBody] Unknown planet texture key',
+      { id: config.id, textureKey: config.textureKey },
+      error,
+    );
   }
 
   return (
     <group ref={groupRef} position={[config.position.x, config.position.y, config.position.z]}>
       <mesh castShadow receiveShadow>
-        <sphereGeometry args={[config.radius, PLANET_GEOMETRY_SEGMENTS.width, PLANET_GEOMETRY_SEGMENTS.height]} />
+        <sphereGeometry
+          args={[config.radius, PLANET_GEOMETRY_SEGMENTS.width, PLANET_GEOMETRY_SEGMENTS.height]}
+        />
         <meshStandardMaterial
           attach="material"
           map={texture ?? undefined}
@@ -81,7 +98,11 @@ export const PlanetBody = memo(function PlanetBody({ config }: PlanetBodyProps):
       {useRimGlow && (
         <mesh castShadow={false} receiveShadow={false} renderOrder={5}>
           <sphereGeometry
-            args={[config.radius * 1.015, PLANET_GEOMETRY_SEGMENTS.width, PLANET_GEOMETRY_SEGMENTS.height]}
+            args={[
+              config.radius * 1.015,
+              PLANET_GEOMETRY_SEGMENTS.width,
+              PLANET_GEOMETRY_SEGMENTS.height,
+            ]}
           />
           <PlanetRimShell
             radius={config.radius * 1.015}

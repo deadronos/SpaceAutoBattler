@@ -16,7 +16,7 @@ export type DynamicResScalerOptions = {
 export function computeNextDpr(
   currentDpr: number,
   emaFps: number,
-  options: Required<DynamicResScalerOptions>
+  options: Required<DynamicResScalerOptions>,
 ): number {
   const { minDpr, maxDpr, targetFps, lowerFps, step } = options;
 
@@ -59,7 +59,7 @@ export default function DynamicResScaler({
       gl.setPixelRatio(initialDpr);
       // ensure drawing buffer size is updated
       gl.setSize(size.width, size.height, false);
-    } catch (e) {
+    } catch {
       // ignore in non-browser environments
     }
     return () => {
@@ -67,11 +67,11 @@ export default function DynamicResScaler({
       try {
         gl.setPixelRatio(typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1);
         gl.setSize(size.width, size.height, false);
-      } catch (e) {
+      } catch {
         // ignore
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useFrame((state, delta) => {
@@ -115,7 +115,7 @@ export default function DynamicResScaler({
         gl.setPixelRatio(nextDpr);
         // ensure drawing buffer size is updated without changing canvas style
         gl.setSize(size.width, size.height, false);
-      } catch (e) {
+      } catch {
         // ignore errors in non-browser/test envs
       }
     }

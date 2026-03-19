@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vite-plus/test';
 import { createTestGameState } from './helpers/fixtures.js';
 import { withDeferredEnqueue, withPostEnqueue } from '../../src/game/physics/mutationHelpers.js';
 import * as simulationQueue from '../../src/game/simulationQueue.js';

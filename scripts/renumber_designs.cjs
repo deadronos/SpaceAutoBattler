@@ -5,20 +5,23 @@ const designsDir = path.join(__dirname, '..', 'memory', 'designs');
 function slugFromFilename(fname) {
   // fname like DESIGN###-slug.md
   const m = fname.match(/^DESIGN\d{3}-(.+)\.md$/i);
-  if (!m) return fname.replace(/\.md$/,'');
+  if (!m) return fname.replace(/\.md$/, '');
   return m[1];
 }
 
-const files = fs.readdirSync(designsDir).filter(f => /^DESIGN\d{3}-.+\.md$/i.test(f)).sort((a,b)=> a.localeCompare(b,'en',{sensitivity:'base'}));
+const files = fs
+  .readdirSync(designsDir)
+  .filter((f) => /^DESIGN\d{3}-.+\.md$/i.test(f))
+  .sort((a, b) => a.localeCompare(b, 'en', { sensitivity: 'base' }));
 const mapping = [];
 let idx = 1;
 for (const f of files) {
   const slug = slugFromFilename(f);
-  const newName = `DESIGN${String(idx).padStart(3,'0')}-${slug}`;
+  const newName = `DESIGN${String(idx).padStart(3, '0')}-${slug}`;
   const oldPath = path.join(designsDir, f);
   const newPath = path.join(designsDir, newName);
   if (oldPath === newPath) {
-    mapping.push({from: f, to: newName, action: 'unchanged'});
+    mapping.push({ from: f, to: newName, action: 'unchanged' });
   } else {
     // If target exists already (should not), add suffix
     let finalNewPath = newPath;
@@ -37,7 +40,7 @@ for (const f of files) {
     }
     // rename file
     fs.renameSync(oldPath, finalNewPath);
-    mapping.push({from: f, to: finalNewName, action: 'renamed'});
+    mapping.push({ from: f, to: finalNewName, action: 'renamed' });
   }
   idx++;
 }
@@ -45,9 +48,9 @@ for (const f of files) {
 // Update RENAME_MAPPING.md to reflect renames (append section)
 const mapFile = path.join(designsDir, 'RENAME_MAPPING.md');
 let mapContent = '';
-if (fs.existsSync(mapFile)) mapContent = fs.readFileSync(mapFile,'utf8');
+if (fs.existsSync(mapFile)) mapContent = fs.readFileSync(mapFile, 'utf8');
 mapContent += '\n\n# Renumbering pass\n\n';
-mapContent += mapping.map(m => `- ${m.from} -> ${m.to} (${m.action})`).join('\n');
-fs.writeFileSync(mapFile, mapContent,'utf8');
+mapContent += mapping.map((m) => `- ${m.from} -> ${m.to} (${m.action})`).join('\n');
+fs.writeFileSync(mapFile, mapContent, 'utf8');
 console.log('Renumbering complete:', mapping.length, 'files processed');
 console.log('Updated RENAME_MAPPING.md with renumbering section');

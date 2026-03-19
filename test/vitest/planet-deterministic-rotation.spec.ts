@@ -1,4 +1,4 @@
-import { expect, test, describe } from 'vitest';
+import { expect, test, describe } from 'vite-plus/test';
 import { Quaternion, Euler, Vector3 } from 'three';
 import type { PlanetBodyConfig } from '../../src/config/environment.js';
 

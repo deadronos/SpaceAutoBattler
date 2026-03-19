@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { Vector3, Quaternion } from 'three';
 import { updateSensorSystem, ensureSensorState } from '../../src/game/systems/sensors.js';
 import { createDefaultDoctrineState } from '../../src/game/aiDoctrine.js';
@@ -153,7 +153,7 @@ describe('Sensor performance', () => {
   it('handles moderate fleet sizes efficiently', () => {
     const state = createState();
     ensureSensorState(state);
-    
+
     // Create 50 ships (25 per team) distributed in space
     const ships: ShipEntity[] = [];
     for (let i = 0; i < 25; i++) {
@@ -165,7 +165,7 @@ describe('Sensor performance', () => {
         0,
         Math.sin(angle + Math.PI) * radius,
       );
-      
+
       ships.push(createShip(i * 2, 'blue', bluePos));
       ships.push(createShip(i * 2 + 1, 'red', redPos));
     }
@@ -177,7 +177,7 @@ describe('Sensor performance', () => {
     // Performance threshold with headroom for CI variability
     // Should complete in reasonable time (< 30ms for 50 ships)
     expect(duration).toBeLessThan(30);
-    
+
     // Verify some ships detected enemies
     expect(state.blackboard.visibleEnemies!.blue.size).toBeGreaterThan(0);
     expect(state.blackboard.visibleEnemies!.red.size).toBeGreaterThan(0);
@@ -186,21 +186,21 @@ describe('Sensor performance', () => {
   it('handles large fleet sizes with spatial optimization', () => {
     const state = createState();
     ensureSensorState(state);
-    
+
     // Create 100 ships (50 per team) to test scaling
     const ships: ShipEntity[] = [];
     for (let i = 0; i < 50; i++) {
       const angle = (i / 50) * Math.PI * 2;
       const radius = 600 + (i % 5) * 100; // Vary radius for depth
       const y = (i % 3) * 50; // Add vertical variation
-      
+
       const bluePos = new Vector3(Math.cos(angle) * radius, y, Math.sin(angle) * radius);
       const redPos = new Vector3(
         Math.cos(angle + Math.PI) * radius,
         -y,
         Math.sin(angle + Math.PI) * radius,
       );
-      
+
       ships.push(createShip(i * 2, 'blue', bluePos));
       ships.push(createShip(i * 2 + 1, 'red', redPos));
     }
@@ -213,7 +213,7 @@ describe('Sensor performance', () => {
     // Should scale reasonably with spatial grid optimization (< 100ms for 100 ships)
     // Without optimization, O(N^3) would take much longer
     expect(duration).toBeLessThan(100);
-    
+
     // Verify functionality still works
     expect(state.blackboard.visibleEnemies!.blue.size).toBeGreaterThan(0);
     expect(state.blackboard.visibleEnemies!.red.size).toBeGreaterThan(0);
@@ -271,22 +271,22 @@ describe('Sensor performance', () => {
   it('maintains functional equivalence with occlusion', () => {
     const state = createState();
     ensureSensorState(state);
-    
+
     // Set up scenario with occlusion: source -> blocker -> target in a line
     const source = createShip(1, 'blue', new Vector3(0, 0, 0));
     const blocker = createShip(2, 'blue', new Vector3(0, 0, 200));
     const target = createShip(3, 'red', new Vector3(0, 0, 400));
-    
+
     // Make source face the target (identity quaternion faces +Z)
     source.transform.rotation.set(0, 0, 0, 1);
-    
+
     blocker.ship.sensor!.detectionRange = 0;
     blocker.ship.sensor!.trackingRange = 0;
 
     updateSensorSystem(state, [source, blocker, target]);
-    
+
     const visibility = state.blackboard.visibleEnemies!.blue.get(target.id);
-    
+
     // Should detect target and mark as occluded
     expect(visibility).toBeDefined();
     expect(visibility?.occluded).toBe(true);

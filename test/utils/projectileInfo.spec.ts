@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { Matrix4, Quaternion, Vector3 } from 'three';
 import type { DamageType, ProjectileEntity, Team } from '../../src/types/index.js';
 import {

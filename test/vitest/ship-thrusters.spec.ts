@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vite-plus/test';
 import { Color } from 'three';
 import type { MeshStandardMaterial } from 'three';
 import {

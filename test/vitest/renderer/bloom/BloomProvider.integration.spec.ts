@@ -8,7 +8,7 @@
  * - materialManager
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vite-plus/test';
 import { render, act, cleanup } from '@testing-library/react';
 import React from 'react';
 import { Mesh, BoxGeometry, MeshBasicMaterial, Object3D } from 'three';

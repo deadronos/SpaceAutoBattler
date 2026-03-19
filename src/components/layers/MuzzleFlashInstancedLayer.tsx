@@ -1,14 +1,7 @@
 import { useFrame } from '@react-three/fiber';
 import React, { useEffect, useMemo, useRef } from 'react';
 import type { InstancedMesh } from 'three';
-import {
-  Color,
-  DynamicDrawUsage,
-  InstancedBufferAttribute,
-  Matrix4,
-  Quaternion,
-  Vector3,
-} from 'three';
+import { Color, Matrix4, Quaternion, Vector3 } from 'three';
 import { SphereGeometry } from 'three';
 import type { Archetype, GameEntity, TurretEntity, MuzzleFlash } from '../../types/index.js';
 import { useArchetypeEntities } from '../../hooks/useArchetypeEntities.js';
@@ -62,11 +55,13 @@ export function MuzzleFlashInstancedLayer({
 }: MuzzleFlashInstancedLayerProps): React.ReactElement {
   const turrets = useArchetypeEntities<TurretEntity>(archetype);
   const meshRef = useRef<InstancedMesh>(null);
-  const managerRef = useRef(createInstancedLayerManager<MuzzleFlash>(
-    // meshRef will be attached by React after render; manager init is lazy
-    meshRef,
-    { capacity, supportsInstanceColor: true, baseColor: DEFAULT_COLOR },
-  ));
+  const managerRef = useRef(
+    createInstancedLayerManager<MuzzleFlash>(
+      // meshRef will be attached by React after render; manager init is lazy
+      meshRef,
+      { capacity, supportsInstanceColor: true, baseColor: DEFAULT_COLOR },
+    ),
+  );
   const warningStateRef = useRef(createSaturationWarningState());
   const frameRef = useRef(0);
   const state = useGameState();
@@ -87,13 +82,19 @@ export function MuzzleFlashInstancedLayer({
     };
   }, []);
 
-  useEffect(() => () => {
-    materialInfo.material.dispose();
-  }, [materialInfo.material]);
+  useEffect(
+    () => () => {
+      materialInfo.material.dispose();
+    },
+    [materialInfo.material],
+  );
 
-  useEffect(() => () => {
-    geometry.dispose();
-  }, [geometry]);
+  useEffect(
+    () => () => {
+      geometry.dispose();
+    },
+    [geometry],
+  );
 
   useFrame(() => {
     frameRef.current += 1;

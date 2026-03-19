@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vite-plus/test';
 import { Quaternion, Vector3 } from 'three';
 import { applyProgressionDefaults } from './helpers/progression.js';
 import { createDefaultMotionStats } from '../../src/game/ships.js';
@@ -159,7 +159,7 @@ describe('AI v2 enforcement', () => {
     ships.splice(0, ships.length, blue, red);
 
     prepareShips(state, 0.1);
-    
+
     // Movement is now handled by the motion system, not prepareShips
     updateMotionSystem(state, 0.1);
 
@@ -167,14 +167,14 @@ describe('AI v2 enforcement', () => {
     flushPostPhysicsMutations(state);
 
     expect(state.ai.enabled).toBe(true);
-    
+
     // Motion system uses acceleration/velocity integration, so movement is gradual.
     // The key assertion is that the ship moved forward (positive Z).
     const position = recorder.read();
     expect(position.x).toBe(0);
     expect(position.y).toBe(0);
     expect(position.z).toBeGreaterThan(0); // Ship moved forward
-    
+
     expect(warnSpy).toHaveBeenCalled();
 
     warnSpy.mockRestore();

@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'vite-plus/test';
 import { resolveModelPath } from '../../src/components/Ship.js';
 import { SHIP_MODEL_PATHS } from '../../src/assets/ships.js';
 import React from 'react';

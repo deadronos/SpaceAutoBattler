@@ -47,7 +47,8 @@ export function HudOverlayCollector(): null {
       const x = (tmpPosition.x * 0.5 + 0.5) * size.width;
       const y = (-tmpPosition.y * 0.5 + 0.5) * size.height;
       const healthRatio = safeRatio(ship.ship.hp, ship.ship.maxHp);
-      const shieldRatio = ship.ship.maxShield > 0 ? safeRatio(ship.ship.shield, ship.ship.maxShield) : Number.NaN;
+      const shieldRatio =
+        ship.ship.maxShield > 0 ? safeRatio(ship.ship.shield, ship.ship.maxShield) : Number.NaN;
       overlays.push({
         id: ship.id,
         team: ship.ship.team,

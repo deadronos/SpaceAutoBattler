@@ -105,8 +105,10 @@ export function AiDebugOverlay(): React.ReactElement | null {
       <div className="ai-debug-header">
         <div className="ai-debug-title">AI Debug</div>
         <div className="ai-debug-meta">
-          Tick #{snapshot.tickIndex} · Ships {snapshot.metrics.totalShips} · Decisions {snapshot.metrics.decisions}
-          {snapshot.metrics.slice ? `/${snapshot.metrics.slice}` : ''} · Skipped {snapshot.metrics.skipped}
+          Tick #{snapshot.tickIndex} · Ships {snapshot.metrics.totalShips} · Decisions{' '}
+          {snapshot.metrics.decisions}
+          {snapshot.metrics.slice ? `/${snapshot.metrics.slice}` : ''} · Skipped{' '}
+          {snapshot.metrics.skipped}
         </div>
         <div className="ai-debug-meta">
           Posture — Blue: {snapshot.postures.blue} · Red: {snapshot.postures.red}
@@ -114,11 +116,12 @@ export function AiDebugOverlay(): React.ReactElement | null {
       </div>
       <div className="ai-debug-kpis">
         <span>
-          Opening Aggression: {formatPercent(kpis.openingAggression.ratio)} ({kpis.openingAggression.aggressive}/
-          {kpis.openingAggression.total})
+          Opening Aggression: {formatPercent(kpis.openingAggression.ratio)} (
+          {kpis.openingAggression.aggressive}/{kpis.openingAggression.total})
         </span>
         <span>
-          First Shot (p50/p90): {formatSeconds(kpis.firstShot.p50)} / {formatSeconds(kpis.firstShot.p90)} (n=
+          First Shot (p50/p90): {formatSeconds(kpis.firstShot.p50)} /{' '}
+          {formatSeconds(kpis.firstShot.p90)} (n=
           {kpis.firstShot.samples})
         </span>
         <span>
@@ -126,8 +129,9 @@ export function AiDebugOverlay(): React.ReactElement | null {
           {kpis.inBand.overall.samples})
         </span>
         <span>
-          Vertical deltaY &gt;= {Math.round(kpis.vertical.threshold)}: {formatPercent(kpis.vertical.ratio)} (
-          {kpis.vertical.aboveThreshold}/{kpis.vertical.samples})
+          Vertical deltaY &gt;= {Math.round(kpis.vertical.threshold)}:{' '}
+          {formatPercent(kpis.vertical.ratio)} ({kpis.vertical.aboveThreshold}/
+          {kpis.vertical.samples})
         </span>
       </div>
       {snapshot.rows.length ? (
@@ -146,7 +150,9 @@ export function AiDebugOverlay(): React.ReactElement | null {
           <tbody>
             {snapshot.rows.map((row) => (
               <tr key={row.id}>
-                <td>{row.hull} #{row.id}</td>
+                <td>
+                  {row.hull} #{row.id}
+                </td>
                 <td className={`ai-debug-team ai-debug-team--${row.team}`}>{row.team}</td>
                 <td>{row.intent}</td>
                 <td>{row.score}</td>

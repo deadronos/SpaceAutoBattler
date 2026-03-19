@@ -5,6 +5,7 @@ coverage
 test-output
 playwright-report
 tmp
+.vite-hooks
 *.min.js
 *.bundle.js
 temp-lint-main.json

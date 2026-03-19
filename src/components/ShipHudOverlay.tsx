@@ -11,11 +11,16 @@ interface ShipHudOverlayProps {
   config: HudHealthOverlayConfig;
 }
 
-export function ShipHudOverlay({ overlay, config }: ShipHudOverlayProps): React.ReactElement | null {
+export function ShipHudOverlay({
+  overlay,
+  config,
+}: ShipHudOverlayProps): React.ReactElement | null {
   const reducedMotion = usePrefersReducedMotion();
   const hasShield = Number.isFinite(overlay.ratios.shield);
   const [healthDisplay, setHealthDisplay] = useState(() => clampRatio(overlay.ratios.health));
-  const [shieldDisplay, setShieldDisplay] = useState(() => (hasShield ? clampRatio(overlay.ratios.shield) : 0));
+  const [shieldDisplay, setShieldDisplay] = useState(() =>
+    hasShield ? clampRatio(overlay.ratios.shield) : 0,
+  );
 
   useEffect(() => {
     if (reducedMotion) {
@@ -34,21 +39,34 @@ export function ShipHudOverlay({ overlay, config }: ShipHudOverlayProps): React.
       setShieldDisplay(clampRatio(overlay.ratios.shield));
       return;
     }
-    setShieldDisplay((prev) => lerpBySeed(overlay.seed ^ 0x517cc1b7, prev, clampRatio(overlay.ratios.shield)));
+    setShieldDisplay((prev) =>
+      lerpBySeed(overlay.seed ^ 0x517cc1b7, prev, clampRatio(overlay.ratios.shield)),
+    );
   }, [overlay.ratios.shield, overlay.seed, reducedMotion, hasShield]);
 
   const effects = overlay.effects;
-  const containerStyle = useMemo(() => ({
-    left: `${overlay.screen.x}px`,
-    top: `${overlay.screen.y}px`,
-    // Expose the configured bar width to the stylesheet so the outer bar element can size correctly
-    ['--hud-bar-width']: `${config.barWidth}px`,
-    // Opacity tunables for HUD visuals
-    ['--hud-overlay-opacity']: String(config.overlayOpacity),
-    ['--hud-bar-bg-opacity']: String(config.barBgOpacity),
-    ['--hud-fill-opacity']: String(config.fillOpacity),
-    ['--hud-badge-opacity']: String(config.statusBadgeOpacity),
-  }), [overlay.screen.x, overlay.screen.y, config.barWidth, config.overlayOpacity, config.barBgOpacity, config.fillOpacity, config.statusBadgeOpacity]);
+  const containerStyle = useMemo(
+    () => ({
+      left: `${overlay.screen.x}px`,
+      top: `${overlay.screen.y}px`,
+      // Expose the configured bar width to the stylesheet so the outer bar element can size correctly
+      ['--hud-bar-width']: `${config.barWidth}px`,
+      // Opacity tunables for HUD visuals
+      ['--hud-overlay-opacity']: String(config.overlayOpacity),
+      ['--hud-bar-bg-opacity']: String(config.barBgOpacity),
+      ['--hud-fill-opacity']: String(config.fillOpacity),
+      ['--hud-badge-opacity']: String(config.statusBadgeOpacity),
+    }),
+    [
+      overlay.screen.x,
+      overlay.screen.y,
+      config.barWidth,
+      config.overlayOpacity,
+      config.barBgOpacity,
+      config.fillOpacity,
+      config.statusBadgeOpacity,
+    ],
+  );
 
   if (overlay.screen.hidden) {
     return null;
@@ -67,16 +85,24 @@ export function ShipHudOverlay({ overlay, config }: ShipHudOverlayProps): React.
     >
       <div className="ship-hud-overlay__content">
         <div className="ship-hud-overlay__bars">
-          <div className={`ship-hud-overlay__bar ship-hud-overlay__bar--shield${hasShield ? '' : ' ship-hud-overlay__bar--disabled'}`}>
+          <div
+            className={`ship-hud-overlay__bar ship-hud-overlay__bar--shield${hasShield ? '' : ' ship-hud-overlay__bar--disabled'}`}
+          >
             <div
               className="ship-hud-overlay__fill"
-              style={{ width: `${Math.round(shieldDisplay * config.barWidth)}px`, backgroundColor: config.shieldColor }}
+              style={{
+                width: `${Math.round(shieldDisplay * config.barWidth)}px`,
+                backgroundColor: config.shieldColor,
+              }}
             />
           </div>
           <div className="ship-hud-overlay__bar ship-hud-overlay__bar--health">
             <div
               className="ship-hud-overlay__fill"
-              style={{ width: `${Math.round(healthDisplay * config.barWidth)}px`, backgroundColor: config.healthColor }}
+              style={{
+                width: `${Math.round(healthDisplay * config.barWidth)}px`,
+                backgroundColor: config.healthColor,
+              }}
             />
           </div>
         </div>
@@ -86,7 +112,13 @@ export function ShipHudOverlay({ overlay, config }: ShipHudOverlayProps): React.
   );
 }
 
-function StatusEffectStrip({ effects, overflowCount }: { effects: StatusEffectViewModel[]; overflowCount: number }): React.ReactElement {
+function StatusEffectStrip({
+  effects,
+  overflowCount,
+}: {
+  effects: StatusEffectViewModel[];
+  overflowCount: number;
+}): React.ReactElement {
   if (effects.length === 0 && overflowCount === 0) {
     return <div className="ship-hud-overlay__badges" aria-hidden />;
   }

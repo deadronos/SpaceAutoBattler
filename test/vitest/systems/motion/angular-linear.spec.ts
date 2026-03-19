@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi } from 'vite-plus/test';
 import { Quaternion, Vector3 } from 'three';
 import { updateAngularMotion } from '../../../../src/game/systems/motion/angular.js';
 import { updateLinearMotion } from '../../../../src/game/systems/motion/linear.js';

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach, afterAll } from 'vitest';
+import { describe, expect, it, vi, beforeEach, afterAll } from 'vite-plus/test';
 
 import { updateGame } from '../../src/game/systems.js';
 import * as simulationQueue from '../../src/game/simulationQueue.js';

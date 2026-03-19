@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { appendCappedImmutable, appendCappedMutable } from '../../src/utils/cappedBuffer.js';
 
 describe('appendCappedMutable', () => {

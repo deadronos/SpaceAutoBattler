@@ -1,4 +1,4 @@
-import { describe, it } from 'vitest';
+import { describe, it } from 'vite-plus/test';
 import { Vector3, Quaternion } from 'three';
 import { updateSensorSystem, ensureSensorState } from '../../src/game/systems/sensors.js';
 import { createDefaultDoctrineState } from '../../src/game/aiDoctrine.js';
@@ -152,23 +152,23 @@ function createShip(id: number, team: 'blue' | 'red', position: Vector3): ShipEn
 function createFleet(shipCount: number): ShipEntity[] {
   const ships: ShipEntity[] = [];
   const halfCount = Math.floor(shipCount / 2);
-  
+
   for (let i = 0; i < halfCount; i++) {
     const angle = (i / halfCount) * Math.PI * 2;
     const radius = 500 + (i % 5) * 100;
     const y = (i % 3) * 50;
-    
+
     const bluePos = new Vector3(Math.cos(angle) * radius, y, Math.sin(angle) * radius);
     const redPos = new Vector3(
       Math.cos(angle + Math.PI) * radius,
       -y,
       Math.sin(angle + Math.PI) * radius,
     );
-    
+
     ships.push(createShip(i * 2, 'blue', bluePos));
     ships.push(createShip(i * 2 + 1, 'red', redPos));
   }
-  
+
   return ships;
 }
 
@@ -176,10 +176,10 @@ function benchmark(shipCount: number, iterations = 10) {
   const state = createState();
   ensureSensorState(state);
   const ships = createFleet(shipCount);
-  
+
   // Warmup
   updateSensorSystem(state, ships);
-  
+
   const times: number[] = [];
   for (let i = 0; i < iterations; i++) {
     state.ai.tickIndex = i;
@@ -188,13 +188,13 @@ function benchmark(shipCount: number, iterations = 10) {
     const duration = performance.now() - start;
     times.push(duration);
   }
-  
+
   times.sort((a, b) => a - b);
   const avg = times.reduce((a, b) => a + b, 0) / times.length;
   const median = times[Math.floor(times.length / 2)];
   const min = times[0];
   const max = times[times.length - 1];
-  
+
   return { avg, median, min, max, shipCount };
 }
 
@@ -202,23 +202,23 @@ describe('Sensor System Benchmark (Manual Run)', () => {
   it.skip('benchmarks various fleet sizes', () => {
     console.log('\nSensor System Performance Benchmark');
     console.log('=====================================\n');
-    
+
     const testCases = [20, 50, 100, 150, 200];
-    
+
     console.log('Fleet Size | Avg (ms) | Median (ms) | Min (ms) | Max (ms)');
     console.log('-----------|----------|-------------|----------|----------');
-    
+
     for (const shipCount of testCases) {
       const result = benchmark(shipCount);
       console.log(
         `${String(result.shipCount).padStart(10)} | ` +
-        `${result.avg.toFixed(2).padStart(8)} | ` +
-        `${result.median.toFixed(2).padStart(11)} | ` +
-        `${result.min.toFixed(2).padStart(8)} | ` +
-        `${result.max.toFixed(2).padStart(8)}`
+          `${result.avg.toFixed(2).padStart(8)} | ` +
+          `${result.median.toFixed(2).padStart(11)} | ` +
+          `${result.min.toFixed(2).padStart(8)} | ` +
+          `${result.max.toFixed(2).padStart(8)}`,
       );
     }
-    
+
     console.log('\n✓ Performance optimization with spatial partitioning and caching');
     console.log('✓ Complexity reduced from O(N³) to O(N² × k) where k is cells checked');
   });

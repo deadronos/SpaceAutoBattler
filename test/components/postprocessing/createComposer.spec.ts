@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach, vi } from 'vitest';
+import { describe, expect, it, beforeEach, vi } from 'vite-plus/test';
 import { LinearSRGBColorSpace, NoToneMapping, SRGBColorSpace, Vector2 } from 'three';
 import type { Camera, Scene, WebGLRenderer } from 'three';
 import type { EffectPass } from 'postprocessing';

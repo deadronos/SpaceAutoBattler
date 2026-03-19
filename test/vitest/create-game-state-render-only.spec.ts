@@ -1,15 +1,13 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it, vi, beforeEach } from 'vite-plus/test';
 
 const { rapierInitMock, rapierWorldMock, rapierEventQueueMock } = vi.hoisted(() => ({
   rapierInitMock: vi.fn(async () => {}),
-  rapierWorldMock: vi.fn(
-    function MockWorld(this: { integrationParameters: { dt: number } }) {
-      this.integrationParameters = { dt: 0 };
-    } as unknown as () => void,
-  ),
-  rapierEventQueueMock: vi.fn(
-    function MockEventQueue(this: Record<string, never>) {} as unknown as () => void,
-  ),
+  rapierWorldMock: vi.fn(function MockWorld(this: { integrationParameters: { dt: number } }) {
+    this.integrationParameters = { dt: 0 };
+  } as unknown as () => void),
+  rapierEventQueueMock: vi.fn(function MockEventQueue(
+    this: Record<string, never>,
+  ) {} as unknown as () => void),
 }));
 
 vi.mock('@dimforge/rapier3d-compat', () => ({

@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'vite-plus/test';
 import { XP_CONFIG } from '../../src/config/progression.js';
 
 describe('Progression Configuration', () => {

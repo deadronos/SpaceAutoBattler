@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vite-plus/test';
 import { ProgressionPanel } from '../../src/components/ProgressionPanel';
 import * as GameContext from '../../src/game/context';
 import * as UiStore from '../../src/game/uiStore';
@@ -19,7 +19,7 @@ describe('ProgressionPanel', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    
+
     // Default mock for useUiStore
     (UiStore.useUiStore as any).mockImplementation((selector: any) => {
       const state = {

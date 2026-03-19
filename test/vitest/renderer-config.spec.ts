@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { getShieldVisuals } from '../../src/config/renderer.js';
 
 describe('renderer shield visuals config', () => {

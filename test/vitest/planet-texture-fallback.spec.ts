@@ -1,4 +1,4 @@
-import { expect, test, describe } from 'vitest';
+import { expect, test, describe } from 'vite-plus/test';
 import { usePlanetTexture } from '../../src/hooks/usePlanetTexture.js';
 import type { PlanetTextureKey } from '../../src/assets/planets.js';
 

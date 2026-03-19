@@ -1,12 +1,10 @@
-import { Suspense, useRef } from 'react';
+import { Suspense } from 'react';
 import { CELESTIAL_ENVIRONMENT } from '../../config/environment.js';
 import { PlanetBody } from './PlanetBody.js';
 import { StarLight } from './StarLight.js';
 import { StarSphere } from './StarSphere.js';
 import { ParallaxBillboard } from './ParallaxBillboard.js';
 import { Skysphere } from './Skysphere.js';
-import type { DirectionalLight } from 'three';
-
 export function CelestialEnvironment(): React.ReactElement {
   const { starLight, skysphere, planets, parallaxBillboards, features } = CELESTIAL_ENVIRONMENT;
   return (
@@ -29,7 +27,7 @@ export function CelestialEnvironment(): React.ReactElement {
           // starDisk appearance settings so the two implementations stay
           // visually consistent.
           <StarSphere
-            key={"StarSphere"}
+            key={'StarSphere'}
             config={starLight}
             enabled={true}
             size={CELESTIAL_ENVIRONMENT.starDisk?.size}

@@ -1,10 +1,5 @@
 import type { Vector3 } from 'three';
-import type {
-  GameState,
-  ProjectileEntity,
-  ShipEntity,
-  Team,
-} from '../../types/index.js';
+import type { GameState, ProjectileEntity, ShipEntity, Team } from '../../types/index.js';
 import type { ProjectileCategory } from '../../types/combat.js';
 
 /**
@@ -64,14 +59,16 @@ export function findPointDefenseTarget(
   for (const projectile of projectiles) {
     if (projectile.projectile.team === options.team) continue;
     const category = projectile.projectile.category ?? 'bullet';
-    const isThreat =
-      projectile.projectile.homing || categories.includes(category);
+    const isThreat = projectile.projectile.homing || categories.includes(category);
     if (!isThreat) continue;
 
     const distanceSq = options.origin.distanceToSquared(projectile.transform.position);
     if (distanceSq > maxRangeSq) continue;
 
-    if (options.preferTargetId != null && projectile.projectile.targetId === options.preferTargetId) {
+    if (
+      options.preferTargetId != null &&
+      projectile.projectile.targetId === options.preferTargetId
+    ) {
       if (distanceSq < bestIncomingSq) {
         bestIncomingSq = distanceSq;
         bestIncoming = projectile;

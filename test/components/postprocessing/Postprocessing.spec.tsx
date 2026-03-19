@@ -1,5 +1,5 @@
 import React from 'react';
-import { describe, expect, it, beforeEach, vi, afterEach } from 'vitest';
+import { describe, expect, it, beforeEach, vi, afterEach } from 'vite-plus/test';
 import { render, act, cleanup, waitFor } from '@testing-library/react';
 
 const frameCallbacks: Array<(state: unknown, delta: number) => void> = [];
@@ -23,7 +23,7 @@ vi.mock('@react-three/fiber', () => ({
 const bloomSelection = { size: 1 } as { size: number };
 const bloomContextValue = {
   defaultGroup: 'default',
-  selections: new Map([["default", bloomSelection]]),
+  selections: new Map([['default', bloomSelection]]),
   enabled: true,
   register: vi.fn(),
   unregister: vi.fn(),

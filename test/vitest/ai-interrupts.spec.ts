@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { Quaternion, Vector3 } from 'three';
 import { createDefaultMetrics } from '../../src/game/metrics.js';
 import { generateTraitsFromSeed } from '../../src/game/aiTraits.js';

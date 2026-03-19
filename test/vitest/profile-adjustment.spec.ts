@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'vite-plus/test';
 import { getEffectiveProfile } from '../../src/game/systems/decision/profile-adjustment.js';
 import { AI_CONFIG } from '../../src/game/config.js';
 import type { GameState, ShipEntity, BehaviorProfile } from '../../src/types/index.js';

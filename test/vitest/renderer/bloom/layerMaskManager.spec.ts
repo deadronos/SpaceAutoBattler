@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vite-plus/test';
 import { Object3D, Mesh, BoxGeometry, MeshBasicMaterial, Group } from 'three';
 import {
   isMesh,

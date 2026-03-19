@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type React from 'react';
 import type { ShipEntity, ProgressionEvent } from '../types/index.js';
 import { useOptionalGameState } from '../game/context.js';
@@ -25,11 +25,13 @@ export function ProgressionPanel(): React.ReactElement | null {
   const enabled = useUiStore((s) => s.progressionPanelEnabled);
   const position = useUiStore((s) => s.progressionPanelPosition);
   const setPosition = useUiStore((s) => s.setProgressionPanelPosition);
-  const [refreshTick, setRefreshTick] = useState(0);
+  const [, setRefreshTick] = useState(0);
   const [dragging, setDragging] = useState(false);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const posRef = useRef(position);
-  useEffect(() => { posRef.current = position; }, [position]);
+  useEffect(() => {
+    posRef.current = position;
+  }, [position]);
 
   useEffect(() => {
     if (!enabled) return undefined;
@@ -97,14 +99,14 @@ export function ProgressionPanel(): React.ReactElement | null {
 
   const progressionData = (() => {
     if (!enabled || !state) return null;
-    
+
     const ships = state.queries.ships.entities as ShipEntity[];
     const progressionShips: ProgressionPanelShip[] = [];
 
     for (const ship of ships) {
       // Get events for this ship from GameState
       const events = state.progressionEvents?.get(ship.id) || [];
-      
+
       progressionShips.push({
         id: ship.id,
         name: `${ship.ship.hull}-${ship.id}`,
@@ -113,7 +115,7 @@ export function ProgressionPanel(): React.ReactElement | null {
         level: ship.ship.level,
         xp: ship.ship.xp,
         xpToNext: ship.ship.xpToNext,
-        events: events.slice(-MAX_EVENTS_PER_SHIP)
+        events: events.slice(-MAX_EVENTS_PER_SHIP),
       });
     }
 
@@ -149,9 +151,7 @@ export function ProgressionPanel(): React.ReactElement | null {
     <div ref={panelRef} className="progression-panel" role="region" aria-live="polite">
       <div className="progression-panel__header">
         <div className="progression-panel__title">Progression</div>
-        <div className="progression-panel__meta">
-          {progressionData.length} ships tracked
-        </div>
+        <div className="progression-panel__meta">{progressionData.length} ships tracked</div>
       </div>
       <div className="progression-panel__ships">
         {progressionData.map((ship) => (
@@ -164,7 +164,7 @@ export function ProgressionPanel(): React.ReactElement | null {
 
 function ShipProgressionCard({ ship }: { ship: ProgressionPanelShip }): React.ReactElement {
   const [expanded, setExpanded] = useState(false);
-  
+
   const progressPercent = ship.xpToNext > 0 ? (ship.xp / ship.xpToNext) * 100 : 100;
   const teamClass = `ship-progression-card ship-progression-card--${ship.team}`;
   const fillRef = useRef<HTMLDivElement | null>(null);
@@ -184,7 +184,7 @@ function ShipProgressionCard({ ship }: { ship: ProgressionPanelShip }): React.Re
     if (!node) return;
     node.setAttribute('aria-expanded', expanded ? 'true' : 'false');
   }, [expanded]);
-   
+
   return (
     <div className={teamClass}>
       <div className="ship-progression-card__header" onClick={() => setExpanded(!expanded)}>
@@ -197,34 +197,31 @@ function ShipProgressionCard({ ship }: { ship: ProgressionPanelShip }): React.Re
             {formatXP(ship.xp)} / {formatXP(ship.xpToNext)} XP
           </div>
           <div className="ship-progression-card__progress-bar">
-            <div 
-              className="ship-progression-card__progress-fill"
-              ref={fillRef}
-            />
-           </div>
-         </div>
-         <button
-           type="button"
-           ref={toggleRef}
-           className="ship-progression-card__toggle"
-           aria-label={expanded ? 'Collapse events' : 'Expand events'}
-         >
-           {expanded ? '−' : '+'}
-         </button>
-       </div>
-       {expanded && (
-         <div className="ship-progression-card__events">
-           {ship.events.length > 0 ? (
-             <ul className="progression-events">
-               {ship.events.map((event, index) => (
-                 <EventRow key={`${ship.id}-${index}`} event={event} />
-               ))}
-             </ul>
-           ) : (
-             <p className="progression-events--empty">No recent events</p>
-           )}
-         </div>
-       )}
+            <div className="ship-progression-card__progress-fill" ref={fillRef} />
+          </div>
+        </div>
+        <button
+          type="button"
+          ref={toggleRef}
+          className="ship-progression-card__toggle"
+          aria-label={expanded ? 'Collapse events' : 'Expand events'}
+        >
+          {expanded ? '−' : '+'}
+        </button>
+      </div>
+      {expanded && (
+        <div className="ship-progression-card__events">
+          {ship.events.length > 0 ? (
+            <ul className="progression-events">
+              {ship.events.map((event, index) => (
+                <EventRow key={`${ship.id}-${index}`} event={event} />
+              ))}
+            </ul>
+          ) : (
+            <p className="progression-events--empty">No recent events</p>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -232,9 +229,9 @@ function ShipProgressionCard({ ship }: { ship: ProgressionPanelShip }): React.Re
 function EventRow({ event }: { event: ProgressionEvent }): React.ReactElement {
   const timeAgo = formatTimeAgo(event.ts);
   const deltaText = event.deltaXp ? `+${formatXP(event.deltaXp)} XP` : '';
-  
+
   const iconClass = `progression-event__icon progression-event__icon--${event.type}`;
-  
+
   return (
     <li className="progression-event">
       <span className={iconClass} aria-hidden="true">
@@ -249,10 +246,14 @@ function EventRow({ event }: { event: ProgressionEvent }): React.ReactElement {
 
 function getEventIcon(type: string): string {
   switch (type) {
-    case 'damage': return '⚔';
-    case 'kill': return '💀';
-    case 'levelup': return '⭐';
-    default: return '•';
+    case 'damage':
+      return '⚔';
+    case 'kill':
+      return '💀';
+    case 'levelup':
+      return '⭐';
+    default:
+      return '•';
   }
 }
 
@@ -260,7 +261,7 @@ function formatTimeAgo(timestamp: number): string {
   const now = Date.now();
   const diff = now - timestamp;
   const seconds = Math.floor(diff / 1000);
-  
+
   if (seconds < 10) return 'now';
   if (seconds < 60) return `${seconds}s`;
   const minutes = Math.floor(seconds / 60);

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vite-plus/test';
 import { applyDamageResultToShip } from '../../src/game/combat/damage.js';
 import type { GameState, ShipEntity } from '../../src/types/index.js';
 import { Vector3 } from 'three';

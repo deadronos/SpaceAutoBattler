@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { runAIScenario, collectTestMetrics } from '../support/aiScenarioHarness.js';
 import { useUiStore } from '../../src/game/uiStore.js';
 import type { AIScenarioConfig, AIScenarioLog } from '../support/aiScenarioHarness.js';

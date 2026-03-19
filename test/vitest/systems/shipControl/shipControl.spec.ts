@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { Quaternion, Vector3 } from 'three';
 import { createTestGameState, createTestShip } from '../../helpers/fixtures.js';
 import type { GameState, ShipEntity } from '../../../../src/types/index.js';

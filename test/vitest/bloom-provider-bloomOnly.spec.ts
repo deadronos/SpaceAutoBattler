@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'vite-plus/test';
 import { render, waitFor } from '@testing-library/react';
 import React from 'react';
 import { BloomProvider, useBloomContext } from '../../src/renderer/bloom/index.js';

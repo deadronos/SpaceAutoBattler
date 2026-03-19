@@ -1,9 +1,12 @@
 import fs from 'fs';
 import path from 'path';
-import { defineConfig, type Plugin, type UserConfig } from 'vite';
+import globals from 'globals';
+import { defineConfig, type Plugin, type UserConfig } from 'vite-plus';
 import react from '@vitejs/plugin-react';
 import reactCompiler from 'babel-plugin-react-compiler';
-import compression from 'vite-plugin-compression';
+import compressionPlugin from 'vite-plugin-compression';
+
+const compression = compressionPlugin as unknown as (options: Record<string, unknown>) => Plugin;
 
 function createJsToTsResolvePlugin(): Plugin {
   const srcDir = path.resolve(process.cwd(), 'src');
@@ -90,8 +93,17 @@ function createOutputConfig(isProd: boolean): UserConfig['build'] {
             return isProd ? 'models/[name].[hash][extname]' : 'models/[name][extname]';
           }
 
-          if (ext === '.png' || ext === '.jpg' || ext === '.jpeg' || ext === '.webp' || ext === '.gif' || ext === '.svg') {
-            return isProd ? 'assets/images/[name].[hash][extname]' : 'assets/images/[name][extname]';
+          if (
+            ext === '.png' ||
+            ext === '.jpg' ||
+            ext === '.jpeg' ||
+            ext === '.webp' ||
+            ext === '.gif' ||
+            ext === '.svg'
+          ) {
+            return isProd
+              ? 'assets/images/[name].[hash][extname]'
+              : 'assets/images/[name][extname]';
           }
 
           return isProd ? 'assets/[name].[hash][extname]' : 'assets/[name][extname]';
@@ -102,109 +114,304 @@ function createOutputConfig(isProd: boolean): UserConfig['build'] {
   };
 }
 
-export default defineConfig(({ mode }) => {
-  const isProd = mode === 'production';
-  const projectRoot = process.cwd();
-  const srcDir = path.resolve(projectRoot, 'src');
+const sharedIgnorePatterns = [
+  'node_modules/**',
+  'dist/**',
+  'coverage/**',
+  '.cache/**',
+  'test-output/**',
+  'playwright-report/**',
+  'tmp/**',
+  '.vite-hooks/**',
+  'scripts/**',
+  'test/**',
+  'src/types/**/*.d.ts',
+];
 
-  const defaultExcluded = [
-    path.resolve(srcDir, 'renderer'),
-    path.resolve(srcDir, 'components', 'ship'),
-  ];
+const fmtConfig = {
+  printWidth: 100,
+  tabWidth: 2,
+  useTabs: false,
+  semi: true,
+  singleQuote: true,
+  trailingComma: 'all',
+  bracketSpacing: true,
+  arrowParens: 'always',
+  sortPackageJson: false,
+  ignorePatterns: [
+    'node_modules',
+    'dist',
+    'coverage',
+    '.cache',
+    '.serena',
+    '.vscode',
+    'test-output',
+    'playwright-report',
+    'tmp',
+    '.vite-hooks',
+    '*.code-workspace',
+    '*.min.js',
+    '*.bundle.js',
+    'temp-lint-main.json',
+  ],
+};
 
-  const envExcludes = (process.env.REACT_COMPILER_EXCLUDE ?? '')
-    .split(',')
-    .map((value) => value.trim())
-    .filter(Boolean)
-    .map((relative) => path.resolve(projectRoot, relative));
+const lintConfig = {
+  plugins: ['oxc', 'typescript', 'unicorn', 'react'],
+  categories: {
+    correctness: 'warn',
+  },
+  env: {
+    builtin: true,
+  },
+  ignorePatterns: sharedIgnorePatterns,
+  options: {
+    typeAware: true,
+    typeCheck: true,
+  },
+  overrides: [
+    {
+      files: ['**/*.{ts,tsx,mts,cts}'],
+      rules: {
+        'no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+        'no-redeclare': 'off',
+        '@typescript-eslint/no-explicit-any': 'warn',
+        '@typescript-eslint/no-require-imports': 'off',
+      },
+    },
+    {
+      files: ['src/core/**/*.{ts,tsx,js,jsx}'],
+      rules: {
+        'no-restricted-properties': [
+          'error',
+          {
+            object: 'Math',
+            property: 'random',
+            message: 'Use GameState.rng.next() for determinism',
+          },
+        ],
+        'no-empty': ['error', { allowEmptyCatch: true }],
+        'no-useless-catch': 'off',
+        'no-redeclare': 'off',
+      },
+    },
+    {
+      files: [
+        'src/renderer/**',
+        'src/**/workers/**',
+        'src/**/worker*.ts',
+        'src/**/worker*.js',
+        'src/**/svgRasterWorker*.ts',
+        'src/**/svgRasterWorker*.js',
+        'src/simWorker.ts',
+        'src/simWorker.js',
+      ],
+      globals: {
+        ...globals.browser,
+        self: 'readonly',
+        postMessage: 'readonly',
+        structuredClone: 'readonly',
+        require: 'readonly',
+        __webpack_public_path__: 'readonly',
+        process: 'readonly',
+      },
+    },
+    {
+      files: [
+        'scripts/**',
+        'tools/**',
+        'src/utils/env.ts',
+        'src/utils/env.js',
+        'src/**/build-*.ts',
+        'src/**/build-*.js',
+        'src/**/bundler-*.ts',
+        'src/**/bundler-*.js',
+        'src/utils/**',
+      ],
+      globals: {
+        ...globals.node,
+        __webpack_public_path__: 'readonly',
+      },
+      rules: {
+        '@typescript-eslint/no-require-imports': 'off',
+      },
+    },
+    {
+      files: ['src/core/**'],
+      globals: {
+        ...globals.node,
+        process: 'readonly',
+        require: 'readonly',
+        __webpack_public_path__: 'readonly',
+      },
+    },
+    {
+      files: ['src/simWorker.ts', 'src/simWorker.js'],
+      globals: {
+        __webpack_public_path__: 'writable',
+      },
+    },
+    {
+      files: ['src/config/**/*Config.{ts,tsx,js,jsx}'],
+      rules: {
+        'no-redeclare': 'off',
+      },
+    },
+    {
+      files: ['test/**/*.{ts,tsx,js,jsx}'],
+      globals: {
+        ...globals.node,
+        describe: 'readonly',
+        test: 'readonly',
+        it: 'readonly',
+        expect: 'readonly',
+        vi: 'readonly',
+        beforeEach: 'readonly',
+        afterEach: 'readonly',
+        beforeAll: 'readonly',
+        afterAll: 'readonly',
+      },
+      rules: {
+        '@typescript-eslint/no-explicit-any': 'off',
+        'no-case-declarations': 'off',
+        'no-empty': 'off',
+        'no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+        'no-redeclare': 'off',
+      },
+    },
+  ],
+};
 
-  const envIncludes = (process.env.REACT_COMPILER_INCLUDE ?? '')
-    .split(',')
-    .map((value) => value.trim())
-    .filter(Boolean)
-    .map((relative) => path.resolve(projectRoot, relative));
+const stagedConfig = {
+  '**/*.{ts,tsx,js,jsx,json,css,md}': ['vp fmt', 'vp lint --fix'],
+};
 
-  const excludedPaths = envExcludes.length > 0 ? envExcludes : defaultExcluded;
-  const includedPaths = envIncludes.length > 0 ? envIncludes : null;
+const projectRoot = process.cwd();
+const srcDir = path.resolve(projectRoot, 'src');
+const isBuildCommand = process.argv.includes('build');
+const isDevelopmentBuild = process.argv.some(
+  (value, index, values) => value === '--mode' && values[index + 1] === 'development',
+);
+const isProdBuild = isBuildCommand && !isDevelopmentBuild;
 
-  const shouldApplyReactCompiler = (id: string): boolean => {
-    const cleanId = id.split('?')[0];
-    if (!cleanId) return false;
-    if (!cleanId.startsWith(srcDir)) return false;
-    if (!cleanId.endsWith('.ts') && !cleanId.endsWith('.tsx')) return false;
+const defaultExcluded = [
+  path.resolve(srcDir, 'renderer'),
+  path.resolve(srcDir, 'components', 'ship'),
+];
 
-    if (includedPaths) {
-      return includedPaths.some((p) => cleanId.startsWith(p));
-    }
+const envExcludes = (process.env.REACT_COMPILER_EXCLUDE ?? '')
+  .split(',')
+  .map((value) => value.trim())
+  .filter(Boolean)
+  .map((relative) => path.resolve(projectRoot, relative));
 
-    return !excludedPaths.some((p) => cleanId.startsWith(p));
-  };
+const envIncludes = (process.env.REACT_COMPILER_INCLUDE ?? '')
+  .split(',')
+  .map((value) => value.trim())
+  .filter(Boolean)
+  .map((relative) => path.resolve(projectRoot, relative));
 
-  const vitestDebugBench = Boolean(process.env.VITEST_DEBUG_BENCH);
+const excludedPaths = envExcludes.length > 0 ? envExcludes : defaultExcluded;
+const includedPaths = envIncludes.length > 0 ? envIncludes : null;
 
-  return {
-    base: './',
-    assetsInclude: ['**/*.glb', '**/*.gltf', '**/*.bin', '**/*.wasm'],
-    plugins: [
-      createJsToTsResolvePlugin(),
-      createGlslRawPlugin(),
-      react({
-        babel: (id) => {
-          if (!shouldApplyReactCompiler(id)) return {};
-          return {
-            plugins: [
-              [
-                reactCompiler,
-                {
-                  reactRuntime: 'automatic',
-                  preservePrimitives: true,
-                },
-              ],
+const shouldApplyReactCompiler = (id: string): boolean => {
+  const cleanId = id.split('?')[0];
+  if (!cleanId) return false;
+  if (!cleanId.startsWith(srcDir)) return false;
+  if (!cleanId.endsWith('.ts') && !cleanId.endsWith('.tsx')) return false;
+
+  if (includedPaths) {
+    return includedPaths.some((includedPath) => cleanId.startsWith(includedPath));
+  }
+
+  return !excludedPaths.some((excludedPath) => cleanId.startsWith(excludedPath));
+};
+
+const vitestDebugBench = Boolean(process.env.VITEST_DEBUG_BENCH);
+
+export default defineConfig({
+  fmt: fmtConfig,
+  lint: lintConfig,
+  staged: stagedConfig,
+  base: './',
+  assetsInclude: ['**/*.glb', '**/*.gltf', '**/*.bin', '**/*.wasm', '**/*.glsl'],
+  plugins: [
+    createJsToTsResolvePlugin(),
+    createGlslRawPlugin(),
+    react({
+      babel: (id) => {
+        if (!shouldApplyReactCompiler(id)) return {};
+
+        return {
+          plugins: [
+            [
+              reactCompiler,
+              {
+                reactRuntime: 'automatic',
+                preservePrimitives: true,
+              },
             ],
-          };
-        },
-      }),
-      compression({
-        algorithm: 'gzip',
-        ext: '.gz',
-        threshold: 10 * 1024,
-        deleteOriginFile: false,
-        filter: /\.(js|mjs|css|html|svg|wasm)$/i,
-      }),
-      compression({
-        algorithm: 'brotliCompress',
-        ext: '.br',
-        threshold: 10 * 1024,
-        deleteOriginFile: false,
-        filter: /\.(js|mjs|css|html|svg|wasm)$/i,
-      }),
-    ],
-    resolve: {
-      alias: {
-        three: path.resolve(projectRoot, 'node_modules', 'three'),
+          ],
+        };
+      },
+    }),
+    compression({
+      algorithm: 'gzip',
+      ext: '.gz',
+      threshold: 10 * 1024,
+      deleteOriginFile: false,
+      filter: /\.(js|mjs|css|html|svg|wasm)$/i,
+    }),
+    compression({
+      algorithm: 'brotliCompress',
+      ext: '.br',
+      threshold: 10 * 1024,
+      deleteOriginFile: false,
+      filter: /\.(js|mjs|css|html|svg|wasm)$/i,
+    }),
+  ],
+  resolve: {
+    alias: {
+      three: path.resolve(projectRoot, 'node_modules', 'three'),
+    },
+  },
+  define: {
+    __VITEST_DEBUG_BENCH__: JSON.stringify(vitestDebugBench),
+    'process.env.VITEST_DEBUG_BENCH': JSON.stringify(vitestDebugBench),
+  },
+  test: {
+    include: ['test/**/*.{spec,test}.{ts,tsx}'],
+    exclude: ['test/playwright/**'],
+    environment: 'happy-dom',
+    setupFiles: path.resolve(projectRoot, 'test/vitest/setupTests.ts'),
+    globals: true,
+    watch: false,
+    testTimeout: 20000,
+    pool: 'threads',
+    maxThreads: 24,
+    threads: true,
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'lcov'],
+      include: ['src/**/*.{ts,tsx}'],
+    },
+  },
+  server: {
+    port: 8080,
+    strictPort: true,
+  },
+  preview: {
+    port: 8080,
+    strictPort: true,
+  },
+  worker: {
+    format: 'es',
+    rollupOptions: {
+      output: {
+        entryFileNames: isProdBuild ? 'workers/[name].[hash].js' : 'workers/[name].js',
+        chunkFileNames: isProdBuild ? 'workers/[name].[hash].js' : 'workers/[name].js',
       },
     },
-    define: {
-      __VITEST_DEBUG_BENCH__: JSON.stringify(vitestDebugBench),
-      'process.env.VITEST_DEBUG_BENCH': JSON.stringify(vitestDebugBench),
-    },
-    server: {
-      port: 8080,
-      strictPort: true,
-    },
-    preview: {
-      port: 8080,
-      strictPort: true,
-    },
-    worker: {
-      format: 'es',
-      rollupOptions: {
-        output: {
-          entryFileNames: isProd ? 'workers/[name].[hash].js' : 'workers/[name].js',
-          chunkFileNames: isProd ? 'workers/[name].[hash].js' : 'workers/[name].js',
-        },
-      },
-    },
-    build: createOutputConfig(isProd),
-  };
+  },
+  build: createOutputConfig(isProdBuild),
 });
