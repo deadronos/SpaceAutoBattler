@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { Vector3 } from 'three';
 import {
   FORWARD,
@@ -54,19 +54,11 @@ describe('steering utilities', () => {
   });
 
   it('computes seek and arrive directions safely', () => {
-    const seekDir = computeSeekDirection(
-      new Vector3(10, 0, 0),
-      new Vector3(0, 0, 0),
-    );
+    const seekDir = computeSeekDirection(new Vector3(10, 0, 0), new Vector3(0, 0, 0));
     expect(seekDir.length()).toBeCloseTo(1, 6);
     expect(seekDir.x).toBeGreaterThan(0.9);
 
-    const arrive = computeArriveDirection(
-      new Vector3(0, 0, 0),
-      new Vector3(0, 0, 0),
-      5,
-      1,
-    );
+    const arrive = computeArriveDirection(new Vector3(0, 0, 0), new Vector3(0, 0, 0), 5, 1);
     expect(arrive.speedScale).toBe(0);
     expect(arrive.direction.length()).toBeCloseTo(1, 6);
   });

@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'vite-plus/test';
 import { createBeamLaserMaterial } from '../../src/renderer/materials/bulletMaterials.js';
 
 describe('Projectile beam material factory: force-colorWrite opt-out', () => {

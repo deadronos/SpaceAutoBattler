@@ -1,5 +1,5 @@
 import React from 'react';
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'vite-plus/test';
 import { render } from '@testing-library/react';
 import { Mesh, SphereGeometry } from 'three';
 import { BloomProvider, useBloomRegistration } from '../../src/renderer/bloom/index.js';
@@ -27,7 +27,7 @@ describe('BloomProvider integration with shield materials (TDD)', () => {
     render(
       <BloomProvider enabled={true}>
         <TestComponent />
-      </BloomProvider>
+      </BloomProvider>,
     );
 
     expect((mesh.material as any).colorWrite).toBe(true);

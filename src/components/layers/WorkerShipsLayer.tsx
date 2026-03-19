@@ -1,12 +1,25 @@
 import { useFrame } from '@react-three/fiber';
 import React, { useEffect, useMemo, useRef } from 'react';
 import type { ReactElement } from 'react';
-import { Color, ConeGeometry, InstancedBufferAttribute, InstancedMesh, Matrix4, MeshBasicMaterial, Quaternion, Vector3 } from 'three';
+import {
+  Color,
+  ConeGeometry,
+  InstancedBufferAttribute,
+  InstancedMesh,
+  Matrix4,
+  MeshBasicMaterial,
+  Quaternion,
+  Vector3,
+} from 'three';
 import { useOptionalSimulationBridge } from '../../game/context.js';
 
 const DEFAULT_CAPACITY = 2048;
 
-export function WorkerShipsLayer({ capacity = DEFAULT_CAPACITY }: { capacity?: number }): ReactElement {
+export function WorkerShipsLayer({
+  capacity = DEFAULT_CAPACITY,
+}: {
+  capacity?: number;
+}): ReactElement {
   const bridge = useOptionalSimulationBridge();
   const meshRef = useRef<InstancedMesh>(null);
 

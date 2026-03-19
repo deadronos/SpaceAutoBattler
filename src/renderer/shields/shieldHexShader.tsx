@@ -3,7 +3,12 @@ import { ShaderMaterial, Vector3, Vector4 } from 'three';
 import { useFrame } from '@react-three/fiber';
 import type { ShieldRipple, ShipHull, Team } from '../../types/index.js';
 import type { ShieldHexUniforms, MaterialWithUserData } from '../../types/renderer.js';
-import { getShieldVisuals, SHIELD_TUNING, TEAM_COLORS, SHIELD_RIPPLE_TUNING } from '../../config/renderer.js';
+import {
+  getShieldVisuals,
+  SHIELD_TUNING,
+  TEAM_COLORS,
+  SHIELD_RIPPLE_TUNING,
+} from '../../config/renderer.js';
 import { colorFromConfig } from '../../utils/color.js';
 
 const SHADER_MAX_RIPPLES = 8;
@@ -38,7 +43,9 @@ export function createShieldHexShaderMaterial(hull: ShipHull, team: Team): Shade
       uEdgeWidth: { value: edgeWidth },
       uMaxAlpha: { value: maxAlpha },
       uRippleCount: { value: 0 },
-      uRippleData: { value: Array.from({ length: SHADER_MAX_RIPPLES }, () => new Vector4(0, 0, 1, 0)) },
+      uRippleData: {
+        value: Array.from({ length: SHADER_MAX_RIPPLES }, () => new Vector4(0, 0, 1, 0)),
+      },
       uRippleT0s: { value: new Array<number>(SHADER_MAX_RIPPLES).fill(-999) as number[] },
       uRippleSpeed: { value: SHIELD_RIPPLE_TUNING.defaultSpeed },
       uRippleWidthBase: { value: SHIELD_RIPPLE_TUNING.baseWidth },
@@ -276,12 +283,20 @@ export function createShieldHexShaderMaterial(hull: ShipHull, team: Team): Shade
   try {
     if (!mat.userData) mat.userData = {};
     (mat as unknown as MaterialWithUserData).userData.__copilot_forceColorWrite = true;
-  } catch { /* defensive: ignore in odd test environments */ }
+  } catch {
+    /* defensive: ignore in odd test environments */
+  }
 
   return mat;
 }
 
-export const ShieldHexMaterial: React.FC<ShieldHexMaterialProps> = ({ hull, team, opacity, ripple, simTime }) => {
+export const ShieldHexMaterial: React.FC<ShieldHexMaterialProps> = ({
+  hull,
+  team,
+  opacity,
+  ripple,
+  simTime,
+}) => {
   const mat = useMemo(() => createShieldHexShaderMaterial(hull, team), [hull, team]);
   const uniforms = mat.uniforms as unknown as ShieldHexUniforms;
 
@@ -294,7 +309,9 @@ export const ShieldHexMaterial: React.FC<ShieldHexMaterialProps> = ({ hull, team
   }, [opacity, uniforms]);
 
   useEffect(() => {
-    uniforms.uTint.value.copy(colorFromConfig(team === 'blue' ? TEAM_COLORS.blue : SHIELD_TUNING.redTint));
+    uniforms.uTint.value.copy(
+      colorFromConfig(team === 'blue' ? TEAM_COLORS.blue : SHIELD_TUNING.redTint),
+    );
     uniforms.uTeamIsRed.value = team === 'red' ? 1.0 : 0.0;
     uniforms.uEnableRedBoost.value = SHIELD_TUNING.enableRedBoost ? 1.0 : 0.0;
     uniforms.uRedBoostPow.value = SHIELD_TUNING.redBoostPower;
@@ -303,8 +320,11 @@ export const ShieldHexMaterial: React.FC<ShieldHexMaterialProps> = ({ hull, team
 
   useEffect(() => {
     const maxRipples = Math.min(SHIELD_RIPPLE_TUNING.maxRipples ?? 3, SHADER_MAX_RIPPLES);
-    uniforms.uRippleData.value = uniforms.uRippleData.value ?? Array.from({ length: SHADER_MAX_RIPPLES }, () => new Vector4(0, 0, 1, 0));
-    uniforms.uRippleT0s.value = uniforms.uRippleT0s.value ?? new Array<number>(SHADER_MAX_RIPPLES).fill(-999);
+    uniforms.uRippleData.value =
+      uniforms.uRippleData.value ??
+      Array.from({ length: SHADER_MAX_RIPPLES }, () => new Vector4(0, 0, 1, 0));
+    uniforms.uRippleT0s.value =
+      uniforms.uRippleT0s.value ?? new Array<number>(SHADER_MAX_RIPPLES).fill(-999);
     for (let i = 0; i < SHADER_MAX_RIPPLES; i++) {
       const v = uniforms.uRippleData.value[i] as Vector4;
       v.set(0, 0, 1, 0);

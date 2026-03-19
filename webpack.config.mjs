@@ -13,7 +13,8 @@ import CompressionPlugin from 'compression-webpack-plugin';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 // Capture env flag once to avoid referencing `process` inline in the config object
-const VITEST_DEBUG_BENCH = typeof process !== 'undefined' && Boolean(process.env && process.env.VITEST_DEBUG_BENCH);
+const VITEST_DEBUG_BENCH =
+  typeof process !== 'undefined' && Boolean(process.env && process.env.VITEST_DEBUG_BENCH);
 
 export default (env = {}, argv) => {
   const isProd = argv.mode === 'production';
@@ -24,32 +25,41 @@ export default (env = {}, argv) => {
   // relative to repo root). Defaults to renderer and ship components.
   const defaultExcludes = [
     path.resolve(__dirname, 'src', 'renderer'),
-    path.resolve(__dirname, 'src', 'components', 'ship')
+    path.resolve(__dirname, 'src', 'components', 'ship'),
   ];
-  const envExcludes = (process.env.REACT_COMPILER_EXCLUDE || '').split(',').map(s => s.trim()).filter(Boolean);
-  const excludedPaths = envExcludes.length > 0 ? envExcludes.map(p => path.resolve(__dirname, p)) : defaultExcludes;
+  const envExcludes = (process.env.REACT_COMPILER_EXCLUDE || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const excludedPaths =
+    envExcludes.length > 0 ? envExcludes.map((p) => path.resolve(__dirname, p)) : defaultExcludes;
 
   // Build a list of paths to explicitly include for reactCompiler transforms. This
   // can be useful for targeting specific files or directories. If present, only
   // these paths will be considered for transformation by the reactCompiler.
-  const envIncludes = (process.env.REACT_COMPILER_INCLUDE || '').split(',').map(s => s.trim()).filter(Boolean);
-  const includePaths = envIncludes.length > 0 ? envIncludes.map(p => path.resolve(__dirname, p)) : null;
+  const envIncludes = (process.env.REACT_COMPILER_INCLUDE || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const includePaths =
+    envIncludes.length > 0 ? envIncludes.map((p) => path.resolve(__dirname, p)) : null;
 
   // Helpers used for rules
-  const excludedMatcher = (p) => excludedPaths.some(ep => p.startsWith(ep));
-  const includedMatcher = (p) => includePaths ? includePaths.some(ip => p.startsWith(ip)) : false;
+  const excludedMatcher = (p) => excludedPaths.some((ep) => p.startsWith(ep));
+  const includedMatcher = (p) =>
+    includePaths ? includePaths.some((ip) => p.startsWith(ip)) : false;
 
   return {
     mode: isProd ? 'production' : 'development',
     entry: {
-      main: path.resolve(__dirname, 'src', 'main.tsx')
+      main: path.resolve(__dirname, 'src', 'main.tsx'),
     },
     output: {
       path: path.resolve(__dirname, 'dist'),
       filename: isProd ? '[name].[contenthash].js' : '[name].js',
       chunkFilename: isProd ? '[name].[contenthash].js' : '[name].js',
       clean: true,
-      publicPath: './'
+      publicPath: './',
     },
     resolve: {
       extensions: ['.ts', '.tsx', '.js'],
@@ -57,8 +67,8 @@ export default (env = {}, argv) => {
       mainFields: ['module', 'browser', 'main'],
       alias: {
         // force all imports of 'three' to the same package entry (resolve to node_modules/three)
-        three: path.resolve(__dirname, 'node_modules', 'three')
-      }
+        three: path.resolve(__dirname, 'node_modules', 'three'),
+      },
     },
     module: {
       rules: [
@@ -66,37 +76,36 @@ export default (env = {}, argv) => {
         {
           test: /\.tsx?$/,
           include: excludedPaths,
-          use: [
-            { loader: 'ts-loader', options: { transpileOnly: true } }
-          ],
-          exclude: /node_modules/
+          use: [{ loader: 'ts-loader', options: { transpileOnly: true } }],
+          exclude: /node_modules/,
         },
         // Rule B: apply reactCompilerLoader for the rest of the codebase
         {
           test: /\.tsx?$/,
           // If explicit REACT_COMPILER_INCLUDE is provided, only transform those paths
-          ...(includePaths ? { include: includePaths } : { exclude: [ ...excludedPaths, /node_modules/ ] }),
-           use: [
-             { loader: 'ts-loader', options: { transpileOnly: true } },
-             { loader: reactCompilerLoader, options: defineReactCompilerLoaderOption({
-               // minimal options; keep the transform conservative while we test
-               reactRuntime: 'automatic',
-               // preserve JSX primitives and object identity where possible
-               preservePrimitives: true
-             }) }
-           ]
+          ...(includePaths
+            ? { include: includePaths }
+            : { exclude: [...excludedPaths, /node_modules/] }),
+          use: [
+            { loader: 'ts-loader', options: { transpileOnly: true } },
+            {
+              loader: reactCompilerLoader,
+              options: defineReactCompilerLoaderOption({
+                // minimal options; keep the transform conservative while we test
+                reactRuntime: 'automatic',
+                // preserve JSX primitives and object identity where possible
+                preservePrimitives: true,
+              }),
+            },
+          ],
         },
         {
           test: /\.css$/i,
-          use: [
-            MiniCssExtractPlugin.loader,
-            'css-loader'
-          ]
-        }
-        ,
+          use: [MiniCssExtractPlugin.loader, 'css-loader'],
+        },
         {
           test: /\.(glsl|vs|fs)$/i,
-          type: 'asset/source'
+          type: 'asset/source',
         },
         {
           test: /\.(glb|gltf)$/i,
@@ -104,8 +113,8 @@ export default (env = {}, argv) => {
           // Include a separator before the contenthash for readability and
           // consistency with other emitted assets.
           generator: {
-            filename: 'models/[name].[contenthash][ext]'
-          }
+            filename: 'models/[name].[contenthash][ext]',
+          },
         },
         // Emit common image types as resources so textures referenced by
         // external .gltf files or other imports are emitted and URL-resolved.
@@ -113,8 +122,8 @@ export default (env = {}, argv) => {
           test: /\.(png|jpe?g|webp|gif|svg)$/i,
           type: 'asset/resource',
           generator: {
-            filename: 'assets/images/[name].[contenthash][ext]'
-          }
+            filename: 'assets/images/[name].[contenthash][ext]',
+          },
         },
         // Emit .bin sidecar files (used by some .gltf) so they end up next
         // to other model assets and can be loaded at runtime.
@@ -122,8 +131,8 @@ export default (env = {}, argv) => {
           test: /\.bin$/i,
           type: 'asset/resource',
           generator: {
-            filename: 'models/[name].[contenthash][ext]'
-          }
+            filename: 'models/[name].[contenthash][ext]',
+          },
         },
         // Emit any imported .wasm files as resources so they end up in dist/wasm/
         {
@@ -131,27 +140,29 @@ export default (env = {}, argv) => {
           type: 'asset/resource',
           // Add contenthash to wasm files for cache-busting consistency.
           generator: {
-            filename: 'wasm/[name].[contenthash][ext]'
-          }
-        }
-      ]
+            filename: 'wasm/[name].[contenthash][ext]',
+          },
+        },
+      ],
     },
     plugins: [
-  // extract CSS imported from TS into separate hashed file
-  new MiniCssExtractPlugin({ filename: isProd ? 'styles/[name].[contenthash].css' : 'styles/[name].css' }),
-  new HtmlWebpackPlugin({
+      // extract CSS imported from TS into separate hashed file
+      new MiniCssExtractPlugin({
+        filename: isProd ? 'styles/[name].[contenthash].css' : 'styles/[name].css',
+      }),
+      new HtmlWebpackPlugin({
         template: path.resolve(__dirname, 'src', 'ui.html'),
         filename: 'spaceautobattler.html',
-        inject: 'body'
+        inject: 'body',
       }),
-  // Copy optional static assets when present.
-  ...createCopyPlugins(),
-  // optional analyzer
-  ...(shouldAnalyze ? [new BundleAnalyzerPlugin()] : []),
+      // Copy optional static assets when present.
+      ...createCopyPlugins(),
+      // optional analyzer
+      ...(shouldAnalyze ? [new BundleAnalyzerPlugin()] : []),
       // Define compile-time environment flags so browser bundles don't reference `process` at runtime
       new webpack.DefinePlugin({
         __VITEST_DEBUG_BENCH__: JSON.stringify(VITEST_DEBUG_BENCH),
-        'process.env.VITEST_DEBUG_BENCH': JSON.stringify(VITEST_DEBUG_BENCH)
+        'process.env.VITEST_DEBUG_BENCH': JSON.stringify(VITEST_DEBUG_BENCH),
       }),
       // Replace internal .js import specifiers with .ts but only when the importer is in our src/ tree.
       // This prevents rewriting third-party package imports (for example three) which might import
@@ -183,28 +194,30 @@ export default (env = {}, argv) => {
       new ForkTsCheckerWebpackPlugin({
         async: false,
         typescript: {
-          configFile: path.resolve(__dirname, 'tsconfig.json')
-        }
+          configFile: path.resolve(__dirname, 'tsconfig.json'),
+        },
       }),
       // Add gzip and brotli compression for production builds
-      ...(isProd ? [
-        new CompressionPlugin({
-          filename: '[path][base].gz',
-          algorithm: 'gzip',
-          test: /\.(js|css|html|svg|wasm)$/,
-          threshold: 10240, // Only compress files larger than 10KB
-          minRatio: 0.8, // Only compress if compression ratio is better than 80%
-          deleteOriginalAssets: false
-        }),
-        new CompressionPlugin({
-          filename: '[path][base].br',
-          algorithm: 'brotliCompress',
-          test: /\.(js|css|html|svg|wasm)$/,
-          threshold: 10240,
-          minRatio: 0.8,
-          deleteOriginalAssets: false
-        })
-      ] : [])
+      ...(isProd
+        ? [
+            new CompressionPlugin({
+              filename: '[path][base].gz',
+              algorithm: 'gzip',
+              test: /\.(js|css|html|svg|wasm)$/,
+              threshold: 10240, // Only compress files larger than 10KB
+              minRatio: 0.8, // Only compress if compression ratio is better than 80%
+              deleteOriginalAssets: false,
+            }),
+            new CompressionPlugin({
+              filename: '[path][base].br',
+              algorithm: 'brotliCompress',
+              test: /\.(js|css|html|svg|wasm)$/,
+              threshold: 10240,
+              minRatio: 0.8,
+              deleteOriginalAssets: false,
+            }),
+          ]
+        : []),
     ],
     optimization: {
       splitChunks: {
@@ -214,47 +227,49 @@ export default (env = {}, argv) => {
             test: /[\\/]node_modules[\\/]@dimforge[\\/]rapier3d-compat[\\/]/,
             name: 'rapier',
             chunks: 'all',
-            priority: 40
+            priority: 40,
           },
           three: {
             test: /[\\/]node_modules[\\/]three[\\/]/,
             name: 'three',
             chunks: 'all',
-            priority: 30
+            priority: 30,
           },
           postprocessing: {
             test: /[\\/]node_modules[\\/]postprocessing[\\/]/,
             name: 'postprocessing',
             chunks: 'all',
-            priority: 20
+            priority: 20,
           },
           vendors: {
             test: (module) => {
               const resource = module && module.resource;
               if (typeof resource !== 'string') return false;
               if (!resource.includes(`${path.sep}node_modules${path.sep}`)) return false;
-              return !resource.includes(`${path.sep}@dimforge${path.sep}rapier3d-compat${path.sep}`);
+              return !resource.includes(
+                `${path.sep}@dimforge${path.sep}rapier3d-compat${path.sep}`,
+              );
             },
             name: 'vendors',
             chunks: 'all',
-            priority: -10
-          }
-        }
-      }
+            priority: -10,
+          },
+        },
+      },
     },
     // Enable async WebAssembly so dynamic WASM imports (used by Rapier builds)
     // are supported and properly emitted by webpack 5.
     experiments: {
-      asyncWebAssembly: true
+      asyncWebAssembly: true,
     },
     devtool: isProd ? false : 'source-map',
     devServer: {
       static: path.resolve(__dirname, 'dist'),
       compress: true,
       port: 8080,
-      open: false
-    }
-};
+      open: false,
+    },
+  };
 };
 
 function createCopyPlugins() {

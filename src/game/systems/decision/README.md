@@ -61,6 +61,7 @@ The scheduler implements bounded catch-up to handle long frames gracefully:
 - **Metrics**: Tracks `ticksCaughtUp` and `ticksDropped` for observability
 
 Example configuration:
+
 ```typescript
 {
   tickInterval: 100,      // Time between AI ticks

@@ -10,6 +10,7 @@ Receipt: "Write resilient Playwright tests."
 Plan: 1) Use role-based locators. 2) Use auto-retrying assertions. 3) No hard waits.
 
 Checklist:
+
 - [ ] Role-based locators (`getByRole`, `getByText`)
 - [ ] All state via canonical GameState if simulation
 - [ ] Clear test titles and steps
@@ -57,7 +58,7 @@ test.describe('Ship Renderer Feature', () => {
 
   test('Render ship hull', async ({ page }) => {
     await test.step('Wait for scene to load', async () => {
-       await expect(page.getByTestId('scene-loaded')).toBeVisible();
+      await expect(page.getByTestId('scene-loaded')).toBeVisible();
     });
 
     // ... assertions

@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vite-plus/test';
 import { Hud } from '../../src/components/Hud';
 import * as GameContext from '../../src/game/context';
 import * as UiStore from '../../src/game/uiStore';

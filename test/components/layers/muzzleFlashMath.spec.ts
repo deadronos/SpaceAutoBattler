@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'vite-plus/test';
 import { computeMuzzleFlashVisuals } from '../../../src/components/layers/muzzleFlashMath.js';
 
 describe('computeMuzzleFlashVisuals', () => {

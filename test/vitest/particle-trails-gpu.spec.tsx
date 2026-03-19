@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach, vi } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vite-plus/test';
 import React from 'react';
 import { render, cleanup } from '@testing-library/react';
 import { Vector3, Quaternion } from 'three';

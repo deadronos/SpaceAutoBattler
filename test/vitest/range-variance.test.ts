@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { AI_CONFIG } from '../../src/game/config.js';
 import { SeededRng } from '../../src/utils/rng.js';
 

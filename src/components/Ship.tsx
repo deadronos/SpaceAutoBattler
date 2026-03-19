@@ -22,7 +22,7 @@ export function ShipObject({ entity }: { entity: ShipEntity }): React.ReactEleme
   const rootGroup = useRef<Group>(null);
   const visualGroup = useRef<Group>(null);
 
-  const { state: interpState, smoothing } = useShipInterpolation(entity, rootGroup, visualGroup);
+  const { smoothing } = useShipInterpolation(entity, rootGroup, visualGroup);
   const { scene, hasValidPath } = useShipModel(entity.model);
   if (!Number.isFinite(smoothing.thrusterIntensity.base)) {
     smoothing.thrusterIntensity.base = 0;
@@ -30,7 +30,7 @@ export function ShipObject({ entity }: { entity: ShipEntity }): React.ReactEleme
   if (!Number.isFinite(smoothing.thrusterIntensity.range)) {
     smoothing.thrusterIntensity.range = 0;
   }
-  const thrusterMaterialsRef = useShipThrusters(scene, entity, smoothing);
+  useShipThrusters(scene, entity, smoothing);
   const hullMaterialsRef = useHullMaterials(scene);
 
   return (

@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'vite-plus/test';
 import { Mesh, BoxGeometry, MeshBasicMaterial, MeshStandardMaterial, Group } from 'three';
 import {
   hasForceColorWrite,

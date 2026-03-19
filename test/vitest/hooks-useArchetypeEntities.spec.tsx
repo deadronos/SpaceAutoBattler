@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vite-plus/test';
 import { renderHook, act } from '@testing-library/react';
 import { useArchetypeEntities } from '../../src/hooks/useArchetypeEntities.js';
 

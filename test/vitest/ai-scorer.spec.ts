@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { Quaternion, Vector3 } from 'three';
 import { resolveBehaviorProfile } from '../../src/game/aiProfiles.js';
 import { createDefaultMotionStats } from '../../src/game/ships.js';

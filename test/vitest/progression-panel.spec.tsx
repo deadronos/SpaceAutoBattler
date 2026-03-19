@@ -1,5 +1,5 @@
 import React from 'react';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vite-plus/test';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { act } from 'react-dom/test-utils';
 import type { GameState, ShipEntity, ProgressionEvent } from '../../src/types/index.js';

@@ -1,9 +1,14 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { Quaternion, Vector3 } from 'three';
 import { updateTurrets } from '../../src/game/systems/turrets.js';
 import { createDefaultMotionStats } from '../../src/game/ships.js';
 import { createProgressionDefaults } from '../../src/game/progression.js';
-import type { GameState, ProjectileEntity, ShipEntity, TurretEntity } from '../../src/types/index.js';
+import type {
+  GameState,
+  ProjectileEntity,
+  ShipEntity,
+  TurretEntity,
+} from '../../src/types/index.js';
 
 function makeRigidBodyStub(init?: {
   pos?: { x: number; y: number; z: number };

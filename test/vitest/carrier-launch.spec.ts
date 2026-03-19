@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { Quaternion, Vector3 } from 'three';
 
 vi.mock('../../src/game/ships.js', () => ({

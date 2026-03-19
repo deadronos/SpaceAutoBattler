@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { STATUS_EFFECT_FALLBACK, STATUS_EFFECT_REGISTRY } from '../../src/config/hudHealth.js';
 import { layoutOverlays } from '../../src/components/HudHealthLayer.js';
 import type { ShipHudOverlaySnapshot } from '../../src/renderer/hudOverlayStore.js';

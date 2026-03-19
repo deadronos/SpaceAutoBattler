@@ -9,7 +9,10 @@ const VIEWPORT = { width: 1280, height: 800 };
 async function main() {
   if (!fs.existsSync(BASELINE_DIR)) fs.mkdirSync(BASELINE_DIR, { recursive: true });
 
-  const browser = await chromium.launch({ headless: true, args: ['--disable-gpu', '--use-gl=swiftshader'] });
+  const browser = await chromium.launch({
+    headless: true,
+    args: ['--disable-gpu', '--use-gl=swiftshader'],
+  });
   const page = await browser.newPage({ viewport: VIEWPORT });
   try {
     const rotDeg = Number(process.env.STAR_ROT_DEG ?? -15);
@@ -17,7 +20,9 @@ async function main() {
       try {
         window.__copilot_forcePostprocessingMount = true;
         window.__copilot_rotateCameraDeltaDeg = d;
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }, rotDeg);
 
     await page.goto(`${BASE_URL}spaceautobattler.html?copilot_debug=1`);

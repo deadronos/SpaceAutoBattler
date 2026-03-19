@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 
 vi.mock('r3f-perf', async () => {
   const React = await import('react');
@@ -59,8 +59,12 @@ describe('PerfMonitorOverlay', () => {
 
     act(() => {
       panel.dispatchEvent(new PointerEvent('pointerdown', { clientX: 40, clientY: 40, button: 0 }));
-      window.dispatchEvent(new PointerEvent('pointermove', { clientX: 140, clientY: 150, buttons: 1 }));
-      window.dispatchEvent(new PointerEvent('pointerup', { clientX: 140, clientY: 150, button: 0 }));
+      window.dispatchEvent(
+        new PointerEvent('pointermove', { clientX: 140, clientY: 150, buttons: 1 }),
+      );
+      window.dispatchEvent(
+        new PointerEvent('pointerup', { clientX: 140, clientY: 150, button: 0 }),
+      );
     });
 
     const updatedPosition = useUiStore.getState().perfMonitorPosition;

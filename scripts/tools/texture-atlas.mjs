@@ -23,7 +23,9 @@ function parseArgs(argv) {
 }
 
 function usage() {
-  console.log(`Usage: node scripts/tools/texture-atlas.mjs --input <glob> --output <png> --meta <json> [--padding <n>]`);
+  console.log(
+    `Usage: node scripts/tools/texture-atlas.mjs --input <glob> --output <png> --meta <json> [--padding <n>]`,
+  );
 }
 
 function nextPow2(value) {
@@ -66,7 +68,10 @@ async function main() {
 
   images.sort((a, b) => b.height - a.height);
 
-  const maxWidthGuess = Math.max(Math.ceil(Math.sqrt(totalArea)), ...images.map((img) => img.width));
+  const maxWidthGuess = Math.max(
+    Math.ceil(Math.sqrt(totalArea)),
+    ...images.map((img) => img.width),
+  );
   const atlasWidth = nextPow2(maxWidthGuess);
 
   let x = 0;
@@ -95,7 +100,16 @@ async function main() {
   const regions = {};
 
   for (const placement of placements) {
-    PNG.bitblt(placement.png, atlasPng, 0, 0, placement.width, placement.height, placement.x, placement.y);
+    PNG.bitblt(
+      placement.png,
+      atlasPng,
+      0,
+      0,
+      placement.width,
+      placement.height,
+      placement.x,
+      placement.y,
+    );
     const key = path.relative(process.cwd(), placement.file).replace(/\\/g, '/');
     regions[key] = {
       x: placement.x,
@@ -117,11 +131,12 @@ async function main() {
   await fs.mkdir(path.dirname(meta), { recursive: true });
   await fs.writeFile(meta, `${JSON.stringify(metadata, null, 2)}\n`);
 
-  console.log(`[texture-atlas] Wrote atlas ${output} (${atlasWidth}x${atlasHeight}) for ${files.length} textures.`);
+  console.log(
+    `[texture-atlas] Wrote atlas ${output} (${atlasWidth}x${atlasHeight}) for ${files.length} textures.`,
+  );
 }
 
 main().catch((error) => {
   console.error('[texture-atlas] Failed:', error);
   process.exitCode = 1;
 });
-

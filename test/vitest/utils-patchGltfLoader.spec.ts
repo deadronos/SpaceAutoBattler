@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it, vi, beforeEach } from 'vite-plus/test';
 
 // Mock three.js GLTFLoader before importing the patch
 const mockLoad = vi.fn();

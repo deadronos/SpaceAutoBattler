@@ -43,7 +43,7 @@ for (const f of archivedFiles) {
   if (openingFenceMatch) {
     const fence = openingFenceMatch[2];
     // Find matching ending fence
-    const endFenceRegex = new RegExp('\n' + fence + '\s*$', 'm');
+    const endFenceRegex = new RegExp('\n' + fence + 's*$', 'm');
     if (endFenceRegex.test(content)) {
       // strip the first fence line and the last fence
       content = content.replace(/^(\s*)(`{3,}|`{4,})([^\n\r]*)\r?\n/, '');

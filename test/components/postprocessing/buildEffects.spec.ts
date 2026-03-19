@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach, vi } from 'vitest';
+import { describe, expect, it, beforeEach, vi } from 'vite-plus/test';
 import type { Camera, Scene } from 'three';
 import type { PostprocessingConfig } from '../../../src/config/renderer.js';
 import type { BloomContextLike } from '../../../src/components/postprocessing/buildEffects.js';

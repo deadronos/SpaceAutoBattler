@@ -7,7 +7,7 @@ import { chromium } from 'playwright';
 // Candidate globs to test (files under renderer and ship components)
 const candidates = [
   ...glob.sync('src/renderer/**/*.tsx'),
-  ...glob.sync('src/components/ship/**/*.tsx')
+  ...glob.sync('src/components/ship/**/*.tsx'),
 ];
 
 if (candidates.length === 0) {
@@ -28,9 +28,12 @@ async function testFile(file) {
   }
 
   // Serve dist and run Playwright to look for clamp warning.
-  const server = spawn('npx', ['vite', 'preview', '--port', '8081', '--strictPort'], { shell: true, stdio: 'inherit' });
+  const server = spawn('npx', ['vite', 'preview', '--port', '8081', '--strictPort'], {
+    shell: true,
+    stdio: 'inherit',
+  });
   // Give server time to start
-  await new Promise(r => setTimeout(r, 800));
+  await new Promise((r) => setTimeout(r, 800));
 
   let found = false;
   const browser = await chromium.launch();
@@ -45,7 +48,10 @@ async function testFile(file) {
   });
 
   try {
-    await page.goto('http://127.0.0.1:8081/spaceautobattler.html', { waitUntil: 'load', timeout: 5000 });
+    await page.goto('http://127.0.0.1:8081/spaceautobattler.html', {
+      waitUntil: 'load',
+      timeout: 5000,
+    });
     // Let runtime run a bit to allow shields to initialize
     await page.waitForTimeout(2500);
   } catch (e) {
@@ -54,7 +60,11 @@ async function testFile(file) {
 
   await browser.close();
   // Kill server
-  try { server.kill(); } catch (e) { /* ignore */ }
+  try {
+    server.kill();
+  } catch (e) {
+    /* ignore */
+  }
   return found;
 }
 
@@ -68,6 +78,8 @@ async function testFile(file) {
     }
   }
 
-  console.log('\n=== No single-file inclusion triggered the clamp. Consider testing combinations or bisecting directories.');
+  console.log(
+    '\n=== No single-file inclusion triggered the clamp. Consider testing combinations or bisecting directories.',
+  );
   process.exit(0);
 })();

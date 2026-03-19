@@ -214,14 +214,7 @@ export function computeEvadeDirection(
   out: Vector3 = new Vector3(),
   fallback: Vector3 = FORWARD,
 ): Vector3 {
-  computeInterceptDirection(
-    threatPos,
-    sourcePos,
-    threatVelocity,
-    sourceSpeed,
-    out,
-    fallback,
-  );
+  computeInterceptDirection(threatPos, sourcePos, threatVelocity, sourceSpeed, out, fallback);
   out.multiplyScalar(-1);
   return safeNormalize(out, out, fallback);
 }

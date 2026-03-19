@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'vite-plus/test';
 import { render, act } from '@testing-library/react';
 import React from 'react';
 import { BloomProvider, useBloomContext } from '../../src/renderer/bloom/index.js';
@@ -19,7 +19,7 @@ describe('BloomProvider layer allocation', () => {
       React.useEffect(() => {
         if (renderCount < 3) {
           const timer = setTimeout(() => {
-            setRenderCount(prev => prev + 1);
+            setRenderCount((prev) => prev + 1);
           }, 10);
           return () => clearTimeout(timer);
         }
@@ -29,7 +29,7 @@ describe('BloomProvider layer allocation', () => {
         BloomProvider,
         { enabled: true },
         React.createElement(ContextCapture),
-        React.createElement('div', null, `Render count: ${renderCount}`)
+        React.createElement('div', null, `Render count: ${renderCount}`),
       );
     };
 
@@ -58,11 +58,12 @@ describe('BloomProvider layer allocation', () => {
 
   it('should handle layer allocation within Three.js limits', () => {
     // Test that we don't exceed the 31 layer limit
-    const TestComponent = () => React.createElement(
-      BloomProvider,
-      { enabled: true },
-      React.createElement('div', null, 'Test')
-    );
+    const TestComponent = () =>
+      React.createElement(
+        BloomProvider,
+        { enabled: true },
+        React.createElement('div', null, 'Test'),
+      );
 
     // This should not throw any errors about layer limits
     expect(() => {

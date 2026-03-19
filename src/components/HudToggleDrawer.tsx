@@ -34,7 +34,13 @@ interface HudToggleDrawerProps {
   extra?: React.ReactNode;
 }
 
-function HudToggleDrawer({ label, icon, toggles, triggerClassName, extra }: HudToggleDrawerProps): React.ReactElement {
+function HudToggleDrawer({
+  label,
+  icon,
+  toggles,
+  triggerClassName,
+  extra,
+}: HudToggleDrawerProps): React.ReactElement {
   const [open, setOpen] = useState(false);
   const panelId = useId();
 
@@ -55,7 +61,7 @@ function HudToggleDrawer({ label, icon, toggles, triggerClassName, extra }: HudT
         type="button"
         className={`hud-toggle-drawer__trigger ${triggerClassName ?? ''}`.trim()}
         aria-label={label}
-  aria-expanded={open ? 'true' : 'false'}
+        aria-expanded={open ? 'true' : 'false'}
         aria-controls={panelId}
         onClick={handleToggleDrawer}
       >
@@ -66,7 +72,7 @@ function HudToggleDrawer({ label, icon, toggles, triggerClassName, extra }: HudT
         role="group"
         className="hud-toggle-drawer__panel"
         hidden={!open}
-  aria-hidden={open ? 'false' : 'true'}
+        aria-hidden={open ? 'false' : 'true'}
         onKeyDown={handleKeyDown}
       >
         <p className="hud-toggle-drawer__title">{label}</p>
@@ -83,7 +89,9 @@ function HudToggleDrawer({ label, icon, toggles, triggerClassName, extra }: HudT
 
 function ToggleRow({ definition }: { definition: HudToggleDefinition }): React.ReactElement {
   const active = useUiStore(definition.select);
-  const disabled = useUiStore((state) => (definition.disabled ? definition.disabled(state) : false));
+  const disabled = useUiStore((state) =>
+    definition.disabled ? definition.disabled(state) : false,
+  );
   const descriptionId = definition.description ? `${definition.id}-desc` : undefined;
 
   const handleClick = () => {
@@ -97,7 +105,7 @@ function ToggleRow({ definition }: { definition: HudToggleDefinition }): React.R
         type="button"
         className="hud-toggle-drawer__toggle"
         role="switch"
-  aria-checked={active ? 'true' : 'false'}
+        aria-checked={active ? 'true' : 'false'}
         aria-describedby={descriptionId}
         onClick={handleClick}
         disabled={disabled}

@@ -7,13 +7,13 @@ on:
   pull_request_review:
     types:
       - 'submitted'
-#  pull_request:
-#    types:
-#      - 'opened'
-#  issues:
-#    types:
-#      - 'opened'
-#      - 'reopened'
+  #  pull_request:
+  #    types:
+  #      - 'opened'
+  #  issues:
+  #    types:
+  #      - 'opened'
+  #      - 'reopened'
   issue_comment:
     types:
       - 'created'
@@ -25,7 +25,7 @@ defaults:
 jobs:
   debugger:
     if: |-
-     ${{ fromJSON(vars.DEBUG || vars.ACTIONS_STEP_DEBUG || false) }}
+      ${{ fromJSON(vars.DEBUG || vars.ACTIONS_STEP_DEBUG || false) }}
     runs-on: 'ubuntu-latest'
     permissions:
       contents: 'read'

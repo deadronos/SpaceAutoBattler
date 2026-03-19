@@ -1,4 +1,4 @@
-import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, test, expect, vi, beforeEach, afterEach } from 'vite-plus/test';
 import { renderHook, waitFor } from '@testing-library/react';
 import { useProgressiveTexture } from '../../src/hooks/useProgressiveTexture.js';
 import * as THREE from 'three';

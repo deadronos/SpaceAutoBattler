@@ -56,11 +56,7 @@ export function steerProjectileTowardTarget(
         projectile.projectile.speed,
         TEMP_TARGET,
       )
-    : computeSeekDirection(
-        target.transform.position,
-        projectile.transform.position,
-        TEMP_TARGET,
-      );
+    : computeSeekDirection(target.transform.position, projectile.transform.position, TEMP_TARGET);
 
   const angle = steerDirection(currentDir, desired, homing.turnRate, delta, currentDir);
   if (angle < 1e-5) {

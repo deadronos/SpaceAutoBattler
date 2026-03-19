@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi } from 'vite-plus/test';
 import { Quaternion, Vector3 } from 'three';
 import { applyProgressionDefaults } from './helpers/progression.js';
 import { updateMotionSystem } from '../../src/game/systems/motion.js';
@@ -228,7 +228,7 @@ describe('Motion System Behavior', () => {
     const state = createMockGameState([ship]);
     ship.ai!.command.heading = new Vector3(0, 0, 1);
     ship.ship.motion.smoothing = {
-      ...(ship.ship.motion.smoothing ?? {}),
+      ...ship.ship.motion.smoothing,
       rotationSlerp: 0.6,
     };
     ship.ship.motion.angularSettlingRate = 0.05;
@@ -243,7 +243,7 @@ describe('Motion System Behavior', () => {
     const turningShip = createMockShip('blue', new Vector3(0, 0, 0));
     turningShip.ai!.command.heading = new Vector3(1, 0, 0);
     turningShip.ship.motion.smoothing = {
-      ...(turningShip.ship.motion.smoothing ?? {}),
+      ...turningShip.ship.motion.smoothing,
       rotationSlerp: 0.6,
     };
     const turningSpy = vi.spyOn(turningShip.transform.rotation, 'slerp');

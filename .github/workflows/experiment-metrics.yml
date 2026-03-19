@@ -1,20 +1,20 @@
 name: AI Experiment Metrics
 
 on:
-##  pull_request:
-#    branches: [ main ]
-#    paths:
-#      - 'src/game/config.ts'
-#      - 'src/game/systems.ts' 
-#      - 'src/game/ships.ts'
-#      - 'scripts/perf/**'
-#  push:
-#    branches: [ main ]
-#    paths:
-#      - 'src/game/config.ts'
-#      - 'src/game/systems.ts'
-#      - 'src/game/ships.ts'
-#      - 'scripts/perf/**'
+  ##  pull_request:
+  #    branches: [ main ]
+  #    paths:
+  #      - 'src/game/config.ts'
+  #      - 'src/game/systems.ts'
+  #      - 'src/game/ships.ts'
+  #      - 'scripts/perf/**'
+  #  push:
+  #    branches: [ main ]
+  #    paths:
+  #      - 'src/game/config.ts'
+  #      - 'src/game/systems.ts'
+  #      - 'src/game/ships.ts'
+  #      - 'scripts/perf/**'
   workflow_dispatch:
 
 jobs:
@@ -25,102 +25,98 @@ jobs:
       fail-fast: false
       matrix:
         experiment:
-          - name: "baseline"
+          - name: 'baseline'
             env: {}
-          - name: "vertical-disabled"
+          - name: 'vertical-disabled'
             env:
-              AI_VERTICAL_EXPERIMENT_OFF: "true"
-          - name: "engagement-disabled" 
+              AI_VERTICAL_EXPERIMENT_OFF: 'true'
+          - name: 'engagement-disabled'
             env:
-              AI_ENGAGEMENT_BOOST_OFF: "true"
-          - name: "tick-rate-baseline"
+              AI_ENGAGEMENT_BOOST_OFF: 'true'
+          - name: 'tick-rate-baseline'
             env:
-              AI_TICKRATE_EXPERIMENT_OFF: "true"
-          - name: "range-policy-stable"
+              AI_TICKRATE_EXPERIMENT_OFF: 'true'
+          - name: 'range-policy-stable'
             env:
-              AI_RANGE_POLICY: "stable"
-          - name: "all-experimental"
+              AI_RANGE_POLICY: 'stable'
+          - name: 'all-experimental'
             env:
-              AI_VERTICAL_EXPERIMENT_ON: "true"
-              AI_ENGAGEMENT_BOOST_ON: "true"
-              AI_TICKRATE_EXPERIMENT_ON: "true"
-              AI_RANGE_POLICY: "v0.1.1-exp"
-          - name: "all-conservative"
+              AI_VERTICAL_EXPERIMENT_ON: 'true'
+              AI_ENGAGEMENT_BOOST_ON: 'true'
+              AI_TICKRATE_EXPERIMENT_ON: 'true'
+              AI_RANGE_POLICY: 'v0.1.1-exp'
+          - name: 'all-conservative'
             env:
-              AI_VERTICAL_EXPERIMENT_OFF: "true"
-              AI_ENGAGEMENT_BOOST_OFF: "true"
-              AI_TICKRATE_EXPERIMENT_OFF: "true"
-              AI_RANGE_POLICY: "stable"
+              AI_VERTICAL_EXPERIMENT_OFF: 'true'
+              AI_ENGAGEMENT_BOOST_OFF: 'true'
+              AI_TICKRATE_EXPERIMENT_OFF: 'true'
+              AI_RANGE_POLICY: 'stable'
 
     steps:
-    - name: Checkout
-      uses: actions/checkout@v5
+      - name: Checkout
+        uses: actions/checkout@v5
 
-    - name: Setup pnpm
-      uses: pnpm/action-setup@v4
-      with:
-        version: 10.31.0
-        run_install: false
-      
-    - name: Setup Node.js
-      uses: actions/setup-node@v6
-      with:
-        node-version: '20'
-        cache: 'pnpm'
-        cache-dependency-path: pnpm-lock.yaml
-    
-    - name: Install deps
-      run: pnpm install --frozen-lockfile
-    
-    - name: Run TypeScript typecheck
-      run: pnpm run typecheck
-      
-    - name: Run unit tests
-      run: pnpm test
-      env:
-        AI_VERTICAL_EXPERIMENT_OFF: ${{ matrix.experiment.env.AI_VERTICAL_EXPERIMENT_OFF }}
-        AI_VERTICAL_EXPERIMENT_ON: ${{ matrix.experiment.env.AI_VERTICAL_EXPERIMENT_ON }}
-        AI_ENGAGEMENT_BOOST_OFF: ${{ matrix.experiment.env.AI_ENGAGEMENT_BOOST_OFF }}
-        AI_ENGAGEMENT_BOOST_ON: ${{ matrix.experiment.env.AI_ENGAGEMENT_BOOST_ON }}
-        AI_TICKRATE_EXPERIMENT_OFF: ${{ matrix.experiment.env.AI_TICKRATE_EXPERIMENT_OFF }}
-        AI_TICKRATE_EXPERIMENT_ON: ${{ matrix.experiment.env.AI_TICKRATE_EXPERIMENT_ON }}
-        AI_RANGE_POLICY: ${{ matrix.experiment.env.AI_RANGE_POLICY }}
-    
-    - name: Run AI performance budget test
-      run: pnpm run perf:ai-budget || echo "⚠️  Performance test failed - known issue with test harness"
-      env:
-        AI_VERTICAL_EXPERIMENT_OFF: ${{ matrix.experiment.env.AI_VERTICAL_EXPERIMENT_OFF }}
-        AI_VERTICAL_EXPERIMENT_ON: ${{ matrix.experiment.env.AI_VERTICAL_EXPERIMENT_ON }}
-        AI_ENGAGEMENT_BOOST_OFF: ${{ matrix.experiment.env.AI_ENGAGEMENT_BOOST_OFF }}
-        AI_ENGAGEMENT_BOOST_ON: ${{ matrix.experiment.env.AI_ENGAGEMENT_BOOST_ON }}
-        AI_TICKRATE_EXPERIMENT_OFF: ${{ matrix.experiment.env.AI_TICKRATE_EXPERIMENT_OFF }}
-        AI_TICKRATE_EXPERIMENT_ON: ${{ matrix.experiment.env.AI_TICKRATE_EXPERIMENT_ON }}
-        AI_RANGE_POLICY: ${{ matrix.experiment.env.AI_RANGE_POLICY }}
-      
-    - name: Run extended performance test (higher load)
-      env:
-        AI_VERTICAL_EXPERIMENT_OFF: ${{ matrix.experiment.env.AI_VERTICAL_EXPERIMENT_OFF }}
-        AI_VERTICAL_EXPERIMENT_ON: ${{ matrix.experiment.env.AI_VERTICAL_EXPERIMENT_ON }}
-        AI_ENGAGEMENT_BOOST_OFF: ${{ matrix.experiment.env.AI_ENGAGEMENT_BOOST_OFF }}
-        AI_ENGAGEMENT_BOOST_ON: ${{ matrix.experiment.env.AI_ENGAGEMENT_BOOST_ON }}
-        AI_TICKRATE_EXPERIMENT_OFF: ${{ matrix.experiment.env.AI_TICKRATE_EXPERIMENT_OFF }}
-        AI_TICKRATE_EXPERIMENT_ON: ${{ matrix.experiment.env.AI_TICKRATE_EXPERIMENT_ON }}
-        AI_RANGE_POLICY: ${{ matrix.experiment.env.AI_RANGE_POLICY }}
-      run: AI_BUDGET_SHIPS=450 AI_BUDGET_TICKS=200 AI_BUDGET_MS=3.5 pnpm run perf:ai-budget || echo "⚠️  Extended performance test failed - known issue with test harness"
+      - name: Setup Vite Plus
+        uses: voidzero-dev/setup-vp@v1
+        with:
+          node-version: '20'
+          cache: true
+
+      - name: Install deps
+        run: vp install --frozen-lockfile
+
+      - name: Run TypeScript typecheck
+        run: vp run typecheck
+
+      - name: Run Vite Plus checks
+        run: vp check
+
+      - name: Run unit tests
+        run: vp test
+        env:
+          AI_VERTICAL_EXPERIMENT_OFF: ${{ matrix.experiment.env.AI_VERTICAL_EXPERIMENT_OFF }}
+          AI_VERTICAL_EXPERIMENT_ON: ${{ matrix.experiment.env.AI_VERTICAL_EXPERIMENT_ON }}
+          AI_ENGAGEMENT_BOOST_OFF: ${{ matrix.experiment.env.AI_ENGAGEMENT_BOOST_OFF }}
+          AI_ENGAGEMENT_BOOST_ON: ${{ matrix.experiment.env.AI_ENGAGEMENT_BOOST_ON }}
+          AI_TICKRATE_EXPERIMENT_OFF: ${{ matrix.experiment.env.AI_TICKRATE_EXPERIMENT_OFF }}
+          AI_TICKRATE_EXPERIMENT_ON: ${{ matrix.experiment.env.AI_TICKRATE_EXPERIMENT_ON }}
+          AI_RANGE_POLICY: ${{ matrix.experiment.env.AI_RANGE_POLICY }}
+
+      - name: Run AI performance budget test
+        run: vp run perf:ai-budget || echo "⚠️  Performance test failed - known issue with test harness"
+        env:
+          AI_VERTICAL_EXPERIMENT_OFF: ${{ matrix.experiment.env.AI_VERTICAL_EXPERIMENT_OFF }}
+          AI_VERTICAL_EXPERIMENT_ON: ${{ matrix.experiment.env.AI_VERTICAL_EXPERIMENT_ON }}
+          AI_ENGAGEMENT_BOOST_OFF: ${{ matrix.experiment.env.AI_ENGAGEMENT_BOOST_OFF }}
+          AI_ENGAGEMENT_BOOST_ON: ${{ matrix.experiment.env.AI_ENGAGEMENT_BOOST_ON }}
+          AI_TICKRATE_EXPERIMENT_OFF: ${{ matrix.experiment.env.AI_TICKRATE_EXPERIMENT_OFF }}
+          AI_TICKRATE_EXPERIMENT_ON: ${{ matrix.experiment.env.AI_TICKRATE_EXPERIMENT_ON }}
+          AI_RANGE_POLICY: ${{ matrix.experiment.env.AI_RANGE_POLICY }}
+
+      - name: Run extended performance test (higher load)
+        env:
+          AI_VERTICAL_EXPERIMENT_OFF: ${{ matrix.experiment.env.AI_VERTICAL_EXPERIMENT_OFF }}
+          AI_VERTICAL_EXPERIMENT_ON: ${{ matrix.experiment.env.AI_VERTICAL_EXPERIMENT_ON }}
+          AI_ENGAGEMENT_BOOST_OFF: ${{ matrix.experiment.env.AI_ENGAGEMENT_BOOST_OFF }}
+          AI_ENGAGEMENT_BOOST_ON: ${{ matrix.experiment.env.AI_ENGAGEMENT_BOOST_ON }}
+          AI_TICKRATE_EXPERIMENT_OFF: ${{ matrix.experiment.env.AI_TICKRATE_EXPERIMENT_OFF }}
+          AI_TICKRATE_EXPERIMENT_ON: ${{ matrix.experiment.env.AI_TICKRATE_EXPERIMENT_ON }}
+          AI_RANGE_POLICY: ${{ matrix.experiment.env.AI_RANGE_POLICY }}
+        run: AI_BUDGET_SHIPS=450 AI_BUDGET_TICKS=200 AI_BUDGET_MS=3.5 vp run perf:ai-budget || echo "⚠️  Extended performance test failed - known issue with test harness"
 
   experiment-summary:
     name: Experiment Results Summary
     runs-on: ubuntu-latest
     needs: experiment-matrix
     if: always()
-    
+
     steps:
-    - name: Check matrix results
-      run: |
-        echo "Experiment matrix completed"
-        if [ "${{ needs.experiment-matrix.result }}" = "failure" ]; then
-          echo "❌ One or more experiment configurations failed performance tests"
-          exit 1
-        else
-          echo "✅ All experiment configurations passed performance tests"
-        fi
+      - name: Check matrix results
+        run: |
+          echo "Experiment matrix completed"
+          if [ "${{ needs.experiment-matrix.result }}" = "failure" ]; then
+            echo "❌ One or more experiment configurations failed performance tests"
+            exit 1
+          else
+            echo "✅ All experiment configurations passed performance tests"
+          fi

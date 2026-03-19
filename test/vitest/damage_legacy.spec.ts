@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { calculateEffectiveDamage } from '../../src/game/combat/damage.js';
 
 describe('calculateEffectiveDamage', () => {

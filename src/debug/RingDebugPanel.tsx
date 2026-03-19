@@ -31,8 +31,14 @@ export default function RingDebugPanel(): React.ReactElement | null {
     try {
       m.uniforms.uShadowStrength.value = shadow;
       m.uniforms.uPenumbra.value = penumbra;
-      try { m.needsUpdate = true; } catch { /* ignore */ }
-    } catch { /* ignore */ }
+      try {
+        m.needsUpdate = true;
+      } catch {
+        /* ignore */
+      }
+    } catch {
+      /* ignore */
+    }
   }, [shadow, penumbra]);
 
   return (
@@ -40,13 +46,29 @@ export default function RingDebugPanel(): React.ReactElement | null {
       <h4>Ring Debug</h4>
       <label>
         Shadow strength: {shadow.toFixed(2)}
-        <input type="range" min={0} max={1} step={0.01} value={shadow} onChange={(e) => setShadow(Number(e.target.value))} />
+        <input
+          type="range"
+          min={0}
+          max={1}
+          step={0.01}
+          value={shadow}
+          onChange={(e) => setShadow(Number(e.target.value))}
+        />
       </label>
       <label>
         Penumbra (fraction of planet radius): {penumbra.toFixed(3)}
-        <input type="range" min={0} max={0.2} step={0.001} value={penumbra} onChange={(e) => setPenumbra(Number(e.target.value))} />
+        <input
+          type="range"
+          min={0}
+          max={0.2}
+          step={0.001}
+          value={penumbra}
+          onChange={(e) => setPenumbra(Number(e.target.value))}
+        />
       </label>
-      <div className="copilot-debug-hint">Use <code>?copilot_debug=1</code> to enable this panel.</div>
+      <div className="copilot-debug-hint">
+        Use <code>?copilot_debug=1</code> to enable this panel.
+      </div>
     </div>
   );
 }

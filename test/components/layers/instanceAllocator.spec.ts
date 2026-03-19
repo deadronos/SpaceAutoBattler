@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vite-plus/test';
 import { InstanceAllocator } from '../../../src/components/layers/instanceAllocator.js';
 
 describe('InstanceAllocator', () => {

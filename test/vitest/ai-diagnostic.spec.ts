@@ -1,4 +1,4 @@
-import { it } from 'vitest';
+import { it } from 'vite-plus/test';
 import { Vector3, Quaternion } from 'three';
 import { SeededRng } from '../../src/utils/rng.js';
 import { generateTraitsFromSeed } from '../../src/game/aiTraits.js';

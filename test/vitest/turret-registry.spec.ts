@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vite-plus/test';
 import { createGameState, destroyEntity } from '../../src/game/state.js';
 import { spawnShip } from '../../src/game/ships.js';
 import { Vector3 } from 'three';

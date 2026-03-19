@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { layoutOverlays } from '../../src/components/HudHealthLayer.js';
 import { DEFAULT_HUD_HEALTH_OVERLAY_CONFIG } from '../../src/config/hudHealth.js';
 import type { ShipHudOverlaySnapshot } from '../../src/renderer/hudOverlayStore.js';

@@ -3,7 +3,12 @@ import { useRef, useState, useEffect } from 'react';
 import { Color, type Mesh, MathUtils } from 'three';
 import { useFrame } from '@react-three/fiber';
 import type { ShipEntity } from '../../types/index.js';
-import { getShieldVisuals, SHIELD_RIPPLE_TUNING, TEAM_COLORS, HULL_TINT } from '../../config/renderer.js';
+import {
+  getShieldVisuals,
+  SHIELD_RIPPLE_TUNING,
+  TEAM_COLORS,
+  HULL_TINT,
+} from '../../config/renderer.js';
 import { getMaterial } from '../../renderer/materialRegistry.js';
 import { useOptionalGameState } from '../../game/context.js';
 import { useBloomRegistration } from '../../renderer/bloom/index.js';
@@ -36,11 +41,15 @@ interface ShieldBubbleProps {
  * @param {ShieldBubbleProps} props - Component props.
  * @returns {React.ReactElement} The rendered shield mesh.
  */
-export function ShieldBubble({ entity, radius, hullMaterialsRef }: ShieldBubbleProps): React.ReactElement {
+export function ShieldBubble({
+  entity,
+  radius,
+  hullMaterialsRef,
+}: ShieldBubbleProps): React.ReactElement {
   const meshRef = useRef<Mesh>(null);
   useBloomRegistration(meshRef, { group: 'shields' });
   const state = useOptionalGameState();
-  const [rippleTick, setRippleTick] = useState(0);
+  const [, setRippleTick] = useState(0);
   const lastCountRef = useRef<number>(0);
   const lastT0Ref = useRef<number>(-Infinity);
   const minShieldThreshold = 0.01;
@@ -51,7 +60,7 @@ export function ShieldBubble({ entity, radius, hullMaterialsRef }: ShieldBubbleP
       entity.ship.maxShield,
       entity.id,
       entity.ship.hull,
-      minShieldThreshold
+      minShieldThreshold,
     );
     return result.fraction;
   });
@@ -83,7 +92,7 @@ export function ShieldBubble({ entity, radius, hullMaterialsRef }: ShieldBubbleP
       entity.ship.maxShield,
       entity.id,
       entity.ship.hull,
-      minShieldThreshold
+      minShieldThreshold,
     );
 
     if (result.warnings.length > 0) {
@@ -97,12 +106,15 @@ export function ShieldBubble({ entity, radius, hullMaterialsRef }: ShieldBubbleP
     if (finalFraction === 0 && entity.ship.shield > 0 && entity.ship.maxShield > 0) {
       const backupFraction = Math.max(0, Math.min(1, entity.ship.shield / entity.ship.maxShield));
       if (Number.isFinite(backupFraction) && backupFraction > 0) {
-        console.warn(`[ShieldBubble] Using backup calculation for ship ${entity.id} (${entity.ship.hull}):`, {
-          computed: finalFraction,
-          backup: backupFraction,
-          shield: entity.ship.shield,
-          maxShield: entity.ship.maxShield
-        });
+        console.warn(
+          `[ShieldBubble] Using backup calculation for ship ${entity.id} (${entity.ship.hull}):`,
+          {
+            computed: finalFraction,
+            backup: backupFraction,
+            shield: entity.ship.shield,
+            maxShield: entity.ship.maxShield,
+          },
+        );
         finalFraction = backupFraction;
       }
     }
@@ -126,7 +138,11 @@ export function ShieldBubble({ entity, radius, hullMaterialsRef }: ShieldBubbleP
       const MIN_MULT = 0.05;
       const MAX_MULT = 8.0; // allow up to 8x the model radius as a guard
       const origMult = { x: vs.shieldScale.x, y: vs.shieldScale.y, z: vs.shieldScale.z };
-      const clampMult = (v: number) => Math.max(MIN_MULT, Math.min(typeof v === 'number' && Number.isFinite(v) ? v : MIN_MULT, MAX_MULT));
+      const clampMult = (v: number) =>
+        Math.max(
+          MIN_MULT,
+          Math.min(typeof v === 'number' && Number.isFinite(v) ? v : MIN_MULT, MAX_MULT),
+        );
       const mx = clampMult(origMult.x);
       const my = clampMult(origMult.y);
       const mz = clampMult(origMult.z);
@@ -138,12 +154,15 @@ export function ShieldBubble({ entity, radius, hullMaterialsRef }: ShieldBubbleP
       // If any multiplier was clamped, warn so we can track regressions.
       if (mx !== origMult.x || my !== origMult.y || mz !== origMult.z) {
         try {
-          console.warn(`[ShieldBubble] Clamped shieldScale for ship ${entity.id} (${entity.ship.hull})`, {
-            radius: r,
-            originalShieldScale: origMult,
-            clampedMult: { x: mx, y: my, z: mz },
-            finalScale: { x: sx, y: sy, z: sz }
-          });
+          console.warn(
+            `[ShieldBubble] Clamped shieldScale for ship ${entity.id} (${entity.ship.hull})`,
+            {
+              radius: r,
+              originalShieldScale: origMult,
+              clampedMult: { x: mx, y: my, z: mz },
+              finalScale: { x: sx, y: sy, z: sz },
+            },
+          );
         } catch (e) {
           // ignore logging failures in odd environments
           void e;
@@ -153,7 +172,8 @@ export function ShieldBubble({ entity, radius, hullMaterialsRef }: ShieldBubbleP
 
     if (mats && mats.length > 0) {
       const shieldFrac = entity.ship.shield / Math.max(1, entity.ship.maxShield);
-      const teamColor = entity.ship.team === 'blue' ? new Color(TEAM_COLORS.blue) : new Color(TEAM_COLORS.red);
+      const teamColor =
+        entity.ship.team === 'blue' ? new Color(TEAM_COLORS.blue) : new Color(TEAM_COLORS.red);
 
       applyHullTint(mats, shieldFrac, teamColor, HULL_TINT.tintThreshold, HULL_TINT.tintStrength);
     }
@@ -177,7 +197,7 @@ export function ShieldBubble({ entity, radius, hullMaterialsRef }: ShieldBubbleP
       entity.ship.maxShield,
       minShieldThreshold,
       entity.id,
-      entity.ship.hull
+      entity.ship.hull,
     );
     if (warning) {
       console.warn(`[ShieldBubble] ${warning}`);
@@ -191,14 +211,25 @@ export function ShieldBubble({ entity, radius, hullMaterialsRef }: ShieldBubbleP
   const visuals = getShieldVisuals(entity.ship.hull);
   const kind = visuals.materialKind;
   const key = `shield:${kind}`;
-  const Mat = (getMaterial<{
-    hull: ShipEntity['ship']['hull']; team: any; opacity: number; ripple?: any; simTime?: number;
-  }>(key)) ?? getMaterial('shield:hex')!;
+  const Mat =
+    getMaterial<{
+      hull: ShipEntity['ship']['hull'];
+      team: any;
+      opacity: number;
+      ripple?: any;
+      simTime?: number;
+    }>(key) ?? getMaterial('shield:hex')!;
 
   return (
     <mesh ref={meshRef} renderOrder={SHIELD_RENDER_ORDER} frustumCulled={false}>
       <sphereGeometry args={[1, visuals.geometrySegments, visuals.geometrySegments]} />
-      <Mat hull={entity.ship.hull} team={entity.ship.team} opacity={opacity} ripple={rippleQueue} simTime={state?.time ?? 0} />
+      <Mat
+        hull={entity.ship.hull}
+        team={entity.ship.team}
+        opacity={opacity}
+        ripple={rippleQueue}
+        simTime={state?.time ?? 0}
+      />
     </mesh>
   );
 }

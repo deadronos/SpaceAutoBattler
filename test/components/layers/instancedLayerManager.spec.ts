@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vite-plus/test';
 import { BufferGeometry, InstancedMesh, MeshBasicMaterial, Matrix4, Color } from 'three';
 import { createInstancedLayerManager } from '../../../src/components/layers/instancedLayer.js';
 

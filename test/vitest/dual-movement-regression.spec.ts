@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vite-plus/test';
 import { Vector3, Quaternion } from 'three';
 import { createTestGameState, createTestShip } from './helpers/fixtures.js';
 import type { GameState, ShipEntity } from '../../src/types/index.js';
@@ -51,12 +51,12 @@ function setupTestState(): { state: GameState; ship: ShipEntity } {
   }
 
   const state = createTestGameState();
-  
+
   // Mock physics world
   state.physicsWorld = {
     step: vi.fn(),
   } as never;
-  
+
   state.queries.ships.entities.push(ship);
 
   // Mock the rigid body with spy functions
@@ -159,7 +159,7 @@ describe('Dual Movement System Regression', () => {
 
   it('handles multiple ships without duplicate writes', () => {
     const state = createTestGameState();
-    
+
     // Mock physics world
     state.physicsWorld = {
       step: vi.fn(),

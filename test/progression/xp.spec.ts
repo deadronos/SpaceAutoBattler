@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { Vector3 } from 'three';
 import { awardDamageXp, awardKillXp } from '../../src/game/progression/xp.js';
 import { XP_CONFIG } from '../../src/config/progression.js';

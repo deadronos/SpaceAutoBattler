@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { deriveBoundaryUniform } from '../../src/renderer/starDiskMaterial.js';
 
 const smoothstep = (edge0: number, edge1: number, x: number): number => {

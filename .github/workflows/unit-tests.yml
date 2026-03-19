@@ -2,46 +2,43 @@ name: Unit Tests
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   test:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v5
+      - uses: actions/checkout@v5
 
-    - name: Setup pnpm
-      uses: pnpm/action-setup@v4
-      with:
-        version: 10.31.0
-        run_install: false
+      - name: Setup Vite Plus
+        uses: voidzero-dev/setup-vp@v1
+        with:
+          node-version: '20'
+          cache: true
 
-    - uses: actions/setup-node@v6
-      with:
-        node-version: '20'
-        cache: 'pnpm'
-        cache-dependency-path: pnpm-lock.yaml
+      - name: Install dependencies
+        run: vp install --frozen-lockfile
 
-    - name: Install dependencies
-      run: pnpm install --frozen-lockfile
+      - name: Run Typecheck
+        run: vp run typecheck
 
-    - name: Run Typecheck
-      run: pnpm run typecheck
+      - name: Run Vite Plus checks
+        run: vp check
 
-    - name: Run Vitest
-      run: pnpm test
+      - name: Run tests
+        run: vp test
 
-    - name: Sanity check test count
-      run: |
-        # Ensure we are catching all intended test files (currently 168 non-Playwright files)
-        ACTUAL_COUNT=$(find test -name "*.spec.ts" -o -name "*.test.ts" -o -name "*.spec.tsx" | grep -v "test/playwright/" | wc -l | xargs)
-        echo "Found $ACTUAL_COUNT non-Playwright test files."
-        
-        if [ "$ACTUAL_COUNT" -lt 168 ]; then
-          echo "Error: Test discovery gap detected! Expected 168 test files, but only found $ACTUAL_COUNT."
-          echo "Check vitest.config.js include/exclude patterns."
-          exit 1
-        fi
+      - name: Sanity check test count
+        run: |
+          # Ensure we are catching all intended test files (currently 168 non-Playwright files)
+          ACTUAL_COUNT=$(find test -name "*.spec.ts" -o -name "*.test.ts" -o -name "*.spec.tsx" | grep -v "test/playwright/" | wc -l | xargs)
+          echo "Found $ACTUAL_COUNT non-Playwright test files."
+
+          if [ "$ACTUAL_COUNT" -lt 168 ]; then
+            echo "Error: Test discovery gap detected! Expected 168 test files, but only found $ACTUAL_COUNT."
+            echo "Check the test block in vite.config.ts."
+            exit 1
+          fi

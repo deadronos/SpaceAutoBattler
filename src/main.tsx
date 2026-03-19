@@ -4,7 +4,6 @@ import './renderer/webglDebugPrototypePatch.js';
 import './utils/patchGltfLoader.js';
 import { createRoot } from 'react-dom/client';
 import { StrictMode } from 'react';
-import type React from 'react';
 import { App } from './App.js';
 
 const container = document.getElementById('root');
@@ -17,5 +16,5 @@ const root = createRoot(container);
 root.render(
   <StrictMode>
     <App />
-  </StrictMode>
+  </StrictMode>,
 );

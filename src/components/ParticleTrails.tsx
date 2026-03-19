@@ -129,7 +129,7 @@ export function ParticleTrails({ ships, resources }: ParticleTrailProps): React.
       if (throttle < minThrottle) continue;
 
       const shipPos = ship.transform.position;
-      
+
       // 1. Distance LOD
       const distSq = cameraPos.distanceToSquared(shipPos);
       if (distSq > LOD_DISTANCE_SQ) {

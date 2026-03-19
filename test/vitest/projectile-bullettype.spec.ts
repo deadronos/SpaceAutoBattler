@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { Vector3 } from 'three';
 import { createTestGameState, createTestShip } from './helpers/fixtures.js';
 import { fireProjectile } from '../../src/game/systems/projectiles.js';

@@ -41,8 +41,7 @@ This file focuses on sources that explain the project's purpose, architecture, s
 - [TypeScript config](tsconfig.json): Compiler options and path layout.
 - [Webpack config](webpack.config.mjs): Build pipeline for dev and production bundles.
 - [Playwright config](playwright.config.cjs): End-to-end test configuration and runners.
-- [Vitest config](vitest.config.js): Unit test runner configuration.
-- [ESLint config](eslint.config.ts) / [Prettier config](prettier.config.cjs): Linting and formatting rules.
+- [Vite Plus config](vite.config.ts): Central Vite, test, lint, format, and staged-file configuration.
 
 ## Tests & CI
 

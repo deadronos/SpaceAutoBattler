@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'vite-plus/test';
 import { createShieldHexShaderMaterial } from '../../src/renderer/materialRegistry.js';
 
 describe('Shield material factory: force-colorWrite opt-out', () => {

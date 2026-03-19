@@ -10,12 +10,20 @@ interface StarLightProps {
   children?: React.ReactNode;
 }
 
-export function StarLight({ config, externalLightRef, children }: StarLightProps): React.ReactElement {
+export function StarLight({
+  config,
+  externalLightRef,
+  children,
+}: StarLightProps): React.ReactElement {
   const internalLightRef = useRef<DirectionalLight>(null);
   const target = useMemo(() => new Object3D(), []);
 
   const position = useMemo(() => {
-    const direction = new Vector3(config.direction.x, config.direction.y, config.direction.z).normalize();
+    const direction = new Vector3(
+      config.direction.x,
+      config.direction.y,
+      config.direction.z,
+    ).normalize();
     const distance = Math.max(config.distance, 1);
     return direction.multiplyScalar(-distance).toArray();
   }, [config.direction.x, config.direction.y, config.direction.z, config.distance]);
@@ -44,9 +52,9 @@ export function StarLight({ config, externalLightRef, children }: StarLightProps
     // Mirror the internal ref into the optional external ref so parents can access it
     if (externalLightRef) {
       try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        // oxlint-disable-next-line @typescript-eslint/no-explicit-any
         (externalLightRef as any).current = light;
-      } catch (e) {
+      } catch {
         // noop: if external ref is read-only we ignore
       }
     }
@@ -54,7 +62,10 @@ export function StarLight({ config, externalLightRef, children }: StarLightProps
 
   return (
     <>
-      <ambientLight color={config.ambientColor ?? '#1a2236'} intensity={config.ambientIntensity ?? 0.4} />
+      <ambientLight
+        color={config.ambientColor ?? '#1a2236'}
+        intensity={config.ambientIntensity ?? 0.4}
+      />
       {/* The group is positioned where the directional light should be; children will be parented here */}
       <group position={position as [number, number, number]}>
         <directionalLight

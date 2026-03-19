@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'vite-plus/test';
 import { clamp, clamp01, clampRatio, shortestAngle } from '../../src/utils/math.js';
 
 describe('math utils', () => {

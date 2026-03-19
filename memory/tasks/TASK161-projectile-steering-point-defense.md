@@ -2,7 +2,7 @@
 
 **Status:** In Progress  
 **Added:** 2026-01-09  
-**Updated:** 2026-01-09  
+**Updated:** 2026-01-09
 
 ## Original Request
 
@@ -28,13 +28,13 @@ Do robust helpers for steering, make torpedoes homing by default, and design/int
 
 ### Subtasks
 
-| ID  | Description                                               | Status      | Updated    | Notes |
-| --- | --------------------------------------------------------- | ----------- | ---------- | ----- |
-| 1.1 | Add steering helpers + unit tests                         | Complete    | 2026-01-09 | New seek/arrive/intercept/evade helpers |
-| 1.2 | Enable torpedo homing defaults + tests                    | Complete    | 2026-01-09 | Update projectile config and coverage |
-| 1.3 | Implement PD projectile targeting + turret logic          | Complete    | 2026-01-09 | Add selection helper + turret updates |
-| 1.4 | Update types + turret factory defaults                    | Complete    | 2026-01-09 | Add antiProjectile priority |
-| 1.5 | Add PD-focused turret tests + fallback coverage           | Complete    | 2026-01-09 | Validate selection and fallback |
+| ID  | Description                                      | Status   | Updated    | Notes                                   |
+| --- | ------------------------------------------------ | -------- | ---------- | --------------------------------------- |
+| 1.1 | Add steering helpers + unit tests                | Complete | 2026-01-09 | New seek/arrive/intercept/evade helpers |
+| 1.2 | Enable torpedo homing defaults + tests           | Complete | 2026-01-09 | Update projectile config and coverage   |
+| 1.3 | Implement PD projectile targeting + turret logic | Complete | 2026-01-09 | Add selection helper + turret updates   |
+| 1.4 | Update types + turret factory defaults           | Complete | 2026-01-09 | Add antiProjectile priority             |
+| 1.5 | Add PD-focused turret tests + fallback coverage  | Complete | 2026-01-09 | Validate selection and fallback         |
 
 ## Progress Log
 

@@ -113,7 +113,9 @@ function run() {
   const iterations = 120;
   console.log('Projectile Instancing Stress Harness');
   console.log('===================================');
-  console.log('count | groups | legacy draw | instanced draw | legacy ms | instanced ms | saturated');
+  console.log(
+    'count | groups | legacy draw | instanced draw | legacy ms | instanced ms | saturated',
+  );
   for (const count of counts) {
     const projectiles = buildProjectiles(count);
     const legacy = runLegacy(projectiles, iterations);

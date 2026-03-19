@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { deriveHazeUniform } from '../../src/renderer/starDiskMaterial.js';
 
 describe('deriveHazeUniform', () => {

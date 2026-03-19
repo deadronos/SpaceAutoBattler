@@ -35,17 +35,15 @@ export function ParallaxBillboard({
 
     // Calculate camera offset from origin
     const cameraOffset = new Vector3().copy(camera.position);
-    
+
     // Apply parallax offset - distant objects move less
     const parallaxOffset = cameraOffset.multiplyScalar(parallaxFactor);
-    
+
     // Set billboard position with parallax
-    const finalPosition = new Vector3()
-      .copy(basePosition)
-      .add(parallaxOffset);
-    
+    const finalPosition = new Vector3().copy(basePosition).add(parallaxOffset);
+
     meshRef.current.position.copy(finalPosition);
-    
+
     // Make billboard face the camera
     meshRef.current.lookAt(camera.position);
   });

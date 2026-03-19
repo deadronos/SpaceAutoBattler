@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'vite-plus/test';
 import { Vector3 } from 'three';
 import { resolveBehaviorProfile } from '../../src/game/aiProfiles.js';
 import { __aiTestHooks } from '../../src/game/systems.js';

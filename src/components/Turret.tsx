@@ -42,9 +42,5 @@ export function TurretObject({ entity }: { entity: TurretEntity }): React.ReactE
     );
   }, []);
 
-  return (
-    <group ref={groupRef}>
-      {Gizmo}
-    </group>
-  );
+  return <group ref={groupRef}>{Gizmo}</group>;
 }

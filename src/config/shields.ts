@@ -115,7 +115,7 @@ export function getShieldVisuals(hull: ShipHull): Required<ShieldVisualSettings>
  */
 export function setGlobalShieldMaterial(kind: ShieldMaterialKind): void {
   (Object.keys(SHIELD_VISUALS) as ShipHull[]).forEach((hull) => {
-    SHIELD_VISUALS[hull] = { ...(SHIELD_VISUALS[hull] ?? {}), materialKind: kind };
+    SHIELD_VISUALS[hull] = { ...SHIELD_VISUALS[hull], materialKind: kind };
   });
 }
 

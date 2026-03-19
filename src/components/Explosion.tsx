@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useMemo, useRef } from 'react';
 import type { Mesh } from 'three';
 import { useBloomRegistration } from '../renderer/bloom/index.js';
 import { getMaterial } from '../renderer/materialRegistry.js';
@@ -12,7 +12,13 @@ import { getMaterial } from '../renderer/materialRegistry.js';
  * @param {number} [props.size] - Scale of the explosion.
  * @returns {React.ReactElement} The rendered explosion mesh.
  */
-export function ExplosionObject({ position = [0,0,0], size = 1 }: { position?: [number, number, number]; size?: number }): React.ReactElement {
+export function ExplosionObject({
+  position = [0, 0, 0],
+  size = 1,
+}: {
+  position?: [number, number, number];
+  size?: number;
+}): React.ReactElement {
   const ref = useRef<Mesh>(null);
   useBloomRegistration(ref, { group: 'explosions' });
   const Mat = useMemo(() => getMaterial('explosion:smoke'), []);

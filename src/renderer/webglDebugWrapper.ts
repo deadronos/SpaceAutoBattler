@@ -9,8 +9,7 @@ export function installWebGLDebugHooks(renderer: WebGLRenderer): void {
   const win = window as Window & { __copilot_glLogs?: Array<unknown> & { __installed?: boolean } };
 
   // Enable if NODE_ENV !== 'production' OR ?copilot_debug=1 in URL
-  const debugEnabled =
-    !import.meta.env.PROD || isCopilotDebugEnabled();
+  const debugEnabled = !import.meta.env.PROD || isCopilotDebugEnabled();
   if (!debugEnabled) return;
 
   // Avoid double-install

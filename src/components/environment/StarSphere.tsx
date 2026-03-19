@@ -5,7 +5,12 @@ import { Euler, MeshBasicMaterial, ShaderMaterial, Vector3, NoBlending } from 't
 import fragmentShaderRaw from '../../renderer/shaders/mainsequencestar.glsl';
 import { COMMON_GLSL } from '../../renderer/shaders/index.js';
 import vertexShader from '../../renderer/shaders/starDisk.vertex.glsl';
-import type { StarLightConfig, CelestialEnvironmentConfig, StarDiskHazeConfig, StarDiskBoundaryConfig } from '../../config/environment.js';
+import type {
+  StarLightConfig,
+  CelestialEnvironmentConfig,
+  StarDiskHazeConfig,
+  StarDiskBoundaryConfig,
+} from '../../config/environment.js';
 import { useStarTextures } from '../../hooks/useStarTextures.js';
 import { useStarMaterial } from '../../hooks/useStarMaterial.js';
 import { updateMainSequenceStarUniforms } from '../../renderer/starDiskMaterial.js';
@@ -56,7 +61,8 @@ export function StarSphere({
   // the existing StarDisk configuration. Treat `starDisk.size` as a radius
   // (this aligns with the `StarDiskConfig` comment that `size` is a radius),
   // so use the configured value directly as the sphere radius.
-  const env = (globalThis as unknown as { __CELESTIAL__?: CelestialEnvironmentConfig }).__CELESTIAL__;
+  const env = (globalThis as unknown as { __CELESTIAL__?: CelestialEnvironmentConfig })
+    .__CELESTIAL__;
   const defaultSize = size ?? env?.starDisk?.size ?? 800;
   const defaultOpacity = opacity ?? env?.starDisk?.opacity ?? 0.12;
   const defaultDistanceMultiplier = distanceMultiplier ?? env?.starDisk?.distanceMultiplier ?? 0.8;
@@ -132,9 +138,10 @@ export function StarSphere({
   // geometry. This is derived from either the explicit prop or the
   // configured boundary.featherStart with a conservative offset.
   const boundaryStart = Number(boundary?.featherStart ?? fallbackBoundary?.featherStart ?? 0.88);
-  const derivedDepthCoreRadius = depthCoreRadiusProp !== undefined
-    ? clamp01(Number(depthCoreRadiusProp))
-    : clamp(boundaryStart - 0.12, 0.02, 0.95);
+  const derivedDepthCoreRadius =
+    depthCoreRadiusProp !== undefined
+      ? clamp01(Number(depthCoreRadiusProp))
+      : clamp(boundaryStart - 0.12, 0.02, 0.95);
   const depthMeshNormalized = clamp(derivedDepthCoreRadius, 0.02, 0.99);
   const depthMeshRadius = radius * depthMeshNormalized * 0.995;
 
@@ -150,7 +157,9 @@ export function StarSphere({
     // Dispose previous depth material we created
     const prev = depthMaterialRef.current;
     if (prev && typeof prev.dispose === 'function') {
-      try { prev.dispose(); } catch (error) {
+      try {
+        prev.dispose();
+      } catch (error) {
         // Expected: Material may already be disposed
         reportMaterialError('dispose', 'depthMaterial', error);
       }
@@ -178,25 +187,41 @@ export function StarSphere({
         depthMat.polygonOffsetFactor = -1;
         depthMat.polygonOffsetUnits = 1;
         depthMaterialRef.current = depthMat;
-        try { depthMesh.material = depthMat; } catch (error) {
+        try {
+          depthMesh.material = depthMat;
+        } catch (error) {
           // Expected: Mesh may be disposed during unmount
           reportMaterialError('depthMeshAssignment', 'ShaderMaterial', error);
         }
       } catch (err) {
         // Fall back to basic depth-only material if shader material creation fails
         reportMaterialError('shaderCreation', 'depthShaderMaterial', err);
-        const basic = new MeshBasicMaterial({ color: '#000', depthWrite: true, depthTest: true, colorWrite: false });
+        const basic = new MeshBasicMaterial({
+          color: '#000',
+          depthWrite: true,
+          depthTest: true,
+          colorWrite: false,
+        });
         depthMaterialRef.current = basic;
-        try { depthMesh.material = basic; } catch (error) {
+        try {
+          depthMesh.material = basic;
+        } catch (error) {
           // Expected: Mesh may be disposed during unmount
           reportMaterialError('depthMeshAssignment', 'BasicMaterial', error);
         }
       }
     } else {
       // No shader available: simple depth-only basic material
-      const basic = new MeshBasicMaterial({ color: '#000', depthWrite: true, depthTest: true, colorWrite: false });
+      const basic = new MeshBasicMaterial({
+        color: '#000',
+        depthWrite: true,
+        depthTest: true,
+        colorWrite: false,
+      });
       depthMaterialRef.current = basic;
-      try { depthMesh.material = basic; } catch (error) {
+      try {
+        depthMesh.material = basic;
+      } catch (error) {
         // Expected: Mesh may be disposed during unmount
         reportMaterialError('depthMeshAssignment', 'BasicMaterial', error);
       }
@@ -205,14 +230,16 @@ export function StarSphere({
     return () => {
       const p = depthMaterialRef.current;
       if (p && typeof p.dispose === 'function') {
-        try { p.dispose(); } catch (error) {
+        try {
+          p.dispose();
+        } catch (error) {
           // Expected: Material may already be disposed
           reportMaterialError('cleanup.dispose', 'depthMaterial', error);
         }
       }
       depthMaterialRef.current = null;
     };
-  }, [appliedMaterial, fragmentShaderRaw, vertexShader, radius]);
+  }, [appliedMaterial, radius]);
 
   // Attempt to enable alpha-to-coverage on the raw GL context and toggle
   // material.alphaToCoverage when supported. This can reduce aliasing on
@@ -224,8 +251,10 @@ export function StarSphere({
       const renderer = gl as WebGLRenderer;
       const raw = renderer.getContext?.() as WebGL2RenderingContext | WebGLRenderingContext | null;
       if (raw && typeof raw.enable === 'function') {
-        const SAMPLE_ALPHA_TO_COVERAGE = 0x809E; // GL constant
-        try { raw.enable(SAMPLE_ALPHA_TO_COVERAGE); } catch (error) {
+        const SAMPLE_ALPHA_TO_COVERAGE = 0x809e; // GL constant
+        try {
+          raw.enable(SAMPLE_ALPHA_TO_COVERAGE);
+        } catch (error) {
           // Expected: Some browsers/contexts don't support alpha-to-coverage
           reportWebGLError('SAMPLE_ALPHA_TO_COVERAGE', error);
         }
@@ -264,7 +293,10 @@ export function StarSphere({
 
     updateMainSequenceStarUniforms(mat, {
       time: state.clock.getElapsedTime(),
-      resolution: { width: Number(viewportSize.width) || Math.max(1, gl.domElement.width), height: Number(viewportSize.height) || Math.max(1, gl.domElement.height) },
+      resolution: {
+        width: Number(viewportSize.width) || Math.max(1, gl.domElement.width),
+        height: Number(viewportSize.height) || Math.max(1, gl.domElement.height),
+      },
       organic: organic ?? null,
       noise: noise ?? null,
       cameraRoll,
@@ -277,10 +309,6 @@ export function StarSphere({
   });
 
   if (!enabled) return null;
-
-  // Slightly scale the depth-only sphere down to avoid z-fighting with the
-  // visible shader geometry.
-  const DEPTH_SCALE = 0.92;
 
   return (
     <group position={localOffset}>
@@ -305,7 +333,13 @@ export function StarSphere({
           // Fallback material for when shader creation fails or is
           // intentionally omitted. Use depth-enabled basic material so it
           // both contributes color and occludes other objects as expected.
-          <meshBasicMaterial color="#fff" transparent={true} opacity={defaultOpacity} depthWrite={true} depthTest={true} />
+          <meshBasicMaterial
+            color="#fff"
+            transparent={true}
+            opacity={defaultOpacity}
+            depthWrite={true}
+            depthTest={true}
+          />
         )}
       </mesh>
     </group>

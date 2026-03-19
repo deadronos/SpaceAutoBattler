@@ -130,11 +130,7 @@ export function processSchedulerTick(
 
     // Compute slice parameters for this tick
     const { sliceSize } = computeSliceParameters(totalShips, config.maxPerTick);
-    const shipIndices = computeShipIndicesToProcess(
-      totalShips,
-      updatedState.cursor,
-      sliceSize,
-    );
+    const shipIndices = computeShipIndicesToProcess(totalShips, updatedState.cursor, sliceSize);
 
     // Collect all ship indices (use Set to avoid duplicates)
     for (const idx of shipIndices) {
