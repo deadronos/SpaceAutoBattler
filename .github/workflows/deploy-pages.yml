@@ -34,7 +34,7 @@ jobs:
       - name: Setup Vite Plus
         uses: voidzero-dev/setup-vp@v1
         with:
-          node-version: '20'
+          node-version: '22'
           cache: true
 
       - name: Install deps
