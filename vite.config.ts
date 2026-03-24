@@ -3,6 +3,7 @@ import path from 'path';
 import globals from 'globals';
 import { defineConfig, type Plugin, type UserConfig } from 'vite-plus';
 import react from '@vitejs/plugin-react';
+import babel from '@rolldown/plugin-babel';
 import reactCompiler from 'babel-plugin-react-compiler';
 import compressionPlugin from 'vite-plugin-compression';
 
@@ -338,22 +339,12 @@ export default defineConfig({
   plugins: [
     createJsToTsResolvePlugin(),
     createGlslRawPlugin(),
-    react({
-      babel: (id) => {
-        if (!shouldApplyReactCompiler(id)) return {};
-
-        return {
-          plugins: [
-            [
-              reactCompiler,
-              {
-                reactRuntime: 'automatic',
-                preservePrimitives: true,
-              },
-            ],
-          ],
-        };
-      },
+    react(),
+    babel({
+      include: /\.(?:ts|tsx)$/,
+      plugins: [
+        [reactCompiler, { compilationMode: 'annotation', sources: shouldApplyReactCompiler }],
+      ],
     }),
     compression({
       algorithm: 'gzip',
