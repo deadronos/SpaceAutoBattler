@@ -144,10 +144,11 @@ export function applyDamageResultToShip(
   }
 
   let hullDamage = 0;
-  // Track if ship was alive before this damage application
-  const wasAlive = component.hp > 0;
+  // Track if ship was alive before this damage application.
+  let wasAlive = false;
   if (damageResult.hullDamage > 0) {
     const prevHp = component.hp;
+    wasAlive = prevHp > 0;
     component.hp = Math.max(0, prevHp - damageResult.hullDamage);
     hullDamage = Math.max(0, prevHp - component.hp);
 

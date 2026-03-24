@@ -42,10 +42,6 @@ export function resetGame(state: GameState): void {
   state.blackboard.focusFire.red.clear();
   state.blackboard.visibleEnemies?.blue.clear();
   state.blackboard.visibleEnemies?.red.clear();
-  state.blackboard.focusFire.blue.clear();
-  state.blackboard.focusFire.red.clear();
-  state.blackboard.visibleEnemies?.blue.clear();
-  state.blackboard.visibleEnemies?.red.clear();
   state.simulation.postStepMutations.length = 0;
 }
 
