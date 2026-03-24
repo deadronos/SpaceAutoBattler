@@ -101,13 +101,7 @@ export function StarSphere({
     const dir = new Vector3(config.direction.x, config.direction.y, config.direction.z).normalize();
     const distance = Math.max(config.distance * defaultDistanceMultiplier, 8000);
     return dir.multiplyScalar(-distance).toArray() as [number, number, number];
-  }, [
-    config?.direction.x,
-    config?.direction.y,
-    config?.direction.z,
-    config?.distance,
-    defaultDistanceMultiplier,
-  ]);
+  }, [config, defaultDistanceMultiplier]);
 
   // Assign the shader to the visual mesh and ensure it performs depth
   // testing (so it can be occluded) but does not write depth. The depth

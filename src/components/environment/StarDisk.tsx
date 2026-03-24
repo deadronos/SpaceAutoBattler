@@ -62,7 +62,7 @@ export function StarDisk({
   const aspectWarnedRef = useRef(false);
   const baseQuaternion = useMemo<Quaternion>(
     () => computeStarDiskQuaternion(config.direction),
-    [config.direction.x, config.direction.y, config.direction.z],
+    [config.direction],
   );
   const meshWorldPosition = useMemo(() => new Vector3(), []);
   const viewScratch = useMemo(() => createViewAlignmentScratch(), []);
@@ -77,14 +77,7 @@ export function StarDisk({
       edgeFadeThreshold: source.edgeFadeThreshold,
       edgeExponent: source.edgeExponent,
     };
-  }, [
-    haze?.taperStrength,
-    haze?.edgeFadeThreshold,
-    haze?.edgeExponent,
-    fallbackHaze?.taperStrength,
-    fallbackHaze?.edgeFadeThreshold,
-    fallbackHaze?.edgeExponent,
-  ]);
+  }, [haze, fallbackHaze]);
 
   const boundaryConfig = useMemo<MainSequenceStarUniformUpdate['boundary']>(() => {
     const source = boundary ?? fallbackBoundary;
@@ -96,14 +89,7 @@ export function StarDisk({
       featherExponent: source.featherExponent,
       alphaFloor: source.alphaFloor,
     };
-  }, [
-    boundary?.featherStart,
-    boundary?.featherExponent,
-    boundary?.alphaFloor,
-    fallbackBoundary?.featherStart,
-    fallbackBoundary?.featherExponent,
-    fallbackBoundary?.alphaFloor,
-  ]);
+  }, [boundary, fallbackBoundary]);
 
   const gameState = useOptionalGameState();
   const { gl, scene, camera } = useThree();
@@ -138,13 +124,7 @@ export function StarDisk({
     ).normalize();
     const distance = Math.max(config.distance * defaultDistanceMultiplier, 8000);
     return direction.multiplyScalar(-distance).toArray();
-  }, [
-    config.direction.x,
-    config.direction.y,
-    config.direction.z,
-    config.distance,
-    defaultDistanceMultiplier,
-  ]);
+  }, [config, defaultDistanceMultiplier]);
 
   // Ensure the shader material is explicitly assigned to the mesh when
   // available. This guards against render-order or attach timing issues

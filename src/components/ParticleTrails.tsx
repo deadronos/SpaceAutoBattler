@@ -152,7 +152,7 @@ export function ParticleTrails({ ships, resources }: ParticleTrailProps): React.
         if (existing && existing.length === anchors.length) {
           return existing;
         }
-        const arr = new Array<number>(anchors.length).fill(0);
+        const arr = Array.from({ length: anchors.length }, () => 0);
         spawnRemainders.current.set(ship.id, arr);
         return arr;
       })();

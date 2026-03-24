@@ -18,8 +18,13 @@ if (typeof window !== 'undefined') {
           typeof WebGL2RenderingContext !== 'undefined'
             ? WebGL2RenderingContext.prototype
             : WebGLRenderingContext.prototype;
+        // These method references are intentionally captured so we can wrap the
+        // original prototype behavior while logging shader/program metadata.
+        // eslint-disable-next-line @typescript-eslint/unbound-method
         const origCompileShader = proto.compileShader;
+        // eslint-disable-next-line @typescript-eslint/unbound-method
         const origLinkProgram = proto.linkProgram;
+        // eslint-disable-next-line @typescript-eslint/unbound-method
         const origGetError = proto.getError;
 
         proto.compileShader = function (shader: WebGLShader) {

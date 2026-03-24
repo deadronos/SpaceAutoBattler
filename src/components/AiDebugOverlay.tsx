@@ -46,6 +46,7 @@ export function AiDebugOverlay(): React.ReactElement | null {
   }, [debugEnabled]);
 
   const snapshot = useMemo<SnapshotData | null>(() => {
+    void refreshTick;
     if (!debugEnabled || !aiEnabled) return null;
     if (!state?.ai?.enabled) return null;
     const ships = state.queries.ships.entities as ShipEntity[];

@@ -77,7 +77,7 @@ export function usePlanetTexture(key: PlanetTextureKey | undefined): PlanetTextu
     });
 
     // Load low-res first
-    Promise.all(lowResPromises).then(() => {
+    void Promise.all(lowResPromises).then(() => {
       if (!disposed) {
         setTextures({ ...loadedTextures });
 

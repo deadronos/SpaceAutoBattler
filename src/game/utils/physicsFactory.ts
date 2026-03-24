@@ -1,6 +1,11 @@
-import type { Collider, RigidBody } from '../../types/index.js';
+import type { RigidBody } from '../../types/index.js';
 import type { GameEntity, GameState } from '../../types/index.js';
 import type { Quaternion, Vector3 } from 'three';
+
+type ColliderLike = {
+  handle: number;
+  isValid(): boolean;
+};
 
 type ColliderShapeConfig =
   | { type: 'ball'; radius: number }
@@ -52,7 +57,7 @@ function ensureNumbers(position?: Vector3): { x: number; y: number; z: number } 
 export function createKinematicBodyWithCollider(
   state: GameState,
   opts: CreateBodyColliderOpts,
-): { body: RigidBody; collider: Collider | null } {
+): { body: RigidBody; collider: ColliderLike | null } {
   const translation = ensureNumbers(opts.position);
   const rotation = toRotationObject(opts.rotation);
 
@@ -81,7 +86,7 @@ export function createKinematicBodyWithCollider(
     colliderDesc.setSensor(opts.sensor as unknown as boolean);
   }
 
-  const collider = state.physicsWorld.createCollider(colliderDesc, body) as Collider | null;
+  const collider = state.physicsWorld.createCollider(colliderDesc, body) as ColliderLike | null;
 
   return { body, collider };
 }
@@ -90,12 +95,12 @@ export function createKinematicBodyWithCollider(
  * Registers a collider handle in the global lookup map.
  *
  * @param {GameState} state - The game state.
- * @param {Collider | null | undefined} collider - The collider to register.
+ * @param {ColliderLike | null | undefined} collider - The collider to register.
  * @param {GameEntity} entity - The entity associated with the collider.
  */
 export function registerColliderHandle(
   state: GameState,
-  collider: Collider | null | undefined,
+  collider: ColliderLike | null | undefined,
   entity: GameEntity,
 ): void {
   const handle = collider?.handle;
@@ -109,11 +114,11 @@ export function registerColliderHandle(
  * Unregisters a collider handle from the global lookup map.
  *
  * @param {GameState} state - The game state.
- * @param {Collider | null | undefined} collider - The collider to unregister.
+ * @param {ColliderLike | null | undefined} collider - The collider to unregister.
  */
 export function unregisterColliderHandle(
   state: GameState,
-  collider: Collider | null | undefined,
+  collider: ColliderLike | null | undefined,
 ): void {
   const handle = collider?.handle;
   if (handle == null) {
@@ -127,17 +132,17 @@ export function unregisterColliderHandle(
  *
  * @template T - The type of the game entity.
  * @param {GameState} state - The game state.
- * @param {(body: RigidBody, collider: Collider | null) => T} entityFactory - Function to create the entity.
+ * @param {(body: RigidBody, collider: ColliderLike | null) => T} entityFactory - Function to create the entity.
  * @param {CreateBodyColliderOpts} opts - Physics options.
  * @param {(entity: T) => void} [registerEntity] - Optional callback to register the entity in ECS or other lists.
  * @returns {{ entity: T; collider: Collider | null; body: RigidBody }} The created components.
  */
 export function createAndRegisterEntityBody<T extends GameEntity>(
   state: GameState,
-  entityFactory: (body: RigidBody, collider: Collider | null) => T,
+  entityFactory: (body: RigidBody, collider: ColliderLike | null) => T,
   opts: CreateBodyColliderOpts,
   registerEntity?: (entity: T) => void,
-): { entity: T; collider: Collider | null; body: RigidBody } {
+): { entity: T; collider: ColliderLike | null; body: RigidBody } {
   const { body, collider } = createKinematicBodyWithCollider(state, opts);
   const entity = entityFactory(body, collider);
   if (registerEntity) {

@@ -103,9 +103,10 @@ export function ShipImpostorLayer({ ships, capacity }: ShipImpostorLayerProps): 
   );
 
   useEffect(() => {
-    managerRef.current.initMesh();
+    const manager = managerRef.current;
+    manager.initMesh();
     return () => {
-      managerRef.current.dispose();
+      manager.dispose();
     };
   }, []);
 

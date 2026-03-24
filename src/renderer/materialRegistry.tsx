@@ -26,11 +26,11 @@ import {
 
 export type MaterialKey = string;
 
-type MaterialComponent<P = any> = React.FC<P>;
+type MaterialComponent<P = unknown> = React.FC<P>;
 
 const NullMaterialComponent: React.FC = () => null;
 
-interface MaterialDefinition<P = any> {
+interface MaterialDefinition<P = unknown> {
   component: MaterialComponent<P>;
   create?: () => Material;
   supportsInstanceColor?: boolean;
@@ -43,7 +43,7 @@ interface MaterialRegistrationOptions {
   supportsInstanceUv?: boolean;
 }
 
-const registry = new Map<MaterialKey, MaterialDefinition<any>>();
+const registry = new Map<MaterialKey, MaterialDefinition<unknown>>();
 
 export function registerMaterial<P>(
   key: MaterialKey,
@@ -51,14 +51,14 @@ export function registerMaterial<P>(
   options: MaterialRegistrationOptions = {},
 ): void {
   registry.set(key, {
-    component: comp as MaterialComponent<any>,
+    component: comp as MaterialComponent<unknown>,
     create: options.create,
     supportsInstanceColor: options.supportsInstanceColor,
     supportsInstanceUv: options.supportsInstanceUv,
   });
 }
 
-export function getMaterial<P = any>(key: MaterialKey): MaterialComponent<P> | undefined {
+export function getMaterial<P = unknown>(key: MaterialKey): MaterialComponent<P> | undefined {
   const entry = registry.get(key);
   return entry?.component as MaterialComponent<P> | undefined;
 }

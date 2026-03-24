@@ -2,13 +2,13 @@
 // If your workspace uses TypeScript tests, adjust Playwright's project/language settings
 // (or regenerate with `npm init playwright@latest` and choose TypeScript) so the extension
 // discovers `.ts` files instead of `.js`.
-const { defineConfig, devices } = require('@playwright/test');
+const { devices } = require('@playwright/test');
 
 // Base URL may be overridden by E2E_BASE environment variable
 // load global Playwright listeners so page crash/close events are logged for all tests
 try {
   require('./test/playwright/playwright-global-listeners.js');
-} catch (e) {
+} catch {
   // best-effort; if the helper is missing we still run tests
 }
 const baseURL = process.env.E2E_BASE || 'http://localhost:8080/';

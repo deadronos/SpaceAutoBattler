@@ -101,9 +101,10 @@ export function ThrusterInstancedManager({
 
   useEffect(() => {
     // initialize attributes once mesh mounted
-    managerRef.current.initMesh();
+    const manager = managerRef.current;
+    manager.initMesh();
     return () => {
-      managerRef.current.dispose();
+      manager.dispose();
     };
   }, []);
 

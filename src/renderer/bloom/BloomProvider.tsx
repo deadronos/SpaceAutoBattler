@@ -179,5 +179,5 @@ export function useBloomRegistration<T extends Object3D>(
     return () => {
       unregisterFn(obj);
     };
-  }, [ctx, registerFn, unregisterFn, ref, options?.group, options?.active]);
+  }, [ctx, registerFn, unregisterFn, ref, options]);
 }

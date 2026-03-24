@@ -27,7 +27,7 @@ export const PlanetBody = memo(function PlanetBody({
     return new Quaternion().setFromEuler(
       new Euler(config.tilt.x, config.tilt.y, config.tilt.z, 'XYZ'),
     );
-  }, [config.tilt?.x, config.tilt?.y, config.tilt?.z]);
+  }, [config.tilt]);
 
   const rotationAxis = useMemo(() => {
     if (!config.rotation) {
@@ -38,7 +38,7 @@ export const PlanetBody = memo(function PlanetBody({
       config.rotation.axis.y,
       config.rotation.axis.z,
     ).normalize();
-  }, [config.rotation?.axis.x, config.rotation?.axis.y, config.rotation?.axis.z]);
+  }, [config.rotation]);
 
   const workingQuat = useMemo(() => new Quaternion(), []);
   const spinQuat = useMemo(() => new Quaternion(), []);

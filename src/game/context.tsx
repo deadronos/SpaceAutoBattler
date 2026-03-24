@@ -28,6 +28,51 @@ interface GameContextValue {
   state: GameState | null;
 }
 
+interface SabDebugSurface {
+  getCounts: () => { ships: number; projectiles: number };
+  getWorkerCounts: () => {
+    tick: number | null;
+    ships: number | null;
+    ready: boolean;
+    usingShared: boolean;
+    error: unknown;
+  };
+  getWorkerStatus: () => {
+    ready: boolean;
+    tick: number | null;
+    shipCount: number | null;
+    usingShared: boolean;
+    error: unknown;
+  };
+  sampleShipMotion: () => {
+    tick: number;
+    time: number;
+    ships: Array<{
+      id: number;
+      team: string | null;
+      hull: string | null;
+      position: { x: number; y: number; z: number };
+      rotation: { x: number; y: number; z: number; w: number };
+      velocity: { x: number; y: number; z: number };
+      angularVelocity: { x: number; y: number; z: number };
+      lateralAcceleration: number;
+    }>;
+  };
+  sampleWorkerShipMotion: (limit?: number) => {
+    tick: number | null;
+    shipCount: number | null;
+    ships: Array<unknown>;
+  };
+  tick: (steps?: number, dt?: number) => void;
+  startAutoTick: (dt?: number) => void;
+  stopAutoTick: () => void;
+}
+
+type SabWindow = Window & {
+  __SAB?: SabDebugSurface;
+  __sabAutoTick__?: ReturnType<typeof setInterval> | null;
+};
+
 const GameContext = createContext<GameContextValue | undefined>(undefined);
 const SimulationBridgeContext = createContext<SimulationBridge | null>(null);
 
@@ -122,7 +167,7 @@ export function GameProvider({ children, fallback = null }: GameProviderProps): 
   useEffect(() => {
     let cancelled = false;
 
-    (async () => {
+    void (async () => {
       const renderWorkerOnly = shouldRenderWorkerShipsOnly();
       const created = await createGameState({ renderOnly: renderWorkerOnly });
       if (!renderWorkerOnly) {
@@ -135,7 +180,8 @@ export function GameProvider({ children, fallback = null }: GameProviderProps): 
         if (typeof window !== 'undefined') {
           const params = new URLSearchParams(window.location.search);
           if (params.has('e2e')) {
-            (window as unknown as { __SAB?: any }).__SAB = {
+            const win = window as SabWindow;
+            win.__SAB = {
               getCounts: () => ({
                 ships: created.queries.ships.entities.length,
                 projectiles: created.queries.projectiles.entities.length,
@@ -239,10 +285,9 @@ export function GameProvider({ children, fallback = null }: GameProviderProps): 
               // Start an interval to progress the sim even if R3F frames don't run (e.g., WebKit headless)
               startAutoTick: (dt = 1 / 60) => {
                 try {
-                  const key = '__sabAutoTick__';
-                  const w = window as any;
-                  if (w[key]) return; // already running
-                  w[key] = setInterval(
+                  const w = window as SabWindow;
+                  if (w.__sabAutoTick__) return; // already running
+                  w.__sabAutoTick__ = setInterval(
                     () => updateGame(created, dt),
                     Math.max(1, Math.round(dt * 1000)),
                   );
@@ -253,11 +298,10 @@ export function GameProvider({ children, fallback = null }: GameProviderProps): 
               },
               stopAutoTick: () => {
                 try {
-                  const key = '__sabAutoTick__';
-                  const w = window as any;
-                  if (w[key]) {
-                    clearInterval(w[key]);
-                    w[key] = null;
+                  const w = window as SabWindow;
+                  if (w.__sabAutoTick__) {
+                    clearInterval(w.__sabAutoTick__);
+                    w.__sabAutoTick__ = null;
                   }
                 } catch (error) {
                   // Expected: clearInterval may fail if interval was never started

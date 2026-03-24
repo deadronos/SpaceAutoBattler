@@ -12,7 +12,7 @@ import {
  * @param {GameState} state - The game state to dispose.
  */
 export function disposeGameState(state: GameState): void {
-  for (const entity of [...state.world.entities]) {
+  for (const entity of Array.from(state.world.entities)) {
     destroyEntity(state, entity);
   }
 

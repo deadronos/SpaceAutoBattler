@@ -1,12 +1,21 @@
 import { useEffect, useState } from 'react';
-import type { Archetype } from '../types/index.js';
 import type { GameEntity } from '../types/index.js';
+
+interface ArchetypeSubscription {
+  subscribe: (listener: () => void) => () => void;
+}
+
+interface ArchetypeLike<T> {
+  entities: readonly T[];
+  onEntityAdded: ArchetypeSubscription;
+  onEntityRemoved: ArchetypeSubscription;
+}
 
 // Accept a nullable archetype so callers can use this hook unconditionally
 // (avoids violating React's rules of hooks). When `archetype` is null the hook
 // returns an empty array and does not subscribe to events.
 export function useArchetypeEntities<T extends GameEntity>(
-  archetype: Archetype<GameEntity> | null,
+  archetype: ArchetypeLike<T> | null,
 ): T[] {
   const [entities, setEntities] = useState<T[]>(() =>
     archetype ? (archetype.entities as T[]) : [],
@@ -20,7 +29,7 @@ export function useArchetypeEntities<T extends GameEntity>(
     }
 
     const updateEntities = () => {
-      setEntities([...archetype.entities] as T[]);
+      setEntities(Array.from(archetype.entities) as T[]);
     };
 
     // Initialize and subscribe to entity changes

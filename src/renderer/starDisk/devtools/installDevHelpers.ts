@@ -20,14 +20,11 @@ const forceOpaqueShader =
   'precision mediump float;\nvoid main() { gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0); }';
 
 const runPreviousCompile = (
-  material: ShaderMaterial,
-  previous: ShaderMaterial['onBeforeCompile'],
+  previous: NonNullable<ShaderMaterial['onBeforeCompile']>,
   shader: ShaderCompileArgs[0],
   renderer: ShaderCompileArgs[1],
 ): void => {
-  if (typeof previous === 'function') {
-    previous.call(material, shader, renderer);
-  }
+  previous(shader, renderer);
 };
 
 const logShaderSource = (label: string, source: string | undefined): void => {
@@ -81,7 +78,7 @@ const collectProgramMetadata = (
 
 export function installDevHelpers(material: ShaderMaterial, renderer?: WebGLRenderer): () => void {
   const materialWithDepth = material as MaterialWithDepth;
-  const previousOnBeforeCompile = material.onBeforeCompile;
+  const previousOnBeforeCompile = material.onBeforeCompile.bind(material);
   const previousDepthTest = materialWithDepth.depthTest;
   const previousDepthWrite = material.depthWrite;
   const previousForceOnTop = getForceOnTopFlag();
@@ -93,12 +90,12 @@ export function installDevHelpers(material: ShaderMaterial, renderer?: WebGLRend
     if (disposed) return;
     const activeRenderer = renderer ?? compileRenderer;
     if (!activeRenderer) {
-      runPreviousCompile(material, previousOnBeforeCompile, shader, compileRenderer);
+      runPreviousCompile(previousOnBeforeCompile, shader, compileRenderer);
       return;
     }
 
     if (logged && !isForceOpaqueEnabled()) {
-      runPreviousCompile(material, previousOnBeforeCompile, shader, compileRenderer);
+      runPreviousCompile(previousOnBeforeCompile, shader, compileRenderer);
       return;
     }
     logged = true;
@@ -164,7 +161,7 @@ export function installDevHelpers(material: ShaderMaterial, renderer?: WebGLRend
       },
     });
 
-    runPreviousCompile(material, previousOnBeforeCompile, shader, compileRenderer);
+    runPreviousCompile(previousOnBeforeCompile, shader, compileRenderer);
   };
 
   material.onBeforeCompile = (...args: ShaderCompileArgs) => compileHandler(args);

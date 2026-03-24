@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { Color, Group, Material, Mesh, Object3D } from 'three';
 import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { useGLTF } from '@react-three/drei';
@@ -46,7 +46,7 @@ export function useShipModel(modelKey?: string): {
   const hasValidPath = typeof modelPath === 'string' && modelPath.length > 0;
 
   const gltf = hasValidPath ? (useGLTF(modelPath) as GLTF) : null;
-  const scene = useMemo(() => (gltf ? gltf.scene.clone(true) : null), [gltf?.scene]);
+  const scene = useMemo(() => (gltf ? gltf.scene.clone(true) : null), [gltf]);
 
   return { scene, hasValidPath };
 }
@@ -68,7 +68,7 @@ function isColoredMaterial(m: Material): m is ColoredMaterial {
  * @returns {React.MutableRefObject<HullMaterial[]>} A ref containing the list of materials.
  */
 export function useHullMaterials(scene: Group | null): React.MutableRefObject<HullMaterial[]> {
-  const hullMaterialsRef = { current: [] as HullMaterial[] };
+  const hullMaterialsRef = useRef<HullMaterial[]>([]);
 
   useEffect(() => {
     hullMaterialsRef.current = [];

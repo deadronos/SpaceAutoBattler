@@ -6,6 +6,26 @@ type UniformRecord = Record<string, unknown>;
 
 type UniformWithValue = { value?: unknown };
 
+const stringifyUnknownValue = (value: unknown): string => {
+  if (value == null) return 'null';
+  if (
+    typeof value === 'string' ||
+    typeof value === 'number' ||
+    typeof value === 'boolean' ||
+    typeof value === 'bigint'
+  ) {
+    return String(value);
+  }
+  if (typeof value === 'symbol') {
+    return value.toString();
+  }
+  try {
+    return JSON.stringify(value) ?? Object.prototype.toString.call(value);
+  } catch {
+    return Object.prototype.toString.call(value);
+  }
+};
+
 const serializeUniformValue = (value: unknown): unknown => {
   if (value == null) return null;
   const type = typeof value;
@@ -18,7 +38,7 @@ const serializeUniformValue = (value: unknown): unknown => {
     try {
       return maybeArray.toArray.call(value);
     } catch {
-      return String(value);
+      return stringifyUnknownValue(value);
     }
   }
 
@@ -40,7 +60,7 @@ const serializeUniformValue = (value: unknown): unknown => {
     };
   }
 
-  return String(value);
+  return stringifyUnknownValue(value);
 };
 
 const collectUniforms = (material: ShaderMaterial): UniformRecord => {

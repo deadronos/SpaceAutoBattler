@@ -17,7 +17,7 @@ export type ShieldHexMaterialProps = {
   hull: ShipHull;
   team: Team;
   opacity: number;
-  ripple?: ShieldRipple;
+  ripple?: ShieldRipple | readonly ShieldRipple[];
   simTime?: number;
 };
 
@@ -46,7 +46,7 @@ export function createShieldHexShaderMaterial(hull: ShipHull, team: Team): Shade
       uRippleData: {
         value: Array.from({ length: SHADER_MAX_RIPPLES }, () => new Vector4(0, 0, 1, 0)),
       },
-      uRippleT0s: { value: new Array<number>(SHADER_MAX_RIPPLES).fill(-999) as number[] },
+      uRippleT0s: { value: Array.from({ length: SHADER_MAX_RIPPLES }, () => -999) },
       uRippleSpeed: { value: SHIELD_RIPPLE_TUNING.defaultSpeed },
       uRippleWidthBase: { value: SHIELD_RIPPLE_TUNING.baseWidth },
       uRippleBlendMode: { value: SHIELD_RIPPLE_TUNING.blendMode },
@@ -324,7 +324,7 @@ export const ShieldHexMaterial: React.FC<ShieldHexMaterialProps> = ({
       uniforms.uRippleData.value ??
       Array.from({ length: SHADER_MAX_RIPPLES }, () => new Vector4(0, 0, 1, 0));
     uniforms.uRippleT0s.value =
-      uniforms.uRippleT0s.value ?? new Array<number>(SHADER_MAX_RIPPLES).fill(-999);
+      uniforms.uRippleT0s.value ?? Array.from({ length: SHADER_MAX_RIPPLES }, () => -999);
     for (let i = 0; i < SHADER_MAX_RIPPLES; i++) {
       const v = uniforms.uRippleData.value[i] as Vector4;
       v.set(0, 0, 1, 0);

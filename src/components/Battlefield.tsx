@@ -28,6 +28,10 @@ interface BattleSceneContentProps {
   ppEnabled: boolean;
 }
 
+type DebugWindow = Window & {
+  __copilot_forcePostprocessingMount?: boolean;
+};
+
 function BattleSceneContent({ ppEnabled }: BattleSceneContentProps): React.ReactElement {
   const state = useOptionalGameState();
   if (!state) return <></>;
@@ -92,7 +96,8 @@ export function Battlefield(): React.ReactElement {
   // setting is off. Tests can set `window.__copilot_forcePostprocessingMount = true`.
   const uiPost = useUiStore((s) => s.postprocessingEnabled);
   const ppEnabled =
-    typeof window !== 'undefined' && (window as any).__copilot_forcePostprocessingMount === true
+    typeof window !== 'undefined' &&
+    (window as DebugWindow).__copilot_forcePostprocessingMount === true
       ? true
       : uiPost;
 

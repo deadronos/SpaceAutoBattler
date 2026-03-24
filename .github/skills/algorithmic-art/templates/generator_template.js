@@ -1,3 +1,5 @@
+/* eslint-disable no-unused-vars */
+
 /**
  * ═══════════════════════════════════════════════════════════════════════════
  *                  P5.JS GENERATIVE ART - BEST PRACTICES

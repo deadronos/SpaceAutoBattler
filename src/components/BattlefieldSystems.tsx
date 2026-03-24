@@ -65,7 +65,8 @@ export function BattlefieldSystems(): React.ReactElement {
     sim.accumulator = Math.min(sim.accumulator + Math.min(scaled, maxAccum), maxAccum);
 
     try {
-      const params = (state.physicsWorld as any).integrationParameters;
+      const params = (state.physicsWorld as { integrationParameters?: { dt: number } })
+        .integrationParameters;
       if (params && typeof params.dt === 'number') {
         params.dt = step;
       }

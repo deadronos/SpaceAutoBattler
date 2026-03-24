@@ -50,6 +50,7 @@ export function useShipInterpolation(
       lastTickIndexRef,
     );
   }, [
+    entity,
     entity.id,
     lastTickIndex,
     interpolationState,

@@ -15,6 +15,14 @@ import {
 } from '../../renderer/sceneLayerOrder.js';
 import { isCopilotDebugEnabled } from '../../utils/copilotDebug.js';
 
+type CopilotDebugWindow = Window & {
+  __copilot_setStarHaloRenderOrder?: (value: unknown) => {
+    set: boolean;
+    value?: number;
+    reason?: string;
+  };
+};
+
 interface StarDiskMeshProps {
   /** Reference to the mesh element */
   meshRef: RefObject<Mesh | null>;
@@ -52,10 +60,11 @@ export function StarDiskMesh({
   try {
     if (isCopilotDebugEnabled()) {
       try {
-        (window as any).__copilot_setStarHaloRenderOrder = (v: any) => {
+        const win = window as CopilotDebugWindow;
+        win.__copilot_setStarHaloRenderOrder = (value) => {
           try {
-            const n = Number(v);
-            const halo = meshRef && (meshRef as any).current;
+            const n = Number(value);
+            const halo = meshRef.current;
             if (!halo) return { set: false, reason: 'no-halo' };
             if (!Number.isFinite(n)) return { set: false, reason: 'not-a-number' };
             halo.renderOrder = Math.floor(n);

@@ -76,9 +76,10 @@ export function MuzzleFlashInstancedLayer({
 
   useEffect(() => {
     // Ensure manager initializes attributes once the mesh is mounted
-    managerRef.current.initMesh();
+    const manager = managerRef.current;
+    manager.initMesh();
     return () => {
-      managerRef.current.dispose();
+      manager.dispose();
     };
   }, []);
 

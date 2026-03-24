@@ -18,10 +18,10 @@ export function getProjectileBuffers(state: GameState): ProjectileBuffers {
   let buffers = bufferCache.get(state);
   if (!buffers) {
     buffers = {
-      t_bodies: new Array(MAX_UPDATES).fill(null),
+      t_bodies: Array.from({ length: MAX_UPDATES }, () => null),
       t_values: new Float32Array(MAX_UPDATES * 3),
       t_count: 0,
-      r_bodies: new Array(MAX_UPDATES).fill(null),
+      r_bodies: Array.from({ length: MAX_UPDATES }, () => null),
       r_values: new Float32Array(MAX_UPDATES * 4),
       r_count: 0,
     };

@@ -16,6 +16,10 @@ import type { HullMaterial } from './ShipModel.js';
 import { applyHullTint } from './ShipModel.js';
 import { computeShieldFraction, validateShieldVisibility } from './shieldUtils.js';
 import { processRipplesForRendering } from './rippleUtils.js';
+import type {
+  ShieldHexMaterialProps,
+  ShieldTransmissionMaterialProps,
+} from '../../renderer/shields/index.js';
 
 /** Render order for the transparent shield bubble. */
 export const SHIELD_RENDER_ORDER = 20;
@@ -211,25 +215,30 @@ export function ShieldBubble({
   const visuals = getShieldVisuals(entity.ship.hull);
   const kind = visuals.materialKind;
   const key = `shield:${kind}`;
-  const Mat =
-    getMaterial<{
-      hull: ShipEntity['ship']['hull'];
-      team: any;
-      opacity: number;
-      ripple?: any;
-      simTime?: number;
-    }>(key) ?? getMaterial('shield:hex')!;
+
+  if (kind === 'hex') {
+    const Mat = getMaterial<ShieldHexMaterialProps>(key) ?? getMaterial('shield:hex')!;
+
+    return (
+      <mesh ref={meshRef} renderOrder={SHIELD_RENDER_ORDER} frustumCulled={false}>
+        <sphereGeometry args={[1, visuals.geometrySegments, visuals.geometrySegments]} />
+        <Mat
+          hull={entity.ship.hull}
+          team={entity.ship.team}
+          opacity={opacity}
+          ripple={rippleQueue}
+          simTime={state?.time ?? 0}
+        />
+      </mesh>
+    );
+  }
+
+  const Mat = getMaterial<ShieldTransmissionMaterialProps>(key) ?? getMaterial('shield:hex')!;
 
   return (
     <mesh ref={meshRef} renderOrder={SHIELD_RENDER_ORDER} frustumCulled={false}>
       <sphereGeometry args={[1, visuals.geometrySegments, visuals.geometrySegments]} />
-      <Mat
-        hull={entity.ship.hull}
-        team={entity.ship.team}
-        opacity={opacity}
-        ripple={rippleQueue}
-        simTime={state?.time ?? 0}
-      />
+      <Mat hull={entity.ship.hull} team={entity.ship.team} opacity={opacity} />
     </mesh>
   );
 }

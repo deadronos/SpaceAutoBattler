@@ -18,6 +18,28 @@ export interface RapierStepPanicSnapshot {
 
 const MAX_RAPIER_PANIC_SNAPSHOTS = 20;
 
+const stringifyUnknown = (value: unknown, fallback: string): string => {
+  if (value == null) {
+    return fallback;
+  }
+  if (
+    typeof value === 'string' ||
+    typeof value === 'number' ||
+    typeof value === 'boolean' ||
+    typeof value === 'bigint'
+  ) {
+    return String(value);
+  }
+  if (typeof value === 'symbol') {
+    return value.toString();
+  }
+  try {
+    return JSON.stringify(value) ?? fallback;
+  } catch {
+    return fallback;
+  }
+};
+
 export function publishRapierPanicSnapshot(snapshot: RapierStepPanicSnapshot): void {
   if (!isCopilotDebugEnabled()) {
     return;
@@ -44,7 +66,7 @@ export function recordRapierStepPanic(state: GameState, error: unknown): void {
     return;
   }
 
-  const message = error instanceof Error ? error.message : String(error ?? 'Rapier panic');
+  const message = error instanceof Error ? error.message : stringifyUnknown(error, 'Rapier panic');
   const stack = error instanceof Error ? (error.stack ?? undefined) : undefined;
   const timestamp = Date.now();
 
@@ -79,7 +101,7 @@ export function recordSubsystemFailure(
   diagnostics.lastSubsystemFailureTick = tickIndex;
   diagnostics.lastSubsystemFailureTimestamp = Date.now();
   diagnostics.lastSubsystemFailureMessage =
-    error instanceof Error ? error.message : String(error ?? 'Subsystem failure');
+    error instanceof Error ? error.message : stringifyUnknown(error, 'Subsystem failure');
   diagnostics.lastSubsystemFailureStack =
     error instanceof Error ? (error.stack ?? undefined) : undefined;
 

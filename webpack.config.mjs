@@ -44,11 +44,6 @@ export default (env = {}, argv) => {
   const includePaths =
     envIncludes.length > 0 ? envIncludes.map((p) => path.resolve(__dirname, p)) : null;
 
-  // Helpers used for rules
-  const excludedMatcher = (p) => excludedPaths.some((ep) => p.startsWith(ep));
-  const includedMatcher = (p) =>
-    includePaths ? includePaths.some((ip) => p.startsWith(ip)) : false;
-
   return {
     mode: isProd ? 'production' : 'development',
     entry: {

@@ -33,7 +33,7 @@ export function DynamicLightManager(): React.ReactElement {
       light.intensity = intensity * 6;
       light.decay = Math.max(0.8, event.lightFalloff / 100);
       light.distance = event.radius * 6;
-      light.color.set(event.lightColor as any);
+      light.color.set(event.lightColor);
       light.position.copy(event.position);
       active += 1;
     }

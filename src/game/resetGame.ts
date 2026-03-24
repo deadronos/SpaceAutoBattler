@@ -13,7 +13,7 @@ import { DEFAULT_GAME_SEED } from './createGameState.js';
  * @param {GameState} state - The game state to reset.
  */
 export function resetGame(state: GameState): void {
-  for (const entity of [...state.world.entities]) {
+  for (const entity of Array.from(state.world.entities)) {
     destroyEntity(state, entity);
   }
   resetMetrics(state.ai.metrics);

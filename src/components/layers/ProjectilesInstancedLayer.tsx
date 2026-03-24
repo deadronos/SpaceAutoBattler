@@ -54,14 +54,15 @@ function ProjectileGroupMesh({ group }: { group: ProjectileGroupState }): React.
 
   useEffect(() => {
     // Initialize mesh attributes via the group's manager (if attached)
-    group.manager.initMesh();
+    const manager = group.manager;
+    const mesh = meshRef.current;
+    manager.initMesh();
     return () => {
-      const mesh = meshRef.current;
       if (mesh && mesh.instanceColor) {
         mesh.instanceColor = null;
       }
     };
-  }, [meshRef, materialInfo.supportsInstanceColor, capacity, baseColor]);
+  }, [group.manager, meshRef, materialInfo.supportsInstanceColor, capacity, baseColor]);
 
   useEffect(
     () => () => {

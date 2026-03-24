@@ -29,6 +29,8 @@ export function Postprocessing({ enabled = false }: Props): null {
   const bloomEffectsRef = useRef<SelectiveBloomEffect[]>([]);
   const renderTargetRef = useRef<WebGLRenderTarget | null>(null);
   const bloomCtx = useBloomContext();
+  const activeBloomCtx = bloomCtx ?? null;
+  const enableCameraLayers = activeBloomCtx?.enableCameraLayers;
 
   const cleanupComposer = useCallback(() => {
     const setup = composerSetupRef.current;
@@ -63,8 +65,11 @@ export function Postprocessing({ enabled = false }: Props): null {
       return cleanupComposer;
     }
 
-    const bloomContext: BloomContextLike | null = bloomCtx
-      ? { defaultGroup: bloomCtx.defaultGroup, selections: bloomCtx.selections }
+    const bloomContext: BloomContextLike | null = activeBloomCtx
+      ? {
+          defaultGroup: activeBloomCtx.defaultGroup,
+          selections: activeBloomCtx.selections,
+        }
       : null;
 
     try {
@@ -99,16 +104,7 @@ export function Postprocessing({ enabled = false }: Props): null {
     return () => {
       cleanupComposer();
     };
-    // oxlint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    enabled,
-    bloomCtx ? bloomCtx.selections : null,
-    bloomCtx ? bloomCtx.defaultGroup : null,
-    gl,
-    scene,
-    camera,
-    cleanupComposer,
-  ]);
+  }, [effectiveEnabled, activeBloomCtx, gl, scene, camera, cleanupComposer]);
 
   useEffect(() => {
     const composer = composerRef.current;
@@ -137,8 +133,8 @@ export function Postprocessing({ enabled = false }: Props): null {
         }
 
         try {
-          if (bloomCtx && typeof (bloomCtx as any).enableCameraLayers === 'function') {
-            prevCameraLayersMask = (bloomCtx as any).enableCameraLayers(camera as any);
+          if (typeof enableCameraLayers === 'function') {
+            prevCameraLayersMask = enableCameraLayers(camera as Camera);
           }
         } catch (error) {
           // Expected: BloomContext may not expose enableCameraLayers
