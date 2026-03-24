@@ -130,10 +130,9 @@ export function getSpeedMagnitude(ship: ShipEntity): number {
 
 export function computeThreatBonus(state: GameState, team: Team, targetId: number): number {
   const threat = state.blackboard.threatToVip;
-  const ships = state.queries.ships.entities as ShipEntity[];
   for (const [vipId, threatId] of threat.entries()) {
     if (threatId !== targetId) continue;
-    const vip = ships.find((s) => s.id === vipId);
+    const vip = state.shipById?.get(vipId);
     if (vip && vip.ship.team === team) {
       return 180;
     }

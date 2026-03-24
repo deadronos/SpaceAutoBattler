@@ -145,15 +145,9 @@ export function applyDamageResultToShip(
 
   let hullDamage = 0;
   // Track if ship was alive before this damage application
-  // Default to false if no hull damage, check actual HP if hull damage is dealt
-  let wasAlive = false;
+  const wasAlive = component.hp > 0;
   if (damageResult.hullDamage > 0) {
     const prevHp = component.hp;
-    wasAlive = prevHp > 0;
-    component.hp = Math.max(0, prevHp - damageResult.hullDamage);
-    hullDamage = Math.max(0, prevHp - component.hp);
-
-    if (hullDamage > 0 && callbacks?.applySubsystemDamage) {
       const seed = options.rngSeed ?? ship.id + state.time;
       const rng = new SeededRng(seed);
       callbacks.applySubsystemDamage(component, hullDamage, rng);

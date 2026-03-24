@@ -16,8 +16,8 @@ export function disposeGameState(state: GameState): void {
     destroyEntity(state, entity);
   }
 
-  state.eventQueue.free();
-  state.physicsWorld.free();
+  state.eventQueue?.free();
+  state.physicsWorld?.free();
   state.colliderLookup.clear();
 }
 
