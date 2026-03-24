@@ -148,6 +148,10 @@ export function applyDamageResultToShip(
   const wasAlive = component.hp > 0;
   if (damageResult.hullDamage > 0) {
     const prevHp = component.hp;
+    component.hp = Math.max(0, prevHp - damageResult.hullDamage);
+    hullDamage = Math.max(0, prevHp - component.hp);
+
+    if (hullDamage > 0 && callbacks?.applySubsystemDamage) {
       const seed = options.rngSeed ?? ship.id + state.time;
       const rng = new SeededRng(seed);
       callbacks.applySubsystemDamage(component, hullDamage, rng);

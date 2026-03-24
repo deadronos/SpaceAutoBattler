@@ -28,6 +28,24 @@ export async function createGameState(options: CreateGameStateOptions = {}): Pro
     eventQueue = undefined as any;
     rapierModule = undefined as any;
   } else {
+    // Rapier 0.19+ expects an options object; calling without args triggers a deprecation warning.
+    // Passing an empty object keeps default behavior and removes the warning.
+    await Rapier.init({});
+    physicsWorld = new Rapier.World({ x: 0, y: 0, z: 0 });
+    eventQueue = new Rapier.EventQueue({ auto: true });
+    rapierModule = Rapier;
+  }
+  const world = new ECSWorld<GameEntity>();
+
+  const state: GameState = {
+    rapier: rapierModule,
+    physicsWorld,
+    eventQueue,
+    world,
+    colliderLookup: new Map(),
+    shipById: new Map(),
+    turretsByShip: new Map(),
+    nextEntityId: 1,
     nextExplosionId: 1,
     time: 0,
     queries: {
