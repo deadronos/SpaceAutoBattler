@@ -38,6 +38,10 @@ export function resetGame(state: GameState): void {
   state.blackboard.teamPosture.red = 'hold';
   state.blackboard.allyCentroid.blue.set(0, 0, 0);
   state.blackboard.allyCentroid.red.set(0, 0, 0);
+  state.blackboard.focusFire.blue.clear();
+  state.blackboard.focusFire.red.clear();
+  state.blackboard.visibleEnemies?.blue.clear();
+  state.blackboard.visibleEnemies?.red.clear();
   state.simulation.postStepMutations.length = 0;
 }
 

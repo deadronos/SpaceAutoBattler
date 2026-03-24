@@ -83,6 +83,7 @@ export function createHarnessState(options: {
     physicsWorld,
     eventQueue: {} as never,
     colliderLookup: new Map(),
+    shipById: new Map(ships.map((s) => [s.id, s as ShipEntity])),
     rapier,
     nextEntityId: ships.length + 1,
     time: 0,

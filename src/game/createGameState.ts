@@ -44,6 +44,7 @@ export async function createGameState(options: CreateGameStateOptions = {}): Pro
     eventQueue = new Rapier.EventQueue({ auto: true });
     rapierModule = Rapier;
   }
+
   const world = new ECSWorld<GameEntity>();
 
   const state: GameState = {
