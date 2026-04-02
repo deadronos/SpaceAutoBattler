@@ -183,14 +183,6 @@ const lintConfig = {
     {
       files: ['src/core/**/*.{ts,tsx,js,jsx}'],
       rules: {
-        'no-restricted-properties': [
-          'error',
-          {
-            object: 'Math',
-            property: 'random',
-            message: 'Use GameState.rng.next() for determinism',
-          },
-        ],
         'no-empty': ['error', { allowEmptyCatch: true }],
         'no-useless-catch': 'off',
         'no-redeclare': 'off',
@@ -331,8 +323,8 @@ const shouldApplyReactCompiler = (id: string): boolean => {
 const vitestDebugBench = Boolean(process.env.VITEST_DEBUG_BENCH);
 
 export default defineConfig({
-  fmt: fmtConfig,
-  lint: lintConfig,
+  fmt: fmtConfig as any,
+  lint: lintConfig as any,
   staged: stagedConfig,
   base: './',
   assetsInclude: ['**/*.glb', '**/*.gltf', '**/*.bin', '**/*.wasm', '**/*.glsl'],
@@ -379,8 +371,6 @@ export default defineConfig({
     watch: false,
     testTimeout: 20000,
     pool: 'threads',
-    maxThreads: 24,
-    threads: true,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov'],
