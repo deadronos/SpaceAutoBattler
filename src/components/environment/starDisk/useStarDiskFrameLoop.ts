@@ -1,4 +1,5 @@
 import { useFrame } from '@react-three/fiber';
+import { resolveMaterial } from './utils.js';
 import { useRef, type MutableRefObject } from 'react';
 import {
   DoubleSide,
@@ -97,12 +98,7 @@ interface CopilotMeshUserData {
   __copilot_origLayerMask?: number;
 }
 
-function resolveMaterial(material: Mesh['material']): Material | null {
-  if (Array.isArray(material)) {
-    return (material[0] as Material | undefined) ?? null;
-  }
-  return material ?? null;
-}
+
 
 function getCopilotUserData(mesh: Mesh): CopilotMeshUserData {
   if (!mesh.userData || typeof mesh.userData !== 'object') {

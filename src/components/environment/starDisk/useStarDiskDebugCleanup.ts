@@ -1,17 +1,13 @@
 import { useEffect, type MutableRefObject } from 'react';
 import type { Material, Mesh } from 'three';
+import { resolveMaterial } from './utils.js';
 
 interface CopilotMeshUserData {
   __copilot_origMaterial?: Material;
   __copilot_forcedMaterial?: Material;
 }
 
-function resolveMaterial(material: Mesh['material']): Material | null {
-  if (Array.isArray(material)) {
-    return (material[0] as Material | undefined) ?? null;
-  }
-  return material ?? null;
-}
+
 
 interface UseStarDiskDebugCleanupParams {
   debugEnabled: boolean;
