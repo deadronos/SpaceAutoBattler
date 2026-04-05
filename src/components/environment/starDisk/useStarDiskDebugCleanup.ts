@@ -7,8 +7,6 @@ interface CopilotMeshUserData {
   __copilot_forcedMaterial?: Material;
 }
 
-
-
 interface UseStarDiskDebugCleanupParams {
   debugEnabled: boolean;
   meshRef: MutableRefObject<Mesh | null>;

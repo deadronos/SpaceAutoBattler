@@ -53,7 +53,6 @@ export function shortestAngle(from: number, to: number): number {
   return diff;
 }
 
-
 /**
  * Solves the quadratic equation for intercepting a moving target.
  *

@@ -98,8 +98,6 @@ interface CopilotMeshUserData {
   __copilot_origLayerMask?: number;
 }
 
-
-
 function getCopilotUserData(mesh: Mesh): CopilotMeshUserData {
   if (!mesh.userData || typeof mesh.userData !== 'object') {
     // three.js always initialises userData to an object, but guard defensively
