@@ -48,7 +48,7 @@ export function computeInterceptHeadingVector(
   const shipVel = getShipVelocity(ship, TEMP_SHIP_VEL);
   const relativeVel = TEMP_REL_VEL.copy(targetVel).sub(shipVel);
 
-  let t = solveInterceptQuadratic(relativePos, relativeVel, projectileSpeed);
+  let t = solveInterceptQuadratic(relativePos, relativeVel, projectileSpeed, 'closest-approach');
   t = clamp(t, 0, 2.5);
   const future = out.copy(target.transform.position).addScaledVector(targetVel, t);
   future.sub(ship.transform.position);

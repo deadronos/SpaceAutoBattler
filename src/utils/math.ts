@@ -3,6 +3,8 @@ import type { Vector3 } from 'three';
  * Math utility functions to reduce duplication across the codebase.
  */
 
+export type InterceptFallbackMode = 'zero' | 'closest-approach';
+
 /**
  * Clamps a value between a minimum and maximum bound.
  *
@@ -59,12 +61,14 @@ export function shortestAngle(from: number, to: number): number {
  * @param {Vector3} relativePos - Target position minus shooter position.
  * @param {Vector3} relativeVel - Target velocity minus shooter velocity.
  * @param {number} projectileSpeed - Speed of the projectile.
+ * @param {InterceptFallbackMode} [fallbackMode='zero'] - Fallback to use when no exact intercept exists.
  * @returns {number} The time to intercept, or 0 if no valid intercept.
  */
 export function solveInterceptQuadratic(
   relativePos: Vector3,
   relativeVel: Vector3,
   projectileSpeed: number,
+  fallbackMode: InterceptFallbackMode = 'zero',
 ): number {
   const speed = Math.max(0, projectileSpeed);
   const a = relativeVel.lengthSq() - speed * speed;
@@ -86,6 +90,10 @@ export function solveInterceptQuadratic(
     let t = Math.min(t1, t2);
     if (t < 0) t = Math.max(t1, t2);
     return Math.max(0, t);
+  }
+
+  if (fallbackMode === 'closest-approach') {
+    return Math.max(0, -b / (2 * a));
   }
 
   return 0;
