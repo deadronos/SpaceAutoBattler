@@ -323,8 +323,8 @@ const shouldApplyReactCompiler = (id: string): boolean => {
 const vitestDebugBench = Boolean(process.env.VITEST_DEBUG_BENCH);
 
 export default defineConfig({
-  fmt: fmtConfig as any,
-  lint: lintConfig as any,
+  fmt: fmtConfig,
+  lint: lintConfig,
   staged: stagedConfig,
   base: './',
   assetsInclude: ['**/*.glb', '**/*.gltf', '**/*.bin', '**/*.wasm', '**/*.glsl'],
@@ -395,4 +395,8 @@ export default defineConfig({
     },
   },
   build: createOutputConfig(isProdBuild),
+} as UserConfig & {
+  fmt: typeof fmtConfig;
+  lint: typeof lintConfig;
+  staged: typeof stagedConfig;
 });
