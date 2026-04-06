@@ -1,6 +1,9 @@
+import type { Vector3 } from 'three';
 /**
  * Math utility functions to reduce duplication across the codebase.
  */
+
+export type InterceptFallbackMode = 'zero' | 'closest-approach';
 
 /**
  * Clamps a value between a minimum and maximum bound.
@@ -50,4 +53,48 @@ export function shortestAngle(from: number, to: number): number {
   while (diff > Math.PI) diff -= 2 * Math.PI;
   while (diff < -Math.PI) diff += 2 * Math.PI;
   return diff;
+}
+
+/**
+ * Solves the quadratic equation for intercepting a moving target.
+ *
+ * @param {Vector3} relativePos - Target position minus shooter position.
+ * @param {Vector3} relativeVel - Target velocity minus shooter velocity.
+ * @param {number} projectileSpeed - Speed of the projectile.
+ * @param {InterceptFallbackMode} [fallbackMode='zero'] - Fallback to use when no exact intercept exists.
+ * @returns {number} The time to intercept, or 0 if no valid intercept.
+ */
+export function solveInterceptQuadratic(
+  relativePos: Vector3,
+  relativeVel: Vector3,
+  projectileSpeed: number,
+  fallbackMode: InterceptFallbackMode = 'zero',
+): number {
+  const speed = Math.max(0, projectileSpeed);
+  const a = relativeVel.lengthSq() - speed * speed;
+  const b = 2 * relativePos.dot(relativeVel);
+  const c = relativePos.lengthSq();
+
+  if (Math.abs(a) < 1e-6) {
+    if (Math.abs(b) > 1e-6) {
+      return Math.max(0, -c / b);
+    }
+    return 0;
+  }
+
+  const discriminant = b * b - 4 * a * c;
+  if (discriminant >= 0) {
+    const sqrt = Math.sqrt(discriminant);
+    const t1 = (-b - sqrt) / (2 * a);
+    const t2 = (-b + sqrt) / (2 * a);
+    let t = Math.min(t1, t2);
+    if (t < 0) t = Math.max(t1, t2);
+    return Math.max(0, t);
+  }
+
+  if (fallbackMode === 'closest-approach') {
+    return Math.max(0, -b / (2 * a));
+  }
+
+  return 0;
 }

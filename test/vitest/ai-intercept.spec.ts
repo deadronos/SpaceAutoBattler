@@ -264,4 +264,24 @@ describe('selectIntent with new intents', () => {
     expect(result.length()).toBeGreaterThan(0);
     expect(linvelSpy).not.toHaveBeenCalled();
   });
+
+  it('uses closest approach when the target cannot be intercepted exactly', () => {
+    const interceptor = createShip({ id: 13, team: 'blue', position: new Vector3(0, 0, 0) });
+    interceptor.ship.projectileSpeed = 10;
+    interceptor.ship.speed = 10;
+
+    const target = createShip({
+      id: 14,
+      team: 'red',
+      position: new Vector3(100, 0, 0),
+      velocity: new Vector3(-5, 15, 0),
+    });
+
+    const heading = computeInterceptHeadingVector(interceptor, target, new Vector3());
+    const directHeading = new Vector3(100, 0, 0).normalize();
+
+    expect(heading.length()).toBeCloseTo(1, 5);
+    expect(heading.y).toBeGreaterThan(0.2);
+    expect(heading.distanceTo(directHeading)).toBeGreaterThan(0.1);
+  });
 });

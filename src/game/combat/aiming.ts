@@ -1,6 +1,6 @@
 import { Vector3 } from 'three';
 import type { ShipEntity } from '../../types/index.js';
-import { clamp } from '../../utils/math.js';
+import { clamp, solveInterceptQuadratic } from '../../utils/math.js';
 import { getForwardFromQuaternion } from '../../utils/vector.js';
 
 const TEMP_REL_POS = new Vector3();
@@ -48,25 +48,7 @@ export function computeInterceptHeadingVector(
   const shipVel = getShipVelocity(ship, TEMP_SHIP_VEL);
   const relativeVel = TEMP_REL_VEL.copy(targetVel).sub(shipVel);
 
-  const a = relativeVel.lengthSq() - projectileSpeed * projectileSpeed;
-  const b = 2 * relativeVel.dot(relativePos);
-  const c = relativePos.lengthSq();
-
-  let t = Math.max(0, -b / (2 * a));
-  if (Math.abs(a) < 1e-5) {
-    t = b !== 0 ? Math.max(0, -c / b) : 0;
-  } else {
-    const discriminant = b * b - 4 * a * c;
-    if (discriminant >= 0) {
-      const sqrt = Math.sqrt(discriminant);
-      const t1 = (-b - sqrt) / (2 * a);
-      const t2 = (-b + sqrt) / (2 * a);
-      t = Math.min(t1, t2);
-      if (t < 0) t = Math.max(t1, t2);
-      if (t < 0) t = 0;
-    }
-  }
-
+  let t = solveInterceptQuadratic(relativePos, relativeVel, projectileSpeed, 'closest-approach');
   t = clamp(t, 0, 2.5);
   const future = out.copy(target.transform.position).addScaledVector(targetVel, t);
   future.sub(ship.transform.position);

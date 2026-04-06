@@ -9,7 +9,7 @@ export {
   deferSetAngularDamping,
   deferSetColliderFriction,
   deferSetColliderRestitution,
-} from './deferWrappers.js';
+} from './wrappers.js';
 export {
   postSetNextKinematicTranslation,
   postSetNextKinematicRotation,
@@ -20,4 +20,4 @@ export {
   postSetAngularDamping,
   postSetColliderFriction,
   postSetColliderRestitution,
-} from './postWrappers.js';
+} from './wrappers.js';

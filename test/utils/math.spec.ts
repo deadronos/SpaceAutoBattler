@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vite-plus/test';
-import { clamp, clamp01, clampRatio, shortestAngle } from '../../src/utils/math.js';
+import { Vector3 } from 'three';
+import {
+  clamp,
+  clamp01,
+  clampRatio,
+  shortestAngle,
+  solveInterceptQuadratic,
+} from '../../src/utils/math.js';
 
 describe('math utils', () => {
   describe('clamp', () => {
@@ -60,6 +67,31 @@ describe('math utils', () => {
     it('handles large angles', () => {
       expect(Math.abs(shortestAngle(0, Math.PI * 3))).toBeCloseTo(Math.PI);
       expect(shortestAngle(0, Math.PI * 2 + 0.5)).toBeCloseTo(0.5);
+    });
+  });
+
+  describe('solveInterceptQuadratic', () => {
+    it('returns the exact intercept time when a solution exists', () => {
+      const result = solveInterceptQuadratic(new Vector3(10, 0, 0), new Vector3(0, 2, 0), 6);
+
+      expect(result).toBeGreaterThan(0);
+    });
+
+    it('returns zero by default when no exact intercept exists', () => {
+      const result = solveInterceptQuadratic(new Vector3(100, 0, 0), new Vector3(-5, 15, 0), 10);
+
+      expect(result).toBe(0);
+    });
+
+    it('can fall back to the closest-approach time when requested', () => {
+      const result = solveInterceptQuadratic(
+        new Vector3(100, 0, 0),
+        new Vector3(-5, 15, 0),
+        10,
+        'closest-approach',
+      );
+
+      expect(result).toBeCloseTo(10 / 3, 6);
     });
   });
 });

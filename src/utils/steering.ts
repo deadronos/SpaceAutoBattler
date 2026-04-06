@@ -1,5 +1,5 @@
 import { Quaternion, Vector3 } from 'three';
-import { clamp } from './math.js';
+import { clamp, solveInterceptQuadratic } from './math.js';
 
 /** Global forward vector (0, 0, 1). */
 export const FORWARD = new Vector3(0, 0, 1);
@@ -166,25 +166,7 @@ export function computeInterceptDirection(
     return safeNormalize(out, TEMP_INTERCEPT, fallback);
   }
 
-  const a = targetVelocity.lengthSq() - speed * speed;
-  const b = 2 * TEMP_INTERCEPT.dot(targetVelocity);
-  const c = TEMP_INTERCEPT.lengthSq();
-  let t = 0;
-
-  if (Math.abs(a) < 1e-6) {
-    if (Math.abs(b) > 1e-6) {
-      t = -c / b;
-    }
-  } else {
-    const discriminant = b * b - 4 * a * c;
-    if (discriminant >= 0) {
-      const sqrt = Math.sqrt(discriminant);
-      const t1 = (-b - sqrt) / (2 * a);
-      const t2 = (-b + sqrt) / (2 * a);
-      t = Math.min(t1, t2);
-      if (t < 0) t = Math.max(t1, t2);
-    }
-  }
+  const t = solveInterceptQuadratic(TEMP_INTERCEPT, targetVelocity, speed);
 
   if (!Number.isFinite(t) || t <= 0) {
     return safeNormalize(out, TEMP_INTERCEPT, fallback);
