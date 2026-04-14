@@ -23,6 +23,7 @@ import { StarsField } from './layers/StarsField.js';
 import { WorkerShipsLayer } from './layers/WorkerShipsLayer.js';
 import { installWebGLDebugHooks } from '../renderer/webglDebugWrapper.js';
 import { shouldRenderWorkerShips, shouldRenderWorkerShipsOnly } from '../game/SimulationBridge.js';
+import { reportWebGLError } from '../utils/errorReporting.js';
 
 interface BattleSceneContentProps {
   ppEnabled: boolean;
@@ -116,18 +117,7 @@ export function Battlefield(): React.ReactElement {
         far: CAMERA_DEFAULTS.far,
       }}
       dpr={[0.5, 2]}
-      onCreated={({ gl }) => {
-        gl.outputColorSpace = SRGBColorSpace;
-        gl.toneMapping = NoToneMapping;
-        gl.toneMappingExposure = 1;
-        // Install dev-only WebGL debug hooks to capture shader compile/link logs
-        // (no-op in production unless ?copilot_debug=1 is present)
-        try {
-          installWebGLDebugHooks(gl as unknown as WebGLRenderer);
-        } catch {
-          // ignore debug-install failures
-        }
-      }}
+      onCreated={({ gl }) => configureBattlefieldRenderer(gl as unknown as WebGLRenderer)}
     >
       <StarsField />
       <BattleSceneContent ppEnabled={ppEnabled} />
@@ -135,4 +125,15 @@ export function Battlefield(): React.ReactElement {
       <PerfMonitorOverlay />
     </Canvas>
   );
+}
+
+export function configureBattlefieldRenderer(gl: WebGLRenderer): void {
+  gl.outputColorSpace = SRGBColorSpace;
+  gl.toneMapping = NoToneMapping;
+  gl.toneMappingExposure = 1;
+  try {
+    installWebGLDebugHooks(gl);
+  } catch (error) {
+    reportWebGLError('installWebGLDebugHooks', error);
+  }
 }

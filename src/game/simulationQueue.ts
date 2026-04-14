@@ -1,6 +1,11 @@
 import type { GameState, DeferredMutation } from '../types/index.js';
 import { isCopilotDebugEnabled } from '../utils/copilotDebug.js';
 import { appendCappedMutable } from '../utils/cappedBuffer.js';
+import {
+  ErrorCategory,
+  reportFatalGameError,
+  reportRecoverableGameError,
+} from './errors.js';
 
 export interface RapierStepPanicSnapshot {
   tickIndex: number;
@@ -35,7 +40,16 @@ const stringifyUnknown = (value: unknown, fallback: string): string => {
   }
   try {
     return JSON.stringify(value) ?? fallback;
-  } catch {
+  } catch (error) {
+    reportRecoverableGameError(
+      ErrorCategory.Query,
+      'Failed to stringify simulation diagnostic value',
+      {
+        source: 'simulationQueue.stringifyUnknown',
+        code: 'simulation-diagnostic-stringify',
+      },
+      error,
+    );
     return fallback;
   }
 };
@@ -52,8 +66,16 @@ export function publishRapierPanicSnapshot(snapshot: RapierStepPanicSnapshot): v
     const buffer = win.__copilot_rapierPanics ?? [];
     appendCappedMutable(buffer, snapshot, MAX_RAPIER_PANIC_SNAPSHOTS);
     win.__copilot_rapierPanics = buffer;
-  } catch {
-    /* ignore debug exposure errors */
+  } catch (error) {
+    reportRecoverableGameError(
+      ErrorCategory.Query,
+      'Failed to publish Rapier panic snapshot',
+      {
+        source: 'simulationQueue.publishRapierPanicSnapshot',
+        code: 'rapier-panic-publish',
+      },
+      error,
+    );
   }
 }
 
@@ -76,6 +98,17 @@ export function recordRapierStepPanic(state: GameState, error: unknown): void {
   diagnostics.lastStepPanicMessage = message;
   diagnostics.lastStepPanicStack = stack;
   diagnostics.lastStepPanicTimestamp = timestamp;
+
+  reportFatalGameError(
+    ErrorCategory.Physics,
+    'Rapier step panic',
+    {
+      source: 'simulationQueue.recordRapierStepPanic',
+      code: 'rapier-step-panic',
+      context: { tickIndex },
+    },
+    error,
+  );
 
   publishRapierPanicSnapshot({
     tickIndex,
@@ -104,6 +137,17 @@ export function recordSubsystemFailure(
     error instanceof Error ? error.message : stringifyUnknown(error, 'Subsystem failure');
   diagnostics.lastSubsystemFailureStack =
     error instanceof Error ? (error.stack ?? undefined) : undefined;
+
+  reportRecoverableGameError(
+    ErrorCategory.Physics,
+    `Subsystem ${subsystem} failed`,
+    {
+      source: 'simulationQueue.recordSubsystemFailure',
+      code: 'subsystem-failure',
+      context: { subsystem, tickIndex },
+    },
+    error,
+  );
 
   publishRapierPanicSnapshot({
     tickIndex,
@@ -168,6 +212,16 @@ function flushQueue(state: GameState, queue: DeferredMutation[], tag: 'pre' | 'p
     } catch (error) {
       console.warn(`[TASK230] ${tag}-physics deferred mutation failed`, error);
       recordDeferredFailure(state, error);
+      reportRecoverableGameError(
+        ErrorCategory.Physics,
+        `${tag}-physics deferred mutation failed`,
+        {
+          source: 'simulationQueue.flushQueue',
+          code: 'deferred-mutation-failure',
+          context: { tag, tickIndex: state.simulation.lastTickIndex },
+        },
+        error,
+      );
     }
   }
 }

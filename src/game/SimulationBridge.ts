@@ -5,6 +5,7 @@ import type {
   WorkerToMainMessage,
 } from '../worker/protocol.js';
 import { createTransformSoALayout, createTransformSoAViews } from '../worker/transformsLayout.js';
+import { reportConfigError, reportLifecycleError } from '../utils/errorReporting.js';
 
 export function shouldEnableWorkerSimulation(): boolean {
   try {
@@ -14,7 +15,8 @@ export function shouldEnableWorkerSimulation(): boolean {
     const render =
       params.get('sim_worker_render') === '1' || params.get('sim_worker_render') === 'true';
     return enabled || render;
-  } catch {
+  } catch (error) {
+    reportConfigError('sim_worker', error);
     return false;
   }
 }
@@ -29,7 +31,8 @@ export function shouldRenderWorkerShips(): boolean {
       params.get('sim_worker_render_only') === '1' ||
       params.get('sim_worker_render_only') === 'true';
     return render || renderOnly;
-  } catch {
+  } catch (error) {
+    reportConfigError('sim_worker_render', error);
     return false;
   }
 }
@@ -42,7 +45,8 @@ export function shouldRenderWorkerShipsOnly(): boolean {
       params.get('sim_worker_render_only') === '1' ||
       params.get('sim_worker_render_only') === 'true'
     );
-  } catch {
+  } catch (error) {
+    reportConfigError('sim_worker_render_only', error);
     return false;
   }
 }
@@ -52,7 +56,8 @@ export function shouldDebugWorkerSimulation(): boolean {
     if (typeof window === 'undefined') return false;
     const params = new URLSearchParams(window.location.search);
     return params.get('sim_worker_debug') === '1' || params.get('sim_worker_debug') === 'true';
-  } catch {
+  } catch (error) {
+    reportConfigError('sim_worker_debug', error);
     return false;
   }
 }
@@ -113,8 +118,8 @@ export class SimulationBridge {
         if (this.debugEnabled) {
           try {
             globalThis.console?.log?.('[SimulationBridge] worker ready', message);
-          } catch {
-            // ignore
+          } catch (error) {
+            reportLifecycleError('update', 'SimulationBridge', undefined, error);
           }
         }
         this.readyResolve?.();
@@ -134,8 +139,8 @@ export class SimulationBridge {
         if (this.debugEnabled) {
           try {
             globalThis.console?.error?.('[SimulationBridge] worker error', error);
-          } catch {
-            // ignore
+          } catch (error) {
+            reportLifecycleError('update', 'SimulationBridge', undefined, error);
           }
         }
         return;
@@ -144,8 +149,8 @@ export class SimulationBridge {
       if (this.debugEnabled && message.type === 'pong') {
         try {
           globalThis.console?.log?.('[SimulationBridge] pong', message);
-        } catch {
-          // ignore
+        } catch (error) {
+          reportLifecycleError('update', 'SimulationBridge', undefined, error);
         }
       }
 
@@ -177,8 +182,8 @@ export class SimulationBridge {
                 created: message.created.length,
                 destroyed: message.destroyed.length,
               });
-            } catch {
-              // ignore
+            } catch (error) {
+              reportLifecycleError('update', 'SimulationBridge', undefined, error);
             }
           }
         }
@@ -205,8 +210,8 @@ export class SimulationBridge {
       if (this.debugEnabled) {
         try {
           globalThis.console?.error?.('[SimulationBridge] worker.onerror', event);
-        } catch {
-          // ignore
+        } catch (error) {
+          reportLifecycleError('update', 'SimulationBridge', undefined, error);
         }
       }
     };
@@ -335,8 +340,8 @@ export class SimulationBridge {
   dispose(): void {
     try {
       this.post({ type: 'shutdown' });
-    } catch {
-      // ignore
+    } catch (error) {
+      reportLifecycleError('destroy', 'SimulationWorker', undefined, error);
     }
 
     this.worker.terminate();

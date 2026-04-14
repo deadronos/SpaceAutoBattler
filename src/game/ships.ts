@@ -8,6 +8,7 @@ import { calculateXpForLevel } from '../config/progression.js';
 import { generateCaptain, createSubsystems, createLevelBonusState } from './progression.js';
 import { createKinematicBodyWithCollider, registerColliderHandle } from './utils/physicsFactory.js';
 import { applyRangeVariance } from './utils/rangePolicy.js';
+import { reportLifecycleError } from '../utils/errorReporting.js';
 
 export function spawnShip(state: GameState, blueprint: ShipBlueprint): ShipEntity {
   const stats = SHIP_STATS[blueprint.hull];
@@ -123,8 +124,8 @@ export function spawnShip(state: GameState, blueprint: ShipBlueprint): ShipEntit
     registerColliderHandle(state, tCollider, turretEntity);
     try {
       registerTurret(state, registered.id, turretEntity);
-    } catch {
-      // defensive: ignore map issues
+    } catch (error) {
+      reportLifecycleError('create', 'TurretRegistry', registered.id, error);
     }
   });
   return registered;

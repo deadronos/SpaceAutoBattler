@@ -4,6 +4,7 @@ import { useGameState } from '../game/context.js';
 import { updateGame } from '../game/systems.js';
 import { useUiStore } from '../game/uiStore.js';
 import { shouldRenderWorkerShipsOnly } from '../game/SimulationBridge.js';
+import { reportPhysicsError } from '../utils/errorReporting.js';
 
 export const MAX_ALLOWED_SIMULATION_SUBSTEPS = 5;
 
@@ -70,8 +71,8 @@ export function BattlefieldSystems(): React.ReactElement {
       if (params && typeof params.dt === 'number') {
         params.dt = step;
       }
-    } catch {
-      /* ignore */
+    } catch (error) {
+      reportPhysicsError('integrationParameters.dt', undefined, error);
     }
 
     const loopStart = performance.now();

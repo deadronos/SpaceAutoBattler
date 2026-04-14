@@ -126,8 +126,8 @@ export function GameProvider({ children, fallback = null }: GameProviderProps): 
     void bridge.ready().catch((error) => {
       try {
         globalThis.console?.error?.('[GameProvider] worker init failed', error);
-      } catch {
-        // ignore
+      } catch (logError) {
+        reportConfigError('console.error.worker-init', logError);
       }
       reportE2EError('worker-init', error);
     });
