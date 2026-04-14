@@ -35,8 +35,7 @@ export function Hud(): React.ReactElement {
 
   const [blue, red] = useMemo(() => summarize(ships), [ships]);
   const hudHealthBarsEnabled = useUiStore((s) => s.hudHealthBarsEnabled);
-  const showDevErrors =
-    typeof process === 'undefined' ? true : process.env?.NODE_ENV !== 'production';
+  const showDevErrors = import.meta.env.DEV;
 
   return (
     <div className="hud">

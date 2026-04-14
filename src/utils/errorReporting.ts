@@ -76,7 +76,11 @@ export function reportError(
   }
 
   if (typeof process !== 'undefined' && process.env?.NODE_ENV === 'development') {
-    console.warn(`[${category}] ${message}`, context ?? '', error ?? '');
+    try {
+      console.warn(`[${category}] ${message}`, context ?? '', error ?? '');
+    } catch {
+      // Logging must never interfere with the caller's recovery path.
+    }
   }
 }
 

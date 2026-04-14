@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vite-plus/test';
+import { describe, it, expect, beforeEach, vi } from 'vite-plus/test';
 import {
   ErrorCategory,
   reportError,
@@ -68,6 +68,28 @@ describe('errorReporting', () => {
 
       const reports = getRecentErrors(200);
       expect(reports.length).toBeLessThanOrEqual(100);
+    });
+
+    it('does not throw if dev logging fails', () => {
+      const originalNodeEnv = process.env.NODE_ENV;
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {
+        throw new Error('broken console');
+      });
+
+      try {
+        process.env.NODE_ENV = 'development';
+        setErrorReportingEnabled(true);
+
+        expect(() => reportError(ErrorCategory.Physics, 'test error')).not.toThrow();
+        expect(getErrorCounts()[ErrorCategory.Physics]).toBe(1);
+      } finally {
+        warnSpy.mockRestore();
+        if (originalNodeEnv === undefined) {
+          delete process.env.NODE_ENV;
+        } else {
+          process.env.NODE_ENV = originalNodeEnv;
+        }
+      }
     });
   });
 
