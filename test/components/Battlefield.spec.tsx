@@ -1,7 +1,13 @@
 import React from 'react';
-import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { cleanup, render } from '@testing-library/react';
 import { AxesHelper } from 'three';
+import {
+  ErrorCategory,
+  getErrorCounts,
+  resetErrorCounts,
+  setErrorReportingEnabled,
+} from '../../src/utils/errorReporting.js';
 
 const mockState = {
   queries: {
@@ -58,7 +64,7 @@ vi.mock('../../src/components/layers/WorkerShipsLayer.js', () => ({
   WorkerShipsLayer: () => null,
 }));
 vi.mock('../../src/renderer/webglDebugWrapper.js', () => ({
-  installWebGLDebugHooks: () => undefined,
+  installWebGLDebugHooks: vi.fn(),
 }));
 vi.mock('../../src/game/SimulationBridge.js', () => ({
   shouldRenderWorkerShips: () => false,
@@ -81,6 +87,11 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
+beforeEach(() => {
+  resetErrorCounts();
+  setErrorReportingEnabled(true);
+});
+
 describe('Battlefield', () => {
   it('creates AxesHelper once across rerenders', async () => {
     const { Battlefield } = await import('../../src/components/Battlefield.js');
@@ -92,5 +103,22 @@ describe('Battlefield', () => {
     const axesHelperCtor = vi.mocked(AxesHelper);
     expect(axesHelperCtor).toHaveBeenCalledTimes(1);
     expect(axesHelperCtor).toHaveBeenCalledWith(200);
+  });
+
+  it('reports WebGL hook installation failures', async () => {
+    const { configureBattlefieldRenderer } = await import('../../src/components/Battlefield.js');
+    const { installWebGLDebugHooks } = await import('../../src/renderer/webglDebugWrapper.js');
+
+    vi.mocked(installWebGLDebugHooks).mockImplementation(() => {
+      throw new Error('hook install failed');
+    });
+
+    configureBattlefieldRenderer({
+      outputColorSpace: undefined,
+      toneMapping: undefined,
+      toneMappingExposure: 0,
+    } as any);
+
+    expect(getErrorCounts()[ErrorCategory.WebGL]).toBe(1);
   });
 });

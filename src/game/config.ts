@@ -1,4 +1,5 @@
 import { clamp } from '../utils/math.js';
+import { reportConfigError } from '../utils/errorReporting.js';
 
 // Centralized world configuration
 // A cubic world sized WORLD_SIZE^3 centered at the origin.
@@ -59,7 +60,8 @@ function readEnv<T extends string | boolean>(
 
     // String return
     return raw as T;
-  } catch {
+  } catch (error) {
+    reportConfigError(name, error);
     return defaultValue;
   }
 }
@@ -79,8 +81,8 @@ function readQueryParam(name: string): string | null {
       const params = new URLSearchParams(window.location.search);
       return params.get(name);
     }
-  } catch {
-    // Ignore errors in non-browser environments
+  } catch (error) {
+    reportConfigError(name, error);
   }
   return null;
 }
@@ -106,8 +108,8 @@ if (!REQUESTED_AI_V2_DEFAULT && typeof globalThis !== 'undefined') {
     globalThis.console?.warn?.(
       'AI v2 fallback has been removed; ignoring AI_V2_DEFAULT=false and forcing v2 on.',
     );
-  } catch {
-    // ignore logging failures
+  } catch (error) {
+    reportConfigError('AI_V2_DEFAULT', error);
   }
 }
 const TICK_RATE_BASE = 12;
@@ -259,8 +261,8 @@ function resolveUiStore(): UiStoreLike | null {
     if (possibleStore && typeof (possibleStore as { getState?: unknown }).getState === 'function') {
       return possibleStore as UiStoreLike;
     }
-  } catch {
-    // ignore resolution errors in non-browser environments
+  } catch (error) {
+    reportConfigError('__spaceAutobattlerUiStore', error);
   }
   return null;
 }
@@ -288,8 +290,8 @@ export function getEffectiveAIConfig() {
       tickRateHzExperiment: uiState.aiTickRateExperimentEnabled ?? AI_CONFIG.tickRateHzExperiment,
       rangePolicy: uiState.aiRangePolicy ?? AI_CONFIG.rangePolicy,
     };
-  } catch {
-    // Fallback to static config if UI store state cannot be read
+  } catch (error) {
+    reportConfigError('uiStore.getState', error);
     return AI_CONFIG;
   }
 }

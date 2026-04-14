@@ -4,6 +4,7 @@ import { recordBandSample } from '../../metrics.js';
 import { TEMP_DIR, TEMP_POS, TEMP_QUAT, TEMP_REL_POS } from './sharedTemps.js';
 import { handleMissingAi } from './aiSafety.js';
 import { getForwardFromQuaternion } from '../../../utils/vector.js';
+import { reportQueryError } from '../../../utils/errorReporting.js';
 
 /** Represents the decision output of the ship AI. */
 export interface ShipDecision {
@@ -77,8 +78,8 @@ export function executeShipAi(state: GameState, ship: ShipEntity, delta: number)
         heading.copy(currentForward).applyQuaternion(TEMP_QUAT).normalize();
       }
     }
-  } catch {
-    // fallback: keep heading as-is
+  } catch (error) {
+    reportQueryError('executeShipAi.motion', error);
   }
 
   const thrust = Math.min(1, Math.max(0, command.thrust));
@@ -97,8 +98,8 @@ export function executeShipAi(state: GameState, ship: ShipEntity, delta: number)
       const satisfied = distance >= min && distance <= max;
       recordBandSample(state.ai.metrics, ship.ship.hull, satisfied);
     }
-  } catch {
-    // metrics are best-effort; ignore failures in lightweight harnesses
+  } catch (error) {
+    reportQueryError('executeShipAi.metrics', error);
   }
 
   return {

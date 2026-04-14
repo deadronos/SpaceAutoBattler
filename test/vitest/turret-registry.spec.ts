@@ -3,11 +3,19 @@ import { createGameState, destroyEntity } from '../../src/game/state.js';
 import { spawnShip } from '../../src/game/ships.js';
 import { Vector3 } from 'three';
 import * as registry from '../../src/game/turretRegistry.js';
+import {
+  ErrorCategory,
+  getErrorCounts,
+  resetErrorCounts,
+  setErrorReportingEnabled,
+} from '../../src/utils/errorReporting.js';
 
 describe('turret registry integration', () => {
   let state: any;
 
   beforeEach(async () => {
+    resetErrorCounts();
+    setErrorReportingEnabled(true);
     state = await createGameState();
   });
 
@@ -63,5 +71,19 @@ describe('turret registry integration', () => {
 
     rSpy.mockRestore();
     uSpy.mockRestore();
+  });
+
+  it('reports lifecycle errors when registry access throws', () => {
+    const brokenState = {
+      turretsByShip: {
+        get() {
+          throw new Error('registry unavailable');
+        },
+      },
+    };
+
+    registry.registerTurret(brokenState as any, 17, {} as any);
+
+    expect(getErrorCounts()[ErrorCategory.Lifecycle]).toBe(1);
   });
 });

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import type { DirectionalLight } from 'three';
 import { Object3D, Vector3 } from 'three';
 import type { StarLightConfig } from '../../config/environment.js';
+import { reportLifecycleError } from '../../utils/errorReporting.js';
 
 interface StarLightProps {
   config: StarLightConfig;
@@ -54,8 +55,8 @@ export function StarLight({
       try {
         // oxlint-disable-next-line @typescript-eslint/no-explicit-any
         (externalLightRef as any).current = light;
-      } catch {
-        // noop: if external ref is read-only we ignore
+      } catch (error) {
+        reportLifecycleError('update', 'StarLightRef', undefined, error);
       }
     }
   }, [target, externalLightRef, config.distance]);

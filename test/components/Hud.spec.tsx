@@ -35,6 +35,9 @@ vi.mock('../../src/components/HudToggleDrawer', () => ({
   SettingsDrawer: () => <div data-testid="settings-drawer" />,
   DebugDrawer: () => <div data-testid="debug-drawer" />,
 }));
+vi.mock('../../src/debug/ErrorCountsPanel.js', () => ({
+  ErrorCountsPanel: () => <div data-testid="error-counts-panel" />,
+}));
 
 describe('Hud', () => {
   beforeEach(() => {
@@ -77,5 +80,18 @@ describe('Hud', () => {
     expect(progressBars[1].getAttribute('aria-valuenow')).toBe('25');
     expect(progressBars[1].getAttribute('aria-valuemax')).toBe('100');
     expect(progressBars[1].getAttribute('aria-label')).toBe('Reavers hull integrity');
+  });
+
+  it('renders the dev error indicator panel', () => {
+    (GameContext.useOptionalGameState as any).mockReturnValue({
+      queries: {
+        ships: {},
+      },
+    });
+    (ArchetypeHooks.useArchetypeEntities as any).mockReturnValue([]);
+
+    render(<Hud />);
+
+    expect(screen.getByTestId('error-counts-panel')).toBeTruthy();
   });
 });

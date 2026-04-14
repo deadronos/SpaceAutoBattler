@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { GameState } from '../types/index.js';
 import { AI_CONFIG } from './config.js';
+import { reportConfigError } from '../utils/errorReporting.js';
 
 let warnedAiDisableToggle = false;
 function warnAiDisable(): void {
@@ -8,8 +9,8 @@ function warnAiDisable(): void {
   warnedAiDisableToggle = true;
   try {
     globalThis.console?.warn?.('AI v2 cannot be disabled; ignoring toggle request.');
-  } catch {
-    // ignore logging issues in non-browser runtimes
+  } catch (error) {
+    reportConfigError('console.warn.aiV2Disable', error);
   }
 }
 

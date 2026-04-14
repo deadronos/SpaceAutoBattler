@@ -5,6 +5,7 @@ import {
   deferSetNextKinematicTranslation,
 } from '../../physics/safeKinematics.js';
 import { findNearestEnemy } from '../../utils/targetSelection.js';
+import { reportConfigError } from '../../../utils/errorReporting.js';
 
 const missingAiShips = new Set<number>();
 let warnedAiDisableInShips = false;
@@ -21,8 +22,8 @@ export function ensureAiEnabled(state: GameState): void {
   warnedAiDisableInShips = true;
   try {
     globalThis.console?.warn?.('AI v2 fallback removed: forcing AI enabled for all ships.');
-  } catch {
-    // ignore logging failures in headless tests
+  } catch (error) {
+    reportConfigError('console.warn.aiForceEnable', error);
   }
 }
 
@@ -68,8 +69,8 @@ export function handleMissingAi(state: GameState, ship: ShipEntity): ShipEntity 
       globalThis.console?.error?.(
         `Ship ${ship.id} is missing an AI component; keeping it stationary.`,
       );
-    } catch {
-      // ignore logging failures
+    } catch (error) {
+      reportConfigError('console.error.missingAi', error);
     }
   }
   keepShipStationary(state, ship);

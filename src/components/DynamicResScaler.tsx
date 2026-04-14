@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import type React from 'react';
+import { reportWebGLError } from '../utils/errorReporting.js';
 
 export type DynamicResScalerOptions = {
   minDpr?: number;
@@ -59,16 +60,16 @@ export default function DynamicResScaler({
       gl.setPixelRatio(initialDpr);
       // ensure drawing buffer size is updated
       gl.setSize(size.width, size.height, false);
-    } catch {
-      // ignore in non-browser environments
+    } catch (error) {
+      reportWebGLError('dynamicResScaler.mount', error);
     }
     return () => {
       // Reset to device pixel ratio on unmount
       try {
         gl.setPixelRatio(typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1);
         gl.setSize(size.width, size.height, false);
-      } catch {
-        // ignore
+      } catch (error) {
+        reportWebGLError('dynamicResScaler.unmount', error);
       }
     };
     // oxlint-disable-next-line react-hooks/exhaustive-deps
@@ -115,8 +116,8 @@ export default function DynamicResScaler({
         gl.setPixelRatio(nextDpr);
         // ensure drawing buffer size is updated without changing canvas style
         gl.setSize(size.width, size.height, false);
-      } catch {
-        // ignore errors in non-browser/test envs
+      } catch (error) {
+        reportWebGLError('dynamicResScaler.adjust', error);
       }
     }
   });

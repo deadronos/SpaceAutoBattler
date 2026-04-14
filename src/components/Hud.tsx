@@ -11,6 +11,7 @@ import { useUiStore } from '../game/uiStore.js';
 import { SettingsDrawer, DebugDrawer } from './HudToggleDrawer.js';
 import { formatPercentRounded } from '../utils/format.js';
 import { clamp } from '../utils/math.js';
+import { ErrorCountsPanel } from '../debug/ErrorCountsPanel.js';
 
 interface TeamSummary {
   team: 'blue' | 'red';
@@ -34,6 +35,8 @@ export function Hud(): React.ReactElement {
 
   const [blue, red] = useMemo(() => summarize(ships), [ships]);
   const hudHealthBarsEnabled = useUiStore((s) => s.hudHealthBarsEnabled);
+  const showDevErrors =
+    typeof process === 'undefined' ? true : process.env?.NODE_ENV !== 'production';
 
   return (
     <div className="hud">
@@ -66,6 +69,7 @@ export function Hud(): React.ReactElement {
           </p>
         )}
       </div>
+      {showDevErrors ? <ErrorCountsPanel /> : null}
     </div>
   );
 }
