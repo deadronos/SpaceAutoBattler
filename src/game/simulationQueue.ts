@@ -1,11 +1,7 @@
 import type { GameState, DeferredMutation } from '../types/index.js';
 import { isCopilotDebugEnabled } from '../utils/copilotDebug.js';
 import { appendCappedMutable } from '../utils/cappedBuffer.js';
-import {
-  ErrorCategory,
-  reportFatalGameError,
-  reportRecoverableGameError,
-} from './errors.js';
+import { ErrorCategory, reportFatalGameError, reportRecoverableGameError } from './errors.js';
 
 export interface RapierStepPanicSnapshot {
   tickIndex: number;

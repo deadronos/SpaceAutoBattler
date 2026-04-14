@@ -68,4 +68,3 @@ export {
   resetErrorCounts as resetGameErrorReporting,
   setErrorReportingEnabled as setGameErrorReportingEnabled,
 };
-
