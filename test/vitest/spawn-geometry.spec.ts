@@ -85,8 +85,8 @@ describe('spawnInitialFleets', () => {
       const mid = Math.floor(absoluteHeights.length / 2);
       const median =
         absoluteHeights.length % 2 === 1
-          ? absoluteHeights[mid]
-          : (absoluteHeights[mid - 1] + absoluteHeights[mid]) * 0.5;
+          ? absoluteHeights[mid]!
+          : (absoluteHeights[mid - 1]! + absoluteHeights[mid]!) * 0.5;
       expect(median).toBeGreaterThan(200);
     } finally {
       disposeGameState(state);

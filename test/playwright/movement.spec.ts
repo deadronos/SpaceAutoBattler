@@ -88,7 +88,7 @@ test.describe('Ship motion heuristics', () => {
 
     const displacements = snapshots
       .slice(1)
-      .map((frame, index) => distance(frame.position, snapshots[index].position));
+      .map((frame, index) => distance(frame.position, snapshots[index]!.position));
 
     expect(displacements.length).toBeGreaterThan(0);
     expect(displacements.some((d) => d > 0.05)).toBeTruthy();
@@ -96,7 +96,7 @@ test.describe('Ship motion heuristics', () => {
 
     const rotationSteps = snapshots
       .slice(1)
-      .map((frame, index) => quaternionAngle(frame.rotation, snapshots[index].rotation));
+      .map((frame, index) => quaternionAngle(frame.rotation, snapshots[index]!.rotation));
 
     expect(rotationSteps.some((angle) => angle > 0.001)).toBeTruthy();
     expect(Math.max(...rotationSteps)).toBeLessThan(1.2);

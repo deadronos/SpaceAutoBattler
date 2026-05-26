@@ -40,7 +40,7 @@ describe('patchGltfLoader', () => {
 
     expect(mockLoad).not.toHaveBeenCalled();
     expect(onError).toHaveBeenCalledWith(expect.any(Error));
-    expect(onError.mock.calls[0][0].message).toContain('invalid url argument');
+    expect(onError.mock.calls[0]![0]!.message).toContain('invalid url argument');
   });
 
   it('allows valid string URLs to pass through', async () => {

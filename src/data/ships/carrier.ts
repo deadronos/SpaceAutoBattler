@@ -20,8 +20,8 @@ export const CARRIER_STATS: ShipStats = {
   speed: 7,
   scale: 1,
   bulletType: 'bullet:ion',
-  damageType: HULL_DAMAGE_TYPES.carrier,
-  armor: HULL_ARMOR_VALUES.carrier,
+  damageType: HULL_DAMAGE_TYPES.carrier ?? 'kinetic',
+  armor: HULL_ARMOR_VALUES.carrier ?? 10,
   motion: {
     mass: 6.0,
     maxSpeed: 7,

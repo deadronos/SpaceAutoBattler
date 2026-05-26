@@ -34,9 +34,9 @@ function analyzePixelsAtRadius(
     // Ensure coordinates are within bounds
     if (x >= 0 && x < pngData.width && y >= 0 && y < pngData.height) {
       const idx = (pngData.width * y + x) << 2; // RGBA format
-      const r = pngData.data[idx] / 255;
-      const g = pngData.data[idx + 1] / 255;
-      const b = pngData.data[idx + 2] / 255;
+      const r = pngData.data[idx]! / 255;
+      const g = pngData.data[idx + 1]! / 255;
+      const b = pngData.data[idx + 2]! / 255;
       const luminance = calculateLuminance(r, g, b);
       luminanceValues.push(luminance);
     }

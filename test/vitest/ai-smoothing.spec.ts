@@ -107,9 +107,8 @@ function meanHeadingDelta(headings: Vector3[]): number {
   if (headings.length < 2) return 0;
   let sum = 0;
   for (let i = 1; i < headings.length; i++) {
-    sum += headings[i]
-      .clone()
-      .sub(headings[i - 1])
+    sum += headings[i]!.clone()
+      .sub(headings[i - 1]!)
       .length();
   }
   return sum / (headings.length - 1);

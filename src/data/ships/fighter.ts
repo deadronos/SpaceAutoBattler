@@ -15,8 +15,8 @@ export const FIGHTER_STATS: ShipStats = {
   speed: 90,
   scale: 1,
   bulletType: 'bullet:laser',
-  damageType: HULL_DAMAGE_TYPES.fighter,
-  armor: HULL_ARMOR_VALUES.fighter,
+  damageType: HULL_DAMAGE_TYPES.fighter ?? 'kinetic',
+  armor: HULL_ARMOR_VALUES.fighter ?? 10,
   turrets: [
     {
       offset: new Vector3(0, -0.05, -0.6),

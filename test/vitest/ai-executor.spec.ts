@@ -374,9 +374,9 @@ describe('writeCommand executors', () => {
 
     // Execute AI commands for all ships
     for (let i = 0; i < entities.length; i++) {
-      const ship = entities[i];
+      const ship = entities[i] as ShipEntity;
       const profile = resolveBehaviorProfile(ship.ai!.profileId);
-      const target = targets[i % targets.length];
+      const target = targets[i % targets.length] as ShipEntity;
       writeCommand(state, ship, ship.ai!, profile, target, null, null);
     }
 

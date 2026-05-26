@@ -55,8 +55,9 @@ export function generateCaptain(hull: string, shipSeed: number): Captain | undef
   let moraleAbility: MoraleAbility | undefined;
   if (rng.next() < CAPTAIN_CONFIG.moraleAbilityChance) {
     const abilityTypes: MoraleEffectType[] = ['aggression_boost', 'repair_boost', 'accuracy_boost'];
-    const selectedType = abilityTypes[Math.floor(rng.next() * abilityTypes.length)];
-    const config = MORALE_ABILITIES[selectedType];
+    const selectedType =
+      abilityTypes[Math.floor(rng.next() * abilityTypes.length)] ?? 'aggression_boost';
+    const config = MORALE_ABILITIES[selectedType] ?? MORALE_ABILITIES.aggression_boost;
 
     moraleAbility = {
       cooldownRemaining: 0,
@@ -152,10 +153,10 @@ export function createProgressionDefaults(hull: string): {
     xp: 0,
     level: 1,
     xpToNext: calculateXpForLevel(2),
-    damageType: HULL_DAMAGE_TYPES[hull] || 'kinetic',
+    damageType: HULL_DAMAGE_TYPES[hull] ?? 'kinetic',
     levelBonuses: createLevelBonusState(),
     captain: undefined,
     subsystems: createSubsystemsInternal(100), // Default HP for tests
-    armor: HULL_ARMOR_VALUES[hull] || 10,
+    armor: HULL_ARMOR_VALUES[hull] ?? 10,
   };
 }

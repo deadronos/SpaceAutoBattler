@@ -21,8 +21,8 @@ export const FRIGATE_STATS: ShipStats = {
   speed: 12,
   scale: 1,
   bulletType: 'bullet:plasma',
-  damageType: HULL_DAMAGE_TYPES.frigate,
-  armor: HULL_ARMOR_VALUES.frigate,
+  damageType: HULL_DAMAGE_TYPES.frigate ?? 'kinetic',
+  armor: HULL_ARMOR_VALUES.frigate ?? 10,
   motion: {
     mass: 2.5,
     maxSpeed: 12,

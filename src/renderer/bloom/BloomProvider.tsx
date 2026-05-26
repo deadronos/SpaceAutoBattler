@@ -8,7 +8,7 @@
  * - Layer mask preservation and restoration
  */
 
-import React, { createContext, useContext, useMemo, useRef } from 'react';
+import React, { createContext, useCallback, useContext, useMemo, useRef } from 'react';
 import type { Camera, Object3D } from 'three';
 import { POSTPROCESSING_CONFIG } from '../../config/renderer.js';
 import type { BloomContextValue, BloomRegistrationOptions, LayerAllocatorState } from './types.js';
@@ -112,6 +112,21 @@ export function BloomProvider({
     restoreLayerMasks(obj);
   }, []);
 
+  const getSelectionLayerMask = useCallback(() => computeLayerMask(selectionsRef.current), []);
+
+  const enableCameraLayers = useCallback((camera: Camera): number => {
+    if (!camera?.layers) return 0;
+    const prev = camera.layers.mask;
+    const mask = computeLayerMask(selectionsRef.current);
+    try {
+      camera.layers.mask = prev | mask;
+    } catch (error) {
+      // Expected: Camera layers may be read-only in some contexts
+      reportMaterialError('enableCameraLayers', 'camera', error);
+    }
+    return prev;
+  }, []);
+
   // Sync colorWrite when enabled state changes
   React.useEffect(() => {
     syncColorWriteForObjects(objectGroupRef.current.keys(), enabled);
@@ -124,21 +139,10 @@ export function BloomProvider({
       selections: selectionsRef.current,
       register,
       unregister,
-      getSelectionLayerMask: () => computeLayerMask(selectionsRef.current),
-      enableCameraLayers(camera: Camera): number {
-        if (!camera?.layers) return 0;
-        const prev = camera.layers.mask;
-        const mask = computeLayerMask(selectionsRef.current);
-        try {
-          camera.layers.mask = prev | mask;
-        } catch (error) {
-          // Expected: Camera layers may be read-only in some contexts
-          reportMaterialError('enableCameraLayers', 'camera', error);
-        }
-        return prev;
-      },
+      getSelectionLayerMask,
+      enableCameraLayers,
     }),
-    [enabled, defaultGroup, register, unregister],
+    [enabled, defaultGroup, register, unregister, getSelectionLayerMask, enableCameraLayers],
   );
 
   return <Ctx.Provider value={value}>{children ?? null}</Ctx.Provider>;

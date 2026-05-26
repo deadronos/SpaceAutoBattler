@@ -213,9 +213,9 @@ describe('Sensor System Benchmark (Manual Run)', () => {
       console.log(
         `${String(result.shipCount).padStart(10)} | ` +
           `${result.avg.toFixed(2).padStart(8)} | ` +
-          `${result.median.toFixed(2).padStart(11)} | ` +
-          `${result.min.toFixed(2).padStart(8)} | ` +
-          `${result.max.toFixed(2).padStart(8)}`,
+          `${result.median!.toFixed(2).padStart(11)} | ` +
+          `${result.min!.toFixed(2).padStart(8)} | ` +
+          `${result.max!.toFixed(2).padStart(8)}`,
       );
     }
 

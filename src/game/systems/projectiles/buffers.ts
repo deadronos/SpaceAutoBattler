@@ -39,9 +39,9 @@ export function flushProjectileBuffers(buffers: ProjectileBuffers): void {
     if (body) {
       const idx = i * 3;
       body.setNextKinematicTranslation({
-        x: t_values[idx],
-        y: t_values[idx + 1],
-        z: t_values[idx + 2],
+        x: t_values[idx] ?? 0,
+        y: t_values[idx + 1] ?? 0,
+        z: t_values[idx + 2] ?? 0,
       });
     }
   }
@@ -54,10 +54,10 @@ export function flushProjectileBuffers(buffers: ProjectileBuffers): void {
     if (body?.setNextKinematicRotation) {
       const idx = i * 4;
       body.setNextKinematicRotation({
-        x: r_values[idx],
-        y: r_values[idx + 1],
-        z: r_values[idx + 2],
-        w: r_values[idx + 3],
+        x: r_values[idx] ?? 0,
+        y: r_values[idx + 1] ?? 0,
+        z: r_values[idx + 2] ?? 0,
+        w: r_values[idx + 3] ?? 1,
       });
     }
   }

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import { ShaderMaterial, Vector3, Vector4 } from 'three';
 import { useFrame } from '@react-three/fiber';
 import type { ShieldRipple, ShipHull, Team } from '../../types/index.js';
@@ -12,6 +12,7 @@ import {
 import { colorFromConfig } from '../../utils/color.js';
 
 const SHADER_MAX_RIPPLES = 8;
+const DEFAULT_RIPPLE_DIR = new Vector3(0, 0, 1);
 
 export type ShieldHexMaterialProps = {
   hull: ShipHull;
@@ -300,9 +301,14 @@ export const ShieldHexMaterial: React.FC<ShieldHexMaterialProps> = ({
   const mat = useMemo(() => createShieldHexShaderMaterial(hull, team), [hull, team]);
   const uniforms = mat.uniforms as unknown as ShieldHexUniforms;
 
-  useFrame((_, dt) => {
-    uniforms.uTime.value += dt;
-  });
+  const handleFrame = useCallback(
+    (_state: unknown, dt: number) => {
+      uniforms.uTime.value += dt;
+    },
+    [uniforms],
+  );
+
+  useFrame(handleFrame);
 
   useEffect(() => {
     uniforms.uOpacity.value = Math.max(0, Math.min(1, opacity));
@@ -336,11 +342,12 @@ export const ShieldHexMaterial: React.FC<ShieldHexMaterialProps> = ({
     const bias = (uniforms.uTime?.value ?? 0) - (simTime ?? 0);
     const take = Math.min(list.length, maxRipples);
     for (let i = 0; i < take; i++) {
-      const r = list[list.length - take + i];
-      const amp = Math.min(1.6, 0.25 + (r.amp ?? 0) * (SHIELD_RIPPLE_TUNING.ampScale ?? 1.9));
-      const dir = r.dir ?? new Vector3(0, 0, 1);
+      const ripple = list[list.length - take + i];
+      if (!ripple) continue;
+      const amp = Math.min(1.6, 0.25 + (ripple.amp ?? 0) * (SHIELD_RIPPLE_TUNING.ampScale ?? 1.9));
+      const dir = ripple.dir ?? DEFAULT_RIPPLE_DIR;
       (uniforms.uRippleData.value[i] as Vector4).set(dir.x, dir.y, dir.z, amp);
-      uniforms.uRippleT0s.value[i] = bias + (r.t0 ?? 0);
+      uniforms.uRippleT0s.value[i] = bias + (ripple.t0 ?? 0);
     }
     uniforms.uRippleCount.value = take;
     uniforms.uRippleSpeed.value = SHIELD_RIPPLE_TUNING.defaultSpeed;

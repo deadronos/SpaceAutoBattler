@@ -293,6 +293,6 @@ describe('point defense turret targeting', () => {
 
     const projectiles = state.queries.projectiles.entities as ProjectileEntity[];
     expect(projectiles.length).toBe(1);
-    expect(projectiles[0].projectile.targetId).toBe(redShip.id);
+    expect(projectiles[0]!.projectile.targetId).toBe(redShip.id);
   });
 });

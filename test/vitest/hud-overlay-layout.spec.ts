@@ -27,9 +27,9 @@ describe('HUD overlay layout manager', () => {
       reserved,
       config: DEFAULT_HUD_HEALTH_OVERLAY_CONFIG,
     });
-    expect(result.screen.x).toBeGreaterThan(overlay.x);
-    expect(result.screen.y).toBeGreaterThan(overlay.y);
-    expect(result.screen.hidden).toBe(false);
+    expect(result!.screen!.x).toBeGreaterThan(overlay.x);
+    expect(result!.screen!.y).toBeGreaterThan(overlay.y);
+    expect(result!.screen!.hidden).toBe(false);
   });
 
   it('suppresses overlays when they would overlap the bottom margin', () => {
@@ -51,6 +51,6 @@ describe('HUD overlay layout manager', () => {
       reserved: [],
       config: DEFAULT_HUD_HEALTH_OVERLAY_CONFIG,
     });
-    expect(result.screen.hidden).toBe(true);
+    expect(result!.screen.hidden).toBe(true);
   });
 });

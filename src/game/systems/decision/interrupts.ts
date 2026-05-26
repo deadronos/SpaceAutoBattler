@@ -138,7 +138,7 @@ export function processInterruptQueue(
     }
     const latency = Math.max(0, currentTick - event.tick);
     const bucket = latency >= 3 ? 3 : latency;
-    metrics.decisionLatencyBuckets[bucket] += 1;
+    metrics.decisionLatencyBuckets[bucket] = (metrics.decisionLatencyBuckets[bucket] ?? 0) + 1;
   }
   queue.length = 0;
 }

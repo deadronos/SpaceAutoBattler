@@ -42,6 +42,7 @@ export function processParticleArray<T>(
 
   for (let i = 0; i < particles.length; i++) {
     const particle = particles[i];
+    if (!particle) continue;
     const lifetime = getLifetime(particle);
 
     // Skip expired particles

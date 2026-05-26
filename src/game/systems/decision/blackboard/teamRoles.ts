@@ -64,6 +64,7 @@ export const assignTeamRoles = (state: GameState, ships: ShipEntity[]): void => 
     for (let i = 0; i < assignable; i += 1) {
       const escort = pool[i];
       const vip = vips[i % vipCount];
+      if (!escort || !vip) continue;
       const escortProfile = escort.ai
         ? resolveBehaviorProfile(escort.ai.profileId)
         : resolveBehaviorProfile('escort');

@@ -66,7 +66,7 @@ export function spawnInitialFleets(state: GameState): void {
  */
 export function spawnRandomShip(state: GameState, team: Team): void {
   const hulls: ShipHull[] = ['fighter', 'corvette', 'frigate', 'destroyer', 'carrier'];
-  const hull = hulls[Math.floor(state.rng.next() * hulls.length)];
+  const hull = hulls[Math.floor(state.rng.next() * hulls.length)] ?? 'fighter';
 
   const lateralRadius = WORLD_HALF * 0.25;
   const verticalSpread = WORLD_HALF * SPAWN_CONFIG.verticalSpreadFactor;

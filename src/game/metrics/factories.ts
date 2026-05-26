@@ -128,12 +128,16 @@ export function addToHistogram(hist: AIShotHistogram, value: number): void {
   const bucketCount = hist.buckets.length;
   let index = bucketCount;
   for (let i = 0; i < bucketCount; i += 1) {
-    if (value < hist.buckets[i]) {
+    const threshold = hist.buckets[i];
+    if (threshold != null && value < threshold) {
       index = i;
       break;
     }
   }
-  hist.counts[index] += 1;
+  const countValue = hist.counts[index];
+  if (countValue != null) {
+    hist.counts[index] = countValue + 1;
+  }
 }
 
 /**
@@ -145,8 +149,8 @@ export function addToHistogram(hist: AIShotHistogram, value: number): void {
  */
 export function percentile(sortedValues: number[], p: number): number {
   if (sortedValues.length === 0) return 0;
-  if (sortedValues.length === 1) return sortedValues[0];
+  if (sortedValues.length === 1) return sortedValues[0] ?? 0;
   const clamped = clamp01(p);
   const index = Math.floor((sortedValues.length - 1) * clamped);
-  return sortedValues[index];
+  return sortedValues[index] ?? 0;
 }

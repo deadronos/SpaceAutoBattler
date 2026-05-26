@@ -138,7 +138,7 @@ describe('Progression Panel Data Transformation', () => {
     const limitedEvents = events.slice(-MAX_EVENTS);
 
     expect(limitedEvents).toHaveLength(5);
-    expect(limitedEvents[0].details).toBe('Event 6');
-    expect(limitedEvents[4].details).toBe('Event 10');
+    expect(limitedEvents[0]!.details).toBe('Event 6');
+    expect(limitedEvents[4]!.details).toBe('Event 10');
   });
 });

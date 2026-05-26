@@ -276,9 +276,6 @@ export function getDefaultProfileId(hull: ShipHull): string {
 }
 
 export function resolveBehaviorProfile(profileId: string): BehaviorProfile {
-  const profile = AI_PROFILES[profileId];
-  if (!profile) {
-    return AI_PROFILES.brawler;
-  }
-  return profile;
+  const profile = AI_PROFILES[profileId] as BehaviorProfile | undefined;
+  return profile ?? (AI_PROFILES.brawler as BehaviorProfile);
 }

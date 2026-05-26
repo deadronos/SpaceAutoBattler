@@ -71,6 +71,7 @@ export function emitShipKillExplosion(
     let oldestTime = state.explosions[0]?.startTime ?? Number.POSITIVE_INFINITY;
     for (let i = 1; i < state.explosions.length; i += 1) {
       const candidate = state.explosions[i];
+      if (!candidate) continue;
       if (candidate.startTime < oldestTime) {
         oldestTime = candidate.startTime;
         oldestIndex = i;
@@ -122,6 +123,7 @@ export function updateExplosions(state: GameState, delta: number): void {
   const active = state.explosions;
   for (let i = active.length - 1; i >= 0; i -= 1) {
     const event = active[i];
+    if (!event) continue;
     event.elapsed += delta;
     if (event.lightElapsed < event.lightDuration) {
       event.lightElapsed = Math.min(event.lightDuration, event.lightElapsed + delta);

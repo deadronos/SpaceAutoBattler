@@ -128,7 +128,7 @@ describe('Dual Movement System Regression', () => {
 
       // The call should match the first run (determinism)
       const currentCall = translationSpy2.mock.calls[0];
-      const expectedCall = firstRunCalls[i][0];
+      const expectedCall = firstRunCalls[i]![0]!;
 
       expect(currentCall[0].x).toBeCloseTo(expectedCall[0].x, 5);
       expect(currentCall[0].y).toBeCloseTo(expectedCall[0].y, 5);
