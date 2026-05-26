@@ -62,6 +62,7 @@ export const refreshBlackboard = (state: GameState, ships: ShipEntity[]): void =
   const shipsLength = ships.length;
   for (let i = 0; i < shipsLength; i += 1) {
     const ship = ships[i];
+    if (!ship) continue;
     if (ship.ship.team === 'blue') {
       centroid.blue.add(ship.transform.position);
       blueCount += 1;
@@ -80,14 +81,16 @@ export const refreshBlackboard = (state: GameState, ships: ShipEntity[]): void =
 
   for (let i = 0; i < shipsLength; i += 1) {
     const ship = ships[i];
+    if (!ship) continue;
     const visibleMap = visibleEnemies[ship.ship.team];
+    if (!visibleMap) continue;
     const requireVisibility = visibleMap.size > 0;
     let bestDist = Number.POSITIVE_INFINITY;
     let bestId: number | undefined;
     for (let j = 0; j < shipsLength; j += 1) {
       if (i === j) continue;
       const other = ships[j];
-      if (other.ship.team === ship.ship.team) continue;
+      if (!other || other.ship.team === ship.ship.team) continue;
       if (requireVisibility && !visibleMap.has(other.id)) continue;
       const distSq = ship.transform.position.distanceToSquared(other.transform.position);
       if (distSq < bestDist) {
@@ -130,9 +133,10 @@ export const refreshBlackboard = (state: GameState, ships: ShipEntity[]): void =
 
   for (let i = 0; i < shipsLength; i += 1) {
     const ship = ships[i];
+    if (!ship) continue;
     const ai = ship.ai;
     if (!ai || ai.targetId == null) continue;
-    const focusMap = blackboard.focusFire[ship.ship.team];
+    const focusMap = blackboard.focusFire[ship.ship.team]!;
     focusMap.set(ai.targetId, (focusMap.get(ai.targetId) ?? 0) + 1);
   }
 
@@ -144,19 +148,19 @@ export const refreshBlackboard = (state: GameState, ships: ShipEntity[]): void =
   };
 
   const buildPriority = (team: Team, enemyTeam: Team): void => {
-    const list = blackboard.teamPriority[team];
-    const indexMap = blackboard.priorityIndex[team];
-    const focusMap = blackboard.focusFire[team];
-    const centroidVec = blackboard.allyCentroid[team];
+    const list = blackboard.teamPriority[team]!;
+    const indexMap = blackboard.priorityIndex[team]!;
+    const focusMap = blackboard.focusFire[team]!;
+    const centroidVec = blackboard.allyCentroid[team]!;
     const mods = threatModifiers[team];
-    const visibilityMap = visibleEnemies[team];
+    const visibilityMap = visibleEnemies[team]!;
     const requireVisibility = visibilityMap.size > 0;
     const distanceScale = Math.max(1, baseDistanceScale * (mods?.distanceScaleMultiplier ?? 1));
     const focusPenaltyScalar = weights.focusPenalty * (mods?.focusPenaltyMultiplier ?? 1);
     const vipBonusValue = weights.vipBonus * (mods?.vipBonusMultiplier ?? 1);
     for (let i = 0; i < shipsLength; i += 1) {
       const enemy = ships[i];
-      if (enemy.ship.team !== enemyTeam) continue;
+      if (!enemy || enemy.ship.team !== enemyTeam) continue;
       if (requireVisibility && !visibilityMap.has(enemy.id)) continue;
       const visibility = visibilityMap.get(enemy.id);
       const distanceSq = enemy.transform.position.distanceToSquared(centroidVec);
@@ -196,7 +200,10 @@ export const refreshBlackboard = (state: GameState, ships: ShipEntity[]): void =
 
     indexMap.clear();
     for (let i = 0; i < list.length; i += 1) {
-      indexMap.set(list[i].id, i);
+      const entry = list[i];
+      if (entry) {
+        indexMap.set(entry.id, i);
+      }
     }
   };
 

@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useMemo } from 'react';
 import { Color, type Mesh, MathUtils } from 'three';
 import { useFrame } from '@react-three/fiber';
 import type { ShipEntity } from '../../types/index.js';
@@ -183,10 +183,10 @@ export function ShieldBubble({
     }
 
     const list = entity.shieldRipples ?? [];
-    const count = list.length;
-    const latestT0 = count > 0 ? (list[count - 1].t0 ?? -Infinity) : -Infinity;
-    if (count !== lastCountRef.current || latestT0 !== lastT0Ref.current) {
-      lastCountRef.current = count;
+    const latestRipple = list[list.length - 1];
+    const latestT0 = latestRipple?.t0 ?? -Infinity;
+    if (list.length !== lastCountRef.current || latestT0 !== lastT0Ref.current) {
+      lastCountRef.current = list.length;
       lastT0Ref.current = latestT0;
       setRippleTick((n) => (n + 1) & 0xffff);
     }
@@ -216,12 +216,17 @@ export function ShieldBubble({
   const kind = visuals.materialKind;
   const key = `shield:${kind}`;
 
+  const sphereArgs = useMemo(
+    () => [1, visuals.geometrySegments, visuals.geometrySegments] as const,
+    [visuals.geometrySegments],
+  );
+
   if (kind === 'hex') {
     const Mat = getMaterial<ShieldHexMaterialProps>(key) ?? getMaterial('shield:hex')!;
 
     return (
       <mesh ref={meshRef} renderOrder={SHIELD_RENDER_ORDER} frustumCulled={false}>
-        <sphereGeometry args={[1, visuals.geometrySegments, visuals.geometrySegments]} />
+        <sphereGeometry args={sphereArgs} />
         <Mat
           hull={entity.ship.hull}
           team={entity.ship.team}
@@ -237,7 +242,7 @@ export function ShieldBubble({
 
   return (
     <mesh ref={meshRef} renderOrder={SHIELD_RENDER_ORDER} frustumCulled={false}>
-      <sphereGeometry args={[1, visuals.geometrySegments, visuals.geometrySegments]} />
+      <sphereGeometry args={sphereArgs} />
       <Mat hull={entity.ship.hull} team={entity.ship.team} opacity={opacity} />
     </mesh>
   );

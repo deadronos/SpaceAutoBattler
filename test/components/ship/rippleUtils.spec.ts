@@ -22,13 +22,13 @@ describe('rippleUtils', () => {
       const ripples = [createRipple(0.5, 0)];
       const scaled = scaleRippleAmplitudes(ripples, 2.0);
       expect(scaled).toHaveLength(1);
-      expect(scaled[0].scaledAmp).toBe(Math.min(1.6, 0.25 + 0.5 * 2.0));
+      expect(scaled[0]!.scaledAmp).toBe(Math.min(1.6, 0.25 + 0.5 * 2.0));
     });
 
     it('should clamp scaled amplitude to 1.6', () => {
       const ripples = [createRipple(2.0, 0)];
       const scaled = scaleRippleAmplitudes(ripples, 2.0);
-      expect(scaled[0].scaledAmp).toBe(1.6);
+      expect(scaled[0]!.scaledAmp).toBe(1.6);
     });
 
     it('should handle empty array', () => {
@@ -39,9 +39,9 @@ describe('rippleUtils', () => {
     it('should preserve original ripple data', () => {
       const ripples = [createRipple(0.5, 1.5)];
       const scaled = scaleRippleAmplitudes(ripples, 2.0);
-      expect(scaled[0].amp).toBe(0.5);
-      expect(scaled[0].t0).toBe(1.5);
-      expect(scaled[0].dir).toEqual(new Vector3(1, 0, 0));
+      expect(scaled[0]!.amp).toBe(0.5);
+      expect(scaled[0]!.t0).toBe(1.5);
+      expect(scaled[0]!.dir).toEqual(new Vector3(1, 0, 0));
     });
   });
 
@@ -54,8 +54,8 @@ describe('rippleUtils', () => {
       ];
       const filtered = filterSignificantRipples(ripples, 0.02);
       expect(filtered).toHaveLength(2);
-      expect(filtered[0].scaledAmp).toBe(0.05);
-      expect(filtered[1].scaledAmp).toBe(0.1);
+      expect(filtered[0]!.scaledAmp).toBe(0.05);
+      expect(filtered[1]!.scaledAmp).toBe(0.1);
     });
 
     it('should handle empty array', () => {
@@ -87,8 +87,8 @@ describe('rippleUtils', () => {
       ];
       const coalesced = coalesceRipples(ripples, 0.1);
       expect(coalesced).toHaveLength(1);
-      expect(coalesced[0].scaledAmp).toBe(Math.min(1.6, 1.0 + 1.0 * 0.6));
-      expect(coalesced[0].t0).toBe(0.0);
+      expect(coalesced[0]!.scaledAmp).toBe(Math.min(1.6, 1.0 + 1.0 * 0.6));
+      expect(coalesced[0]!.t0).toBe(0.0);
     });
 
     it('should clamp coalesced amplitude to 1.6', () => {
@@ -98,7 +98,7 @@ describe('rippleUtils', () => {
       ];
       const coalesced = coalesceRipples(ripples, 0.1);
       expect(coalesced).toHaveLength(1);
-      expect(coalesced[0].scaledAmp).toBe(1.6);
+      expect(coalesced[0]!.scaledAmp).toBe(1.6);
     });
 
     it('should handle empty array', () => {
@@ -110,7 +110,7 @@ describe('rippleUtils', () => {
       const ripples = [{ dir: new Vector3(1, 0, 0), t0: 0.0, amp: 0.5, scaledAmp: 1.0 }];
       const coalesced = coalesceRipples(ripples, 0.1);
       expect(coalesced).toHaveLength(1);
-      expect(coalesced[0].scaledAmp).toBe(1.0);
+      expect(coalesced[0]!.scaledAmp).toBe(1.0);
     });
 
     it('should handle multiple coalescing groups', () => {
@@ -144,8 +144,8 @@ describe('rippleUtils', () => {
       ];
       const sliced = sliceToMaxRipples(ripples, 2);
       expect(sliced).toHaveLength(2);
-      expect(sliced[0].t0).toBe(2);
-      expect(sliced[1].t0).toBe(3);
+      expect(sliced[0]!.t0).toBe(2);
+      expect(sliced[1]!.t0).toBe(3);
     });
 
     it('should handle empty array', () => {
@@ -199,9 +199,9 @@ describe('rippleUtils', () => {
       const processed = processRipplesForRendering(ripples, defaultTuning);
       expect(processed.length).toBeGreaterThan(0);
       expect(processed[0]).toHaveProperty('dir');
-      expect(processed[0]).toHaveProperty('t0');
-      expect(processed[0]).toHaveProperty('amp');
-      expect(processed[0].dir).toBeInstanceOf(Vector3);
+      expect(processed[0]!).toHaveProperty('t0');
+      expect(processed[0]!).toHaveProperty('amp');
+      expect(processed[0]!.dir).toBeInstanceOf(Vector3);
     });
 
     it('should coalesce nearby ripples', () => {

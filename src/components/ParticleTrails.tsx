@@ -99,7 +99,9 @@ export function ParticleTrails({ ships, resources }: ParticleTrailProps): React.
     if (!mesh) return;
 
     const time = state.clock.getElapsedTime();
-    trailResources.material.uniforms.uTime.value = time;
+    if (trailResources.material.uniforms.uTime) {
+      trailResources.material.uniforms.uTime.value = time;
+    }
 
     // Update Frustum
     // We update every frame because the camera moves
@@ -159,8 +161,10 @@ export function ParticleTrails({ ships, resources }: ParticleTrailProps): React.
 
       for (let i = 0; i < anchors.length; i++) {
         const anchor = anchors[i];
+        if (!anchor) continue;
         const rate = throttle * spawnRatePerAnchor;
-        const desired = rate * delta + remainderForShip[i];
+        const remainder = remainderForShip[i] ?? 0;
+        const desired = rate * delta + remainder;
         const spawnCount = Math.floor(desired);
         remainderForShip[i] = desired - spawnCount;
         if (spawnCount <= 0) continue;

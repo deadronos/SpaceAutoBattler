@@ -21,8 +21,8 @@ export const DESTROYER_STATS: ShipStats = {
   speed: 10,
   scale: 1,
   bulletType: 'bullet:heavy',
-  damageType: HULL_DAMAGE_TYPES.destroyer,
-  armor: HULL_ARMOR_VALUES.destroyer,
+  damageType: HULL_DAMAGE_TYPES.destroyer ?? 'kinetic',
+  armor: HULL_ARMOR_VALUES.destroyer ?? 10,
   motion: {
     mass: 4.0,
     maxSpeed: 10,

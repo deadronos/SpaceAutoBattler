@@ -100,8 +100,8 @@ test.describe('StarSphere before/after capture', () => {
       [beforePath, afterPath].map((filePath) => fs.readFile(filePath)),
     );
 
-    expect(beforeBuffer.length).toBeGreaterThan(0);
-    expect(afterBuffer.length).toBeGreaterThan(0);
-    expect(beforeBuffer.equals(afterBuffer)).toBe(false);
+    expect(beforeBuffer!.length).toBeGreaterThan(0);
+    expect(afterBuffer!.length).toBeGreaterThan(0);
+    expect(beforeBuffer!.equals(afterBuffer!)).toBe(false);
   });
 });

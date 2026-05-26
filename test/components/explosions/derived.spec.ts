@@ -31,7 +31,7 @@ describe('derived helpers', () => {
     it('should be smooth and continuous', () => {
       const values = [0, 0.25, 0.5, 0.75, 1].map(easeOutQuad);
       for (let i = 1; i < values.length; i += 1) {
-        expect(values[i]).toBeGreaterThan(values[i - 1]);
+        expect(values[i]!).toBeGreaterThan(values[i - 1]!);
       }
     });
   });
@@ -147,8 +147,8 @@ describe('derived helpers', () => {
       const derived1 = getDerived(event1);
       const derived2 = getDerived(event2);
 
-      expect(derived1.debris[0].direction.x).toBeCloseTo(derived2.debris[0].direction.x, 10);
-      expect(derived1.debris[0].speed).toBeCloseTo(derived2.debris[0].speed, 10);
+      expect(derived1.debris[0]!.direction.x).toBeCloseTo(derived2.debris[0]!.direction.x, 10);
+      expect(derived1.debris[0]!.speed).toBeCloseTo(derived2.debris[0]!.speed, 10);
     });
 
     it('should generate valid particle properties', () => {

@@ -27,19 +27,22 @@ export function DynamicLightManager(): React.ReactElement {
     for (const event of events) {
       if (active >= lights.length) break;
       const light = lights[active];
-      const lightPhase = event.lightDuration > 0 ? event.lightElapsed / event.lightDuration : 1;
-      const intensity = event.flashIntensity * Math.max(0, 1 - lightPhase);
+      if (!light) continue;
+      const lightDuration = event.lightDuration ?? 0;
+      const lightPhase = lightDuration > 0 ? event.lightElapsed / lightDuration : 1;
+      const intensity = (event.flashIntensity ?? 0) * Math.max(0, 1 - lightPhase);
       light.visible = intensity > 0.02;
       light.intensity = intensity * 6;
-      light.decay = Math.max(0.8, event.lightFalloff / 100);
-      light.distance = event.radius * 6;
-      light.color.set(event.lightColor);
-      light.position.copy(event.position);
+      light.decay = Math.max(0.8, (event.lightFalloff ?? 0) / 100);
+      light.distance = (event.radius ?? 0) * 6;
+      if (event.lightColor) light.color.set(event.lightColor);
+      if (event.position) light.position.copy(event.position);
       active += 1;
     }
 
     for (let i = active; i < lights.length; i += 1) {
-      lights[i].visible = false;
+      const light = lights[i];
+      if (light) light.visible = false;
     }
   });
 

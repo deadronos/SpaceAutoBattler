@@ -33,8 +33,9 @@ export function updateShipLifecycle(state: GameState, ship: ShipEntity, delta: n
     // Compact array in-place to avoid filter allocation
     let writeIndex = 0;
     for (let i = 0; i < ship.muzzleFlashes.length; i++) {
-      if (state.time - ship.muzzleFlashes[i].t0 < MUZZLE_FLASH_LIFETIME) {
-        ship.muzzleFlashes[writeIndex++] = ship.muzzleFlashes[i];
+      const flash = ship.muzzleFlashes[i];
+      if (flash && state.time - flash.t0 < MUZZLE_FLASH_LIFETIME) {
+        ship.muzzleFlashes[writeIndex++] = flash;
       }
     }
     ship.muzzleFlashes.length = writeIndex;

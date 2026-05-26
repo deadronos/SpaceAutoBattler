@@ -113,8 +113,9 @@ describe('recordRapierStepPanic', () => {
 
     const buffer = (window as Window & { __copilot_rapierPanics?: RapierStepPanicSnapshot[] })
       .__copilot_rapierPanics;
-    expect(buffer).toHaveLength(20);
-    expect(buffer?.[0].tickIndex).toBe(2);
-    expect(buffer?.[buffer.length - 1].tickIndex).toBe(21);
+    const bufferNonNull = buffer!;
+    expect(bufferNonNull).toHaveLength(20);
+    expect(bufferNonNull[0]!.tickIndex).toBe(2);
+    expect(bufferNonNull[bufferNonNull.length - 1]!.tickIndex).toBe(21);
   });
 });

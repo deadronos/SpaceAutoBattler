@@ -304,7 +304,7 @@ describe('extended projectile behaviours', () => {
     });
 
     flushPostPhysicsMutations(state);
-    const spawned = (state.queries.projectiles.entities as ProjectileEntity[])[0];
+    const spawned = (state.queries.projectiles.entities as ProjectileEntity[])[0]!;
     expect(spawned.projectile.category).toBe('beam');
     expect(spawned.projectile.beam?.hitPoint?.z).toBeCloseTo(15, 3);
     expect(spawned.projectile.targetId).toBe(hitShip.id);
@@ -360,7 +360,7 @@ describe('extended projectile behaviours', () => {
     });
 
     flushPostPhysicsMutations(state);
-    const spawned = (state.queries.projectiles.entities as ProjectileEntity[])[0];
+    const spawned = (state.queries.projectiles.entities as ProjectileEntity[])[0]!;
     expect(spawned.projectile.homing).toBeDefined();
     expect(spawned.projectile.homing?.turnRate).toBeCloseTo(Math.PI / 3, 5);
   });

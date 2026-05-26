@@ -192,12 +192,14 @@ export function tieBreak(
   }
 
   for (let i = 0; i < candidates.length; i += 1) {
-    ensureCandidateDefaults(candidates[i], i);
+    const candidate = candidates[i];
+    if (!candidate) continue;
+    ensureCandidateDefaults(candidate, i);
   }
 
   candidates.sort(compareIntentCandidates);
 
-  const topScore = candidates[0].score;
+  const topScore = candidates[0]!.score;
   const tied: IntentCandidate[] = [];
   for (const candidate of candidates) {
     if (Math.abs(candidate.score - topScore) < 1e-5) {
@@ -208,12 +210,13 @@ export function tieBreak(
   }
 
   if (tied.length === 1) {
-    return tied[0];
+    return tied[0]!;
   }
 
-  let winner = tied[0];
+  let winner = tied[0]!;
   for (let i = 1; i < tied.length; i += 1) {
     const contender = tied[i];
+    if (!contender) continue;
     if (compareIntentCandidates(contender, winner) < 0) {
       winner = contender;
     }
@@ -224,7 +227,7 @@ export function tieBreak(
       if (metrics) metrics.tieFallbacks += 1;
       const seed = ai.traitSeed ^ (tickIndex * 4099);
       const idx = Math.abs(hashToInt(seed)) % tied.length;
-      return tied[idx];
+      return tied[idx] ?? winner;
     }
   }
 

@@ -31,7 +31,7 @@ describe('HUD status effect registry', () => {
         ...DEFAULT_CONFIG,
       },
     });
-    expect(result.effects[0].definition).toEqual(STATUS_EFFECT_FALLBACK);
+    expect(result!.effects[0]!.definition).toEqual(STATUS_EFFECT_FALLBACK);
   });
 
   it('caps badges to two and aggregates overflow count', () => {
@@ -53,8 +53,8 @@ describe('HUD status effect registry', () => {
       reserved: [],
       config: DEFAULT_CONFIG,
     });
-    expect(result.effects.length).toBe(2);
-    expect(result.overflowCount).toBe(1);
+    expect(result!.effects.length).toBe(2);
+    expect(result!.overflowCount).toBe(1);
   });
 });
 

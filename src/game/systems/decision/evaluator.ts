@@ -47,8 +47,9 @@ export function evaluateShip(
   const fallbackTarget = nearestEnemyId != null ? (entityById.get(nearestEnemyId) ?? null) : null;
   const priorityList = blackboard.teamPriority[ship.ship.team];
   let priorityTarget: ShipEntity | null = null;
-  if (priorityList.length > 0) {
-    const candidate = entityById.get(priorityList[0].id) ?? null;
+  const firstPriority = priorityList[0];
+  if (firstPriority) {
+    const candidate = entityById.get(firstPriority.id) ?? null;
     if (candidate && candidate.ship.team !== ship.ship.team) {
       priorityTarget = candidate;
     }

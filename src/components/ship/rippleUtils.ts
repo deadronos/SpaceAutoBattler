@@ -48,8 +48,9 @@ export function filterSignificantRipples(
   // Manual filtering loop for better performance than filter()
   const result: ScaledRipple[] = [];
   for (let i = 0; i < ripples.length; i++) {
-    if (ripples[i].scaledAmp >= minAmp) {
-      result.push(ripples[i]);
+    const ripple = ripples[i];
+    if (ripple && ripple.scaledAmp >= minAmp) {
+      result.push(ripple);
     }
   }
   return result;
@@ -75,6 +76,10 @@ export function coalesceRipples(
     }
 
     const last = coalesced[coalesced.length - 1];
+    if (!last) {
+      coalesced.push({ ...r });
+      continue;
+    }
     const timeDiff = r.t0 - last.t0;
 
     if (timeDiff <= windowSec) {

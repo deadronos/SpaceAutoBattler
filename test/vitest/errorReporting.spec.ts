@@ -46,9 +46,9 @@ describe('errorReporting', () => {
 
       const reports = getRecentErrors();
       expect(reports).toHaveLength(1);
-      expect(reports[0].category).toBe(ErrorCategory.Physics);
-      expect(reports[0].message).toBe('test error');
-      expect(reports[0].context).toEqual({ entityId: 123 });
+      expect(reports[0]!.category).toBe(ErrorCategory.Physics);
+      expect(reports[0]!.message).toBe('test error');
+      expect(reports[0]!.context).toEqual({ entityId: 123 });
     });
 
     it('captures error stack when Error is provided', () => {
@@ -57,7 +57,7 @@ describe('errorReporting', () => {
       reportError(ErrorCategory.Lifecycle, 'wrapped error', undefined, error);
 
       const reports = getRecentErrors();
-      expect(reports[0].stack).toContain('original error');
+      expect(reports[0]!.stack).toContain('original error');
     });
 
     it('limits stored reports to maxReports', () => {
@@ -172,8 +172,8 @@ describe('errorReporting', () => {
 
       const recent = getRecentErrors(2);
       expect(recent).toHaveLength(2);
-      expect(recent[0].message).toBe('error 2');
-      expect(recent[1].message).toBe('error 3');
+      expect(recent[0]!.message).toBe('error 2');
+      expect(recent[1]!.message).toBe('error 3');
     });
 
     it('returns all errors if limit exceeds count', () => {

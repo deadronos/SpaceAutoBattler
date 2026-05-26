@@ -67,8 +67,15 @@ export class SeededRng {
    * @returns {T} A randomly selected element.
    */
   pick<T>(values: readonly T[]): T {
+    if (values.length === 0) {
+      throw new Error('Cannot pick from an empty array');
+    }
     const index = Math.floor(this.next() * values.length);
-    return values[index];
+    const value = values[index];
+    if (value === undefined) {
+      throw new Error('Random index out of bounds');
+    }
+    return value;
   }
 
   /**

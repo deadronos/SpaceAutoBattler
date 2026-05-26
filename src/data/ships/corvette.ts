@@ -20,8 +20,8 @@ export const CORVETTE_STATS: ShipStats = {
   speed: 15,
   scale: 1,
   bulletType: 'bullet:plasma',
-  damageType: HULL_DAMAGE_TYPES.corvette,
-  armor: HULL_ARMOR_VALUES.corvette,
+  damageType: HULL_DAMAGE_TYPES.corvette ?? 'kinetic',
+  armor: HULL_ARMOR_VALUES.corvette ?? 10,
   motion: {
     mass: 1.5,
     maxSpeed: 15,

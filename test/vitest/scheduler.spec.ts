@@ -240,7 +240,9 @@ describe('Scheduler', () => {
       expect(result.shipIndicesToProcess.length).toBeLessThanOrEqual(6);
       // Verify indices are sorted
       for (let i = 1; i < result.shipIndicesToProcess.length; i++) {
-        expect(result.shipIndicesToProcess[i]).toBeGreaterThan(result.shipIndicesToProcess[i - 1]);
+        expect(result.shipIndicesToProcess[i]!).toBeGreaterThan(
+          result.shipIndicesToProcess[i - 1]!,
+        );
       }
     });
 

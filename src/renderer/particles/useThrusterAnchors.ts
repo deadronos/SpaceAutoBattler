@@ -65,8 +65,12 @@ export function computeThrusterAnchorsWorld(
   if (locals && locals.length > 0) {
     const count = Math.min(desiredCount, locals.length);
     for (let i = 0; i < count; i++) {
-      target[i]
-        .copy(locals[i])
+      const local = locals[i];
+      if (!local) continue;
+      const targetAnchor = target[i];
+      if (!targetAnchor) continue;
+      targetAnchor
+        .copy(local)
         .multiplyScalar(ship.transform.scale)
         .applyQuaternion(ship.transform.rotation)
         .add(ship.transform.position);
@@ -88,7 +92,10 @@ export function computeThrusterAnchorsWorld(
       y = (Math.floor(i / 2) - 1) * 0.2 * FALLBACK_SHIP_SIZE.y;
     }
 
-    target[i]
+    const targetAnchor = target[i];
+    if (!targetAnchor) continue;
+
+    targetAnchor
       .set(x, y, tailZ)
       .multiplyScalar(ship.transform.scale)
       .applyQuaternion(ship.transform.rotation)

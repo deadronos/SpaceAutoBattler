@@ -22,7 +22,7 @@ describe('game errors', () => {
     });
 
     const [report] = getGameErrors(1);
-    expect(report.context).toMatchObject({
+    expect(report!.context).toMatchObject({
       code: 'recoverable-config',
       fatal: false,
       severity: 'recoverable',
@@ -43,12 +43,12 @@ describe('game errors', () => {
     );
 
     const [report] = getGameErrors(1);
-    expect(report.context).toMatchObject({
+    expect(report!.context).toMatchObject({
       code: 'fatal-physics',
       fatal: true,
       severity: 'fatal',
       source: 'test.fatal',
     });
-    expect(report.stack).toContain('physics panic');
+    expect(report!.stack).toContain('physics panic');
   });
 });

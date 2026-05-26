@@ -58,8 +58,8 @@ test.describe('Star visibility with postprocessing', () => {
         // Prefer drawing buffer size / client size to compute device coords
         const clientW = (canvas as HTMLCanvasElement).clientWidth || canvas.width || 1;
         const dpr = (canvas as HTMLCanvasElement).width / clientW || window.devicePixelRatio || 1;
-        const deviceX = Math.floor(pxX * dpr);
-        const deviceY = Math.floor((canvas as HTMLCanvasElement).height - 1 - pxY * dpr);
+        const deviceX = Math.floor(pxX! * dpr);
+        const deviceY = Math.floor((canvas as HTMLCanvasElement).height - 1 - pxY! * dpr);
         const gl =
           (canvas as HTMLCanvasElement).getContext('webgl') ||
           (canvas as HTMLCanvasElement).getContext('webgl2');
@@ -75,7 +75,10 @@ test.describe('Star visibility with postprocessing', () => {
             (gl as any).UNSIGNED_BYTE || 0x1401,
             buffer,
           );
-          const [r, g, b, a] = buffer; // rgba 0..255
+          const r = buffer![0]!;
+          const g = buffer![1]!;
+          const b = buffer![2]!;
+          const a = buffer![3]!;
           const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
           // Restore original star material if possible
           try {
@@ -95,7 +98,7 @@ test.describe('Star visibility with postprocessing', () => {
 
     expect(read).not.toBeNull();
     const singleReadVisible =
-      !!read && (read.a > 0 || (typeof read.luminance === 'number' && read.luminance > 8));
+      read != null && (read.a! > 0 || (typeof read.luminance === 'number' && read.luminance > 8));
 
     // Wait a short while for the compositor to settle
     await page.waitForTimeout(300);

@@ -12,7 +12,7 @@ const { refreshBlackboard, assignTeamRoles } = __aiTestHooks;
 describe('AI interrupts', () => {
   it('skips evaluation when nextThinkAt is in the future and no interrupts are queued', () => {
     const { state, ships } = createTestState();
-    const ship = ships[0];
+    const ship = ships[0]!;
     ship.ai!.nextThinkAt = 5;
 
     runDecisionTick(state, state.ai.tickInterval);
@@ -24,8 +24,8 @@ describe('AI interrupts', () => {
 
   it('processes queued interrupts immediately and records latency buckets', () => {
     const { state, ships } = createTestState();
-    const ship = ships[0];
-    const target = ships[1];
+    const ship = ships[0]!;
+    const target = ships[1]!;
     ship.ai!.nextThinkAt = 5;
 
     state.ai.interrupts?.push({

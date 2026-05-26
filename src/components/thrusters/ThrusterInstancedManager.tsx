@@ -145,6 +145,7 @@ export function ThrusterInstancedManager({
 
       for (let ai = 0; ai < anchors.length; ai += 1) {
         const local = anchors[ai];
+        if (!local) continue;
         const key = `${ship.id}:${ai}`;
         const idx = managerRef.current.allocate(key);
         if (idx == null) {

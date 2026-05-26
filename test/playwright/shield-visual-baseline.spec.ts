@@ -100,10 +100,10 @@ function analyzePngBuffer(buf: any) {
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const idx = (y * width + x) * 4;
-      const r = data[idx];
-      const g = data[idx + 1];
-      const b = data[idx + 2];
-      const a = data[idx + 3];
+      const r = data[idx]!;
+      const g = data[idx + 1]!;
+      const b = data[idx + 2]!;
+      const a = data[idx + 3]!;
       // Non-black if any RGB channel above small threshold and alpha > 10
       if (a > 10 && (r > 8 || g > 8 || b > 8)) nonBlack++;
       if (x < inspectW && y < inspectH) {

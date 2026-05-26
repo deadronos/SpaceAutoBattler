@@ -78,7 +78,10 @@ test.describe('Star occlusion', () => {
                 } catch {
                   continue;
                 }
-                const [r0, g0, b0, a0] = buffer;
+                const r0 = buffer![0]!;
+                const g0 = buffer![1]!;
+                const b0 = buffer![2]!;
+                const a0 = buffer![3]!;
                 const l = lum(r0, g0, b0);
                 // Treat low-luminance pixels as occluders (planet/ship dark)
                 if (a0 > 0 && l < 40) {
@@ -111,7 +114,7 @@ test.describe('Star occlusion', () => {
       await page.waitForTimeout(250);
       // Probe for occluding dark pixel near star projection
       if (!starPos) break;
-      const found = await probeForDarkPixel(starPos.x, starPos.y, 140, 6);
+      const found = await probeForDarkPixel(starPos!.x!, starPos!.y!, 140, 6);
       if (found) {
         occluded = true;
         break;

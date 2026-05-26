@@ -90,9 +90,9 @@ describe('projectiles module decomposition', () => {
     fireProjectile(state, origin, new Vector3(0, 0, 1));
 
     expect(spawnMock).toHaveBeenCalled();
-    const [params] = spawnMock.mock.calls[0];
+    const [params] = spawnMock.mock.calls![0]!;
     expect(params.projectile.speed).toBeGreaterThan(0);
-    const spawned = spawnedProjectiles[0].projectile;
+    const spawned = spawnedProjectiles[0]!.projectile;
     expect(spawned.category).toBe('bullet');
     expect(spawned.spawnTime).toBe(state.time);
     expect(spawned.homing).toBeUndefined();

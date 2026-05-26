@@ -87,6 +87,7 @@ function pruneTrackedFighters(
   let write = 0;
   for (let i = 0; i < carrier.activeFighterIds.length; i += 1) {
     const fighterId = carrier.activeFighterIds[i];
+    if (fighterId == null) continue;
     const fighter = aliveById.get(fighterId);
     if (!fighter) continue;
     const component = fighter.ship;

@@ -8,6 +8,8 @@ import { ShieldBubble, SHIELD_RENDER_ORDER } from './ShipShield.js';
 
 export { SHIELD_RENDER_ORDER };
 
+const FALLBACK_CONE_ARGS = [0.6, 1.6, 6] as const;
+
 export interface ShipViewProps {
   entity: ShipEntity;
   groupRef: RefObject<Group | null>;
@@ -53,16 +55,17 @@ export function ShipView({
     );
   }
 
+  const fallbackColor = useMemo(
+    () => new Color(entity.ship.team === 'blue' ? TEAM_COLORS.blue : TEAM_COLORS.red),
+    [entity.ship.team],
+  );
+
   return (
     <group ref={groupRef} dispose={null}>
       <group ref={visualRef}>
         <mesh castShadow receiveShadow>
-          <coneGeometry args={[0.6, 1.6, 6]} />
-          <meshStandardMaterial
-            color={
-              entity.ship.team === 'blue' ? new Color(TEAM_COLORS.blue) : new Color(TEAM_COLORS.red)
-            }
-          />
+          <coneGeometry args={FALLBACK_CONE_ARGS} />
+          <meshStandardMaterial color={fallbackColor} />
         </mesh>
       </group>
       <ShieldBubble entity={entity} radius={modelRadius} />

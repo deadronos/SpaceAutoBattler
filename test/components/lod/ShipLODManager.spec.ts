@@ -79,12 +79,12 @@ describe('partitionShipsByDistance', () => {
     expect(first.farShips.map((s) => s.id)).toEqual([2]);
 
     // Move the far ship just inside the hysteresis band; should remain far
-    ships[1].transform.position.set(470, 0, 0);
+    ships[1]!.transform.position.set(470, 0, 0);
     const second = partitionShipsByDistance(ships, camera, 500, 50, previous);
     expect(second.farShips.map((s) => s.id)).toContain(2);
 
     // Move clearly near; should flip now
-    ships[1].transform.position.set(300, 0, 0);
+    ships[1]!.transform.position.set(300, 0, 0);
     const third = partitionShipsByDistance(ships, camera, 500, 50, previous);
     expect(third.nearShips.map((s) => s.id)).toContain(2);
   });
@@ -153,7 +153,7 @@ describe('populateImpostorInstances', () => {
     const rotation = new Quaternion();
     const scale = new Vector3();
     matrix.decompose(position, rotation, scale);
-    expect(position.distanceTo(ships[0].transform.position)).toBeLessThan(1e-6);
+    expect(position.distanceTo(ships[0]!.transform.position)).toBeLessThan(1e-6);
     expect(rotation.equals(new Quaternion())).toBe(true);
 
     geometry.dispose();

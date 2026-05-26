@@ -30,6 +30,10 @@ function runShipDecisions(
 
   for (const idx of shipIndicesToProcess) {
     const ship = ships[idx];
+    if (!ship) {
+      skipped += 1;
+      continue;
+    }
     const ai = ship.ai;
     if (!ai) {
       skipped += 1;

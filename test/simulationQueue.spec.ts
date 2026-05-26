@@ -66,7 +66,7 @@ describe('recordSubsystemFailure', () => {
 
     const [report] = getRecentErrors(1);
     expect(getErrorCounts()[ErrorCategory.Physics]).toBe(1);
-    expect(report.context).toMatchObject({
+    expect(report!.context).toMatchObject({
       code: 'subsystem-failure',
       fatal: false,
       severity: 'recoverable',
@@ -85,7 +85,7 @@ describe('recordSubsystemFailure', () => {
 
     const [report] = getRecentErrors(1);
     expect(mockState.simulation.rapierDiagnostics.deferredMutationFailures).toBe(1);
-    expect(report.context).toMatchObject({
+    expect(report!.context).toMatchObject({
       code: 'deferred-mutation-failure',
       fatal: false,
       severity: 'recoverable',
@@ -101,7 +101,7 @@ describe('recordSubsystemFailure', () => {
 
     const [report] = getRecentErrors(1);
     expect(mockState.simulation.rapierDiagnostics.stepPanics).toBe(1);
-    expect(report.context).toMatchObject({
+    expect(report!.context).toMatchObject({
       code: 'rapier-step-panic',
       fatal: true,
       severity: 'fatal',
