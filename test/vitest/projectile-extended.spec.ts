@@ -364,4 +364,146 @@ describe('extended projectile behaviours', () => {
     expect(spawned.projectile.homing).toBeDefined();
     expect(spawned.projectile.homing?.turnRate).toBeCloseTo(Math.PI / 3, 5);
   });
+
+  it('skips standard projectile collisions on destroyed ships (hp <= 0)', () => {
+    target.ship.hp = 0;
+    const projectile = createProjectileEntity({
+      id: 501,
+      transform: {
+        position: target.transform.position.clone(),
+        rotation: new Quaternion(),
+        scale: 0.5,
+      },
+      projectile: {
+        team: attacker.ship.team,
+        damage: 20,
+        ttl: 5,
+        maxTtl: 5,
+        speed: 10,
+        bulletType: 'torpedo:standard',
+        damageType: attacker.ship.damageType,
+        sourceId: attacker.id,
+      },
+    });
+    (state.queries.projectiles.entities as ProjectileEntity[]).push(projectile);
+
+    const initialXp = attacker.ship.xp;
+    resolveProjectiles(state, 0.1);
+
+    // The projectile should NOT be removed (so it shouldn't collide and be destroyed)
+    expect((state.queries.projectiles.entities as ProjectileEntity[]).includes(projectile)).toBe(
+      true,
+    );
+    // Attacker should not have earned any damage XP from a dead ship
+    expect(attacker.ship.xp).toBe(initialXp);
+  });
+
+  it('skips proximity fuse triggers on destroyed ships (hp <= 0)', () => {
+    target.ship.hp = 0;
+    const projectile = createProjectileEntity({
+      id: 502,
+      transform: {
+        position: target.transform.position.clone(),
+        rotation: new Quaternion(),
+        scale: 0.5,
+      },
+      projectile: {
+        team: attacker.ship.team,
+        damage: 20,
+        ttl: 5,
+        maxTtl: 5,
+        speed: 10,
+        bulletType: 'torpedo:standard',
+        damageType: attacker.ship.damageType,
+        sourceId: attacker.id,
+        proximityFuse: { radius: 2 },
+        aoeRadius: 4,
+      },
+    });
+    (state.queries.projectiles.entities as ProjectileEntity[]).push(projectile);
+
+    const initialXp = attacker.ship.xp;
+    resolveProjectiles(state, 0.1);
+
+    // Proximity fuse should NOT trigger, so projectile should not be removed
+    expect((state.queries.projectiles.entities as ProjectileEntity[]).includes(projectile)).toBe(
+      true,
+    );
+    expect(attacker.ship.xp).toBe(initialXp);
+  });
+
+  it('skips AoE damage on destroyed ships (hp <= 0)', () => {
+    const nearby = createTestShip(3, 'red', new Vector3(2, 0, 0));
+    nearby.ship.hp = 0;
+    state.queries.ships.entities.push(nearby);
+    state.shipById.set(nearby.id, nearby);
+
+    const projectile = createProjectileEntity({
+      id: 503,
+      transform: {
+        position: target.transform.position.clone(),
+        rotation: new Quaternion(),
+        scale: 0.5,
+      },
+      projectile: {
+        team: attacker.ship.team,
+        damage: 20,
+        ttl: 5,
+        maxTtl: 5,
+        speed: 10,
+        bulletType: 'torpedo:standard',
+        damageType: attacker.ship.damageType,
+        sourceId: attacker.id,
+        aoeRadius: 5,
+      },
+    });
+    (state.queries.projectiles.entities as ProjectileEntity[]).push(projectile);
+
+    const initialNearbyHp = nearby.ship.hp;
+    const initialXp = attacker.ship.xp;
+
+    resolveProjectiles(state, 0.1);
+
+    // The nearby ship has hp = 0, so it should not receive any AoE damage.
+    expect(nearby.ship.hp).toBe(initialNearbyHp);
+  });
+
+  it('skips beam projectile damage on destroyed ships (hp <= 0)', () => {
+    target.ship.hp = 0;
+    const beam = createProjectileEntity({
+      id: 504,
+      transform: {
+        position: attacker.transform.position.clone(),
+        rotation: new Quaternion(),
+        scale: 0.4,
+      },
+      projectile: {
+        team: attacker.ship.team,
+        damage: 25,
+        ttl: 0.4,
+        maxTtl: 0.4,
+        speed: 0,
+        bulletType: 'beam:laser',
+        damageType: attacker.ship.damageType,
+        sourceId: attacker.id,
+        category: 'beam',
+        beam: {
+          ttl: 0.4,
+          maxLength: 20,
+          width: 0.5,
+          hitPoint: target.transform.position.clone(),
+          applied: false,
+        },
+        targetId: target.id,
+      },
+    });
+    (state.queries.projectiles.entities as ProjectileEntity[]).push(beam);
+
+    const initialXp = attacker.ship.xp;
+    resolveProjectiles(state, 0.05);
+
+    // The beam shouldn't apply damage to the dead target, so no XP is awarded
+    expect(attacker.ship.xp).toBe(initialXp);
+    expect(beam.projectile.beam?.applied).toBe(true);
+  });
 });

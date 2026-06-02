@@ -170,7 +170,7 @@ function handleBeamProjectile(
 
   if (!beam.applied && projectile.projectile.targetId != null) {
     const target = shipsById.get(projectile.projectile.targetId);
-    if (target && target.ship.team !== projectile.projectile.team) {
+    if (target && target.ship.hp > 0 && target.ship.team !== projectile.projectile.team) {
       const outcome = applyProjectileDamage(state, projectile, target, ships, shipsById);
       if (outcome.destroyed) {
         toRemove.add(target);
@@ -197,6 +197,7 @@ function applyAoeDamage(
   const origin = projectile.transform.position;
   const nearbyShips = querySpatialHash(shipSpatialHash, origin, radius);
   for (const ship of nearbyShips) {
+    if (ship.ship.hp <= 0) continue;
     if (primaryTarget && ship === primaryTarget) continue;
     if (ship.ship.team === projectile.projectile.team) continue;
     const distance = ship.transform.position.distanceTo(origin);
@@ -274,6 +275,7 @@ export function resolveProjectiles(state: GameState, delta: number): void {
 
       let triggered = false;
       for (const target of fuseTargets) {
+        if (target.ship.hp <= 0) continue;
         if (target.ship.team === projectile.projectile.team) continue;
         const dist = target.transform.position.distanceTo(projectile.transform.position);
         if (dist <= fuseRadius) {
@@ -312,6 +314,7 @@ export function resolveProjectiles(state: GameState, delta: number): void {
     );
 
     for (const ship of nearbyShips) {
+      if (ship.ship.hp <= 0) continue;
       const impactRadius = ship.transform.scale * 0.9 + projRadius;
       if (ship.ship.team === projectile.projectile.team) continue;
       const distance = ship.transform.position.distanceTo(projectile.transform.position);
