@@ -133,6 +133,66 @@ describe('ParticleTrails GPU buffers', () => {
     expect(Math.abs(resources.arrays.spawnPosition[2])).toBeGreaterThan(0);
   });
 
+  it('records partial update ranges for newly spawned particles', () => {
+    const resources = createParticleTrailResources(16, {
+      size: PARTICLE_TRAILS_CONFIG.size,
+      color: PARTICLE_TRAILS_CONFIG.color,
+      opacity: PARTICLE_TRAILS_CONFIG.opacity,
+      additiveBlending: PARTICLE_TRAILS_CONFIG.additiveBlending,
+      depthTest: PARTICLE_TRAILS_CONFIG.depthTest,
+      depthWrite: PARTICLE_TRAILS_CONFIG.depthWrite,
+    });
+
+    render(<ParticleTrails ships={[createTestShip(1)]} resources={resources} />);
+
+    runLatestFrame(0.5, 0.1);
+
+    expect(resources.geometry.instanceCount).toBe(1);
+    expect(resources.attributes.spawnPosition.updateRanges).toEqual([{ start: 0, count: 3 }]);
+    expect(resources.attributes.velocity.updateRanges).toEqual([{ start: 0, count: 3 }]);
+    expect(resources.attributes.spawnTime.updateRanges).toEqual([{ start: 0, count: 1 }]);
+    expect(resources.attributes.lifetime.updateRanges).toEqual([{ start: 0, count: 1 }]);
+    expect(resources.attributes.scale.updateRanges).toEqual([{ start: 0, count: 1 }]);
+  });
+
+  it('splits update ranges when particle writes wrap the ring buffer', () => {
+    const resources = createParticleTrailResources(4, {
+      size: PARTICLE_TRAILS_CONFIG.size,
+      color: PARTICLE_TRAILS_CONFIG.color,
+      opacity: PARTICLE_TRAILS_CONFIG.opacity,
+      additiveBlending: PARTICLE_TRAILS_CONFIG.additiveBlending,
+      depthTest: PARTICLE_TRAILS_CONFIG.depthTest,
+      depthWrite: PARTICLE_TRAILS_CONFIG.depthWrite,
+    });
+
+    render(<ParticleTrails ships={[createTestShip(1)]} resources={resources} />);
+
+    runLatestFrame(0.25, 0.25);
+    runLatestFrame(0.5, 0.25);
+
+    expect(resources.geometry.instanceCount).toBe(4);
+    expect(resources.attributes.spawnPosition.updateRanges).toEqual([
+      { start: 9, count: 3 },
+      { start: 0, count: 6 },
+    ]);
+    expect(resources.attributes.velocity.updateRanges).toEqual([
+      { start: 9, count: 3 },
+      { start: 0, count: 6 },
+    ]);
+    expect(resources.attributes.spawnTime.updateRanges).toEqual([
+      { start: 3, count: 1 },
+      { start: 0, count: 2 },
+    ]);
+    expect(resources.attributes.lifetime.updateRanges).toEqual([
+      { start: 3, count: 1 },
+      { start: 0, count: 2 },
+    ]);
+    expect(resources.attributes.scale.updateRanges).toEqual([
+      { start: 3, count: 1 },
+      { start: 0, count: 2 },
+    ]);
+  });
+
   it('updates shader time uniform every frame', () => {
     const resources = createParticleTrailResources(4, {
       size: PARTICLE_TRAILS_CONFIG.size,

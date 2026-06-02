@@ -22,6 +22,36 @@ interface ParticleTrailProps {
 
 const TRAIL_RNG_SEED = 0x54524149; // 'TRAI'
 
+function markAttributeUpdateRange(
+  itemSize: number,
+  startParticleIndex: number,
+  spawnedParticleCount: number,
+  maxParticles: number,
+  attribute: ParticleTrailResources['attributes'][keyof ParticleTrailResources['attributes']],
+): void {
+  attribute.clearUpdateRanges();
+
+  if (spawnedParticleCount <= 0) {
+    return;
+  }
+
+  if (spawnedParticleCount >= maxParticles) {
+    attribute.addUpdateRange(0, maxParticles * itemSize);
+    attribute.needsUpdate = true;
+    return;
+  }
+
+  const firstRangeCount = Math.min(spawnedParticleCount, maxParticles - startParticleIndex);
+  attribute.addUpdateRange(startParticleIndex * itemSize, firstRangeCount * itemSize);
+
+  const overflowCount = spawnedParticleCount - firstRangeCount;
+  if (overflowCount > 0) {
+    attribute.addUpdateRange(0, overflowCount * itemSize);
+  }
+
+  attribute.needsUpdate = true;
+}
+
 /**
  * Simple particle trail system for ship thrusters.
  * Spawns small particles from ship thruster anchors that fade out over time.
@@ -116,14 +146,15 @@ export function ParticleTrails({ ships, resources }: ParticleTrailProps): React.
     const longitudinalJitter = PARTICLE_TRAILS_CONFIG.longitudinalJitter;
     const scaleJitter = PARTICLE_TRAILS_CONFIG.scaleJitter;
     const lifetimeBase = PARTICLE_TRAILS_CONFIG.lifetime;
-    const maxParticles = PARTICLE_TRAILS_CONFIG.maxParticles;
+    const maxParticles = trailResources.arrays.spawnTime.length;
 
     // LOD Settings
     const LOD_DISTANCE_SQ = 500 * 500; // Distance squared for LOD culling (500 units)
     const cameraPos = camera.position;
 
     const activeShipIds = new Set<number>();
-    let spawnedThisFrame = false;
+    let frameFirstParticleIndex = -1;
+    let spawnedParticleCount = 0;
 
     for (const ship of ships) {
       activeShipIds.add(ship.id);
@@ -168,10 +199,13 @@ export function ParticleTrails({ ships, resources }: ParticleTrailProps): React.
         const spawnCount = Math.floor(desired);
         remainderForShip[i] = desired - spawnCount;
         if (spawnCount <= 0) continue;
-        spawnedThisFrame = true;
 
         for (let spawnIndex = 0; spawnIndex < spawnCount; spawnIndex++) {
           const idx = nextParticleIndex.current;
+          if (frameFirstParticleIndex === -1) {
+            frameFirstParticleIndex = idx;
+          }
+          spawnedParticleCount++;
           const base3 = idx * 3;
 
           trailResources.arrays.spawnPosition[base3] = anchor.x;
@@ -213,12 +247,42 @@ export function ParticleTrails({ ships, resources }: ParticleTrailProps): React.
       }
     }
 
-    if (spawnedThisFrame) {
-      trailResources.attributes.spawnPosition.needsUpdate = true;
-      trailResources.attributes.velocity.needsUpdate = true;
-      trailResources.attributes.spawnTime.needsUpdate = true;
-      trailResources.attributes.lifetime.needsUpdate = true;
-      trailResources.attributes.scale.needsUpdate = true;
+    if (spawnedParticleCount > 0 && frameFirstParticleIndex !== -1) {
+      markAttributeUpdateRange(
+        3,
+        frameFirstParticleIndex,
+        spawnedParticleCount,
+        maxParticles,
+        trailResources.attributes.spawnPosition,
+      );
+      markAttributeUpdateRange(
+        3,
+        frameFirstParticleIndex,
+        spawnedParticleCount,
+        maxParticles,
+        trailResources.attributes.velocity,
+      );
+      markAttributeUpdateRange(
+        1,
+        frameFirstParticleIndex,
+        spawnedParticleCount,
+        maxParticles,
+        trailResources.attributes.spawnTime,
+      );
+      markAttributeUpdateRange(
+        1,
+        frameFirstParticleIndex,
+        spawnedParticleCount,
+        maxParticles,
+        trailResources.attributes.lifetime,
+      );
+      markAttributeUpdateRange(
+        1,
+        frameFirstParticleIndex,
+        spawnedParticleCount,
+        maxParticles,
+        trailResources.attributes.scale,
+      );
     }
 
     trailResources.geometry.instanceCount = filledCount.current;
