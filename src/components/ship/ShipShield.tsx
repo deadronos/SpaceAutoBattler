@@ -192,6 +192,18 @@ export function ShieldBubble({
     }
   });
 
+  const ripples = entity.shieldRipples ?? [];
+  const rippleQueue = processRipplesForRendering(ripples, SHIELD_RIPPLE_TUNING);
+
+  const visuals = getShieldVisuals(entity.ship.hull);
+  const kind = visuals.materialKind;
+  const key = `shield:${kind}`;
+
+  const sphereArgs = useMemo(
+    () => [1, visuals.geometrySegments, visuals.geometrySegments] as const,
+    [visuals.geometrySegments],
+  );
+
   const opacity = Math.max(0, Math.min(1, shieldFraction));
 
   if (shieldFraction < minShieldThreshold) {
@@ -208,18 +220,6 @@ export function ShieldBubble({
     }
     return <></>;
   }
-
-  const ripples = entity.shieldRipples ?? [];
-  const rippleQueue = processRipplesForRendering(ripples, SHIELD_RIPPLE_TUNING);
-
-  const visuals = getShieldVisuals(entity.ship.hull);
-  const kind = visuals.materialKind;
-  const key = `shield:${kind}`;
-
-  const sphereArgs = useMemo(
-    () => [1, visuals.geometrySegments, visuals.geometrySegments] as const,
-    [visuals.geometrySegments],
-  );
 
   if (kind === 'hex') {
     const Mat = getMaterial<ShieldHexMaterialProps>(key) ?? getMaterial('shield:hex')!;
