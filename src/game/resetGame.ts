@@ -43,6 +43,14 @@ export function resetGame(state: GameState): void {
   state.blackboard.visibleEnemies?.blue.clear();
   state.blackboard.visibleEnemies?.red.clear();
   state.simulation.postStepMutations.length = 0;
+
+  state.nextEntityId = 1;
+  state.nextExplosionId = 1;
+  state.colliderLookup.clear();
+  state.shipById.clear();
+  state.turretsByShip?.clear();
+  state.progressionEvents.clear();
+  state.explosions.length = 0;
 }
 
 /**
