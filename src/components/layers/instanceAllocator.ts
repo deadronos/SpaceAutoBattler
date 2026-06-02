@@ -11,6 +11,10 @@ export class InstanceAllocator<K> {
   private readonly active = new Set<K>();
   private saturated = false;
 
+  has(key: K): boolean {
+    return this.allocation.has(key);
+  }
+
   constructor(capacity: number) {
     if (capacity <= 0) {
       throw new Error('InstanceAllocator capacity must be > 0');

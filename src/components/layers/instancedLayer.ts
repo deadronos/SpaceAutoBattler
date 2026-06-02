@@ -50,6 +50,10 @@ export class InstancedLayerManager<K> {
     }
   }
 
+  has(key: K): boolean {
+    return this.allocator.has(key);
+  }
+
   beginFrame(): void {
     this.allocator.beginFrame();
     this.maxIndex = -1;

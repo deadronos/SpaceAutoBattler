@@ -82,4 +82,25 @@ describe('InstancedLayerManager edge cases', () => {
     expect(out).toHaveProperty('count');
     expect(out).toHaveProperty('saturated');
   });
+
+  it('checks if a key is currently allocated using has()', () => {
+    const mesh = createMesh(3);
+    const mgr = createInstancedLayerManager({ current: mesh }, { capacity: 3 });
+
+    mgr.beginFrame();
+    expect(mgr.has('a')).toBe(false);
+
+    mgr.allocate('a');
+    expect(mgr.has('a')).toBe(true);
+
+    mgr.endFrame();
+    // After endFrame, it should still be active/allocated
+    expect(mgr.has('a')).toBe(true);
+
+    // If not allocated in next frame, it gets swept
+    mgr.beginFrame();
+    expect(mgr.has('a')).toBe(true); // still allocated until endFrame sweep
+    mgr.endFrame();
+    expect(mgr.has('a')).toBe(false); // swept
+  });
 });
