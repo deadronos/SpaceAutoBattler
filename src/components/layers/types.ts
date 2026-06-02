@@ -9,6 +9,7 @@ import type { InstancedMesh, Matrix4, Color } from 'three';
 export interface IInstancedLayerManager<K> {
   readonly meshRef: { current: InstancedMesh | null };
   beginFrame(): void;
+  has(key: K): boolean;
   allocate(key: K): number | null;
   release(key: K): number | null;
   setMatrixAt(index: number, matrix: Matrix4): void;

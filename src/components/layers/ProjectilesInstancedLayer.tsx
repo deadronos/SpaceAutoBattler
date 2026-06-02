@@ -1,7 +1,7 @@
 import { useFrame } from '@react-three/fiber';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import type { InstancedMesh } from 'three';
-import { Color, Matrix4, Vector3 } from 'three';
+import { Color, Frustum, Matrix4, Sphere, Vector3 } from 'three';
 import type { Archetype, GameEntity, ProjectileEntity } from '../../types/index.js';
 import { useArchetypeEntities } from '../../hooks/useArchetypeEntities.js';
 import { useGameState } from '../../game/context.js';
@@ -40,8 +40,8 @@ interface ProjectileGroupState {
 }
 
 const DEFAULT_CAPACITY = 512;
-const HIGH_DENSITY_UPDATE_INTERVAL = 2;
-const HIGH_DENSITY_THRESHOLD = 300;
+const LOD_CLOSE_DISTANCE_SQ = 200 * 200; // Projects within 200 units are updated at full 60 FPS
+const LOD_FAR_UPDATE_INTERVAL = 2; // Far projectiles update every 2 frames
 // HIDDEN_MATRIX is exported from `instancedLayer.ts` and used globally to
 // hide released instances. Keeping a single canonical source avoids dupes.
 const TEMP_MATRIX = new Matrix4();
@@ -106,6 +106,10 @@ export function ProjectilesInstancedLayer({
   const warningStateRef = useRef(createSaturationWarningState());
   const frameRef = useRef(0);
   const lastTickRef = useRef<number | null>(null);
+  const frustumRef = useRef(new Frustum());
+  const projScreenMatrixRef = useRef(new Matrix4());
+  const tempSphereRef = useRef(new Sphere());
+  const tempBeamCenterRef = useRef(new Vector3());
   const state = useGameState();
 
   const ensureGroup = useCallback(
@@ -152,8 +156,7 @@ export function ProjectilesInstancedLayer({
       ensureGroup(key);
     }
   }, [projectiles, ensureGroup]);
-
-  useFrame(() => {
+  useFrame((r3fState) => {
     frameRef.current += 1;
     const frameId = frameRef.current;
     const simTick = state?.simulation.lastTickIndex ?? null;
@@ -173,12 +176,14 @@ export function ProjectilesInstancedLayer({
     }
     lastTickRef.current = simTick;
 
-    if (
-      projectiles.length >= HIGH_DENSITY_THRESHOLD &&
-      frameId % HIGH_DENSITY_UPDATE_INTERVAL === 0
-    ) {
-      return;
-    }
+    const camera = r3fState.camera;
+    projScreenMatrixRef.current.multiplyMatrices(
+      camera.projectionMatrix,
+      camera.matrixWorldInverse,
+    );
+    frustumRef.current.setFromProjectionMatrix(projScreenMatrixRef.current);
+    const cameraPos = camera.position;
+
     let totalAllocated = 0;
     let saturated = false;
 
@@ -193,6 +198,45 @@ export function ProjectilesInstancedLayer({
       const group = ensureGroup(key);
       if (!group) continue;
 
+      const info = projectile.projectile.renderInfo ?? group.info;
+      const category = projectile.projectile.category ?? info.category;
+
+      // 1. Compute bounding sphere for frustum culling
+      const pos = projectile.transform.position;
+      if (category === 'beam' && projectile.projectile.beam) {
+        const beam = projectile.projectile.beam;
+        let beamLength =
+          beam.maxLength ?? projectile.projectile.speed * projectile.projectile.maxTtl;
+        if (beam.hitPoint) {
+          beamLength = tempBeamCenterRef.current.copy(beam.hitPoint).sub(pos).length();
+        }
+        if (!Number.isFinite(beamLength) || beamLength <= 0) {
+          beamLength = projectile.projectile.speed * Math.max(projectile.projectile.maxTtl, 0);
+        }
+        beamLength = Math.max(0.1, beamLength);
+
+        // Midpoint center
+        tempBeamCenterRef.current.copy(pos).addScaledVector(projectile.direction, beamLength / 2);
+        tempSphereRef.current.center.copy(tempBeamCenterRef.current);
+        tempSphereRef.current.radius = beamLength / 2 + 1.0;
+      } else {
+        const baseScale = projectile.transform.scale * info.visualMultiplier;
+        tempSphereRef.current.center.copy(pos);
+        tempSphereRef.current.radius = baseScale + 1.0;
+      }
+
+      // 2. Frustum Culling
+      if (!frustumRef.current.intersectsSphere(tempSphereRef.current)) {
+        continue;
+      }
+
+      // 3. Distance LOD checking
+      const distSq = cameraPos.distanceToSquared(tempSphereRef.current.center);
+      const isClose = distSq < LOD_CLOSE_DISTANCE_SQ;
+      const isNew = !group.manager.has(projectile.id);
+      const shouldUpdateMatrix =
+        isClose || isNew || (frameId + projectile.id) % LOD_FAR_UPDATE_INTERVAL === 0;
+
       if (totalAllocated >= maxTotal) {
         saturated = true;
         continue;
@@ -204,12 +248,15 @@ export function ProjectilesInstancedLayer({
         continue;
       }
 
+      totalAllocated += 1;
+
+      // If we don't need to update matrix on this frame, skip the calculations and keep existing matrix
+      if (!shouldUpdateMatrix) {
+        continue;
+      }
+
       const mesh = group.meshRef.current;
       if (!mesh) continue;
-
-      totalAllocated += 1;
-      const info = projectile.projectile.renderInfo ?? group.info;
-      const category = projectile.projectile.category ?? info.category;
 
       if (category === 'beam' && projectile.projectile.beam) {
         const result = computeBeamTransform({
