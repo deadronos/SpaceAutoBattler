@@ -182,7 +182,8 @@ export function updateSensorSystem(state: GameState, ships: ShipEntity[]): void 
 
     getForwardFromQuaternion(source.transform.rotation, TMP_FORWARD).normalize();
 
-    for (const target of ships) {
+    const nearbyTargets = spatialGrid!.query(source.transform.position, trackingRange);
+    for (const target of nearbyTargets) {
       if (target === source) continue;
       if (target.ship.team === team) continue;
       TMP_VECTOR.copy(target.transform.position).sub(source.transform.position);
