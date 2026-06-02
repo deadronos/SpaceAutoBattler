@@ -55,6 +55,22 @@ export class SpatialGrid {
 
     // Determine which cells to check based on radius
     const cellRadius = Math.ceil(radius / this.cellSize);
+
+    // If the volume of cells to search is extremely large relative to the number of
+    // actually populated cells, it is much faster to scan all populated cells directly.
+    const totalCellsToScan = Math.pow(cellRadius * 2 + 1, 3);
+    if (totalCellsToScan > this.cells.size) {
+      for (const cell of this.cells.values()) {
+        for (const ship of cell) {
+          const distSq = position.distanceToSquared(ship.transform.position);
+          if (distSq <= radiusSq) {
+            results.push(ship);
+          }
+        }
+      }
+      return results;
+    }
+
     const centerX = Math.floor(position.x / this.cellSize);
     const centerY = Math.floor(position.y / this.cellSize);
     const centerZ = Math.floor(position.z / this.cellSize);
