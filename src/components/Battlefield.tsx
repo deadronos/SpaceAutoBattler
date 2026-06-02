@@ -35,11 +35,12 @@ type DebugWindow = Window & {
 
 function BattleSceneContent({ ppEnabled }: BattleSceneContentProps): React.ReactElement {
   const state = useOptionalGameState();
+  const axesHelper = useMemo(() => new AxesHelper(200), []);
+  useEffect(() => () => axesHelper.dispose(), [axesHelper]);
+
   if (!state) return <></>;
   const renderWorkerShipsOnly = shouldRenderWorkerShipsOnly();
   const renderWorkerShips = shouldRenderWorkerShips();
-  const axesHelper = useMemo(() => new AxesHelper(200), []);
-  useEffect(() => () => axesHelper.dispose(), [axesHelper]);
   // Expose a local `ships` binding to make particle integration explicit for static checks
   const ships = state.queries.ships;
 
