@@ -138,4 +138,26 @@ describe('Rapier Reset Stability', () => {
     const resetSpawn = toSpawnSnapshot();
     expect(resetSpawn).toEqual(initialSpawn);
   });
+
+  it('resetGame resets entity counters and clears tracking/registry maps', () => {
+    state.nextEntityId = 42;
+    state.nextExplosionId = 13;
+
+    const mockEntity = { id: 999 } as any;
+    state.colliderLookup.set(100, mockEntity);
+    state.shipById.set(200, mockEntity);
+    state.turretsByShip?.set(300, new Set());
+    state.progressionEvents.set(400, []);
+    state.explosions.push({ id: 1 } as any);
+
+    resetGame(state);
+
+    expect(state.nextEntityId).toBe(1);
+    expect(state.nextExplosionId).toBe(1);
+    expect(state.colliderLookup.size).toBe(0);
+    expect(state.shipById.size).toBe(0);
+    expect(state.turretsByShip?.size).toBe(0);
+    expect(state.progressionEvents.size).toBe(0);
+    expect(state.explosions).toHaveLength(0);
+  });
 });
