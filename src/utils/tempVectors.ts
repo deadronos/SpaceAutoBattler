@@ -22,29 +22,41 @@ export const TEMP_VEC3_2 = new Vector3();
 export const TEMP_VEC3_3 = new Vector3();
 export const TEMP_VEC3_4 = new Vector3();
 export const TEMP_VEC3_5 = new Vector3();
+export const TEMP_VEC3_6 = new Vector3();
+export const TEMP_VEC3_7 = new Vector3();
+export const TEMP_VEC3_8 = new Vector3();
+export const TEMP_VEC3_9 = new Vector3();
+export const TEMP_VEC3_10 = new Vector3();
+export const TEMP_VEC3_11 = new Vector3();
+export const TEMP_VEC3_12 = new Vector3();
+export const TEMP_VEC3_13 = new Vector3();
+export const TEMP_VEC3_14 = new Vector3();
 
 export const TEMP_QUAT_0 = new Quaternion();
 export const TEMP_QUAT_1 = new Quaternion();
 
 // --- Semantic aliases for common patterns ---
 
-/** General-purpose scratch position. */
 export const TEMP_POS = TEMP_VEC3_0;
-
-/** General-purpose scratch direction. */
 export const TEMP_DIR = TEMP_VEC3_1;
-
-/** General-purpose scratch target position. */
 export const TEMP_TARGET = TEMP_VEC3_2;
-
-/** General-purpose scratch relative position. */
 export const TEMP_REL_POS = TEMP_VEC3_3;
-
-/** General-purpose scratch offset. */
 export const TEMP_OFFSET = TEMP_VEC3_4;
-
-/** General-purpose scratch right vector. */
 export const TEMP_RIGHT = TEMP_VEC3_5;
 
-/** General-purpose scratch quaternion. */
 export const TEMP_QUAT = TEMP_QUAT_0;
+
+// --- Steering aliases ---
+
+export const TEMP_LEAD = TEMP_VEC3_6;
+export const TEMP_SEEK = TEMP_VEC3_7;
+export const TEMP_INTERCEPT = TEMP_VEC3_8;
+export const TEMP_INTERCEPT_TARGET = TEMP_VEC3_9;
+
+// --- Turret / aiming aliases ---
+
+export const TEMP_TURRET_DIR = TEMP_VEC3_10;
+export const TEMP_LOCAL_DIR = TEMP_VEC3_11;
+export const TEMP_TARGET_VEL = TEMP_VEC3_12;
+export const TEMP_SHIP_VEL = TEMP_VEC3_13;
+export const TEMP_REL_VEL = TEMP_VEC3_14;

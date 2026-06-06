@@ -1,4 +1,4 @@
-import { Quaternion, Vector3 } from 'three';
+import { Vector3 } from 'three';
 import type {
   GameState,
   ProjectileEntity,
@@ -12,10 +12,11 @@ import { destroyEntity } from '../state.js';
 import type { KinematicBody } from '../physics/safeKinematics.js';
 import { deferSetNextKinematicTranslation } from '../physics/safeKinematics.js';
 import { findNearestEnemy, findPointDefenseTarget } from '../utils/targetSelection.js';
-
-const TEMP_TURRET_DIR = new Vector3();
-const TEMP_QUAT = new Quaternion();
-const TEMP_LOCAL_DIR = new Vector3();
+import {
+  TEMP_TURRET_DIR,
+  TEMP_QUAT as TURRET_TEMP_QUAT,
+  TEMP_LOCAL_DIR,
+} from '../../utils/tempVectors.js';
 
 // Hull size classification for turret priority targeting
 const SMALL_HULLS = new Set(['fighter', 'corvette']);
@@ -104,7 +105,7 @@ export function updateTurrets(state: GameState, delta: number): void {
     if (dist > t.turret.range) continue;
     if (dist > 1e-5) toTarget.divideScalar(dist);
     else toTarget.set(0, 0, 1);
-    const invRot = TEMP_QUAT.copy(ship.transform.rotation).invert();
+    const invRot = TURRET_TEMP_QUAT.copy(ship.transform.rotation).invert();
     const localDir = TEMP_LOCAL_DIR.copy(toTarget).applyQuaternion(invRot);
     const yaw = Math.atan2(localDir.x, localDir.z);
     const pitch = Math.asin(Math.max(-1, Math.min(1, localDir.y)));

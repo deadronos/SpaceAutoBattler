@@ -1,6 +1,6 @@
 import { Quaternion, Vector3 } from 'three';
-import type { GameState, ShipEntity, TurretEntity } from '../types/index.js';
-import type { TurretSpec } from '../types/combat.js';
+import type { GameState, ShipEntity } from '../types/index.js';
+import type { TurretSpec, TurretEntity } from '../types/index.js';
 import { registerTurret } from './turretRegistry.js';
 import { createKinematicBodyWithCollider, registerColliderHandle } from './utils/physicsFactory.js';
 import { reportLifecycleError } from '../utils/errorReporting.js';
@@ -20,9 +20,7 @@ export function createTurretEntities(
   turretSpecs: readonly TurretSpec[],
   parentPosition: Vector3,
   parentRotation: Quaternion,
-): TurretEntity[] {
-  const turrets: TurretEntity[] = [];
-
+): void {
   turretSpecs.forEach((spec, idx) => {
     const { body: tBody, collider: tCollider } = createKinematicBodyWithCollider(state, {
       position: parentPosition,
@@ -66,9 +64,5 @@ export function createTurretEntities(
     } catch (error) {
       reportLifecycleError('create', 'TurretRegistry', parent.id, error);
     }
-
-    turrets.push(turretEntity);
   });
-
-  return turrets;
 }

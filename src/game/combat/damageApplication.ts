@@ -103,6 +103,8 @@ export function applyDamageResultToShip(
     callbacks?.onDamageApplied?.(context);
   }
 
+  // Check if ship transitioned to dead state (was alive, now dead)
+  // This ensures onKill fires only once on the killing blow, not on subsequent hits
   const destroyed = component.hp <= 0;
   if (destroyed && wasAlive) {
     callbacks?.onKill?.(context);
