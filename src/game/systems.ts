@@ -24,16 +24,37 @@ import { updateTurrets } from './systems/turrets.js';
 import { findNearestEnemy } from './utils/targetSelection.js';
 import { resolveProjectiles } from './systems/damage.js';
 import { syncTransforms } from './systems/sync.js';
+import { flushDeferredMutations, flushPostPhysicsMutations } from './simulationQueue.js';
 import {
-  flushDeferredMutations,
-  flushPostPhysicsMutations,
-  recordRapierStepPanic,
-  recordSubsystemFailure,
-} from './simulationQueue.js';
-import { safeSnapshot } from './safeSnapshot.js';
-import { reportQueryError } from '../utils/errorReporting.js';
+  createMeasurementRunner,
+  executePipeline,
+  stepPhysics,
+  type SystemStep,
+} from './systems/pipeline.js';
 
 export { updateDecisionSystem, fireProjectile, findNearestEnemy };
+
+/**
+ * Ordered simulation pipeline — add new systems here in dependency order.
+ * The `updateGame` loop iterates this array so ordering is explicit and reviewable.
+ */
+const SIMULATION_PIPELINE: readonly SystemStep[] = [
+  { name: 'updateDecisionSystem', fn: updateDecisionSystem },
+  { name: 'prepareShips', fn: prepareShips },
+  { name: 'updateCarrierLaunchSystem', fn: updateCarrierLaunchSystem },
+  { name: 'updateTurrets', fn: updateTurrets },
+  { name: 'updateMotionSystem', fn: updateMotionSystem },
+  { name: 'advanceProjectiles', fn: advanceProjectiles },
+];
+
+/**
+ * Post-physics pipeline — systems that depend on physics step results.
+ */
+const POST_PHYSICS_PIPELINE: readonly SystemStep[] = [
+  { name: 'syncTransforms', fn: syncTransforms },
+  { name: 'resolveProjectiles', fn: resolveProjectiles },
+  { name: 'updateExplosions', fn: updateExplosions },
+];
 
 /**
  * Run a single decision tick for all AI-controlled ships.
@@ -47,7 +68,7 @@ export function runDecisionTick(state: GameState, delta: number): void {
 }
 
 /**
- * Main game update loop. Runs all systems in order.
+ * Main game update loop. Runs all systems in order through a declarative pipeline.
  *
  * @param {GameState} state - The game state.
  * @param {number} delta - The time step in seconds.
@@ -60,91 +81,23 @@ export function updateGame(state: GameState, delta: number): void {
 
   state.time += delta;
 
-  const timings =
-    sim.subsystemTimings ??
-    (sim.subsystemTimings = {
-      durations: {},
-      lastTickIndex: -1,
-      lastTickTime: 0,
-    });
-  timings.lastTickIndex = sim.lastTickIndex;
-  timings.lastTickTime = state.time;
+  const measure = createMeasurementRunner(state);
+  const timings = sim.subsystemTimings!;
 
-  const runSafely = (name: string, fn: () => void) => {
-    try {
-      fn();
-    } catch (error) {
-      try {
-        // Capture a small, safe snapshot for diagnostics and continue.
-        const snap = safeSnapshot(state);
-        recordSubsystemFailure(state, name, error, snap);
-      } catch (snapError) {
-        // Best-effort: don't allow diagnostics to throw and break the tick.
-        // Expected: safeSnapshot may fail if state is corrupted
-        reportQueryError(`runSafely.snapshot.${name}`, snapError);
-        try {
-          recordSubsystemFailure(state, name, error);
-        } catch (recordError) {
-          // Expected: Recording may fail if simulation state is invalid
-          reportQueryError(`runSafely.record.${name}`, recordError);
-        }
-      }
-    }
-  };
+  // Pre-physics pipeline
+  executePipeline(SIMULATION_PIPELINE, state, delta, measure);
 
-  const runSubsystem = (name: string, fn: () => void) => {
-    if (sim.enableSubsystemGuards) {
-      runSafely(name, fn);
-      return;
-    }
-    fn();
-  };
+  // Deferred mutations must flush before physics to avoid iteration conflicts
+  measure('flushDeferredMutations', () => flushDeferredMutations(state));
 
-  const profileSampleRate = Math.max(1, sim.profileSampleRate ?? 1);
-  const profileThisTick = Boolean(
-    sim.profileSubsystems && sim.lastTickIndex % profileSampleRate === 0,
-  );
+  // Rapier physics step
+  stepPhysics(state, timings);
 
-  const measureSubsystem = (name: string, fn: () => void) => {
-    if (!profileThisTick) {
-      runSubsystem(name, fn);
-      return;
-    }
+  // Post-physics mutations
+  measure('flushPostPhysicsMutations', () => flushPostPhysicsMutations(state));
 
-    const start = performance.now();
-    runSubsystem(name, fn);
-    timings.durations[name] = performance.now() - start;
-  };
-
-  measureSubsystem('updateDecisionSystem', () => updateDecisionSystem(state, delta));
-
-  measureSubsystem('prepareShips', () => prepareShips(state, delta));
-  measureSubsystem('updateCarrierLaunchSystem', () => updateCarrierLaunchSystem(state, delta));
-  measureSubsystem('updateTurrets', () => updateTurrets(state, delta));
-  measureSubsystem('updateMotionSystem', () => updateMotionSystem(state, delta));
-  measureSubsystem('advanceProjectiles', () => advanceProjectiles(state, delta));
-
-  measureSubsystem('flushDeferredMutations', () => flushDeferredMutations(state));
-
-  const physicsStart = performance.now();
-  try {
-    // EventQueue created with { auto: true } is managed internally by Rapier.
-    // Passing it explicitly to step() causes "recursive use" errors.
-    state.physicsWorld.step();
-  } catch (error) {
-    // Rapier panics are special and we rethrow after recording diagnostics so
-    // upstream code can still handle a fatal physics panic if necessary.
-    recordRapierStepPanic(state, error);
-    throw error;
-  } finally {
-    timings.durations.physicsStep = performance.now() - physicsStart;
-  }
-
-  measureSubsystem('flushPostPhysicsMutations', () => flushPostPhysicsMutations(state));
-
-  measureSubsystem('syncTransforms', () => syncTransforms(state));
-  measureSubsystem('resolveProjectiles', () => resolveProjectiles(state, delta));
-  measureSubsystem('updateExplosions', () => updateExplosions(state, delta));
+  // Post-physics pipeline
+  executePipeline(POST_PHYSICS_PIPELINE, state, delta, measure);
 }
 
 /**
