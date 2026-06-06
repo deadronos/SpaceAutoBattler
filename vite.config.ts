@@ -276,7 +276,8 @@ const lintConfig = {
 };
 
 const stagedConfig = {
-  '**/*.{ts,tsx,js,jsx,json,css,md}': ['vp fmt', 'vp lint --fix'],
+  '**/*.{ts,tsx,js,jsx,json,css}': ['vp fmt', 'vp lint --fix'],
+  '**/*.md': ['vp fmt'],
 };
 
 const projectRoot = process.cwd();

@@ -31,13 +31,12 @@ Usage patterns
 
 - Tests use the harness to run short scenarios (escort, intercept, artillery retreat) and assert the normalized command logs match stored fixtures in `test/vitest/fixtures`.
 - The harness is intentionally conservative in features and avoids per-frame physics complexity; for integration tests that require physics, prefer spinning a `createGameState()` instance and running `updateGame` ticks instead.
-- See `guides/TEST_HARNESS_PATTERNS.md` for detailed examples and best practices.
+- See `docs/agents/testing.md` for testing guidance and the `test/vitest/` directory for usage examples of the harness.
 
 References
 
 - `test/support/aiScenarioHarness.ts` (main entry point)
-- `test/support/aiScenarioHarness/` (sub-modules: types, factories, logging, metrics, integration)
+- `test/support/aiScenarioHarness/` (sub-modules: `types`, `stateFactory`, `shipFactory`, `rapierShim`, `aiDefaults`, `logging`, `metricsSummary`, `integration`)
 - `test/vitest/ai-scenario-harness.spec.ts` (golden fixture regression tests)
 - `test/vitest/ai-metrics.spec.ts` (metrics validation)
-- `guides/TEST_HARNESS_PATTERNS.md` (how to write AI tests)
-- `guides/AI_DEPRECATION_GUIDE.md` (removed features and migration)
+- `docs/agents/testing.md` (Vitest + Playwright testing guide)

@@ -20,7 +20,7 @@ Usage and patterns
 
 - `spawnShip` calls `getDefaultProfileId` to populate a ship's AI component. The decision system calls `resolveBehaviorProfile` to read behavior knobs when computing intents.
 - Designs should keep profiles data-only; avoid embedding functions or closures since the decision system expects serializable numeric parameters for determinism and test fixtures.
-- Profile names are stable; old names (e.g., `tank`, `hit-and-run`, `guardian`) are no longer recognized. See `guides/AI_DEPRECATION_GUIDE.md` for migration.
+- Profile names are stable; old names (e.g., `tank`, `hit-and-run`, `guardian`) are no longer recognized. Migration notes are recorded in the TASK251 task file and DESIGN005.
 
 Follow-ups
 
@@ -31,6 +31,6 @@ References
 - `src/game/aiProfiles.ts` (active profile definitions)
 - `src/game/aiState.ts` (AI state type)
 - `src/game/systems/decision` (decision system that uses profiles)
-- `guides/AI_DEPRECATION_GUIDE.md` (removed features and profile name changes)
+- `guides/AI_DEPRECATION_GUIDE.md` (removed features and profile name changes) — **note:** the `guides/` directory was never created in the repo; consult TASK251 / DESIGN005 / `docs/agents/coding-conventions.md` for the canonical migration notes.
 - TASK251: Remove legacy AI fallback path
 - DESIGN005: AI v2 enforcement and guard behavior

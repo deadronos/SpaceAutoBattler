@@ -16,8 +16,7 @@ Turrets & carrier behavior
 
 - Ships that include `turrets` in their `ShipStats` have turret ECS entities created by `spawnShip`.
 - Turret entities are registered using `registerTurret(state, parentId, turretEntity)` which stores turrets into `state.turretsByShip` for efficient cascade removal.
-  Turret entities are registered using `registerTurret(state, parentId, turretEntity)` which stores turrets into `state.turretsByShip` for efficient cascade removal.
-  Turret target scoring was adjusted to use a `bonusScale` when applying small/large hull bonuses so configured priority (e.g., `antiFighter`) composes reliably with squared distance scoring. See `src/game/systems/turrets.ts` for details and tests (`test/vitest/turret-priority.spec.ts`).
+- Turret target scoring uses a `bonusScale` when applying small/large hull bonuses so configured priority (e.g., `antiFighter`, `antiProjectile`) composes reliably with squared distance scoring. The `antiProjectile` priority enables point-defense targeting of incoming missiles/torpedoes, with fallback to ship targeting. See `src/game/systems/turrets.ts` for details and tests (`test/vitest/turret-priority.spec.ts`, `test/vitest/point-defense-turret.spec.ts`).
 - Carrier hulls receive a `CarrierComponent` with `activeFighterIds`, `launchIndex`, and `launchCooldownRemaining` and rely on `updateCarrierLaunchSystem` to enqueue fighter spawns into the deferred queue so launches do not conflict with Rapier iteration.
 
 Integration and testability
