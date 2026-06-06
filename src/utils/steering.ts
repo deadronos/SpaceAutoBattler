@@ -1,14 +1,17 @@
 import { Quaternion, Vector3 } from 'three';
 import { clamp, solveInterceptQuadratic } from './math.js';
+import {
+  FORWARD,
+  DEFAULT_FALLBACK,
+  TEMP_DIR,
+  TEMP_LEAD,
+  TEMP_SEEK,
+  TEMP_INTERCEPT,
+  TEMP_INTERCEPT_TARGET,
+} from './tempVectors.js';
 
-/** Global forward vector (0, 0, 1). */
-export const FORWARD = new Vector3(0, 0, 1);
-const DEFAULT_FALLBACK = new Vector3(0, 0, 1);
-const TEMP_DIR = new Vector3();
-const TEMP_LEAD = new Vector3();
-const TEMP_SEEK = new Vector3();
-const TEMP_INTERCEPT = new Vector3();
-const TEMP_INTERCEPT_TARGET = new Vector3();
+// Re-export for backward compatibility (motion/angular.ts imports FORWARD from here)
+export { FORWARD };
 
 /**
  * Normalizes a vector safely, handling zero-length vectors by falling back to a default.

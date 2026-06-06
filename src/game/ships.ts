@@ -1,14 +1,13 @@
 import { Quaternion, Vector3 } from 'three';
-import type { GameState, ShipBlueprint, ShipEntity, TurretEntity } from '../types/index.js';
+import type { GameState, ShipBlueprint, ShipEntity } from '../types/index.js';
 import { SHIP_STATS } from '../data/shipStats.js';
 import { createInitialAIState } from './aiState.js';
-import { registerTurret } from './turretRegistry.js';
 import { CARRIER_LAUNCH_CONFIG } from '../config/carriers.js';
 import { calculateXpForLevel } from '../config/progression.js';
 import { generateCaptain, createSubsystems, createLevelBonusState } from './progression.js';
 import { createKinematicBodyWithCollider, registerColliderHandle } from './utils/physicsFactory.js';
 import { applyRangeVariance } from './utils/rangePolicy.js';
-import { reportLifecycleError } from '../utils/errorReporting.js';
+import { createTurretEntities } from './turretFactory.js';
 
 export function spawnShip(state: GameState, blueprint: ShipBlueprint): ShipEntity {
   const stats = SHIP_STATS[blueprint.hull];
@@ -85,49 +84,10 @@ export function spawnShip(state: GameState, blueprint: ShipBlueprint): ShipEntit
   registerColliderHandle(state, collider, registered);
 
   const turretSpecs = stats.turrets ?? [];
-  turretSpecs.forEach((spec, idx) => {
-    const { body: tBody, collider: tCollider } = createKinematicBodyWithCollider(state, {
-      position,
-      rotation,
-      collider: { type: 'ball', radius: 0.05 },
-      sensor: true,
-    });
+  if (turretSpecs.length > 0) {
+    createTurretEntities(state, registered, turretSpecs, position, rotation);
+  }
 
-    const turretEntity = state.world.add({
-      id: state.nextEntityId++,
-      rigidBody: tBody,
-      collider: tCollider,
-      transform: {
-        position: position.clone(),
-        rotation: rotation.clone(),
-        scale: 1,
-      },
-      turret: {
-        parent: registered,
-        offset: spec.offset.clone(),
-        damage: spec.damage,
-        fireRate: spec.fireRate,
-        projectileSpeed: spec.projectileSpeed,
-        range: spec.range,
-        bulletType: spec.bulletType,
-        cooldown: spec.fireRate * state.rng.next(),
-        index: idx,
-        yaw: 0,
-        pitch: 0,
-        minYaw: spec.minYaw ?? -Math.PI * 0.9,
-        maxYaw: spec.maxYaw ?? Math.PI * 0.9,
-        minPitch: spec.minPitch ?? -Math.PI * 0.25,
-        maxPitch: spec.maxPitch ?? Math.PI * 0.5,
-        priority: spec.priority ?? 'any',
-      },
-    }) as TurretEntity;
-    registerColliderHandle(state, tCollider, turretEntity);
-    try {
-      registerTurret(state, registered.id, turretEntity);
-    } catch (error) {
-      reportLifecycleError('create', 'TurretRegistry', registered.id, error);
-    }
-  });
   return registered;
 }
 

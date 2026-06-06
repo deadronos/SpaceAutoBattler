@@ -2,11 +2,12 @@ import { Vector3 } from 'three';
 import type { ShipEntity } from '../../types/index.js';
 import { clamp, solveInterceptQuadratic } from '../../utils/math.js';
 import { getForwardFromQuaternion } from '../../utils/vector.js';
-
-const TEMP_REL_POS = new Vector3();
-const TEMP_TARGET_VEL = new Vector3();
-const TEMP_SHIP_VEL = new Vector3();
-const TEMP_REL_VEL = new Vector3();
+import {
+  TEMP_REL_POS,
+  TEMP_TARGET_VEL,
+  TEMP_SHIP_VEL,
+  TEMP_REL_VEL,
+} from '../../utils/tempVectors.js';
 
 /**
  * Extracts the velocity of a ship safely.

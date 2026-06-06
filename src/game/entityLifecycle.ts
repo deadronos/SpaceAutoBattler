@@ -5,6 +5,7 @@ import {
   reportLifecycleError,
   reportQueryError,
 } from '../utils/errorReporting.js';
+import { destroyBody } from './utils/physicsBodyManager.js';
 
 /**
  * Cleans up the entire game state, destroying all entities and freeing physics resources.
@@ -28,24 +29,10 @@ export function disposeGameState(state: GameState): void {
  * @param {GameEntity} entity - The entity to destroy.
  */
 export function destroyEntity(state: GameState, entity: GameEntity): void {
-  if (entity.collider?.handle != null) state.colliderLookup.delete(entity.collider.handle);
-
-  if (entity.collider && entity.collider.isValid()) {
-    try {
-      state.physicsWorld.removeCollider(entity.collider, true);
-    } catch (error) {
-      // Expected: Rapier removes colliders automatically when rigid body is freed
-      reportPhysicsError('removeCollider', entity.id, error);
-    }
-  }
-
-  if (entity.rigidBody && entity.rigidBody.isValid()) {
-    try {
-      state.physicsWorld.removeRigidBody(entity.rigidBody);
-    } catch (error) {
-      // Expected: Rigid body may be invalidated by WASM runtime during cleanup
-      reportPhysicsError('removeRigidBody', entity.id, error);
-    }
+  try {
+    destroyBody(state, entity.rigidBody, entity.collider);
+  } catch (error) {
+    reportPhysicsError('destroyBody', entity.id, error);
   }
 
   if ((entity as ShipEntity).ship) {
