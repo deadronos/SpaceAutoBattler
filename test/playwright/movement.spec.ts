@@ -41,7 +41,7 @@ test.describe('Ship motion heuristics', () => {
 
     await page.goto('/spaceautobattler.html?e2e=1');
 
-    await expect(page.getByRole('button', { name: /start/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /pause/i })).toBeVisible();
 
     await page.waitForFunction(() => {
       const api = (window as any).__SAB;

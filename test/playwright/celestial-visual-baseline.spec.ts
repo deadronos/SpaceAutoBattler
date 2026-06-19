@@ -22,8 +22,15 @@ test.describe('Celestial Environment Visual Baseline', () => {
     // Wait for the 3D scene to load
     await page.waitForSelector('canvas');
 
+    // Pause the simulation for stable visual captures
+    const pauseButton = page.getByRole('button', { name: 'Pause' });
+    if (await pauseButton.isVisible()) {
+      await pauseButton.click({ force: true });
+      await expect(page.getByRole('button', { name: 'Resume' })).toBeVisible();
+    }
+
     // Wait a bit for assets to load and scene to stabilize
-    await page.waitForTimeout(3000);
+    await page.waitForTimeout(1000);
   });
 
   test('captures baseline screenshot with planets visible', async ({ page }) => {

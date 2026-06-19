@@ -286,6 +286,8 @@ const isBuildCommand = process.argv.includes('build');
 const isDevelopmentBuild = process.argv.some(
   (value, index, values) => value === '--mode' && values[index + 1] === 'development',
 );
+console.log('[Vite Config] process.argv:', process.argv);
+console.log('[Vite Config] isDevelopmentBuild:', isDevelopmentBuild);
 const isProdBuild = isBuildCommand && !isDevelopmentBuild;
 
 const defaultExcluded = [
@@ -362,6 +364,7 @@ export default defineConfig({
   define: {
     __VITEST_DEBUG_BENCH__: JSON.stringify(vitestDebugBench),
     'process.env.VITEST_DEBUG_BENCH': JSON.stringify(vitestDebugBench),
+    ...(isDevelopmentBuild ? { 'import.meta.env.DEV': 'true' } : {}),
   },
   test: {
     include: ['test/**/*.{spec,test}.{ts,tsx}'],

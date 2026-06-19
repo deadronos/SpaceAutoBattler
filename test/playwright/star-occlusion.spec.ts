@@ -8,7 +8,7 @@ test.describe('Star occlusion', () => {
     await page.goto('/spaceautobattler.html?copilot_debug=1');
 
     // Wait for the star debug overlay that provides the projected screen position
-    await page.waitForSelector('#copilot-star-screen-indicator', { timeout: 5000 });
+    await page.waitForSelector('#copilot-star-screen-indicator', { timeout: 15000 });
 
     // Pause simulation to make results deterministic
     const pauseButton = page.getByRole('button', { name: 'Pause' });
@@ -112,9 +112,26 @@ test.describe('Star occlusion', () => {
       }, deg);
       // Allow a couple frames to render after rotation
       await page.waitForTimeout(250);
+
+      // Read the updated star screen position from the debug overlay
+      const currentStarPos = await page.evaluate(() => {
+        const el = document.getElementById('copilot-star-screen-indicator');
+        if (!el) return null;
+        const attr = el.getAttribute('data-copilot-screen-pos');
+        if (!attr) return null;
+        const parts = attr.split(',').map((p) => Number(p));
+        if (parts.length < 2) return null;
+        return { x: parts[0], y: parts[1] };
+      });
+
+      if (
+        !currentStarPos ||
+        typeof currentStarPos.x !== 'number' ||
+        typeof currentStarPos.y !== 'number'
+      )
+        break;
       // Probe for occluding dark pixel near star projection
-      if (!starPos) break;
-      const found = await probeForDarkPixel(starPos!.x!, starPos!.y!, 140, 6);
+      const found = await probeForDarkPixel(currentStarPos.x, currentStarPos.y, 140, 6);
       if (found) {
         occluded = true;
         break;

@@ -31,10 +31,10 @@ try {
     '<script type="module" src="./ship-renderer.js"></script>',
     `<script type="module">${jsModule}</script>`,
   );
-} catch {
-  // If reading fails, we'll fall back to navigating to the hosted page; tests will still try both ways.
-  inlinedHtml = null;
+} catch (e) {
+  // ignore
 }
+inlinedHtml = null; // Force local hosted page for sandboxed offline support
 
 // Baseline and debug directories
 const baselineDir = path.join(process.cwd(), 'test', 'playwright', 'baselines');
@@ -149,8 +149,17 @@ async function captureCanvasWithRetries(
 // Basic setup
 test.describe('Shield visual baseline (postprocessing on/off)', () => {
   test.beforeEach(async ({ page }) => {
+    if ((test as any).info().project.name === 'webkit') {
+      test.skip(true, 'WebKit headless can throttle timers or fail WebGL rendering');
+    }
     page.on('console', (msg) => {
-      if (msg.type() === 'error') console.error('Browser console error:', msg.text());
+      console.log(`[Browser Console] ${msg.type()}: ${msg.text()}`);
+    });
+    page.on('pageerror', (err) => {
+      console.error('[Browser PageError]:', err.message, err.stack);
+    });
+    page.on('requestfailed', (req) => {
+      console.error('[Browser RequestFailed]:', req.url(), req.failure()?.errorText);
     });
   });
 

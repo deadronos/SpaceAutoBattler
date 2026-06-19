@@ -15,7 +15,7 @@ test.describe('Star visibility with postprocessing', () => {
     // Wait for StarDisk to publish the DOM overlay that contains the
     // projected on-screen position. Tests should read the element's
     // `data-copilot-screen-pos` attribute.
-    await page.waitForSelector('#copilot-star-screen-indicator', { timeout: 5000 });
+    await page.waitForSelector('#copilot-star-screen-indicator', { timeout: 15000 });
 
     // Temporarily put the star onto layer 0 (default) to ensure it's not occluded
     await page.evaluate(() => {

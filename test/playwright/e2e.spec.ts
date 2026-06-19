@@ -27,22 +27,24 @@ test.describe('SpaceAutoBattler E2E', () => {
     await page.waitForFunction(
       () => {
         const api = (window as any).__SAB;
-        api?.tick?.(1, 1 / 60);
+        api?.tick?.(20, 1 / 60);
         const h = api?.getCounts?.();
         return h && h.ships >= 6; // two formations => 10 ships; allow >= 6 to be lenient on load
       },
-      { timeout: 30000 },
+      undefined,
+      { timeout: 30000, polling: 100 },
     );
 
     // Now wait until at least one projectile exists (AI engages & fire when in range)
     await page.waitForFunction(
       () => {
         const api = (window as any).__SAB;
-        api?.tick?.(1, 1 / 60);
+        api?.tick?.(20, 1 / 60);
         const h = api?.getCounts?.();
         return h && h.projectiles > 0;
       },
-      { timeout: 30000 },
+      undefined,
+      { timeout: 30000, polling: 100 },
     );
 
     // Optional sanity screenshot on failure only configured globally; we can still take one here if needed
