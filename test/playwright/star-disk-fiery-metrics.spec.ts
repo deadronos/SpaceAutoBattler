@@ -57,9 +57,12 @@ test.describe('StarSphere Fiery Alignment Metrics', () => {
     await fs.mkdir(CAPTURE_DIR, { recursive: true });
     const metricsPath = path.join(CAPTURE_DIR, FIERY_METRICS_FILE);
 
+    let starCenterX = STAR_CENTER_X;
+    let starCenterY = STAR_CENTER_Y;
+
     await test.step('Capture star disk with fiery configuration', async () => {
       await page.setViewportSize(VIEWPORT);
-      await page.goto('/spaceautobattler.html');
+      await page.goto('/spaceautobattler.html?copilot_debug=1');
       await page.waitForLoadState('networkidle');
 
       const canvas = page.locator('canvas');
@@ -74,6 +77,25 @@ test.describe('StarSphere Fiery Alignment Metrics', () => {
 
       // Wait for a stable frame
       await page.waitForTimeout(1000);
+
+      // Read the actual star center from the screen indicator overlay
+      const starPos = await page.evaluate(() => {
+        const el = document.getElementById('copilot-star-screen-indicator');
+        if (!el) return null;
+        const attr = el.getAttribute('data-copilot-screen-pos');
+        if (!attr) return null;
+        const parts = attr.split(',').map((p) => Number(p));
+        return { x: parts[0], y: parts[1] };
+      });
+      if (starPos && typeof starPos.x === 'number' && typeof starPos.y === 'number') {
+        starCenterX = starPos.x;
+        starCenterY = starPos.y;
+        console.log(`Found actual star screen position: ${starCenterX}, ${starCenterY}`);
+      } else {
+        console.log(
+          `Could not find star position overlay, falling back to viewport center: ${starCenterX}, ${starCenterY}`,
+        );
+      }
 
       await canvas.screenshot({ path: metricsPath });
     });
@@ -91,18 +113,12 @@ test.describe('StarSphere Fiery Alignment Metrics', () => {
 
       const centerMetrics = analyzePixelsAtRadius(
         pngData,
-        STAR_CENTER_X,
-        STAR_CENTER_Y,
+        starCenterX,
+        starCenterY,
         centerRadius,
         8,
       );
-      const midMetrics = analyzePixelsAtRadius(
-        pngData,
-        STAR_CENTER_X,
-        STAR_CENTER_Y,
-        midRadius,
-        32,
-      );
+      const midMetrics = analyzePixelsAtRadius(pngData, starCenterX, starCenterY, midRadius, 32);
 
       const luminanceRatio =
         centerMetrics.meanLuminance / Math.max(midMetrics.meanLuminance, 0.001);
@@ -118,8 +134,8 @@ test.describe('StarSphere Fiery Alignment Metrics', () => {
       const filamentRadius = estimatedStarRadius * 0.45;
       const filamentMetrics = analyzePixelsAtRadius(
         pngData,
-        STAR_CENTER_X,
-        STAR_CENTER_Y,
+        starCenterX,
+        starCenterY,
         filamentRadius,
         32,
       );
@@ -132,13 +148,7 @@ test.describe('StarSphere Fiery Alignment Metrics', () => {
 
       // 3. Halo brightness at 1.15× radius ≤ 35% of core while ≥ 10% visible
       const haloRadius = estimatedStarRadius * 1.15;
-      const haloMetrics = analyzePixelsAtRadius(
-        pngData,
-        STAR_CENTER_X,
-        STAR_CENTER_Y,
-        haloRadius,
-        32,
-      );
+      const haloMetrics = analyzePixelsAtRadius(pngData, starCenterX, starCenterY, haloRadius, 32);
 
       const haloBrightnessRatio =
         haloMetrics.meanLuminance / Math.max(centerMetrics.meanLuminance, 0.001);

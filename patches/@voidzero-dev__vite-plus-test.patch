@@ -1,0 +1,14 @@
+diff --git a/package.json b/package.json
+index 532ce616dab4898152897a7ff27368178c2ab7b8..30cd9683093f2c2774b4da8ba461e2d16b3b732e 100644
+--- a/package.json
++++ b/package.json
+@@ -3,6 +3,9 @@
+   "version": "0.1.24",
+   "description": "The Unified Toolchain for the Web",
+   "homepage": "https://viteplus.dev/guide",
++  "bin": {
++    "vitest": "./dist/cli.js"
++  },
+   "bugs": {
+     "url": "https://github.com/voidzero-dev/vite-plus/issues"
+   },

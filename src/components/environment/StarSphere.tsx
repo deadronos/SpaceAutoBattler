@@ -1,10 +1,18 @@
 import React, { useRef, useMemo, useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
-import type { Camera, Mesh, Texture, WebGLRenderer } from 'three';
-import { Euler, MeshBasicMaterial, ShaderMaterial, Vector3, NoBlending } from 'three';
+import type { Camera, Mesh, Texture, WebGLRenderer, Material } from 'three';
+import {
+  Euler,
+  MeshBasicMaterial,
+  ShaderMaterial,
+  Vector3,
+  NoBlending,
+  DoubleSide,
+  Quaternion,
+} from 'three';
 import fragmentShaderRaw from '../../renderer/shaders/mainsequencestar.glsl';
 import { COMMON_GLSL } from '../../renderer/shaders/index.js';
-import vertexShader from '../../renderer/shaders/starDisk.vertex.glsl';
+import vertexShader from '../../renderer/shaders/starSphere.vertex.glsl';
 import type {
   StarLightConfig,
   CelestialEnvironmentConfig,
@@ -17,6 +25,13 @@ import { updateMainSequenceStarUniforms } from '../../renderer/starDiskMaterial.
 import { isCopilotDebugEnabled } from '../../utils/copilotDebug.js';
 import { clamp, clamp01 } from '../../utils/math.js';
 import { reportMaterialError, reportWebGLError } from '../../utils/errorReporting.js';
+import { useStarDebug, useDebugOverlayCleanup } from '../../hooks/useStarDebug.js';
+import {
+  computeStarDiskQuaternion,
+  computeViewAlignment,
+  createViewAlignmentScratch,
+  type ViewAlignment,
+} from '../../renderer/starDiskOrientation.js';
 
 interface StarSphereProps {
   config?: StarLightConfig;
@@ -41,6 +56,50 @@ interface StarSphereProps {
   depthCoreRadius?: number;
   /** Attempt to enable alpha-to-coverage/MSAA for smoother alpha-tested edges when available */
   enableAlphaToCoverage?: boolean;
+}
+
+interface CopilotDebugWindow {
+  __copilot_forceBasicMaterialRequest?: boolean;
+  __copilot_forceBasicMaterialActive?: boolean;
+  __copilot_forceBasicMaterialColor?: string;
+  __copilot_forceBasicMaterialApplied?: number;
+  __copilot_restoreOriginalStarMaterial?: boolean;
+  __copilot_restoreOriginalStarMaterialApplied?: number;
+  __copilot_setStarBasicMaterial?: (opts?: { color?: string }) => {
+    applied: boolean;
+    reason?: string;
+  };
+  __copilot_restoreStarMaterial?: () => { restored: boolean; reason?: string };
+  __copilot_setStarLayer?: (layerIndex?: unknown) => {
+    set: boolean;
+    layer?: number;
+    reason?: string;
+  };
+  __copilot_resetStarLayer?: () => { reset: boolean; reason?: string };
+  __copilot_starLayerSetAt?: number;
+  __copilot_starLayerResetAt?: number;
+  __copilot_rotateCameraDeltaDeg?: number | null;
+  __copilot_rotateAppliedAt?: number;
+}
+
+interface CopilotUserData {
+  __copilot_origMaterial?: Material;
+  __copilot_forcedMaterial?: MeshBasicMaterial;
+  __copilot_origLayerMask?: number;
+}
+
+function getCopilotUserData(mesh: Mesh): CopilotUserData {
+  if (!mesh.userData) {
+    mesh.userData = {};
+  }
+  return mesh.userData as CopilotUserData;
+}
+
+function resolveMaterial(material: Material | Material[]): Material | null {
+  if (Array.isArray(material)) {
+    return material[0] ?? null;
+  }
+  return material;
 }
 
 export function StarSphere({
@@ -88,6 +147,9 @@ export function StarSphere({
     return isCopilotDebugEnabled();
   }, []);
 
+  const removeDebugOverlay = useDebugOverlayCleanup();
+  useStarDebug(debugEnabled, removeDebugOverlay);
+
   const createdMaterial = useStarMaterial(debugEnabled);
   // Allow callers to fully override the material if desired (for testing or
   // special-case rendering). Otherwise use the created shader material.
@@ -102,6 +164,15 @@ export function StarSphere({
     const distance = Math.max(config.distance * defaultDistanceMultiplier, 8000);
     return dir.multiplyScalar(-distance).toArray() as [number, number, number];
   }, [config, defaultDistanceMultiplier]);
+
+  const baseQuaternion = useMemo(() => {
+    if (!config) return new Quaternion();
+    return computeStarDiskQuaternion(config.direction);
+  }, [config]);
+
+  const viewAlignmentRef = useRef<ViewAlignment>({ x: 0, y: 0, z: 1 });
+  const viewScratch = useMemo(() => createViewAlignmentScratch(), []);
+  const meshWorldPosition = useMemo(() => new Vector3(), []);
 
   // Assign the shader to the visual mesh and ensure it performs depth
   // testing (so it can be occluded) but does not write depth. The depth
@@ -127,6 +198,18 @@ export function StarSphere({
       }
     }
   }, [appliedMaterial]);
+
+  // Synchronize orientation from baseQuaternion to both meshes
+  useEffect(() => {
+    const depthMesh = depthMeshRef.current;
+    if (depthMesh) {
+      depthMesh.quaternion.copy(baseQuaternion);
+    }
+    const visualMesh = visualMeshRef.current;
+    if (visualMesh) {
+      visualMesh.quaternion.copy(baseQuaternion);
+    }
+  }, [baseQuaternion]);
 
   // Precompute a depth core radius used by the shader and the depth
   // geometry. This is derived from either the explicit prop or the
@@ -277,6 +360,253 @@ export function StarSphere({
   // camera roll and optional haze/boundary settings mirroring StarDisk.
   useFrame((state) => {
     if (!enabled) return;
+
+    let debugWin: CopilotDebugWindow | undefined;
+    const mesh = visualMeshRef.current;
+
+    // We conditionally enable dev/debug tools at runtime based on query parameters
+    if (debugEnabled) {
+      debugWin =
+        typeof window !== 'undefined' ? (window as unknown as CopilotDebugWindow) : undefined;
+
+      // Handle camera rotation delta request from E2E tests
+      if (
+        debugWin &&
+        debugWin.__copilot_rotateCameraDeltaDeg !== undefined &&
+        debugWin.__copilot_rotateCameraDeltaDeg !== null
+      ) {
+        const deg = Number(debugWin.__copilot_rotateCameraDeltaDeg);
+        if (Number.isFinite(deg)) {
+          camera.rotation.y += (deg * Math.PI) / 180;
+          camera.updateMatrixWorld();
+          try {
+            debugWin.__copilot_rotateAppliedAt = Date.now();
+          } catch {
+            /* ignore */
+          }
+        }
+        try {
+          debugWin.__copilot_rotateCameraDeltaDeg = null;
+        } catch {
+          /* ignore */
+        }
+      }
+
+      // Handle basic material request / setup methods on window
+      if (debugWin && mesh) {
+        if (!debugWin.__copilot_setStarBasicMaterial) {
+          debugWin.__copilot_setStarBasicMaterial = (opts: { color?: string } = {}) => {
+            try {
+              const meshLocal = visualMeshRef.current;
+              if (!meshLocal) {
+                return { applied: false, reason: 'no-mesh' };
+              }
+              const userData = getCopilotUserData(meshLocal);
+              if (!userData.__copilot_origMaterial) {
+                userData.__copilot_origMaterial = resolveMaterial(meshLocal.material) ?? undefined;
+              }
+              const color = typeof opts.color === 'string' ? opts.color : '#ffffff';
+              if (!userData.__copilot_forcedMaterial) {
+                userData.__copilot_forcedMaterial = new MeshBasicMaterial({
+                  color,
+                  depthTest: false,
+                  depthWrite: false,
+                  side: DoubleSide,
+                });
+              } else {
+                userData.__copilot_forcedMaterial.color.set(color);
+              }
+              meshLocal.material = userData.__copilot_forcedMaterial;
+              debugWin!.__copilot_forceBasicMaterialActive = true;
+              debugWin!.__copilot_forceBasicMaterialColor = color;
+              debugWin!.__copilot_forceBasicMaterialApplied = Date.now();
+              return { applied: true };
+            } catch (error) {
+              return { applied: false, reason: String(error) };
+            }
+          };
+        }
+
+        if (!debugWin.__copilot_restoreStarMaterial) {
+          debugWin.__copilot_restoreStarMaterial = () => {
+            try {
+              const meshLocal = visualMeshRef.current;
+              if (!meshLocal) {
+                return { restored: false, reason: 'no-mesh' };
+              }
+              const userData = getCopilotUserData(meshLocal);
+              const originalMaterial = userData.__copilot_origMaterial;
+              if (originalMaterial) {
+                const forcedMaterial = resolveMaterial(meshLocal.material);
+                forcedMaterial?.dispose();
+                meshLocal.material = originalMaterial;
+                delete userData.__copilot_origMaterial;
+                delete userData.__copilot_forcedMaterial;
+                debugWin!.__copilot_restoreOriginalStarMaterialApplied = Date.now();
+                return { restored: true };
+              }
+              return { restored: false, reason: 'no-orig' };
+            } catch (error) {
+              return { restored: false, reason: String(error) };
+            }
+          };
+        }
+
+        if (!mesh.userData) {
+          mesh.userData = {};
+        }
+        const meshUserData = getCopilotUserData(mesh);
+        if (meshUserData.__copilot_origLayerMask == null) {
+          const rawLayers = mesh.layers as { mask?: number } | undefined;
+          const mask = rawLayers && typeof rawLayers.mask === 'number' ? rawLayers.mask : 1;
+          meshUserData.__copilot_origLayerMask = Number.isFinite(mask) ? mask : 1;
+        }
+
+        if (!debugWin.__copilot_setStarLayer) {
+          debugWin.__copilot_setStarLayer = (layerIndex: unknown = 0) => {
+            try {
+              const meshLocal = visualMeshRef.current;
+              if (!meshLocal) {
+                return { set: false, reason: 'no-mesh' };
+              }
+              const value = Number(layerIndex);
+              const idx = Number.isFinite(value) ? Math.max(0, Math.min(Math.floor(value), 31)) : 0;
+              const layers = meshLocal.layers as
+                | { set?: (layer: number) => void; mask?: number }
+                | undefined;
+              if (layers && typeof layers.set === 'function') {
+                layers.set(idx);
+              } else if (layers) {
+                layers.mask = idx;
+              }
+              debugWin!.__copilot_starLayerSetAt = Date.now();
+              return { set: true, layer: idx };
+            } catch (error) {
+              return { set: false, reason: String(error) };
+            }
+          };
+        }
+
+        if (!debugWin.__copilot_resetStarLayer) {
+          debugWin.__copilot_resetStarLayer = () => {
+            try {
+              const meshLocal = visualMeshRef.current;
+              if (!meshLocal) {
+                return { reset: false, reason: 'no-mesh' };
+              }
+              const userData = getCopilotUserData(meshLocal);
+              const orig = userData.__copilot_origLayerMask;
+              if (typeof orig === 'number') {
+                const layers = meshLocal.layers as
+                  | { mask?: number; set?: (layer: number) => void }
+                  | undefined;
+                if (layers && typeof layers.set === 'function') {
+                  layers.set(orig);
+                } else if (layers) {
+                  layers.mask = orig;
+                }
+              } else {
+                const layers = meshLocal.layers as
+                  | { mask?: number; set?: (layer: number) => void }
+                  | undefined;
+                if (layers && typeof layers.set === 'function') {
+                  layers.set(0);
+                } else if (layers) {
+                  layers.mask = 0;
+                }
+              }
+              debugWin!.__copilot_starLayerResetAt = Date.now();
+              return { reset: true };
+            } catch (error) {
+              return { reset: false, reason: String(error) };
+            }
+          };
+        }
+      }
+
+      // Handle persistent basic material enforcement if toggled active
+      if (debugWin && debugWin.__copilot_forceBasicMaterialActive && mesh) {
+        try {
+          const userData = getCopilotUserData(mesh);
+          if (!userData.__copilot_origMaterial) {
+            userData.__copilot_origMaterial = resolveMaterial(mesh.material) ?? undefined;
+          }
+          if (!userData.__copilot_forcedMaterial) {
+            const color =
+              typeof debugWin.__copilot_forceBasicMaterialColor === 'string'
+                ? debugWin.__copilot_forceBasicMaterialColor
+                : '#ffffff';
+            userData.__copilot_forcedMaterial = new MeshBasicMaterial({
+              color,
+              depthTest: false,
+              depthWrite: false,
+              side: DoubleSide,
+            });
+          } else if (typeof debugWin.__copilot_forceBasicMaterialColor === 'string') {
+            userData.__copilot_forcedMaterial.color.set(debugWin.__copilot_forceBasicMaterialColor);
+          }
+          if (mesh.material !== userData.__copilot_forcedMaterial) {
+            mesh.material = userData.__copilot_forcedMaterial;
+          }
+          debugWin.__copilot_forceBasicMaterialApplied =
+            debugWin.__copilot_forceBasicMaterialApplied || Date.now();
+        } catch {
+          /* ignore */
+        }
+      }
+
+      // Create / position the `#copilot-star-screen-indicator` overlay
+      if (mesh) {
+        try {
+          mesh.updateMatrixWorld();
+          const meshWorldPosition = new Vector3();
+          meshWorldPosition.setFromMatrixPosition(mesh.matrixWorld);
+          const pos = meshWorldPosition.clone();
+          const proj = pos.project(camera);
+          const ndcX = proj.x;
+          const ndcY = proj.y;
+          const width = state.size.width;
+          const height = state.size.height;
+          const pxX = Math.round((ndcX * 0.5 + 0.5) * width);
+          const pxY = Math.round((-ndcY * 0.5 + 0.5) * height);
+
+          let el = document.getElementById('copilot-star-screen-indicator');
+          if (!el) {
+            el = document.createElement('div');
+            el.id = 'copilot-star-screen-indicator';
+            el.style.position = 'fixed';
+            el.style.pointerEvents = 'none';
+            el.style.width = '12px';
+            el.style.height = '12px';
+            el.style.borderRadius = '50%';
+            el.style.background = 'rgba(255,0,0,0.9)';
+            el.style.zIndex = '2147483647';
+            el.style.transform = 'translate(-50%, -50%)';
+            document.body.appendChild(el);
+          }
+          el.style.left = pxX + 'px';
+          el.style.top = pxY + 'px';
+          el.setAttribute('data-copilot-screen-pos', `${pxX},${pxY}`);
+        } catch {
+          // ignore
+        }
+      }
+    }
+
+    // Compute view alignment to compensate for camera viewing angle
+    const cameraPosition = camera.position;
+    if (mesh && cameraPosition) {
+      mesh.updateMatrixWorld();
+      meshWorldPosition.setFromMatrixPosition(mesh.matrixWorld);
+      computeViewAlignment(
+        baseQuaternion, // Use baseQuaternion (Z-aligned) for view alignment calculation
+        meshWorldPosition,
+        cameraPosition,
+        viewScratch,
+        viewAlignmentRef.current,
+      );
+    }
+
     const mat = appliedMaterial;
     if (!mat) return;
 
@@ -295,7 +625,7 @@ export function StarSphere({
       noise: noise ?? null,
       cameraRoll,
       starNorth: 0,
-      viewAlignment: { x: 0, y: 0, z: 1 },
+      viewAlignment: viewAlignmentRef.current,
       haze: haze ?? fallbackHaze,
       boundary: boundary ?? fallbackBoundary,
       depthCoreRadius: derivedDepthCoreRadius,
@@ -316,10 +646,8 @@ export function StarSphere({
       </mesh>
 
       {/* Visual pass: shader-driven sphere that tests against depth so
-          nearer scene objects render in front. Increased geometry
-          segments reduce visible faceting and sampling artifacts. */}
+          nearer scene objects render in front. */}
       <mesh ref={visualMeshRef} visible={enabled} renderOrder={1}>
-        {/* Use a higher-res sphere so shader sampling looks smooth */}
         <sphereGeometry args={[radius, 128, 64]} />
         {appliedMaterial ? (
           <primitive attach="material" object={appliedMaterial as unknown as object} />
