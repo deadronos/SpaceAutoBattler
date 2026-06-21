@@ -202,11 +202,11 @@ export function StarSphere({
   // Synchronize orientation from baseQuaternion to both meshes
   useEffect(() => {
     const depthMesh = depthMeshRef.current;
-    if (depthMesh) {
+    if (depthMesh && depthMesh.quaternion) {
       depthMesh.quaternion.copy(baseQuaternion);
     }
     const visualMesh = visualMeshRef.current;
-    if (visualMesh) {
+    if (visualMesh && visualMesh.quaternion) {
       visualMesh.quaternion.copy(baseQuaternion);
     }
   }, [baseQuaternion]);
@@ -595,9 +595,11 @@ export function StarSphere({
 
     // Compute view alignment to compensate for camera viewing angle
     const cameraPosition = camera.position;
-    if (mesh && cameraPosition) {
+    if (mesh && typeof mesh.updateMatrixWorld === 'function' && cameraPosition) {
       mesh.updateMatrixWorld();
-      meshWorldPosition.setFromMatrixPosition(mesh.matrixWorld);
+      if (mesh.matrixWorld) {
+        meshWorldPosition.setFromMatrixPosition(mesh.matrixWorld);
+      }
       computeViewAlignment(
         baseQuaternion, // Use baseQuaternion (Z-aligned) for view alignment calculation
         meshWorldPosition,
