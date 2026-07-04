@@ -94,7 +94,7 @@
     "lru-cache": "^11.5.1",
     "miniplex": "^2.0.0",
     "playwright-core": "^1.61.0",
-    "postprocessing": "^6.39.1",
+    "postprocessing": "^6.39.2",
     "r3f-perf": "^7.2.3",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
