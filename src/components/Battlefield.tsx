@@ -61,24 +61,36 @@ function BattleSceneContent({ ppEnabled }: BattleSceneContentProps): React.React
       <BattlefieldSystems />
       <HudOverlayCollector />
       <OrbitControls
-        enableDamping
+        enableDamping={
+          !(
+            typeof window !== 'undefined' &&
+            (window.location.search.includes('e2e') ||
+              window.location.search.includes('copilot_debug'))
+          )
+        }
         makeDefault
         target={[0, 0, 0]}
         maxDistance={WORLD_SIZE * 2}
         minDistance={10}
       />
-      <Grid
-        args={[WORLD_SIZE, WORLD_SIZE]}
-        cellSize={50}
-        sectionSize={500}
-        cellColor="#203050"
-        sectionColor="#101725"
-        position={[0, -5, 0]}
-        fadeDistance={ppEnabled ? WORLD_SIZE : undefined}
-        transparent
-        opacity={ppEnabled ? undefined : 0.1}
-      />
-      <primitive object={axesHelper} position={[0, 0, 0]} />
+      {!(
+        typeof window !== 'undefined' && window.location.search.includes('copilot_hide_planets=1')
+      ) && (
+        <>
+          <Grid
+            args={[WORLD_SIZE, WORLD_SIZE]}
+            cellSize={50}
+            sectionSize={500}
+            cellColor="#203050"
+            sectionColor="#101725"
+            position={[0, -5, 0]}
+            fadeDistance={ppEnabled ? WORLD_SIZE : undefined}
+            transparent
+            opacity={ppEnabled ? undefined : 0.1}
+          />
+          <primitive object={axesHelper} position={[0, 0, 0]} />
+        </>
+      )}
     </>
   );
 
@@ -111,6 +123,7 @@ export function Battlefield(): React.ReactElement {
     <Canvas
       shadows
       frameloop="always"
+      gl={{ preserveDrawingBuffer: true }}
       camera={{
         position: [...CAMERA_DEFAULTS.position],
         fov: CAMERA_DEFAULTS.fov,

@@ -3,6 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { Vector3, Mesh, InstancedBufferGeometry, ShaderMaterial, Frustum, Matrix4 } from 'three';
 import type { ShipEntity } from '../types/index.js';
 import { THRUSTER_GLOW_CONFIG, PARTICLE_TRAILS_CONFIG } from '../config/effects.js';
+import { useUiStore } from '../game/uiStore.js';
 import { SeededRng } from '../utils/rng.js';
 import {
   createParticleTrailResources,
@@ -76,6 +77,10 @@ export function ParticleTrails({ ships, resources }: ParticleTrailProps): React.
   const projScreenMatrix = useMemo(() => new Matrix4(), []);
   const camera = useThree((s) => s.camera);
 
+  const paused = useUiStore((s) => s.paused);
+  const lastTimeRef = useRef(0);
+  const accumulatedTimeRef = useRef(0);
+
   const ownsResources = resources == null;
   const trailResources = useMemo(() => {
     if (resources) return resources;
@@ -128,9 +133,19 @@ export function ParticleTrails({ ships, resources }: ParticleTrailProps): React.
     const mesh = meshRef.current;
     if (!mesh) return;
 
-    const time = state.clock.getElapsedTime();
+    const elapsed = state.clock.getElapsedTime();
+    if (lastTimeRef.current === 0) {
+      lastTimeRef.current = elapsed;
+      accumulatedTimeRef.current = elapsed;
+    }
+    const d = elapsed - lastTimeRef.current;
+    lastTimeRef.current = elapsed;
+    if (!paused) {
+      accumulatedTimeRef.current += d;
+    }
+
     if (trailResources.material.uniforms.uTime) {
-      trailResources.material.uniforms.uTime.value = time;
+      trailResources.material.uniforms.uTime.value = accumulatedTimeRef.current;
     }
 
     // Update Frustum
@@ -195,7 +210,8 @@ export function ParticleTrails({ ships, resources }: ParticleTrailProps): React.
         if (!anchor) continue;
         const rate = throttle * spawnRatePerAnchor;
         const remainder = remainderForShip[i] ?? 0;
-        const desired = rate * delta + remainder;
+        const actualDelta = paused ? 0 : delta;
+        const desired = rate * actualDelta + remainder;
         const spawnCount = Math.floor(desired);
         remainderForShip[i] = desired - spawnCount;
         if (spawnCount <= 0) continue;
@@ -224,7 +240,7 @@ export function ParticleTrails({ ships, resources }: ParticleTrailProps): React.
 
           const lifetimeJitter = 1 - scaleJitter + rngRef.current.next() * 2 * scaleJitter;
           trailResources.arrays.lifetime[idx] = lifetimeBase * lifetimeJitter;
-          trailResources.arrays.spawnTime[idx] = time;
+          trailResources.arrays.spawnTime[idx] = accumulatedTimeRef.current;
           trailResources.arrays.scale[idx] =
             1 - scaleJitter + rngRef.current.next() * 2 * scaleJitter;
 

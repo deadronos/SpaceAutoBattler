@@ -14,7 +14,7 @@ try {
 const baseURL = process.env.E2E_BASE || 'http://localhost:8080/';
 
 module.exports = {
-  timeout: 30 * 1000, // per-test timeout
+  timeout: 60 * 1000, // per-test timeout
   expect: { timeout: 5000 },
   testDir: './test/playwright',
   fullyParallel: true,

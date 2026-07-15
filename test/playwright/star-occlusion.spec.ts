@@ -5,6 +5,9 @@ const VIEWPORT = { width: 1280, height: 720 } as const;
 test.describe('Star occlusion', () => {
   test('a planet should occlude the star when camera rotated into alignment', async ({ page }) => {
     await page.setViewportSize(VIEWPORT);
+    page.on('console', (msg) => {
+      console.log(`[Browser Console] [${msg.type()}] ${msg.text()}`);
+    });
     await page.goto('/spaceautobattler.html?copilot_debug=1');
 
     // Wait for the star debug overlay that provides the projected screen position
@@ -38,16 +41,44 @@ test.describe('Star occlusion', () => {
           try {
             const { cx, cy, r, s } = args;
             const canvas = document.querySelector('canvas');
-            if (!canvas) return false;
+            if (!canvas) {
+              console.log(`[probe debug] Canvas NOT found!`);
+              return false;
+            }
             const clientW = (canvas as HTMLCanvasElement).clientWidth || canvas.width || 1;
             const dpr =
               (canvas as HTMLCanvasElement).width / clientW || window.devicePixelRatio || 1;
             const deviceX = Math.floor(cx * dpr);
             const deviceY = Math.floor((canvas as HTMLCanvasElement).height - 1 - cy * dpr);
-            const gl =
-              (canvas as HTMLCanvasElement).getContext('webgl') ||
-              (canvas as HTMLCanvasElement).getContext('webgl2');
-            if (!gl) return false;
+
+            // Try webgl2 first, then webgl
+            let gl: any = null;
+            try {
+              gl = canvas.getContext('webgl2');
+            } catch (e) {
+              console.log(`[probe debug] getContext(webgl2) threw: ${e}`);
+            }
+            if (!gl) {
+              try {
+                gl = canvas.getContext('webgl');
+              } catch (e) {
+                console.log(`[probe debug] getContext(webgl) threw: ${e}`);
+              }
+            }
+
+            if (!gl) {
+              console.log(`[probe debug] WebGL context NOT found!`);
+              return false;
+            }
+
+            try {
+              const attrs = gl.getContextAttributes();
+              console.log(
+                `[probe debug] WebGL attrs: preserveDrawingBuffer=${attrs.preserveDrawingBuffer}`,
+              );
+            } catch (e) {
+              console.log(`[probe debug] failed to get context attributes: ${e}`);
+            }
 
             const buffer = new Uint8Array(4);
             // Luminance helper
@@ -66,16 +97,9 @@ test.describe('Star occlusion', () => {
                 )
                   continue;
                 try {
-                  gl.readPixels(
-                    x,
-                    y,
-                    1,
-                    1,
-                    (gl as any).RGBA || 0x1908,
-                    (gl as any).UNSIGNED_BYTE || 0x1401,
-                    buffer,
-                  );
-                } catch {
+                  gl.readPixels(x, y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, buffer);
+                } catch (e) {
+                  console.log(`[probe debug] readPixels threw: ${e}`);
                   continue;
                 }
                 const r0 = buffer![0]!;
@@ -83,14 +107,23 @@ test.describe('Star occlusion', () => {
                 const b0 = buffer![2]!;
                 const a0 = buffer![3]!;
                 const l = lum(r0, g0, b0);
+                if (dx === -2 && dy === -2) {
+                  console.log(
+                    `[probe debug] sample pixel at deviceX=${x},deviceY=${y}: RGBA=(${r0},${g0},${b0},${a0}), L=${l.toFixed(1)}`,
+                  );
+                }
                 // Treat low-luminance pixels as occluders (planet/ship dark)
                 if (a0 > 0 && l < 40) {
+                  console.log(
+                    `[probe debug] FOUND dark occluding pixel at offset (${dx},${dy}): RGBA=(${r0},${g0},${b0},${a0}), L=${l.toFixed(1)}`,
+                  );
                   return true;
                 }
               }
             }
             return false;
-          } catch {
+          } catch (e) {
+            console.log(`[probe debug] Outer catch caught: ${e}`);
             return false;
           }
         },
@@ -128,10 +161,15 @@ test.describe('Star occlusion', () => {
         !currentStarPos ||
         typeof currentStarPos.x !== 'number' ||
         typeof currentStarPos.y !== 'number'
-      )
+      ) {
+        console.log(`Rot ${deg} deg: Invalid star position`);
         break;
+      }
       // Probe for occluding dark pixel near star projection
       const found = await probeForDarkPixel(currentStarPos.x, currentStarPos.y, 140, 6);
+      console.log(
+        `Rot ${deg} deg: star position = ${currentStarPos.x.toFixed(1)}, ${currentStarPos.y.toFixed(1)}, found dark pixel = ${found}`,
+      );
       if (found) {
         occluded = true;
         break;

@@ -19,7 +19,10 @@ import { reportConfigError, reportMaterialError } from '../utils/errorReporting.
  * @param debugEnabled - Whether debug mode is enabled (for debug indicators)
  * @returns ShaderMaterial instance or null if creation failed
  */
-export function useStarMaterial(debugEnabled: boolean): ShaderMaterial | null {
+export function useStarMaterial(
+  debugEnabled: boolean,
+  vertexShaderOverride?: string,
+): ShaderMaterial | null {
   const shaderMaterialRef = useRef<ShaderMaterial | null>(null);
 
   const shaderMaterial = useMemo<ShaderMaterial | null>(() => {
@@ -27,6 +30,7 @@ export function useStarMaterial(debugEnabled: boolean): ShaderMaterial | null {
       const mat = createMainSequenceStarMaterial({
         organic: null,
         noise: null,
+        vertexShader: vertexShaderOverride,
       });
       shaderMaterialRef.current = mat;
 
@@ -88,7 +92,7 @@ export function useStarMaterial(debugEnabled: boolean): ShaderMaterial | null {
       shaderMaterialRef.current = null;
       return null;
     }
-  }, [debugEnabled]);
+  }, [debugEnabled, vertexShaderOverride]);
 
   // Cleanup: dispose material when component unmounts or material changes
   useEffect(() => {
