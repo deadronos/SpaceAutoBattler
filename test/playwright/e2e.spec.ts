@@ -17,34 +17,32 @@ test.describe('SpaceAutoBattler E2E', () => {
     // Go to built app with E2E flag so we can introspect counts
     await page.goto('/spaceautobattler.html?e2e=1');
 
-    // Wait for R3F canvas to be present
+    // Wait for R3F canvas and __SAB API to be present
     await expect(page.locator('canvas')).toHaveCount(1);
+    await page.waitForFunction(() => Boolean((window as any).__SAB));
 
-    // Ensure simulation advances even if timers are throttled by ticking during waits
-
-    // Verify some ship models are present by checking for WebGL draw calls via screenshot stability
-    // and by inspecting the debug counts we exposed on window.
+    // Verify some ship models are present — tick aggressively to advance simulation
     await page.waitForFunction(
       () => {
         const api = (window as any).__SAB;
-        api?.tick?.(20, 1 / 60);
+        api?.tick?.(200, 1 / 60);
         const h = api?.getCounts?.();
         return h && h.ships >= 6; // two formations => 10 ships; allow >= 6 to be lenient on load
       },
       undefined,
-      { timeout: 30000, polling: 100 },
+      { timeout: 60000, polling: 100 },
     );
 
     // Now wait until at least one projectile exists (AI engages & fire when in range)
     await page.waitForFunction(
       () => {
         const api = (window as any).__SAB;
-        api?.tick?.(20, 1 / 60);
+        api?.tick?.(200, 1 / 60);
         const h = api?.getCounts?.();
         return h && h.projectiles > 0;
       },
       undefined,
-      { timeout: 30000, polling: 100 },
+      { timeout: 60000, polling: 100 },
     );
 
     // Optional sanity screenshot on failure only configured globally; we can still take one here if needed

@@ -29,6 +29,7 @@ interface MainSequenceUniformMap {
 export interface MainSequenceStarMaterialOptions {
   organic: Texture | null;
   noise: Texture | null;
+  vertexShader?: string;
 }
 
 export interface MainSequenceStarUniformUpdate {
@@ -85,7 +86,7 @@ export function createMainSequenceStarMaterial(
     premultipliedAlpha: true,
     depthWrite: false,
     blending: AdditiveBlending,
-    vertexShader,
+    vertexShader: options.vertexShader ?? vertexShader,
     fragmentShader,
     uniforms: {
       iTime: { value: 0 },

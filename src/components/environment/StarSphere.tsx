@@ -23,6 +23,7 @@ import { useStarTextures } from '../../hooks/useStarTextures.js';
 import { useStarMaterial } from '../../hooks/useStarMaterial.js';
 import { updateMainSequenceStarUniforms } from '../../renderer/starDiskMaterial.js';
 import { isCopilotDebugEnabled } from '../../utils/copilotDebug.js';
+import { useUiStore } from '../../game/uiStore.js';
 import { clamp, clamp01 } from '../../utils/math.js';
 import { reportMaterialError, reportWebGLError } from '../../utils/errorReporting.js';
 import { useStarDebug, useDebugOverlayCleanup } from '../../hooks/useStarDebug.js';
@@ -80,6 +81,10 @@ interface CopilotDebugWindow {
   __copilot_starLayerResetAt?: number;
   __copilot_rotateCameraDeltaDeg?: number | null;
   __copilot_rotateAppliedAt?: number;
+  __copilot_cameraPosition?: { x: number; y: number; z: number };
+  __copilot_cameraRotation?: { x: number; y: number; z: number };
+  __copilot_visualMesh?: Mesh;
+  __copilot_appliedMaterial?: ShaderMaterial | null;
 }
 
 interface CopilotUserData {
@@ -138,6 +143,10 @@ export function StarSphere({
   const visualMeshRef = useRef<Mesh | null>(null);
   const { gl, camera, size: viewportSize } = useThree();
 
+  const paused = useUiStore((s) => s.paused);
+  const lastTimeRef = useRef(0);
+  const accumulatedTimeRef = useRef(0);
+
   // Prefer passed-in textures; otherwise use the global loader hook.
   const { organic: loadedOrganic, noise: loadedNoise } = useStarTextures();
   const organic = organicOverride ?? loadedOrganic ?? null;
@@ -150,7 +159,7 @@ export function StarSphere({
   const removeDebugOverlay = useDebugOverlayCleanup();
   useStarDebug(debugEnabled, removeDebugOverlay);
 
-  const createdMaterial = useStarMaterial(debugEnabled);
+  const createdMaterial = useStarMaterial(debugEnabled, vertexShader);
   // Allow callers to fully override the material if desired (for testing or
   // special-case rendering). Otherwise use the created shader material.
   const appliedMaterial = materialOverride ?? createdMaterial;
@@ -368,6 +377,18 @@ export function StarSphere({
     if (debugEnabled) {
       debugWin =
         typeof window !== 'undefined' ? (window as unknown as CopilotDebugWindow) : undefined;
+      if (debugWin) {
+        debugWin.__copilot_cameraPosition = {
+          x: camera.position.x,
+          y: camera.position.y,
+          z: camera.position.z,
+        };
+        debugWin.__copilot_cameraRotation = {
+          x: camera.rotation.x,
+          y: camera.rotation.y,
+          z: camera.rotation.z,
+        };
+      }
 
       // Handle camera rotation delta request from E2E tests
       if (
@@ -394,6 +415,8 @@ export function StarSphere({
 
       // Handle basic material request / setup methods on window
       if (debugWin && mesh) {
+        debugWin.__copilot_visualMesh = mesh;
+        debugWin.__copilot_appliedMaterial = appliedMaterial;
         if (!debugWin.__copilot_setStarBasicMaterial) {
           debugWin.__copilot_setStarBasicMaterial = (opts: { color?: string } = {}) => {
             try {
@@ -561,7 +584,11 @@ export function StarSphere({
           mesh.updateMatrixWorld();
           const meshWorldPosition = new Vector3();
           meshWorldPosition.setFromMatrixPosition(mesh.matrixWorld);
-          const pos = meshWorldPosition.clone();
+          const dirX = config?.direction?.x ?? 0;
+          const dirY = config?.direction?.y ?? 0;
+          const dirZ = config?.direction?.z ?? 1;
+          const dir = new Vector3(dirX, dirY, dirZ).normalize();
+          const pos = meshWorldPosition.clone().addScaledVector(dir, radius);
           const proj = pos.project(camera);
           const ndcX = proj.x;
           const ndcY = proj.y;
@@ -617,8 +644,19 @@ export function StarSphere({
     const roll = rotation?.z;
     const cameraRoll = typeof roll === 'number' && Number.isFinite(roll) ? roll : 0;
 
+    const elapsed = state.clock.getElapsedTime();
+    if (lastTimeRef.current === 0) {
+      lastTimeRef.current = elapsed;
+      accumulatedTimeRef.current = elapsed;
+    }
+    const delta = elapsed - lastTimeRef.current;
+    lastTimeRef.current = elapsed;
+    if (!paused) {
+      accumulatedTimeRef.current += delta;
+    }
+
     updateMainSequenceStarUniforms(mat, {
-      time: state.clock.getElapsedTime(),
+      time: accumulatedTimeRef.current,
       resolution: {
         width: Number(viewportSize.width) || Math.max(1, gl.domElement.width),
         height: Number(viewportSize.height) || Math.max(1, gl.domElement.height),

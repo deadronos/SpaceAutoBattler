@@ -40,9 +40,9 @@ export function CelestialEnvironment(): React.ReactElement {
         )}
       </StarLight>
       <Suspense fallback={null}>
-        {planets.map((planet) => (
-          <PlanetBody key={planet.id} config={planet} />
-        ))}
+        {(typeof window === 'undefined' ||
+          !window.location.search.includes('copilot_hide_planets=1')) &&
+          planets.map((planet) => <PlanetBody key={planet.id} config={planet} />)}
       </Suspense>
       {features?.parallaxBillboards !== false && parallaxBillboards && (
         <>

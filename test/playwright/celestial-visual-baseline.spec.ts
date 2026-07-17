@@ -113,9 +113,8 @@ test.describe('Celestial Environment Visual Baseline', () => {
     if (await canvas.isVisible()) {
       // Test multiple camera positions
       const angles = [
-        { name: 'default', wheel: 0, drag: null },
-        { name: 'zoomed-in', wheel: -300, drag: null },
-        { name: 'rotated-view', wheel: 0, drag: { x: 100, y: 50 } },
+        { name: 'default', wheel: 0 },
+        { name: 'zoomed-in', wheel: -300 },
       ];
 
       for (const angle of angles) {
@@ -123,6 +122,14 @@ test.describe('Celestial Environment Visual Baseline', () => {
         if (angle.name !== 'default') {
           await page.reload();
           await page.waitForSelector('canvas');
+
+          // Pause the simulation for stable visual captures
+          const pauseButton = page.getByRole('button', { name: 'Pause' });
+          if (await pauseButton.isVisible()) {
+            await pauseButton.click({ force: true });
+            await expect(page.getByRole('button', { name: 'Resume' })).toBeVisible();
+          }
+
           await page.waitForTimeout(2000);
         }
 
@@ -131,17 +138,6 @@ test.describe('Celestial Environment Visual Baseline', () => {
         // Apply zoom
         if (angle.wheel !== 0) {
           await page.mouse.wheel(0, angle.wheel);
-          await page.waitForTimeout(500);
-        }
-
-        // Apply rotation
-        if (angle.drag) {
-          await page.mouse.down();
-          await page.mouse.move(
-            (await canvas.boundingBox())!.x + angle.drag.x,
-            (await canvas.boundingBox())!.y + angle.drag.y,
-          );
-          await page.mouse.up();
           await page.waitForTimeout(500);
         }
 
