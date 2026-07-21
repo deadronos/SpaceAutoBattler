@@ -11,7 +11,10 @@ try {
 if (typeof window !== 'undefined') {
   const originalWarn = console.warn;
   console.warn = (...args: unknown[]) => {
-    if (typeof args[0] === 'string' && args[0].includes('Multiple instances of Three.js being imported')) {
+    if (
+      typeof args[0] === 'string' &&
+      args[0].includes('Multiple instances of Three.js being imported')
+    ) {
       return;
     }
     originalWarn(...args);
@@ -19,4 +22,3 @@ if (typeof window !== 'undefined') {
 }
 
 export {};
-
