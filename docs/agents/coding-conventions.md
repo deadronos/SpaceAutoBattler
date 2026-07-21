@@ -1,10 +1,10 @@
 # Coding conventions
 
-## Style
+## Architecture & Style
 
-- Use two-space indentation and semicolons.
 - Use ES modules.
 - Prefer clear, self-explanatory names; comment for intent (why), not mechanics (what).
+- Code formatting (indentation, semicolons) is managed automatically by `npm run format` / `npm run lint`.
 
 ## Types and public APIs
 
