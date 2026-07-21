@@ -7,6 +7,7 @@ import { createDefaultDoctrineState } from '../../src/game/aiDoctrine.js';
 import { createDefaultMotionStats } from '../../src/game/ships.js';
 import { createProgressionDefaults, createSubsystems } from '../../src/game/progression.js';
 
+// Centralized test fixture factory for SpaceAutoBattler unit tests
 export const TEST_GAME_SEED = 42;
 
 /**
