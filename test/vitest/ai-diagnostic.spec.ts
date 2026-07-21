@@ -172,8 +172,11 @@ it('diagnostic: escort + bomber + artillery scenarios candidate breakdown', () =
     },
   ];
 
+  const isVerbose = Boolean(process.env.DEBUG_AI_DIAGNOSTICS);
   for (const config of configs) {
-    console.log('\n--- DIAGNOSTIC SCENARIO', config.name, 'seed', config.seed, '---');
+    if (isVerbose) {
+      console.log('\n--- DIAGNOSTIC SCENARIO', config.name, 'seed', config.seed, '---');
+    }
     const rng = new SeededRng(config.seed);
     const ships: any[] = config.ships.map((spec: any, idx: number) => {
       const id = spec.id ?? idx + 1;
@@ -350,7 +353,9 @@ it('diagnostic: escort + bomber + artillery scenarios candidate breakdown', () =
       );
       const chosenLine = `  selected -> ${chosen.intent} ${chosen.score}\n`;
       fs.appendFileSync('tmp/ai-diagnostic.log', line + chosenLine);
-      console.log(line + chosenLine);
+      if (isVerbose) {
+        console.log(line + chosenLine);
+      }
     }
   }
 });

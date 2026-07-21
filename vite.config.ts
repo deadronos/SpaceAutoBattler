@@ -276,7 +276,9 @@ const lintConfig = {
 };
 
 const stagedConfig = {
-  '**/*.{ts,tsx,js,jsx,css}': ['vp fmt', 'vp lint --fix'],
+  'src/**/*.{ts,tsx,js,jsx,css}': ['vp fmt', 'vp lint --fix'],
+  'test/**/*.{ts,tsx,js,jsx}': ['vp fmt'],
+  '*.{ts,tsx,js,jsx,mjs,cjs}': ['vp fmt'],
   '**/*.json': ['vp fmt'],
   '**/*.md': ['vp fmt'],
 };

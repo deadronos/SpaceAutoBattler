@@ -2,8 +2,9 @@ import { describe, it, expect } from 'vite-plus/test';
 import { Vector3, Quaternion } from 'three';
 import { applyProgressionDefaults } from './helpers/progression.js';
 import { createDefaultMotionStats } from '../../src/game/ships.js';
-import type { GameState, ShipEntity } from '../../src/types/index.js';
+import type { ShipEntity } from '../../src/types/index.js';
 import { updateGame } from '../../src/game/systems.js';
+import { createMockGameState } from '../fixtures/gameStateFactory.js';
 
 function makeRigidBodyStub(init?: {
   pos?: { x: number; y: number; z: number };
@@ -28,155 +29,6 @@ function makeRigidBodyStub(init?: {
       return true;
     },
   } as any;
-}
-
-function makeStateStub(): GameState {
-  const entities: any[] = [];
-  const queries = {
-    ships: { entities: [] as any[] },
-    projectiles: { entities: [] as any[] },
-    turrets: { entities: [] as any[] },
-  } as any;
-  const shipById = new Map<number, ShipEntity>();
-  const world = {
-    entities,
-    createEntity(obj: any) {
-      entities.push(obj);
-      if (obj.projectile) (queries.projectiles.entities as any[]).push(obj);
-      if (obj.ship) {
-        (queries.ships.entities as any[]).push(obj);
-        shipById.set(obj.id, obj);
-      }
-      if (obj.turret) (queries.turrets.entities as any[]).push(obj);
-      return obj;
-    },
-    add(obj: any) {
-      entities.push(obj);
-      if (obj.projectile) (queries.projectiles.entities as any[]).push(obj);
-      if (obj.ship) {
-        (queries.ships.entities as any[]).push(obj);
-        shipById.set(obj.id, obj);
-      }
-      if (obj.turret) (queries.turrets.entities as any[]).push(obj);
-      return obj;
-    },
-    destroyEntity(obj: any) {
-      const i = entities.indexOf(obj);
-      if (i >= 0) entities.splice(i, 1);
-      if (obj.ship) shipById.delete(obj.id);
-    },
-    remove(obj: any) {
-      const i = entities.indexOf(obj);
-      if (i >= 0) entities.splice(i, 1);
-      if (obj.ship) shipById.delete(obj.id);
-    },
-  } as any;
-
-  const rapierStub = {
-    RigidBodyDesc: {
-      kinematicPositionBased: () => ({
-        _pos: { x: 0, y: 0, z: 0 },
-        _rot: { x: 0, y: 0, z: 0, w: 1 },
-        setTranslation(x: number, y: number, z: number) {
-          this._pos = { x, y, z };
-          return this;
-        },
-        setRotation(r: { x: number; y: number; z: number; w: number }) {
-          this._rot = r;
-          return this;
-        },
-      }),
-    },
-    ColliderDesc: {
-      ball: () => ({
-        setActiveEvents() {
-          return this;
-        },
-        setActiveCollisionTypes() {
-          return this;
-        },
-      }),
-    },
-    ActiveEvents: { COLLISION_EVENTS: 1 },
-    ActiveCollisionTypes: { ALL: 1 },
-  } as any;
-
-  let nextHandle = 1;
-  const physicsWorld = {
-    createRigidBody: (desc?: any) =>
-      makeRigidBodyStub(desc ? { pos: desc._pos, rot: desc._rot } : undefined),
-    createCollider: () => ({ handle: nextHandle++, isValid: () => true }) as any,
-    removeCollider() {},
-    removeRigidBody() {},
-    step() {},
-  } as any;
-
-  return {
-    rapier: rapierStub,
-    physicsWorld,
-    eventQueue: {} as any,
-    world: world as any,
-    colliderLookup: new Map(),
-    shipById,
-    nextEntityId: 1,
-    nextExplosionId: 1,
-    time: 0,
-    queries,
-    rng: { next: () => 0.5 } as any,
-    paused: false,
-    timeScale: 1,
-    explosions: [],
-    explosionPool: [],
-    progressionEvents: new Map(),
-    uiFlags: { hudHealthBars: false },
-    ai: undefined as any,
-    blackboard: {
-      tickIndex: 0,
-      teamPosture: { blue: 'hold', red: 'hold' },
-      allyCentroid: { blue: new Vector3(), red: new Vector3() },
-      nearestEnemy: new Map(),
-      threatToVip: new Map(),
-      tmpVectors: [new Vector3(), new Vector3(), new Vector3(), new Vector3()],
-    } as any,
-    simulation: {
-      step: 1 / 20,
-      accumulator: 0,
-      maxSubSteps: 5,
-      profileSubsystems: false,
-      profileSampleRate: 1,
-      enableSubsystemGuards: true,
-      alpha: 0,
-      lastTickIndex: 0,
-      lastTickStart: 0,
-      lastTickDuration: 1 / 20,
-      deferredMutations: [],
-      postStepMutations: [],
-      rapierDiagnostics: {
-        deferredMutationFailures: 0,
-        guardTrips: 0,
-        lastFailureTick: -1,
-        lastGuardTick: -1,
-        lastDeferredMutationError: undefined,
-        stepPanics: 0,
-        lastStepPanicTick: -1,
-        lastStepPanicTime: 0,
-        lastStepPanicDelta: 0,
-        lastStepPanicMessage: undefined,
-        lastStepPanicStack: undefined,
-        lastStepPanicTimestamp: 0,
-        subsystemFailures: 0,
-        lastSubsystemFailureTick: -1,
-        lastSubsystemFailureMessage: undefined,
-        lastSubsystemFailureStack: undefined,
-        lastSubsystemFailureTimestamp: 0,
-      },
-      subsystemTimings: {
-        durations: {},
-        lastTickIndex: -1,
-        lastTickTime: 0,
-      },
-    },
-  } as GameState;
 }
 
 function makeShip(
@@ -224,9 +76,9 @@ function makeShip(
 
 describe('shield regeneration', () => {
   it('regenerates shield over time according to shieldRegen (hp/sec)', () => {
-    const state = makeStateStub();
+    const state = createMockGameState();
     const s = makeShip(1, 'blue', new Vector3(0, 0, 0), 10, 10, 20, 2); // regen 2 hp/s
-    (state.queries.ships as any).entities = [s];
+    state.world.add(s);
     state.shipById.set(s.id, s);
 
     // Advance 1.5 seconds -> expect +3 hp
@@ -235,10 +87,10 @@ describe('shield regeneration', () => {
   });
 
   it('does not exceed maxShield (clamps)', () => {
-    const state = makeStateStub();
+    const state = createMockGameState();
     // start at 19/20 with regen 5 hp/s, advance 1s -> would reach 24 but should clamp to 20
     const s = makeShip(2, 'red', new Vector3(0, 0, 0), 10, 19, 20, 5);
-    (state.queries.ships as any).entities = [s];
+    state.world.add(s);
     state.shipById.set(s.id, s);
 
     updateGame(state, 1.0);
