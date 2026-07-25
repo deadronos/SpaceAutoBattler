@@ -50,8 +50,8 @@ importers:
         specifier: ^1.61.1
         version: 1.61.1
       postprocessing:
-        specifier: ^6.39.2
-        version: 6.39.2(three@0.185.1)
+        specifier: ^6.39.3
+        version: 6.39.3(three@0.185.1)
       r3f-perf:
         specifier: ^7.2.3
         version: 7.2.3(@react-three/fiber@9.6.1(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(three@0.185.1))(@types/react@19.2.17)(@types/three@0.185.1)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(three@0.185.1)(use-sync-external-store@1.6.0(react@19.2.7))
@@ -2626,8 +2626,8 @@ packages:
     resolution: {integrity: sha512-vuwillviilfKZsg0VGj5R/YwwcHx4SLsIOI/7K6mQkWx+l5cUHTjj5g0AasTBcyXsbfTgrwsUNmVUb5xVwyPwg==}
     engines: {node: ^10 || ^12 || >=14}
 
-  postprocessing@6.39.2:
-    resolution: {integrity: sha512-AxPY+xFyVOsz+8bbHSyQBoOK4AUqSQspTXXIsNcKhmGJRm/afHRAwZ8bKC02AeSPII0PW6lbCN84SgAoWFsKKA==}
+  postprocessing@6.39.3:
+    resolution: {integrity: sha512-h5H1iuN96aRkU06CzJ8d/FqFe3Qs2bI7LiGHTzOI5T5mQqjzovi2t1EkRHb8qkHgoD9cTJDb4uA30AkSxsFB7A==}
     peerDependencies:
       three: ^0.185.1
 
@@ -5162,7 +5162,7 @@ snapshots:
       picocolors: 1.1.1
       source-map-js: 1.2.1
 
-  postprocessing@6.39.2(three@0.185.1):
+  postprocessing@6.39.3(three@0.185.1):
     dependencies:
       three: 0.185.1
 
