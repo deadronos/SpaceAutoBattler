@@ -124,7 +124,7 @@ examples:
 
 - Inline:
   **User:** "Fix the off-by-one error here"  
-   **Assistant:**
+  **Assistant:**
   ```diff
   - for (let i = 0; i <= arr.length; i++) {
   + for (let i = 0; i < arr.length; i++) {
@@ -132,7 +132,7 @@ examples:
   _Fix: iterate only to arr.length-1._
 - Project-level:
   **User:** "Renderer loop is broken"  
-   **Assistant:**  
-   **Plan:** Add RAF loop → call `simulate` → verify with smoke test.  
-   Branch: `fix/renderer-loop`.  
-   Then suggest file edits + test.
+  **Assistant:**  
+  **Plan:** Add RAF loop → call `simulate` → verify with smoke test.  
+  Branch: `fix/renderer-loop`.  
+  Then suggest file edits + test.

@@ -11,7 +11,7 @@
      `test/simulationQueue.spec.ts`, `test/safeSnapshot.spec.ts`, `test/game/subsystems.spec.ts`, `test/game/progression.spec.ts`, `test/progression/*.spec.ts`, `test/config/*.spec.ts`, `test/renderer/*.spec.ts`.
    - This creates silent coverage gaps in core simulation, config, and renderer modules.
 
-3. **~High: Two movement systems are active in the same tick path~ [RESOLVED]**
+3. **~~High: Two movement systems are active in the same tick path~~ [RESOLVED]**
    - **Status**: Fixed - legacy `applyShipMovement` call removed from `executeAICommand`.
    - **Solution**: Motion system (`src/game/systems/motion/`) is now the sole authoritative movement path.
    - **Validation**: Added regression test (`test/vitest/dual-movement-regression.spec.ts`) ensuring exactly one physics write per ship per tick.
