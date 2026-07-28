@@ -49,6 +49,7 @@
     }
   },
   "devDependencies": {
+    "@babel/core": "^7.29.6",
     "@babel/preset-env": "^8.0.2",
     "@playwright/test": "^1.62.0",
     "@rolldown/plugin-babel": "^0.2.3",
