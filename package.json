@@ -37,9 +37,9 @@
   "pnpm": {
     "overrides": {
       "three": "$three",
-      "vite": "npm:@voidzero-dev/vite-plus-core@~0.2.4",
+      "vite": "npm:@voidzero-dev/vite-plus-core@~0.2.8",
       "vitest": "npm:@voidzero-dev/vite-plus-test@latest",
-      "@voidzero-dev/vite-plus-core": "~0.2.4"
+      "@voidzero-dev/vite-plus-core": "~0.2.8"
     },
     "onlyBuiltDependencies": [
       "esbuild"
