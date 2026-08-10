@@ -42,7 +42,13 @@
       "@voidzero-dev/vite-plus-core": "~0.2.6"
     },
     "onlyBuiltDependencies": [
-      "esbuild"
+      "esbuild",
+      "@voidzero-dev/vite-plus-core",
+      "@voidzero-dev/vite-plus-darwin-arm64",
+      "@voidzero-dev/vite-plus-darwin-x64",
+      "@voidzero-dev/vite-plus-linux-x64-gnu",
+      "@voidzero-dev/vite-plus-linux-arm64-gnu",
+      "vite-plus"
     ],
     "patchedDependencies": {
       "@voidzero-dev/vite-plus-test": "patches/@voidzero-dev__vite-plus-test.patch"
