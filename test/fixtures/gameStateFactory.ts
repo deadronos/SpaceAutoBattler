@@ -25,10 +25,10 @@ export function createMockGameState(overrides: Partial<GameState> = {}): GameSta
       removeCollider: () => {},
       removeRigidBody: () => {},
       step: () => {},
-    } as GameState['physicsWorld'],
+    } as unknown as GameState['physicsWorld'],
     eventQueue: {
       free: () => {},
-    } as GameState['eventQueue'],
+    } as unknown as GameState['eventQueue'],
     world,
     colliderLookup: new Map(),
     shipById: new Map(),

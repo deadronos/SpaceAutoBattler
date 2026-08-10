@@ -293,7 +293,8 @@ describe('extended projectile behaviours', () => {
 
     const colliderHandle = 1234;
     state.colliderLookup.set(colliderHandle, hitShip as any);
-    state.physicsWorld.castRay = () => ({ collider: { handle: colliderHandle }, toi: 15 });
+    state.physicsWorld.castRay = () =>
+      ({ collider: { handle: colliderHandle } as any, toi: 15 }) as any;
 
     fireProjectile(state, attacker, new Vector3(0, 0, 1), {
       override: {

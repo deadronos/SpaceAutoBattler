@@ -1,16 +1,10 @@
-import type { GameEntity, GameState } from '../../types/index.js';
-import type { RigidBody } from '../../types/index.js';
+import type { Collider, GameEntity, GameState, RigidBody } from '../../types/index.js';
 import {
   createKinematicBodyWithCollider,
   registerColliderHandle,
   unregisterColliderHandle,
   type CreateBodyColliderOpts,
 } from './physicsFactory.js';
-
-type ColliderLike = {
-  handle: number;
-  isValid(): boolean;
-};
 
 /**
  * Creates a kinematic body + collider pair and registers them for lifecycle tracking.
@@ -22,7 +16,7 @@ export function createTrackedBody(
   state: GameState,
   opts: CreateBodyColliderOpts,
   entity: GameEntity,
-): { body: RigidBody; collider: ColliderLike | null; dispose: () => void } {
+): { body: RigidBody; collider: Collider; dispose: () => void } {
   const { body, collider } = createKinematicBodyWithCollider(state, opts);
   registerColliderHandle(state, collider, entity);
   return {
@@ -44,11 +38,7 @@ export function createTrackedBody(
  * Destroys a tracked body and its collider, cleaning up from the physics world
  * and collider lookup table.
  */
-export function destroyBody(
-  state: GameState,
-  body: RigidBody,
-  collider: ColliderLike | null,
-): void {
+export function destroyBody(state: GameState, body: RigidBody, collider: Collider | null): void {
   if (collider && collider.isValid()) {
     state.physicsWorld.removeCollider(collider, true);
   }

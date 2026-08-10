@@ -31,17 +31,15 @@ export async function createGameState(options: CreateGameStateOptions = {}): Pro
       free: () => {},
       removeCollider: () => {},
       removeRigidBody: () => {},
-    } as GameState['physicsWorld'];
+    } as unknown as GameState['physicsWorld'];
     eventQueue = {
       free: () => {},
-    } as GameState['eventQueue'];
+    } as unknown as GameState['eventQueue'];
     rapierModule = {} as GameState['rapier'];
   } else {
-    // Rapier 0.19+ expects an options object; calling without args triggers a deprecation warning.
-    // Passing an empty object keeps default behavior and removes the warning.
-    await Rapier.init({});
+    await Rapier.init();
     physicsWorld = new Rapier.World({ x: 0, y: 0, z: 0 });
-    eventQueue = new Rapier.EventQueue({ auto: true });
+    eventQueue = new Rapier.EventQueue(true);
     rapierModule = Rapier;
   }
 
