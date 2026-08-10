@@ -39,7 +39,7 @@ jobs:
           run-install: false
 
       - name: Install deps
-        run: vp install --frozen-lockfile
+        run: vp install --frozen-lockfile --optional
 
       - name: Run TypeScript typecheck
         run: vp run typecheck

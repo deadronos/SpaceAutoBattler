@@ -21,7 +21,7 @@ jobs:
           run-install: false
 
       - name: Install dependencies
-        run: vp install --frozen-lockfile
+        run: vp install --frozen-lockfile --optional
 
       - name: Run Typecheck
         run: vp run typecheck

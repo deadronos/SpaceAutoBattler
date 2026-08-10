@@ -35,6 +35,10 @@
     "prepare": "node -e \"if (!process.env.CI) try { require('child_process').execSync('vp config', { stdio: 'inherit' }); } catch {}\""
   },
   "pnpm": {
+    "supportedArchitectures": {
+      "os": ["linux", "darwin"],
+      "cpu": ["x64", "arm64"]
+    },
     "overrides": {
       "three": "$three",
       "vite": "npm:@voidzero-dev/vite-plus-core@~0.2.6",
