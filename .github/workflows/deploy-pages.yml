@@ -36,6 +36,7 @@ jobs:
         with:
           node-version: '22'
           cache: false
+          run-install: false
 
       - name: Install deps
         run: vp install --frozen-lockfile
