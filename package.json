@@ -36,8 +36,14 @@
   },
   "pnpm": {
     "supportedArchitectures": {
-      "os": ["linux", "darwin"],
-      "cpu": ["x64", "arm64"]
+      "os": [
+        "linux",
+        "darwin"
+      ],
+      "cpu": [
+        "x64",
+        "arm64"
+      ]
     },
     "overrides": {
       "three": "$three",
