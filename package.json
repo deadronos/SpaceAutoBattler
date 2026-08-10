@@ -32,7 +32,7 @@
     "perf:ai-budget": "tsx ./scripts/perf/assert-ai-budget.ts",
     "bench:projectiles": "node scripts/bench/projectile-stress.mjs",
     "build:deploy": "vp run typecheck && vp test && vp build && cp dist/spaceautobattler.html dist/index.html",
-    "prepare": "vp config"
+    "prepare": "node -e \"if (!process.env.CI) try { require('child_process').execSync('vp config', { stdio: 'inherit' }); } catch {}\""
   },
   "pnpm": {
     "overrides": {
