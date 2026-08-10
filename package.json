@@ -41,9 +41,9 @@
     },
     "overrides": {
       "three": "$three",
-      "vite": "npm:@voidzero-dev/vite-plus-core@~0.2.6",
+      "vite": "npm:@voidzero-dev/vite-plus-core@~0.2.8",
       "vitest": "npm:@voidzero-dev/vite-plus-test@latest",
-      "@voidzero-dev/vite-plus-core": "~0.2.6"
+      "@voidzero-dev/vite-plus-core": "~0.2.8"
     },
     "onlyBuiltDependencies": [
       "esbuild",
@@ -90,7 +90,7 @@
     "ts-node": "^10.9.2",
     "tsx": "^4.23.12",
     "typescript": "^7.0.2",
-    "vite": "npm:@voidzero-dev/vite-plus-core@~0.2.6",
+    "vite": "npm:@voidzero-dev/vite-plus-core@~0.2.8",
     "vite-plugin-compression": "^0.5.1",
     "vite-plus": "0.2.8",
     "vitest": "npm:@voidzero-dev/vite-plus-test@^0.1.24"
@@ -115,10 +115,6 @@
     "three-mesh-bvh": "^0.9.14",
     "three-stdlib": "^2.36.1",
     "zustand": "^5.0.14"
-  },
-  "optionalDependencies": {
-    "@rolldown/binding-linux-x64-gnu": "1.0.0-rc.11",
-    "@voidzero-dev/vite-plus-linux-x64-gnu": "0.2.8"
   },
   "packageManager": "pnpm@10.33.0+sha512.10568bb4a6afb58c9eb3630da90cc9516417abebd3fabbe6739f0ae795728da1491e9db5a544c76ad8eb7570f5c4bb3d6c637b2cb41bfdcdb47fa823c8649319"
 }
