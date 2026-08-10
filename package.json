@@ -43,11 +43,11 @@
     },
     "onlyBuiltDependencies": [
       "esbuild",
-      "@voidzero-dev/vite-plus-core",
-      "@voidzero-dev/vite-plus-darwin-arm64",
-      "@voidzero-dev/vite-plus-darwin-x64",
-      "@voidzero-dev/vite-plus-linux-x64-gnu",
-      "@voidzero-dev/vite-plus-linux-arm64-gnu",
+      "@voidzero-dev/*",
+      "@rolldown/*",
+      "@oxfmt/*",
+      "@oxlint/*",
+      "@oxlint-tsgolint/*",
       "vite-plus"
     ],
     "patchedDependencies": {
