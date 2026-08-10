@@ -35,7 +35,7 @@ jobs:
         uses: voidzero-dev/setup-vp@v1
         with:
           node-version: '22'
-          cache: true
+          cache: false
 
       - name: Install deps
         run: vp install --frozen-lockfile
