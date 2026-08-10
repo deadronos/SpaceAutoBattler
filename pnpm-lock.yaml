@@ -76,6 +76,13 @@ importers:
       zustand:
         specifier: ^5.0.14
         version: 5.0.14(@types/react@19.2.18)(react@19.2.8)(use-sync-external-store@1.6.0(react@19.2.8))
+    optionalDependencies:
+      '@rolldown/binding-linux-x64-gnu':
+        specifier: 1.0.0-rc.11
+        version: 1.0.0-rc.11
+      '@voidzero-dev/vite-plus-linux-x64-gnu':
+        specifier: 0.2.8
+        version: 0.2.8
     devDependencies:
       '@babel/core':
         specifier: ^8.0.1
