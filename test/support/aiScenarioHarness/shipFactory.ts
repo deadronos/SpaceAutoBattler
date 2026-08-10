@@ -31,7 +31,7 @@ export function createHarnessShip(
 
   const ship: HarnessShip = {
     id,
-    rigidBody: createRigidBodyShim(position, rotation, spec.velocity),
+    rigidBody: createRigidBodyShim(position, rotation, spec.velocity) as any,
     collider: {} as never,
     transform: { position, rotation, scale: 1 },
     ship: {

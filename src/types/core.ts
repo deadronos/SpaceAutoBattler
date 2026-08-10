@@ -1,12 +1,14 @@
 import type { World as ECSWorld } from 'miniplex';
 
-type RapierModule = (typeof import('@dimforge/rapier3d-compat'))['default'];
-type RapierWorld = RapierModule['World'];
-type Collider = RapierModule['Collider'];
-type EventQueue = RapierModule['EventQueue'];
-type RigidBody = RapierModule['RigidBody'];
+import type {
+  World as RapierWorld,
+  Collider,
+  EventQueue,
+  RigidBody,
+} from '@dimforge/rapier3d-compat';
+export type RapierModule = typeof import('@dimforge/rapier3d-compat');
 
-export type { RapierModule, RapierWorld, Collider, EventQueue, RigidBody };
+export type { RapierWorld, Collider, EventQueue, RigidBody };
 
 export type EntityId = number;
 
