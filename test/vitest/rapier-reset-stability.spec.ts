@@ -88,19 +88,17 @@ describe('Rapier Reset Stability', () => {
     };
     const toSpawnSnapshot = () =>
       state.queries.ships.entities
-        .map(
-          (entity: GameEntity): SpawnSnapshotEntry => ({
-            team: entity.ship?.team ?? null,
-            hull: entity.ship?.hull ?? null,
-            position: entity.transform
-              ? {
-                  x: entity.transform.position.x,
-                  y: entity.transform.position.y,
-                  z: entity.transform.position.z,
-                }
-              : null,
-          }),
-        )
+        .map((entity: GameEntity): SpawnSnapshotEntry => ({
+          team: entity.ship?.team ?? null,
+          hull: entity.ship?.hull ?? null,
+          position: entity.transform
+            ? {
+                x: entity.transform.position.x,
+                y: entity.transform.position.y,
+                z: entity.transform.position.z,
+              }
+            : null,
+        }))
         .sort((a: SpawnSnapshotEntry, b: SpawnSnapshotEntry) => {
           const teamCompare = (a.team ?? '').localeCompare(b.team ?? '');
           if (teamCompare !== 0) return teamCompare;
