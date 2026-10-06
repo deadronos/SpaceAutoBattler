@@ -48,7 +48,11 @@
     "overrides": {
       "three": "$three",
       "vite": "npm:@voidzero-dev/vite-plus-core@~1.0.0",
-      "@voidzero-dev/vite-plus-core": "~1.0.0"
+      "@voidzero-dev/vite-plus-core": "~1.0.0",
+      "brace-expansion": "^5.0.12",
+      "nanoid": "^3.3.18",
+      "source-map-js": "^1.2.2",
+      "yaml": "^2.8.3"
     },
     "onlyBuiltDependencies": [
       "esbuild",
@@ -94,7 +98,8 @@
     "vite": "npm:@voidzero-dev/vite-plus-core@~1.0.0",
     "vite-plugin-compression": "^0.5.1",
     "vite-plus": "1.0.0",
-    "vitest": "^5.0.1"
+    "vitest": "^5.0.1",
+    "yaml": "^2.8.3"
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "0.21.0",
