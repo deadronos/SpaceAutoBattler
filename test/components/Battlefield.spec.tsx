@@ -73,8 +73,14 @@ vi.mock('../../src/game/SimulationBridge.js', () => ({
 
 vi.mock('three', async () => {
   const actual = await vi.importActual<typeof import('three')>('three');
+  // three@0.186 ships a CommonJS entry that is just `module.exports = require('./three.module.js')`.
+  // Its named exports are therefore not own-enumerable on the interop object, so spreading
+  // `actual` directly would drop every constant (e.g. SRGBColorSpace, NoToneMapping).
+  // Unwrap the underlying namespace so the spread preserves all real exports.
+  const interop = actual as unknown as Record<string, unknown>;
+  const actualNamespace = (interop['module.exports'] as typeof actual | undefined) ?? actual;
   return {
-    ...actual,
+    ...actualNamespace,
     AxesHelper: vi.fn().mockImplementation(function MockAxesHelper(size: number) {
       this.size = size;
       this.dispose = vi.fn();
