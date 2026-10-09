@@ -1,6 +1,6 @@
 import type { GameState, ShipEntity } from '../../../types/index.js';
-import type { KinematicBody } from '../../physics/safeKinematics.js';
 import {
+  asKinematicBody,
   deferSetNextKinematicRotation,
   deferSetNextKinematicTranslation,
 } from '../../physics/safeKinematics.js';
@@ -38,7 +38,7 @@ export function keepShipStationary(state: GameState, ship: ShipEntity): void {
   const position = ship.transform.position;
   deferSetNextKinematicTranslation(
     state,
-    ship.rigidBody as unknown as KinematicBody,
+    asKinematicBody(ship.rigidBody),
     position.x,
     position.y,
     position.z,
@@ -46,7 +46,7 @@ export function keepShipStationary(state: GameState, ship: ShipEntity): void {
   const rotation = ship.transform.rotation;
   deferSetNextKinematicRotation(
     state,
-    ship.rigidBody as unknown as KinematicBody,
+    asKinematicBody(ship.rigidBody),
     rotation.x,
     rotation.y,
     rotation.z,

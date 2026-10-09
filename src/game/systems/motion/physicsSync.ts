@@ -1,7 +1,7 @@
 import type { GameState, ShipEntity } from '../../../types/index.js';
 import { clampToWorld } from '../../config.js';
-import type { KinematicBody } from '../../physics/safeKinematics.js';
 import {
+  asKinematicBody,
   deferSetNextKinematicRotation,
   deferSetNextKinematicTranslation,
 } from '../../physics/safeKinematics.js';
@@ -29,14 +29,14 @@ export function applyVelocityToPhysics(state: GameState, ship: ShipEntity, dt: n
 
   deferSetNextKinematicTranslation(
     state,
-    ship.rigidBody as unknown as KinematicBody,
+    asKinematicBody(ship.rigidBody),
     TEMP_NEXT_POS.x,
     TEMP_NEXT_POS.y,
     TEMP_NEXT_POS.z,
   );
   deferSetNextKinematicRotation(
     state,
-    ship.rigidBody as unknown as KinematicBody,
+    asKinematicBody(ship.rigidBody),
     ship.transform.rotation.x,
     ship.transform.rotation.y,
     ship.transform.rotation.z,

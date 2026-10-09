@@ -78,7 +78,7 @@ export function createKinematicBodyWithCollider(
   colliderDesc.setActiveEvents(activeEvents).setActiveCollisionTypes(activeCollisionTypes);
 
   if (typeof opts.sensor === 'boolean') {
-    colliderDesc.setSensor(opts.sensor as unknown as boolean);
+    colliderDesc.setSensor(opts.sensor);
   }
 
   const collider = state.physicsWorld.createCollider(colliderDesc, body) as Collider;

@@ -9,8 +9,7 @@ import type {
 import { recordShotHelper } from '../metrics.js';
 import { fireProjectile, TEMP_POS } from './projectiles.js';
 import { destroyEntity } from '../state.js';
-import type { KinematicBody } from '../physics/safeKinematics.js';
-import { deferSetNextKinematicTranslation } from '../physics/safeKinematics.js';
+import { asKinematicBody, deferSetNextKinematicTranslation } from '../physics/safeKinematics.js';
 import { findNearestEnemy, findPointDefenseTarget } from '../utils/targetSelection.js';
 import {
   TEMP_TURRET_DIR,
@@ -41,7 +40,7 @@ export function updateTurrets(state: GameState, delta: number): void {
     const origin = getTurretWorldPosition(ship, t.turret);
     deferSetNextKinematicTranslation(
       state,
-      t.rigidBody as unknown as KinematicBody,
+      asKinematicBody(t.rigidBody),
       origin.x,
       origin.y,
       origin.z,

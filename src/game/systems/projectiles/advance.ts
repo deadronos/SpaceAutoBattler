@@ -1,7 +1,7 @@
 import type { GameState, ProjectileEntity } from '../../../types/index.js';
-import type { KinematicBody } from '../../physics/safeKinematics.js';
 import { clampToWorld } from '../../config.js';
 import {
+  asKinematicBody,
   deferSetNextKinematicRotation,
   deferSetNextKinematicTranslation,
 } from '../../physics/safeKinematics.js';
@@ -43,7 +43,7 @@ export function advanceProjectiles(state: GameState, delta: number): void {
 
     projectile.transform.position.copy(next);
 
-    const body = projectile.rigidBody as unknown as KinematicBody;
+    const body = asKinematicBody(projectile.rigidBody);
 
     // Batch translation
     if (buffers.t_count < buffers.t_bodies.length) {
