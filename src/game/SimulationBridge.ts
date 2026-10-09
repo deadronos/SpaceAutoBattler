@@ -6,23 +6,14 @@ import type {
 } from '../worker/protocol.js';
 import { createTransformSoALayout, createTransformSoAViews } from '../worker/transformsLayout.js';
 import { reportLifecycleError } from '../utils/errorReporting.js';
-import { readBooleanParam } from '../utils/queryParams.js';
+import { sampleShipMotion } from './workerSnapshotSampler.js';
 
-export function shouldEnableWorkerSimulation(): boolean {
-  return readBooleanParam('sim_worker') || readBooleanParam('sim_worker_render');
-}
-
-export function shouldRenderWorkerShips(): boolean {
-  return readBooleanParam('sim_worker_render') || readBooleanParam('sim_worker_render_only');
-}
-
-export function shouldRenderWorkerShipsOnly(): boolean {
-  return readBooleanParam('sim_worker_render_only');
-}
-
-export function shouldDebugWorkerSimulation(): boolean {
-  return readBooleanParam('sim_worker_debug');
-}
+export {
+  shouldDebugWorkerSimulation,
+  shouldEnableWorkerSimulation,
+  shouldRenderWorkerShips,
+  shouldRenderWorkerShipsOnly,
+} from './simulationFeatureFlags.js';
 
 export class SimulationBridge {
   private readonly worker: Worker;
@@ -259,44 +250,11 @@ export class SimulationBridge {
       return { tick: this.latestTick, shipCount: this.latestShipCount, ships: [] };
     }
 
-    const ships: Array<{
-      id: number;
-      slot: number;
-      position: { x: number; y: number; z: number };
-      rotation: { x: number; y: number; z: number; w: number };
-      hp: number;
-      shield: number;
-      thrust: number;
-    }> = [];
-
-    const max = Math.max(0, Math.floor(limit));
-    for (const [id, slot] of this.slotByShipId) {
-      if (ships.length >= max) break;
-
-      const pBase = slot * 3;
-      const rBase = slot * 4;
-
-      ships.push({
-        id,
-        slot,
-        position: {
-          x: views.positions[pBase + 0] ?? 0,
-          y: views.positions[pBase + 1] ?? 0,
-          z: views.positions[pBase + 2] ?? 0,
-        },
-        rotation: {
-          x: views.rotations[rBase + 0] ?? 0,
-          y: views.rotations[rBase + 1] ?? 0,
-          z: views.rotations[rBase + 2] ?? 0,
-          w: views.rotations[rBase + 3] ?? 1,
-        },
-        hp: views.shipHp[slot] ?? 0,
-        shield: views.shipShield[slot] ?? 0,
-        thrust: views.shipThrust[slot] ?? 0,
-      });
-    }
-
-    return { tick: this.latestTick, shipCount: this.latestShipCount, ships };
+    return {
+      tick: this.latestTick,
+      shipCount: this.latestShipCount,
+      ships: sampleShipMotion(views, this.slotByShipId, limit),
+    };
   }
 
   dispose(): void {
