@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import type { DirectionalLight } from 'three';
 import { Object3D, Vector3 } from 'three';
 import type { StarLightConfig } from '../../config/environment.js';
+import { computeShadowCameraParams } from '../../renderer/shadowCamera.js';
 import { reportLifecycleError } from '../../utils/errorReporting.js';
 
 interface StarLightProps {
@@ -42,13 +43,13 @@ export function StarLight({
     shadow.bias = -0.0002;
     shadow.normalBias = 0.02;
     const camera = shadow.camera;
-    const span = Math.max(config.distance * 0.6, 1000);
-    camera.near = 1;
-    camera.far = Math.max(config.distance * 2, span * 1.25);
-    camera.left = -span;
-    camera.right = span;
-    camera.top = span;
-    camera.bottom = -span;
+    const { near, far, halfSize } = computeShadowCameraParams(config.distance);
+    camera.near = near;
+    camera.far = far;
+    camera.left = -halfSize;
+    camera.right = halfSize;
+    camera.top = halfSize;
+    camera.bottom = -halfSize;
     camera.updateProjectionMatrix();
     // Mirror the internal ref into the optional external ref so parents can access it
     if (externalLightRef) {
