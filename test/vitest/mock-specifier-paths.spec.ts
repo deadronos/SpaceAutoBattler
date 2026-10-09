@@ -47,7 +47,7 @@ describe('spec vi.mock specifiers', () => {
       const content = fs.readFileSync(specFile, 'utf8');
       for (const match of content.matchAll(MOCK_CALL)) {
         const specifier = match[1];
-        if (!specifier.startsWith('.')) continue;
+        if (!specifier || !specifier.startsWith('.')) continue;
 
         const abs = path.resolve(path.dirname(specFile), specifier);
         const baseWithoutExt = abs.replace(/\.(js|jsx|ts|tsx|mjs|cjs)$/, '');
