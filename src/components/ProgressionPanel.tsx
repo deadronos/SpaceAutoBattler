@@ -3,6 +3,7 @@ import type React from 'react';
 import type { ShipEntity, ProgressionEvent } from '../types/index.js';
 import { useOptionalGameState } from '../game/context.js';
 import { useUiStore } from '../game/uiStore.js';
+import { useInterval } from '../hooks/useInterval.js';
 import { clamp } from '../utils/math.js';
 import './progression-panel.css';
 
@@ -33,11 +34,7 @@ export function ProgressionPanel(): React.ReactElement | null {
     posRef.current = position;
   }, [position]);
 
-  useEffect(() => {
-    if (!enabled) return undefined;
-    const id = setInterval(() => setRefreshTick((v) => v + 1), REFRESH_INTERVAL_MS);
-    return () => clearInterval(id);
-  }, [enabled]);
+  useInterval(() => setRefreshTick((v) => v + 1), enabled ? REFRESH_INTERVAL_MS : null);
 
   // Drag behavior (attach to header for better UX). Placed before early returns to keep hook order stable.
   useEffect(() => {
