@@ -15,8 +15,14 @@ import { resolvePosture } from './posture.js';
  *
  * @param {GameState} state - The game state.
  * @param {ShipEntity[]} ships - The list of all active ships.
+ * @param {Map<number, ShipEntity>} [entityById] - Optional id->ship map (reused
+ *   from the caller to avoid rebuilding it every refresh).
  */
-export const refreshBlackboard = (state: GameState, ships: ShipEntity[]): void => {
+export const refreshBlackboard = (
+  state: GameState,
+  ships: ShipEntity[],
+  entityById?: Map<number, ShipEntity>,
+): void => {
   const { blackboard } = state;
   const manager = state.ai;
   if (!manager) return;
@@ -27,9 +33,11 @@ export const refreshBlackboard = (state: GameState, ships: ShipEntity[]): void =
   const teamCounts = blackboard.teamCounts ?? (blackboard.teamCounts = { blue: 0, red: 0 });
   teamCounts.blue = 0;
   teamCounts.red = 0;
-  const seenVip = new Set<number>();
-  const shipById = new Map<number, ShipEntity>();
-  for (const ship of ships) shipById.set(ship.id, ship);
+  let shipById = entityById;
+  if (!shipById) {
+    shipById = new Map<number, ShipEntity>();
+    for (const ship of ships) shipById.set(ship.id, ship);
+  }
   const centroid =
     blackboard.allyCentroid ??
     (blackboard.allyCentroid = { blue: new Vector3(), red: new Vector3() });
@@ -122,7 +130,6 @@ export const refreshBlackboard = (state: GameState, ships: ShipEntity[]): void =
           }
         }
         vipAssignments.set(ship.id, bestId);
-        seenVip.add(ship.id);
       }
     } else if (ship.ship.hull === 'carrier' || ship.ship.hull === 'destroyer') {
       if (vipAssignments.has(ship.id)) {
@@ -158,6 +165,16 @@ export const refreshBlackboard = (state: GameState, ships: ShipEntity[]): void =
     const distanceScale = Math.max(1, baseDistanceScale * (mods?.distanceScaleMultiplier ?? 1));
     const focusPenaltyScalar = weights.focusPenalty * (mods?.focusPenaltyMultiplier ?? 1);
     const vipBonusValue = weights.vipBonus * (mods?.vipBonusMultiplier ?? 1);
+    // Precompute this team's VIP-threat counts once instead of scanning
+    // threatToVip for every enemy candidate.
+    const vipThreatCounts = new Map<number, number>();
+    for (const [vipId, threatId] of blackboard.threatToVip.entries()) {
+      const vipEntity = shipById.get(vipId);
+      if (vipEntity && vipEntity.ship.team === team) {
+        vipThreatCounts.set(threatId, (vipThreatCounts.get(threatId) ?? 0) + 1);
+      }
+    }
+
     for (let i = 0; i < shipsLength; i += 1) {
       const enemy = ships[i];
       if (!enemy || enemy.ship.team !== enemyTeam) continue;
@@ -170,14 +187,7 @@ export const refreshBlackboard = (state: GameState, ships: ShipEntity[]): void =
       const hullBias = mods?.hullBiasAdd?.[enemy.ship.hull] ?? 0;
       const hullWeight = Math.max(0.1, hullBase + hullBias);
       const hpWeight = enemy.ship.hp * weights.hpScalar;
-      let vipThreat = 0;
-      for (const [vipId, threatId] of blackboard.threatToVip.entries()) {
-        if (threatId !== enemy.id) continue;
-        const vipEntity = shipById.get(vipId);
-        if (vipEntity && vipEntity.ship.team === team) {
-          vipThreat += vipBonusValue;
-        }
-      }
+      const vipThreat = (vipThreatCounts.get(enemy.id) ?? 0) * vipBonusValue;
       const focusLoad = focusMap.get(enemy.id) ?? 0;
       const focusPenalty = focusLoad > 0 ? focusLoad * focusPenaltyScalar : 0;
       const baseThreat = hullWeight + hpWeight + vipThreat;
