@@ -6,6 +6,7 @@ import {
   type EffectUpdater,
   type EffectUpdateResult,
 } from './types.js';
+import { emitSingleInstance } from './instanceHelpers.js';
 
 /**
  * Updates fireball effect instances.
@@ -31,16 +32,9 @@ export const updateFireball: EffectUpdater = (
   dummy.quaternion.identity();
   dummy.updateMatrix();
 
-  const key = `${keyBase}:fireball`;
-  const idx = manager.allocate(key);
-  if (idx == null) return { count: 0, saturated: true };
-
-  manager.setMatrixAt(idx, dummy.matrix);
-
   const hotColor = getCachedColor(event.palette.fireballHot);
   const coolColor = getCachedColor(event.palette.smoke);
   color.copy(hotColor).lerp(coolColor, firePhase * 0.65);
-  manager.setColorAt(idx, color);
 
-  return { count: 1, saturated: false };
+  return emitSingleInstance(manager, keyBase, 'fireball', dummy, color);
 };

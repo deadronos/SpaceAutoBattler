@@ -7,6 +7,7 @@ import {
   type EffectUpdater,
   type EffectUpdateResult,
 } from './types.js';
+import { emitSingleInstance } from './instanceHelpers.js';
 
 /**
  * Updates flash effect instances.
@@ -31,16 +32,7 @@ export const updateFlash: EffectUpdater = (
   dummy.quaternion.copy(camera.quaternion);
   dummy.updateMatrix();
 
-  const key = `${keyBase}:flash`;
-  const idx = manager.allocate(key);
-  // DEBUG: log allocation for saturation test investigations
-  // console.debug && console.debug('flash allocate', key, idx);
-  if (idx == null) return { count: 0, saturated: true };
-
-  manager.setMatrixAt(idx, dummy.matrix);
-
   color.copy(getCachedColor(event.palette.flash)).multiplyScalar(Math.max(0.3, intensity));
-  manager.setColorAt(idx, color);
 
-  return { count: 1, saturated: false };
+  return emitSingleInstance(manager, keyBase, 'flash', dummy, color);
 };
