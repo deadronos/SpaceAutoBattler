@@ -11,6 +11,7 @@ import {
   shouldRenderWorkerShipsOnly,
 } from './SimulationBridge.js';
 import { reportE2EError, reportConfigError } from '../utils/errorReporting.js';
+import { readQueryParam } from '../utils/queryParams.js';
 
 let warnedAiDisableContext = false;
 function warnAiDisableInContext(): void {
@@ -178,8 +179,7 @@ export function GameProvider({ children, fallback = null }: GameProviderProps): 
       // avoids adding app-visible UI and keeps all runtime state on GameState.
       try {
         if (typeof window !== 'undefined') {
-          const params = new URLSearchParams(window.location.search);
-          if (params.has('e2e')) {
+          if (readQueryParam('e2e') !== null) {
             const win = window as SabWindow;
             win.__SAB = {
               getCounts: () => ({

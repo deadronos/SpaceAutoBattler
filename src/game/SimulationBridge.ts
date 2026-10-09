@@ -5,61 +5,23 @@ import type {
   WorkerToMainMessage,
 } from '../worker/protocol.js';
 import { createTransformSoALayout, createTransformSoAViews } from '../worker/transformsLayout.js';
-import { reportConfigError, reportLifecycleError } from '../utils/errorReporting.js';
+import { reportLifecycleError } from '../utils/errorReporting.js';
+import { readBooleanParam } from '../utils/queryParams.js';
 
 export function shouldEnableWorkerSimulation(): boolean {
-  try {
-    if (typeof window === 'undefined') return false;
-    const params = new URLSearchParams(window.location.search);
-    const enabled = params.get('sim_worker') === '1' || params.get('sim_worker') === 'true';
-    const render =
-      params.get('sim_worker_render') === '1' || params.get('sim_worker_render') === 'true';
-    return enabled || render;
-  } catch (error) {
-    reportConfigError('sim_worker', error);
-    return false;
-  }
+  return readBooleanParam('sim_worker') || readBooleanParam('sim_worker_render');
 }
 
 export function shouldRenderWorkerShips(): boolean {
-  try {
-    if (typeof window === 'undefined') return false;
-    const params = new URLSearchParams(window.location.search);
-    const render =
-      params.get('sim_worker_render') === '1' || params.get('sim_worker_render') === 'true';
-    const renderOnly =
-      params.get('sim_worker_render_only') === '1' ||
-      params.get('sim_worker_render_only') === 'true';
-    return render || renderOnly;
-  } catch (error) {
-    reportConfigError('sim_worker_render', error);
-    return false;
-  }
+  return readBooleanParam('sim_worker_render') || readBooleanParam('sim_worker_render_only');
 }
 
 export function shouldRenderWorkerShipsOnly(): boolean {
-  try {
-    if (typeof window === 'undefined') return false;
-    const params = new URLSearchParams(window.location.search);
-    return (
-      params.get('sim_worker_render_only') === '1' ||
-      params.get('sim_worker_render_only') === 'true'
-    );
-  } catch (error) {
-    reportConfigError('sim_worker_render_only', error);
-    return false;
-  }
+  return readBooleanParam('sim_worker_render_only');
 }
 
 export function shouldDebugWorkerSimulation(): boolean {
-  try {
-    if (typeof window === 'undefined') return false;
-    const params = new URLSearchParams(window.location.search);
-    return params.get('sim_worker_debug') === '1' || params.get('sim_worker_debug') === 'true';
-  } catch (error) {
-    reportConfigError('sim_worker_debug', error);
-    return false;
-  }
+  return readBooleanParam('sim_worker_debug');
 }
 
 export class SimulationBridge {

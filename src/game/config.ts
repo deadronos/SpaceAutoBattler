@@ -1,5 +1,7 @@
 import { clamp } from '../utils/math.js';
 import { reportConfigError } from '../utils/errorReporting.js';
+import { readBooleanEnv, readStringEnv } from '../utils/env.js';
+import { readBooleanParam, readQueryParam, readStringParam } from '../utils/queryParams.js';
 
 // Centralized world configuration
 // A cubic world sized WORLD_SIZE^3 centered at the origin.
@@ -36,70 +38,7 @@ export const FOG_DEFAULTS: readonly [string, number, number] = [
 ];
 
 // AI configuration
-function readEnv<T extends string | boolean>(
-  name: string,
-  defaultValue: T,
-  parser?: (raw: string) => T,
-): T {
-  try {
-    const source = globalThis as unknown as {
-      process?: { env?: Record<string, string | undefined> };
-    };
-    const raw = source.process?.env?.[name];
-    if (!raw) return defaultValue;
-
-    if (parser) {
-      return parser(raw);
-    }
-
-    // Boolean parsing if default is boolean
-    if (typeof defaultValue === 'boolean') {
-      const normalized = raw.toLowerCase();
-      return (normalized === '1' || normalized === 'true' || normalized === 'on') as T;
-    }
-
-    // String return
-    return raw as T;
-  } catch (error) {
-    reportConfigError(name, error);
-    return defaultValue;
-  }
-}
-
-function readBooleanEnv(name: string, defaultValue = false): boolean {
-  return readEnv(name, defaultValue);
-}
-
-function readStringEnv(name: string, defaultValue: string): string {
-  return readEnv(name, defaultValue);
-}
-
-// Helper to read URL query parameters for runtime configuration
-function readQueryParam(name: string): string | null {
-  try {
-    if (typeof window !== 'undefined' && window.location) {
-      const params = new URLSearchParams(window.location.search);
-      return params.get(name);
-    }
-  } catch (error) {
-    reportConfigError(name, error);
-  }
-  return null;
-}
-
-function readBooleanParam(name: string, defaultValue: boolean): boolean {
-  const query = readQueryParam(name);
-  if (query !== null) {
-    const normalized = query.toLowerCase();
-    return normalized === '1' || normalized === 'true' || normalized === 'on';
-  }
-  return defaultValue;
-}
-
-function readStringParam(name: string, defaultValue: string): string {
-  const query = readQueryParam(name);
-  return query || defaultValue;
-}
+// Env/query readers live in ../utils/env.js and ../utils/queryParams.js.
 
 const REQUESTED_AI_V2_DEFAULT = readBooleanEnv('AI_V2_DEFAULT', true);
 const DEFAULT_AI_V2 = true;
