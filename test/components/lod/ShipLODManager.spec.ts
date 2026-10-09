@@ -117,6 +117,23 @@ describe('computeLodPartition', () => {
     const nearIds = partition.nearShips.map((s) => s.id).sort();
     expect(nearIds).toEqual([1, 2]);
   });
+
+  it('classifies a ship across the world as far at the default threshold', () => {
+    const camera = new Vector3(0, 600, 1600);
+    const central = createShip(1, 0, { position: new Vector3(0, 0, 0) });
+    const farCorner = createShip(2, 0, { position: new Vector3(-4000, 0, -4000) });
+
+    const partition = computeLodPartition(
+      [central, farCorner],
+      camera,
+      DEFAULT_DISTANCE_THRESHOLD,
+      DEFAULT_HYSTERESIS,
+      new Map<number, 'near' | 'far'>(),
+    );
+
+    expect(partition.nearShips.map((s) => s.id)).toEqual([1]);
+    expect(partition.farShips.map((s) => s.id)).toEqual([2]);
+  });
 });
 
 describe('populateImpostorInstances', () => {
