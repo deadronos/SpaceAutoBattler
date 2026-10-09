@@ -83,5 +83,3 @@ async function patchStdlib(): Promise<void> {
 
 // Fire-and-forget; patching stdlib is best-effort and idempotent.
 void patchStdlib();
-
-export {};

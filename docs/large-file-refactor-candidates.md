@@ -57,7 +57,7 @@ _Recommended split:_
 2. Extract `ShipImpostorLayer` and related instancing utilities into `src/components/lod/ShipImpostorLayer.tsx` so shader/material
    work can iterate independently of the manager.
 3. Wrap the manager’s ref bookkeeping and frame updates in a custom hook (e.g. `useShipLodPartition`) that returns `{nearShips,
-farShips}`, reducing component size and clarifying render vs. data responsibilities.
+   farShips}`, reducing component size and clarifying render vs. data responsibilities.
 
 ## `src/types/ai.ts`
 
