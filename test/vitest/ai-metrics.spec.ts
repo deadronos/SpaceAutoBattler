@@ -9,7 +9,7 @@ import {
   aggregateKpis,
   resetMetrics,
 } from '../../src/game/metrics.js';
-import { __aiTestHooks } from '../../src/game/systems.js';
+import { __aiTestHooks } from '../support/aiTestHooks.js';
 import { createDefaultMotionStats } from '../../src/game/ships.js';
 import {
   runAIScenario,

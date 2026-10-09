@@ -4,7 +4,7 @@ import { SeededRng } from '../../src/utils/rng.js';
 import { generateTraitsFromSeed } from '../../src/game/aiTraits.js';
 import { resolveBehaviorProfile } from '../../src/game/aiProfiles.js';
 import fs from 'fs';
-import { __aiTestHooks } from '../../src/game/systems.js';
+import { __aiTestHooks } from '../support/aiTestHooks.js';
 import { createDefaultMetrics } from '../../src/game/metrics.js';
 
 // Lightweight diagnostic — prints per-ship candidate scores for a failing

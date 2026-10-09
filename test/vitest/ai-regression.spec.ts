@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vite-plus/test';
 import { Quaternion, Vector3 } from 'three';
 import { applyProgressionDefaults } from './helpers/progression.js';
 import { createDefaultMotionStats } from '../../src/game/ships.js';
-import { __aiTestHooks } from '../../src/game/systems.js';
+import { __aiTestHooks } from '../support/aiTestHooks.js';
 import {
   flushDeferredMutations,
   flushPostPhysicsMutations,

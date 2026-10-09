@@ -3,7 +3,8 @@ import { Quaternion, Vector3 } from 'three';
 import { createDefaultMetrics } from '../../src/game/metrics.js';
 import { generateTraitsFromSeed } from '../../src/game/aiTraits.js';
 import { createDefaultMotionStats } from '../../src/game/ships.js';
-import { runDecisionTick, __aiTestHooks } from '../../src/game/systems.js';
+import { runDecisionTick } from '../../src/game/systems.js';
+import { __aiTestHooks } from '../support/aiTestHooks.js';
 import type { AIState, GameState, ShipEntity } from '../../src/types/index.js';
 import { applyProgressionDefaults } from './helpers/progression.js';
 

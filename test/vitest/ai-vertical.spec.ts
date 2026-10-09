@@ -4,7 +4,7 @@ import { createDefaultMetrics } from '../../src/game/metrics.js';
 import { resolveBehaviorProfile } from '../../src/game/aiProfiles.js';
 import { generateTraitsFromSeed } from '../../src/game/aiTraits.js';
 import { createDefaultMotionStats } from '../../src/game/ships.js';
-import { __aiTestHooks } from '../../src/game/systems.js';
+import { __aiTestHooks } from '../support/aiTestHooks.js';
 import type { BehaviorProfile, GameState, ShipEntity } from '../../src/types/index.js';
 import { applyProgressionDefaults } from './helpers/progression.js';
 
