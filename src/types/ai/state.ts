@@ -1,8 +1,23 @@
 import type { Vector3 } from 'three';
 import type { EntityId } from '../core.js';
-import type { Team, ShipHull } from '../gameplay.js';
+import type { ShipHull } from '../gameplay.js';
 import type { DoctrineState } from './doctrine.js';
 import type { AIMetrics } from './metrics.js';
+import type { AITeamAssignments } from './blackboard.js';
+import type { AIInterruptState, IntentInterruptEvent } from './interrupts.js';
+
+// Re-export the focused AI type modules so existing `./ai/state.js` imports
+// keep working unchanged.
+export type {
+  TeamPosture,
+  PrioritisedTarget,
+  AIBlackboard,
+  AITeamAssignments,
+  EscortAssignment,
+} from './blackboard.js';
+export type { SensorVisibility, SensorState } from './sensors.js';
+export type { AIInterruptReason, IntentInterruptEvent, AIInterruptState } from './interrupts.js';
+export type { AIIntentSnapshot, AIShotHistogram, AIInBandStats } from './metrics-snapshots.js';
 
 /**
  * High-level intent driving an AI ship's behavior.
@@ -116,182 +131,6 @@ export interface BehaviorProfile {
   bandPreference?: 'outer' | 'mid' | 'inner';
   /** Bias added to engagement scores. */
   engagementBias?: number;
-}
-
-/**
- * Strategic posture of a team.
- */
-export type TeamPosture = 'aggressive' | 'hold' | 'retreat';
-
-/**
- * Shared data structure for AI team coordination and situational awareness.
- */
-export interface AIBlackboard {
-  /** Current game tick index. */
-  tickIndex: number;
-  /** Current posture for each team. */
-  teamPosture: Record<Team, TeamPosture>;
-  /** Centroid position of each team's fleet. */
-  allyCentroid: Record<Team, Vector3>;
-  /** Map of ship ID to its nearest enemy ID. */
-  nearestEnemy: Map<EntityId, EntityId>;
-  /** Map of VIP ship ID to its primary threat ID. */
-  threatToVip: Map<EntityId, EntityId>;
-  /** Pool of temporary vectors for calculation. */
-  tmpVectors: Vector3[];
-  /** Ratio of team strength relative to the opponent. */
-  strengthRatio: Record<Team, number>;
-  /** List of prioritized targets for each team. */
-  teamPriority: Record<Team, PrioritisedTarget[]>;
-  /** Map of target ID to its priority index. */
-  priorityIndex: Record<Team, Map<EntityId, number>>;
-  /** Map tracking how many allies are focusing each enemy. */
-  focusFire: Record<Team, Map<EntityId, number>>;
-  /** Visibility status of enemies for each team. */
-  visibleEnemies?: Record<Team, Map<EntityId, SensorVisibility>>;
-  /** Ship counts per team. */
-  teamCounts?: Record<Team, number>;
-  /** Vertical dispersion tracking for validation (optional for backward compatibility). */
-  verticalDispersion?: {
-    headingYSamples: number[];
-    positionYSamples: number[];
-    lastUpdateTick: number;
-  };
-}
-
-/**
- * Assignments for team-level coordination.
- */
-export interface AITeamAssignments {
-  /** Map of escort ship ID to assignment details. */
-  escorts: Map<EntityId, EscortAssignment>;
-}
-
-/**
- * Details of an escort mission.
- */
-export interface EscortAssignment {
-  /** ID of the ship to protect. */
-  vipId: EntityId;
-  /** Formation offset from the VIP. */
-  offset: Vector3;
-  /** ID of the threat currently engaging the VIP. */
-  threatId?: EntityId;
-}
-
-/**
- * Snapshot of AI intents at a specific time for metrics/debugging.
- */
-export interface AIIntentSnapshot {
-  /** Game tick of the snapshot. */
-  tick: number;
-  /** Game time of the snapshot. */
-  time: number;
-  /** Counts of ships in each intent state. */
-  counts: Partial<Record<AIIntent, number>>;
-  /** Total number of ships tracked. */
-  total: number;
-}
-
-/**
- * Evaluation of a potential target's priority.
- */
-export interface PrioritisedTarget {
-  /** ID of the target entity. */
-  id: EntityId;
-  /** Calculated threat score. */
-  threat: number;
-  /** Squared distance to the target. */
-  distanceSq: number;
-  /** Number of allies currently focusing this target. */
-  focusLoad: number;
-}
-
-/**
- * Reasons why an AI might interrupt its current intent.
- */
-export type AIInterruptReason = 'hp-drop' | 'target-lost' | 'vip-threat' | 'manual';
-
-/**
- * Record of an interrupt event.
- */
-export interface IntentInterruptEvent {
-  /** ID of the ship being interrupted. */
-  shipId: EntityId;
-  /** Reason for the interrupt. */
-  reason: AIInterruptReason;
-  /** Game tick when the interrupt occurred. */
-  tick: number;
-  /** Source ID associated with the interrupt (e.g., attacker). */
-  sourceId?: EntityId;
-}
-
-/**
- * State tracking for the interrupt system.
- */
-export interface AIInterruptState {
-  /** Map of cooldown keys to expiration ticks. */
-  cooldownTick: Map<string, number>;
-  /** Map of accumulated damage per ship this tick. */
-  damageThisTick: Map<EntityId, number>;
-  /** Last tick where damage was processed. */
-  lastDamageTick: number;
-  /** Map of VIPs to their current threats. */
-  vipThreatAssignments: Map<EntityId, EntityId>;
-}
-
-/**
- * Histogram data for shot statistics.
- */
-export interface AIShotHistogram {
-  /** Bucket boundaries. */
-  buckets: readonly number[];
-  /** Counts per bucket. */
-  counts: number[];
-  /** Total number of shots recorded. */
-  total: number;
-}
-
-/**
- * Statistics for range-keeping behavior.
- */
-export interface AIInBandStats {
-  /** Total number of samples. */
-  samples: number;
-  /** Number of samples within desired range. */
-  satisfied: number;
-}
-
-/**
- * State of a sensor contact.
- */
-export interface SensorVisibility {
-  /** Signal strength (0..1). */
-  strength: number;
-  /** Tick index when the contact was last seen. */
-  lastSeenTick: number;
-  /** ID of the ship detecting this contact. */
-  sourceId: EntityId;
-  /** Whether the contact is currently occluded. */
-  occluded: boolean;
-  /** Distance to the contact. */
-  distance: number;
-}
-
-/**
- * State of the sensor system.
- */
-export interface SensorState {
-  /** Last tick the sensors were updated. */
-  lastUpdateTick: number;
-  /** Visibility map per team. */
-  visibilityByTeam: Record<Team, Map<EntityId, SensorVisibility>>;
-  /** Rate at which signal strength decays. */
-  decayRate: number;
-  /** Minimum signal strength for detection. */
-  threshold: number;
-  /** Tick duration before a stale contact is removed. */
-  staleDecay: number;
 }
 
 /**
