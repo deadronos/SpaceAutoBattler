@@ -37,8 +37,8 @@ vi.mock('../../src/game/systems/turrets.js', () => ({
   findNearestEnemy: vi.fn(),
   updateTurrets: vi.fn(),
 }));
-vi.mock('../../src/game/damage.js', () => ({ resolveProjectiles: vi.fn() }));
-vi.mock('../../src/game/sync.js', () => ({ syncTransforms: vi.fn() }));
+vi.mock('../../src/game/systems/damage.js', () => ({ resolveProjectiles: vi.fn() }));
+vi.mock('../../src/game/systems/sync.js', () => ({ syncTransforms: vi.fn() }));
 
 import { updateGame } from '../../src/game/systems.js';
 import * as simulationQueue from '../../src/game/simulationQueue.js';
