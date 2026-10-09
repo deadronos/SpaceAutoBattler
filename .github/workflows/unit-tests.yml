@@ -39,12 +39,12 @@ jobs:
 
       - name: Sanity check test count
         run: |
-          # Ensure we are catching all intended test files (currently 168 non-Playwright files)
+          # Ensure we are catching all intended test files (currently 172 non-Playwright files)
           ACTUAL_COUNT=$(find test -name "*.spec.ts" -o -name "*.test.ts" -o -name "*.spec.tsx" | grep -v "test/playwright/" | wc -l | xargs)
           echo "Found $ACTUAL_COUNT non-Playwright test files."
 
-          if [ "$ACTUAL_COUNT" -lt 168 ]; then
-            echo "Error: Test discovery gap detected! Expected 168 test files, but only found $ACTUAL_COUNT."
+          if [ "$ACTUAL_COUNT" -lt 172 ]; then
+            echo "Error: Test discovery gap detected! Expected 172 test files, but only found $ACTUAL_COUNT."
             echo "Check the test block in vite.config.ts."
             exit 1
           fi

@@ -29,7 +29,7 @@ const bloomContextValue = {
   unregister: vi.fn(),
 };
 
-vi.mock('../../../src/renderer/BloomProvider.js', () => ({
+vi.mock('../../../src/renderer/bloom/BloomProvider.js', () => ({
   useBloomContext: () => bloomContextValue,
 }));
 

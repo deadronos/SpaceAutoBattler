@@ -20,9 +20,23 @@ const MIN_SPATIAL_GRID_CELL_SIZE = 40;
 const MAX_SPATIAL_GRID_CELL_SIZE = 300;
 const TARGET_SHIPS_PER_CELL = 8;
 
-// Spatial grid for broad-phase culling
-let spatialGrid: SpatialGrid | null = null;
-let spatialGridCellSize = DEFAULT_SPATIAL_GRID_CELL_SIZE;
+// Per-state spatial grid for broad-phase culling. Keyed off GameState so two
+// states stepped in the same process cannot share scratch data.
+interface SensorBroadphase {
+  grid: SpatialGrid | null;
+  cellSize: number;
+}
+
+const sensorBroadphaseByState = new WeakMap<GameState, SensorBroadphase>();
+
+function getSensorBroadphase(state: GameState): SensorBroadphase {
+  let broadphase = sensorBroadphaseByState.get(state);
+  if (!broadphase) {
+    broadphase = { grid: null, cellSize: DEFAULT_SPATIAL_GRID_CELL_SIZE };
+    sensorBroadphaseByState.set(state, broadphase);
+  }
+  return broadphase;
+}
 
 function ensureVisibleMaps(state: GameState): void {
   if (!state.blackboard.visibleEnemies) {
@@ -143,15 +157,18 @@ export function updateSensorSystem(state: GameState, ships: ShipEntity[]): void 
   const tick = manager.tickIndex;
   sensorState.lastUpdateTick = tick;
 
+  const broadphase = getSensorBroadphase(state);
   const nextCellSize = computeAdaptiveGridCellSize(ships);
-  if (!spatialGrid || Math.abs(nextCellSize - spatialGridCellSize) > 1e-3) {
-    spatialGrid = new SpatialGrid(nextCellSize);
-    spatialGridCellSize = nextCellSize;
+  let grid = broadphase.grid;
+  if (!grid || Math.abs(nextCellSize - broadphase.cellSize) > 1e-3) {
+    grid = new SpatialGrid(nextCellSize);
+    broadphase.grid = grid;
+    broadphase.cellSize = nextCellSize;
   }
 
-  spatialGrid.clear();
+  grid.clear();
   for (const ship of ships) {
-    spatialGrid.insert(ship);
+    grid.insert(ship);
   }
 
   const detectionMultiplier: Record<Team, number> = {
@@ -182,7 +199,7 @@ export function updateSensorSystem(state: GameState, ships: ShipEntity[]): void 
 
     getForwardFromQuaternion(source.transform.rotation, TMP_FORWARD).normalize();
 
-    const nearbyTargets = spatialGrid!.query(source.transform.position, trackingRange);
+    const nearbyTargets = grid.query(source.transform.position, trackingRange);
     for (const target of nearbyTargets) {
       if (target === source) continue;
       if (target.ship.team === team) continue;
@@ -214,7 +231,7 @@ export function updateSensorSystem(state: GameState, ships: ShipEntity[]): void 
       }
       if (distanceFactor <= 0) continue;
 
-      const occluded = computeOccluded(source, target, TMP_DIRECTION, distance, spatialGrid);
+      const occluded = computeOccluded(source, target, TMP_DIRECTION, distance, grid);
       const occlusionFactor = occluded ? 0.6 : 1;
 
       const targetDoctrineStealth = clamp(stealthBonus[target.ship.team] ?? 0, 0, 0.8);

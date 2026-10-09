@@ -29,9 +29,23 @@ import { buildSpatialHash, clearSpatialHash, querySpatialHash } from '../utils/s
 const TEMP_RIPPLE_DIR = new Vector3();
 const SHIP_GRID_CELL_SIZE = 12;
 
-// Cached instances to avoid per-frame allocations
-let cachedShipHash: SpatialHash<ShipEntity> | null = null;
-const cachedShipsById = new Map<number, ShipEntity>();
+// Per-state reusable buffers. Keyed off GameState so two states stepped in the
+// same process cannot share scratch data (see src/game/AGENTS.md).
+interface ProjectileDamageBuffers {
+  shipHash: SpatialHash<ShipEntity> | null;
+  shipsById: Map<number, ShipEntity>;
+}
+
+const damageBuffersByState = new WeakMap<GameState, ProjectileDamageBuffers>();
+
+function getDamageBuffers(state: GameState): ProjectileDamageBuffers {
+  let buffers = damageBuffersByState.get(state);
+  if (!buffers) {
+    buffers = { shipHash: null, shipsById: new Map() };
+    damageBuffersByState.set(state, buffers);
+  }
+  return buffers;
+}
 
 /**
  * Result of applying projectile damage.
@@ -218,25 +232,26 @@ function applyAoeDamage(
  */
 export function resolveProjectiles(state: GameState, delta: number): void {
   const ships = state.queries.ships.entities as ShipEntity[];
+  const buffers = getDamageBuffers(state);
 
-  // Reuse cached spatial hash to avoid allocations
-  if (!cachedShipHash) {
-    cachedShipHash = buildSpatialHash(
+  // Reuse the per-state spatial hash to avoid allocations
+  if (!buffers.shipHash) {
+    buffers.shipHash = buildSpatialHash(
       ships,
       SHIP_GRID_CELL_SIZE,
       (ship) => ship.transform.position,
     );
   } else {
-    clearSpatialHash(cachedShipHash, ships);
+    clearSpatialHash(buffers.shipHash, ships);
   }
-  const shipSpatialHash = cachedShipHash;
+  const shipSpatialHash = buffers.shipHash;
 
-  // Reuse cached shipsById map
-  cachedShipsById.clear();
+  // Reuse the per-state shipsById map
+  buffers.shipsById.clear();
   for (const ship of ships) {
-    cachedShipsById.set(ship.id, ship);
+    buffers.shipsById.set(ship.id, ship);
   }
-  const shipsById = cachedShipsById;
+  const shipsById = buffers.shipsById;
   const maxShipImpactRadius = ships.reduce(
     (radius, ship) => Math.max(radius, ship.transform.scale * 0.9),
     0,

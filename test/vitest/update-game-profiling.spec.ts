@@ -27,10 +27,10 @@ vi.mock('../../src/game/systems/turrets.js', () => ({
   findNearestEnemy: vi.fn(),
   updateTurrets: vi.fn(),
 }));
-vi.mock('../../src/game/sync.js', () => ({
+vi.mock('../../src/game/systems/sync.js', () => ({
   syncTransforms: vi.fn(),
 }));
-vi.mock('../../src/game/damage.js', () => ({
+vi.mock('../../src/game/systems/damage.js', () => ({
   resolveProjectiles: vi.fn(),
 }));
 vi.mock('../../src/game/explosions.js', () => ({
