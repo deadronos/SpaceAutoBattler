@@ -1,5 +1,40 @@
 # Dependency Upgrade Migration Notes
 
+## 2026-10-09 upgrade: vite-plus 1.1 / playwright 1.64 / pixelmatch 8
+
+### Upgraded packages
+
+- **vite-plus**: `1.0.0` -> `1.1.0`
+- **vite** (`@voidzero-dev/vite-plus-core`): `1.0.0` -> `1.1.0` (both the devDependency alias and the
+  `pnpm.overrides` entries moved from `~1.0.0` to `~1.1.0`)
+- **playwright**, **@playwright/test**, **playwright-core**: `1.63.0` -> `1.64.0`
+- **pixelmatch**: `7.2.0` -> `8.0.0`
+- **@babel/core**, **@babel/preset-env**: `8.0.6` -> `8.0.7`
+- **happy-dom**: `20.14.5` -> `20.14.6`
+- **rollup**: `4.64.0` -> `4.64.3`
+- **three-mesh-bvh**: `0.9.15` -> `0.9.16`
+
+### Key fixes & notes
+
+1. **vite-plus 1.1 / oxfmt formatting**: the newer formatter enforces updated rules. Re-ran
+   `vp check --fix`, which reformatted `src/components/progression-panel.css`, `src/debug/debugPanel.css`,
+   `docs/large-file-refactor-candidates.md`, and `.github/chatmodes/voidbeast-gpt41enhanced.chatmode.md`,
+   and dropped a redundant `export {};` from `src/utils/patchGltfLoader.ts` (the file already imports a
+   module, so the statement was a no-op).
+2. **pixelmatch 8**: the API signature is unchanged — `pixelmatch(img1, img2, output, width, height, { threshold })`
+   is still supported. v8 only changes the internal diff metric (OKLab HyAB distance), so no source changes
+   were required. It is used only by the Playwright visual-baseline specs.
+
+### Verification
+
+- `pnpm run typecheck` — pass
+- `pnpm exec vp check` — 0 errors (53 warnings)
+- `pnpm test` — 170 passed | 1 skipped (923 tests passed)
+- `pnpm run build` — pass
+- `pnpm install --frozen-lockfile` — clean
+
+---
+
 ## 2026-10 upgrade: vite-plus 1.0 / vitest 5 / three 0.186
 
 ### Upgraded packages
