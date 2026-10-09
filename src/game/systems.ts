@@ -3,22 +3,7 @@ import { updateCarrierLaunchSystem } from './systems/carriers.js';
 import { updateMotionSystem } from './systems/motion.js';
 import { updateExplosions } from './explosions.js';
 import { updateDecisionSystem } from './systems/decision/manager.js';
-import { refreshBlackboard, assignTeamRoles } from './systems/decision/blackboard.js';
-import {
-  selectIntent,
-  scoreAttackIntent,
-  scoreKiteIntent,
-  scoreEscortIntent,
-  scoreInterceptIntent,
-  scoreRepositionIntent,
-  scoreRegroupIntent,
-  scoreFleeIntent,
-  tieBreak,
-  computeLod,
-  writeCommand,
-  computeInterceptHeadingVector,
-} from './systems/decision/intents.js';
-import { prepareShips, executeAICommand } from './systems/shipControl.js';
+import { prepareShips } from './systems/shipControl.js';
 import { fireProjectile, advanceProjectiles } from './systems/projectiles.js';
 import { updateTurrets } from './systems/turrets.js';
 import { findNearestEnemy } from './utils/targetSelection.js';
@@ -99,26 +84,3 @@ export function updateGame(state: GameState, delta: number): void {
   // Post-physics pipeline
   executePipeline(POST_PHYSICS_PIPELINE, state, delta, measure);
 }
-
-/**
- * Test hooks exposing internal system functions.
- */
-export const __aiTestHooks = {
-  updateDecisionSystem,
-  refreshBlackboard,
-  assignTeamRoles,
-  selectIntent,
-  scoreAttackIntent,
-  scoreKiteIntent,
-  scoreEscortIntent,
-  scoreInterceptIntent,
-  scoreRepositionIntent,
-  scoreRegroupIntent,
-  scoreFleeIntent,
-  tieBreak,
-  computeLod,
-  writeCommand,
-  prepareShips,
-  computeInterceptHeadingVector,
-  executeAICommand,
-};

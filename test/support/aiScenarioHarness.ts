@@ -69,7 +69,8 @@
 import type { GameState, ShipEntity } from '../../src/types/index.js';
 import { SeededRng } from '../../src/utils/rng.js';
 import { AI_CONFIG } from '../../src/game/config.js';
-import { runDecisionTick, __aiTestHooks } from '../../src/game/systems.js';
+import { runDecisionTick } from '../../src/game/systems.js';
+import { __aiTestHooks } from './aiTestHooks.js';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import { resolveBehaviorProfile } from '../../src/game/aiProfiles.js';

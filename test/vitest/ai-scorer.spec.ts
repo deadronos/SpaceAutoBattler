@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vite-plus/test';
 import { Quaternion, Vector3 } from 'three';
 import { resolveBehaviorProfile } from '../../src/game/aiProfiles.js';
 import { createDefaultMotionStats } from '../../src/game/ships.js';
-import { __aiTestHooks } from '../../src/game/systems.js';
+import { __aiTestHooks } from '../support/aiTestHooks.js';
 import { createDefaultMetrics } from '../../src/game/metrics.js';
 import type { AIState, GameState, ShipEntity } from '../../src/types/index.js';
 import { applyProgressionDefaults } from './helpers/progression.js';
