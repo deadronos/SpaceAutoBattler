@@ -5,6 +5,7 @@ import {
   flushPostPhysicsMutations,
 } from '../../src/game/simulationQueue.js';
 import {
+  asKinematicBody,
   deferSetNextKinematicTranslation,
   deferSetNextKinematicRotation,
   deferSetLinearDamping,
@@ -12,6 +13,15 @@ import {
   deferSetColliderFriction,
   postSetColliderRestitution,
 } from '../../src/game/physics/safeKinematics.js';
+
+describe('asKinematicBody', () => {
+  it('returns the body unchanged and null for nullish input', () => {
+    const body = { setNextKinematicTranslation: () => {} };
+    expect(asKinematicBody(body as never)).toBe(body);
+    expect(asKinematicBody(null)).toBeNull();
+    expect(asKinematicBody(undefined)).toBeNull();
+  });
+});
 
 describe('deferred kinematic translation', () => {
   it('enqueues and the queued operation invokes the underlying setter on flush', () => {

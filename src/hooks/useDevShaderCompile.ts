@@ -8,29 +8,7 @@
 
 import { useEffect, type RefObject } from 'react';
 import type { Mesh, ShaderMaterial, WebGLRenderer, Scene, Camera } from 'three';
-
-function isProductionEnv(): boolean {
-  try {
-    const env = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process
-      ?.env;
-    if (env?.NODE_ENV === 'production') {
-      return true;
-    }
-  } catch {
-    // ignore env resolution errors
-  }
-
-  if (typeof import.meta !== 'undefined') {
-    const meta = import.meta as { env?: { PROD?: boolean; NODE_ENV?: string } };
-    if (typeof meta.env?.PROD === 'boolean') {
-      return meta.env.PROD;
-    }
-    if (typeof meta.env?.NODE_ENV === 'string') {
-      return meta.env.NODE_ENV === 'production';
-    }
-  }
-  return false;
-}
+import { isProductionEnv } from '../utils/env.js';
 
 /**
  * Force shader compilation in development mode for debugging.

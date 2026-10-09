@@ -6,6 +6,7 @@ import {
   type EffectUpdater,
   type EffectUpdateResult,
 } from './types.js';
+import { emitSingleInstance } from './instanceHelpers.js';
 
 /**
  * Updates shockwave effect instances.
@@ -31,16 +32,9 @@ export const updateShockwave: EffectUpdater = (
   dummy.quaternion.copy(camera.quaternion);
   dummy.updateMatrix();
 
-  const key = `${keyBase}:shockwave`;
-  const idx = manager.allocate(key);
-  if (idx == null) return { count: 0, saturated: true };
-
-  manager.setMatrixAt(idx, dummy.matrix);
-
   color
     .copy(getCachedColor(event.palette.shockwave))
     .multiplyScalar(Math.max(0.2, 1 - phase * 0.9));
-  manager.setColorAt(idx, color);
 
-  return { count: 1, saturated: false };
+  return emitSingleInstance(manager, keyBase, 'shockwave', dummy, color);
 };
