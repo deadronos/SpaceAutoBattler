@@ -21,3 +21,15 @@ import commonGLSL from './common.glsl';
  * ```
  */
 export const COMMON_GLSL = commonGLSL;
+
+/**
+ * Prepends the shared GLSL utilities (noise, hash, etc.) to a fragment shader
+ * source string. Centralises the `COMMON_GLSL + '\n' + fragment` concatenation
+ * used when injecting the common helpers into a shader.
+ *
+ * @param {string} fragmentShader - Fragment shader source to prefix.
+ * @returns {string} Fragment shader with the common GLSL prepended.
+ */
+export function withCommonGlsl(fragmentShader: string): string {
+  return COMMON_GLSL + '\n' + fragmentShader;
+}
