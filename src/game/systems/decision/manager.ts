@@ -131,7 +131,7 @@ export function updateDecisionSystem(state: GameState, delta: number): void {
   // Throttle expensive O(N²) sensor and blackboard operations
   if (manager.tickIndex % SENSOR_UPDATE_INTERVAL === 0) {
     updateSensorSystem(state, ships);
-    refreshBlackboard(state, ships);
+    refreshBlackboard(state, ships, entityById);
   }
   assignTeamRoles(state, ships);
   processInterruptQueue(manager, entityById);
