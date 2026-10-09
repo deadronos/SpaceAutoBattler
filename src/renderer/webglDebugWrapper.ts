@@ -1,5 +1,6 @@
 import type { WebGLRenderer } from 'three';
 import { isCopilotDebugEnabled } from '../utils/copilotDebug.js';
+import { captureProgramMetadata } from './webglDebugHooks.js';
 
 // Install lightweight dev-only WebGL hooks that capture shader compile/link logs
 // and GL errors into a window-global array for later automated inspection.
@@ -61,34 +62,7 @@ export function installWebGLDebugHooks(renderer: WebGLRenderer): void {
 
     // Record deterministic program metadata even when infoLog is empty
     try {
-      const linkStatus = Boolean(ctx.getProgramParameter(program, ctx.LINK_STATUS));
-      const activeUniforms = Number(ctx.getProgramParameter(program, ctx.ACTIVE_UNIFORMS));
-      const activeAttributes = Number(ctx.getProgramParameter(program, ctx.ACTIVE_ATTRIBUTES));
-      const uniforms: Array<{ name: string; size: number; type: number } | null> = [];
-      for (let i = 0; i < Math.min(activeUniforms, 200); i++) {
-        try {
-          const u = ctx.getActiveUniform(program, i);
-          uniforms.push(u ? { name: u.name, size: u.size, type: u.type } : null);
-        } catch {
-          uniforms.push(null);
-        }
-      }
-      const attributes: Array<{ name: string; size: number; type: number } | null> = [];
-      for (let i = 0; i < Math.min(activeAttributes, 200); i++) {
-        try {
-          const a = ctx.getActiveAttrib(program, i);
-          attributes.push(a ? { name: a.name, size: a.size, type: a.type } : null);
-        } catch {
-          attributes.push(null);
-        }
-      }
-      push('programMetadata', {
-        linkStatus,
-        activeUniforms,
-        activeAttributes,
-        uniforms,
-        attributes,
-      });
+      push('programMetadata', captureProgramMetadata(ctx, program));
     } catch (e) {
       push('programMetadataException', String(e));
     }

@@ -1,4 +1,5 @@
 import { isCopilotDebugEnabled } from '../utils/copilotDebug.js';
+import { captureProgramMetadata } from './webglDebugHooks.js';
 
 // Patch WebGL prototype methods early to capture shader compile/link logs.
 // This file should be imported at application entry before any WebGL context is created.
@@ -53,32 +54,10 @@ if (typeof window !== 'undefined') {
 
           // Always record program metadata (LINK_STATUS, number of active uniforms/attributes)
           try {
-            const gl = this as WebGLRenderingContext;
-            const linkStatus = Boolean(gl.getProgramParameter(program, gl.LINK_STATUS));
-            const activeUniforms = Number(gl.getProgramParameter(program, gl.ACTIVE_UNIFORMS));
-            const activeAttributes = Number(gl.getProgramParameter(program, gl.ACTIVE_ATTRIBUTES));
-            const uniforms: Array<{ name: string; size: number; type: number } | null> = [];
-            for (let i = 0; i < Math.min(activeUniforms, 200); i++) {
-              try {
-                const u = gl.getActiveUniform(program, i);
-                uniforms.push(u ? { name: u.name, size: u.size, type: u.type } : null);
-              } catch {
-                uniforms.push(null);
-              }
-            }
-            const attributes: Array<{ name: string; size: number; type: number } | null> = [];
-            for (let i = 0; i < Math.min(activeAttributes, 200); i++) {
-              try {
-                const a = gl.getActiveAttrib(program, i);
-                attributes.push(a ? { name: a.name, size: a.size, type: a.type } : null);
-              } catch {
-                attributes.push(null);
-              }
-            }
             logs.push({
               time: Date.now(),
               type: 'programMetadata',
-              details: { linkStatus, activeUniforms, activeAttributes, uniforms, attributes },
+              details: captureProgramMetadata(this as WebGLRenderingContext, program),
             });
           } catch {
             logs.push({ time: Date.now(), type: 'programMetadataException', details: 'exception' });
