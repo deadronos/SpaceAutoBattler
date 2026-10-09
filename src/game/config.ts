@@ -272,6 +272,37 @@ function resolveUiStore(): UiStoreLike | null {
  *
  * @returns {typeof AI_CONFIG} The effective AI configuration.
  */
+function computeEffectiveAIConfig(uiState: UiStoreSlice) {
+  return {
+    ...AI_CONFIG,
+    verticalEnabled: uiState.aiVerticalEnabled ?? AI_CONFIG.verticalEnabled,
+    engagementBoostEnabled: uiState.aiEngagementBoostEnabled ?? AI_CONFIG.engagementBoostEnabled,
+    smoothingEnabled: uiState.aiSmoothingEnabled ?? AI_CONFIG.smoothingEnabled,
+    hysteresisEnabled: uiState.aiHysteresisEnabled ?? AI_CONFIG.hysteresisEnabled,
+    verticalDampingEnabled: uiState.aiVerticalDampingEnabled ?? AI_CONFIG.verticalDampingEnabled,
+    tickRateHzExperiment: uiState.aiTickRateExperimentEnabled ?? AI_CONFIG.tickRateHzExperiment,
+    rangePolicy: uiState.aiRangePolicy ?? AI_CONFIG.rangePolicy,
+  };
+}
+
+// Memoize on the resolved flag tuple. The object is read-only to callers, so a
+// stable reference avoids re-allocating it on every AI decision (thousands of
+// times per tick at scale).
+let cachedEffectiveAIConfig: ReturnType<typeof computeEffectiveAIConfig> | null = null;
+let cachedEffectiveAIConfigKey = '';
+
+function effectiveAIConfigKey(uiState: UiStoreSlice): string {
+  return [
+    uiState.aiVerticalEnabled,
+    uiState.aiEngagementBoostEnabled,
+    uiState.aiTickRateExperimentEnabled,
+    uiState.aiRangePolicy,
+    uiState.aiSmoothingEnabled,
+    uiState.aiHysteresisEnabled,
+    uiState.aiVerticalDampingEnabled,
+  ].join('|');
+}
+
 export function getEffectiveAIConfig() {
   const uiStore = resolveUiStore();
   if (!uiStore) {
@@ -280,16 +311,14 @@ export function getEffectiveAIConfig() {
 
   try {
     const uiState = uiStore.getState();
-    return {
-      ...AI_CONFIG,
-      verticalEnabled: uiState.aiVerticalEnabled ?? AI_CONFIG.verticalEnabled,
-      engagementBoostEnabled: uiState.aiEngagementBoostEnabled ?? AI_CONFIG.engagementBoostEnabled,
-      smoothingEnabled: uiState.aiSmoothingEnabled ?? AI_CONFIG.smoothingEnabled,
-      hysteresisEnabled: uiState.aiHysteresisEnabled ?? AI_CONFIG.hysteresisEnabled,
-      verticalDampingEnabled: uiState.aiVerticalDampingEnabled ?? AI_CONFIG.verticalDampingEnabled,
-      tickRateHzExperiment: uiState.aiTickRateExperimentEnabled ?? AI_CONFIG.tickRateHzExperiment,
-      rangePolicy: uiState.aiRangePolicy ?? AI_CONFIG.rangePolicy,
-    };
+    const key = effectiveAIConfigKey(uiState);
+    if (cachedEffectiveAIConfig && key === cachedEffectiveAIConfigKey) {
+      return cachedEffectiveAIConfig;
+    }
+    const next = computeEffectiveAIConfig(uiState);
+    cachedEffectiveAIConfig = next;
+    cachedEffectiveAIConfigKey = key;
+    return next;
   } catch (error) {
     reportConfigError('uiStore.getState', error);
     return AI_CONFIG;
