@@ -69,6 +69,7 @@ export function ParticleTrails({ ships, resources }: ParticleTrailProps): React.
   const rngRef = useRef(new SeededRng(TRAIL_RNG_SEED));
   const spawnRemainders = useRef<Map<number, number[]>>(new Map());
   const anchorCache = useRef<Map<number, Vector3[]>>(new Map());
+  const activeShipIdsRef = useRef<Set<number>>(new Set());
   const backward = useMemo(() => new Vector3(), []);
   const anchorLocalsByHull = useThrusterAnchors();
 
@@ -167,7 +168,8 @@ export function ParticleTrails({ ships, resources }: ParticleTrailProps): React.
     const LOD_DISTANCE_SQ = 500 * 500; // Distance squared for LOD culling (500 units)
     const cameraPos = camera.position;
 
-    const activeShipIds = new Set<number>();
+    const activeShipIds = activeShipIdsRef.current;
+    activeShipIds.clear();
     let frameFirstParticleIndex = -1;
     let spawnedParticleCount = 0;
 
@@ -195,15 +197,15 @@ export function ParticleTrails({ ships, resources }: ParticleTrailProps): React.
       const anchors = resolveThrusterAnchorsWorld(ship);
       if (anchors.length === 0) continue;
 
-      const remainderForShip = (() => {
-        const existing = spawnRemainders.current.get(ship.id);
-        if (existing && existing.length === anchors.length) {
-          return existing;
-        }
-        const arr = Array.from({ length: anchors.length }, () => 0);
-        spawnRemainders.current.set(ship.id, arr);
-        return arr;
-      })();
+      // Ship rotation is constant across its anchors/spawns this frame, so
+      // compute the backward direction once per ship instead of per particle.
+      backward.set(0, 0, -1).applyQuaternion(ship.transform.rotation);
+
+      let remainderForShip = spawnRemainders.current.get(ship.id);
+      if (!remainderForShip || remainderForShip.length !== anchors.length) {
+        remainderForShip = Array.from({ length: anchors.length }, () => 0);
+        spawnRemainders.current.set(ship.id, remainderForShip);
+      }
 
       for (let i = 0; i < anchors.length; i++) {
         const anchor = anchors[i];
@@ -228,7 +230,6 @@ export function ParticleTrails({ ships, resources }: ParticleTrailProps): React.
           trailResources.arrays.spawnPosition[base3 + 1] = anchor.y;
           trailResources.arrays.spawnPosition[base3 + 2] = anchor.z;
 
-          backward.set(0, 0, -1).applyQuaternion(ship.transform.rotation);
           const speed = backwardMin + rngRef.current.next() * (backwardMax - backwardMin);
           const jitterX = (rngRef.current.next() - 0.5) * 2 * lateralJitter;
           const jitterY = (rngRef.current.next() - 0.5) * 2 * lateralJitter;

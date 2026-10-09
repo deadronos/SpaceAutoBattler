@@ -83,41 +83,42 @@ export function ExplosionRendererCore(): React.ReactElement {
 
     manager.beginFrame();
 
-    for (const event of state.explosions) {
-      const time = event.elapsed;
-      const derived = getDerived(event);
+    // Reuse a single context object and event key across the frame instead of
+    // allocating an object plus seven strings per explosion event.
+    let ctx: EffectUpdateContext | null = null;
 
-      const ctx: EffectUpdateContext = {
-        event,
-        time,
-        camera,
-        derived,
-        dummy,
-        tmpQuat,
-        tmpVec,
-        color,
-      };
+    for (const event of state.explosions) {
+      const derived = getDerived(event);
+      if (ctx === null) {
+        ctx = { event, time: event.elapsed, camera, derived, dummy, tmpQuat, tmpVec, color };
+      } else {
+        ctx.event = event;
+        ctx.time = event.elapsed;
+        ctx.derived = derived;
+      }
+
+      const keyBase = String(event.id);
 
       const flashMgr = manager.getEffectManager('flash');
-      if (flashMgr) updateFlash(ctx, flashMgr, String(event.id));
+      if (flashMgr) updateFlash(ctx, flashMgr, keyBase);
 
       const shockwaveMgr = manager.getEffectManager('shockwave');
-      if (shockwaveMgr) updateShockwave(ctx, shockwaveMgr, String(event.id));
+      if (shockwaveMgr) updateShockwave(ctx, shockwaveMgr, keyBase);
 
       const fireballMgr = manager.getEffectManager('fireball');
-      if (fireballMgr) updateFireball(ctx, fireballMgr, String(event.id));
+      if (fireballMgr) updateFireball(ctx, fireballMgr, keyBase);
 
       const debrisMgr = manager.getEffectManager('debris');
-      if (debrisMgr) updateDebris(ctx, debrisMgr, String(event.id));
+      if (debrisMgr) updateDebris(ctx, debrisMgr, keyBase);
 
       const sparksMgr = manager.getEffectManager('sparks');
-      if (sparksMgr) updateSparks(ctx, sparksMgr, String(event.id));
+      if (sparksMgr) updateSparks(ctx, sparksMgr, keyBase);
 
       const plasmaMgr = manager.getEffectManager('plasma');
-      if (plasmaMgr) updatePlasma(ctx, plasmaMgr, String(event.id));
+      if (plasmaMgr) updatePlasma(ctx, plasmaMgr, keyBase);
 
       const smokeMgr = manager.getEffectManager('smoke');
-      if (smokeMgr) updateSmoke(ctx, smokeMgr, String(event.id));
+      if (smokeMgr) updateSmoke(ctx, smokeMgr, keyBase);
     }
 
     manager.finalize();
