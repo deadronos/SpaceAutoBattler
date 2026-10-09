@@ -48,9 +48,15 @@ export class SpatialGrid {
   /**
    * Queries ships within a radius of a position.
    * Returns ships in the same cell and adjacent cells.
+   *
+   * @param {Vector3} position - Query centre.
+   * @param {number} radius - Query radius.
+   * @param {ShipEntity[]} [out] - Optional reusable buffer to fill (cleared first),
+   *   to avoid allocating a new array per query.
    */
-  query(position: Vector3, radius: number): ShipEntity[] {
-    const results: ShipEntity[] = [];
+  query(position: Vector3, radius: number, out: ShipEntity[] = []): ShipEntity[] {
+    const results = out;
+    results.length = 0;
     const radiusSq = radius * radius;
 
     // Determine which cells to check based on radius

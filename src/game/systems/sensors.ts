@@ -25,6 +25,7 @@ const TARGET_SHIPS_PER_CELL = 8;
 interface SensorBroadphase {
   grid: SpatialGrid | null;
   cellSize: number;
+  queryBuffer: ShipEntity[];
 }
 
 const sensorBroadphaseByState = new WeakMap<GameState, SensorBroadphase>();
@@ -32,7 +33,7 @@ const sensorBroadphaseByState = new WeakMap<GameState, SensorBroadphase>();
 function getSensorBroadphase(state: GameState): SensorBroadphase {
   let broadphase = sensorBroadphaseByState.get(state);
   if (!broadphase) {
-    broadphase = { grid: null, cellSize: DEFAULT_SPATIAL_GRID_CELL_SIZE };
+    broadphase = { grid: null, cellSize: DEFAULT_SPATIAL_GRID_CELL_SIZE, queryBuffer: [] };
     sensorBroadphaseByState.set(state, broadphase);
   }
   return broadphase;
@@ -199,7 +200,11 @@ export function updateSensorSystem(state: GameState, ships: ShipEntity[]): void 
 
     getForwardFromQuaternion(source.transform.rotation, TMP_FORWARD).normalize();
 
-    const nearbyTargets = grid.query(source.transform.position, trackingRange);
+    const nearbyTargets = grid.query(
+      source.transform.position,
+      trackingRange,
+      broadphase.queryBuffer,
+    );
     for (const target of nearbyTargets) {
       if (target === source) continue;
       if (target.ship.team === team) continue;
