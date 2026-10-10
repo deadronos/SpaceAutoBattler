@@ -11,7 +11,7 @@ import {
   Quaternion,
 } from 'three';
 import fragmentShaderRaw from '../../renderer/shaders/mainsequencestar.glsl';
-import { COMMON_GLSL } from '../../renderer/shaders/index.js';
+import { withCommonGlsl } from '../../renderer/shaders/index.js';
 import vertexShader from '../../renderer/shaders/starSphere.vertex.glsl';
 import type {
   StarLightConfig,
@@ -255,7 +255,7 @@ export function StarSphere({
       try {
         const shaderMat = appliedMaterial;
         // Prepend shared GLSL utilities (noise, hash, etc.) to the fragment shader
-        const fragmentShader = COMMON_GLSL + '\n' + fragmentShaderRaw;
+        const fragmentShader = withCommonGlsl(fragmentShaderRaw);
         const depthMat = new ShaderMaterial({
           vertexShader,
           fragmentShader,
