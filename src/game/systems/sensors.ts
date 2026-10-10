@@ -23,7 +23,7 @@ const TARGET_SHIPS_PER_CELL = 8;
 // Per-state spatial grid for broad-phase culling. Keyed off GameState so two
 // states stepped in the same process cannot share scratch data.
 interface SensorBroadphase {
-  grid: SpatialGrid | null;
+  grid: SpatialGrid<ShipEntity> | null;
   cellSize: number;
   queryBuffer: ShipEntity[];
 }
@@ -80,7 +80,7 @@ function computeOccluded(
   target: ShipEntity,
   direction: Vector3,
   distance: number,
-  grid: SpatialGrid,
+  grid: SpatialGrid<ShipEntity>,
 ): boolean {
   const cosThreshold = Math.cos(0.14);
 
@@ -162,15 +162,12 @@ export function updateSensorSystem(state: GameState, ships: ShipEntity[]): void 
   const nextCellSize = computeAdaptiveGridCellSize(ships);
   let grid = broadphase.grid;
   if (!grid || Math.abs(nextCellSize - broadphase.cellSize) > 1e-3) {
-    grid = new SpatialGrid(nextCellSize);
+    grid = new SpatialGrid<ShipEntity>(nextCellSize, (ship) => ship.transform.position);
     broadphase.grid = grid;
     broadphase.cellSize = nextCellSize;
   }
 
-  grid.clear();
-  for (const ship of ships) {
-    grid.insert(ship);
-  }
+  grid.repopulate(ships);
 
   const detectionMultiplier: Record<Team, number> = {
     blue: getDoctrineSensorModifiers(manager, 'blue')?.detectionMultiplier ?? 1,
@@ -200,7 +197,7 @@ export function updateSensorSystem(state: GameState, ships: ShipEntity[]): void 
 
     getForwardFromQuaternion(source.transform.rotation, TMP_FORWARD).normalize();
 
-    const nearbyTargets = grid.query(
+    const nearbyTargets = grid.queryBroad(
       source.transform.position,
       trackingRange,
       broadphase.queryBuffer,
