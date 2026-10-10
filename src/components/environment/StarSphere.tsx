@@ -1,18 +1,9 @@
 import React, { useRef, useMemo, useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import type { Camera, Mesh, Texture, WebGLRenderer, Material } from 'three';
-import {
-  Euler,
-  MeshBasicMaterial,
-  ShaderMaterial,
-  Vector3,
-  NoBlending,
-  DoubleSide,
-  Quaternion,
-} from 'three';
-import fragmentShaderRaw from '../../renderer/shaders/mainsequencestar.glsl';
-import { withCommonGlsl } from '../../renderer/shaders/index.js';
+import { Euler, MeshBasicMaterial, ShaderMaterial, Vector3, DoubleSide, Quaternion } from 'three';
 import vertexShader from '../../renderer/shaders/starSphere.vertex.glsl';
+import { createStarSphereDepthMaterial } from '../../renderer/starDiskDepthMaterial.js';
 import type {
   StarLightConfig,
   CelestialEnvironmentConfig,
@@ -251,66 +242,15 @@ export function StarSphere({
       }
     }
 
-    if (appliedMaterial instanceof ShaderMaterial) {
-      try {
-        const shaderMat = appliedMaterial;
-        // Prepend shared GLSL utilities (noise, hash, etc.) to the fragment shader
-        const fragmentShader = withCommonGlsl(fragmentShaderRaw);
-        const depthMat = new ShaderMaterial({
-          vertexShader,
-          fragmentShader,
-          uniforms: shaderMat.uniforms,
-          defines: { DEPTH_PASS: '1' },
-          depthWrite: true,
-          depthTest: true,
-          colorWrite: false,
-          blending: NoBlending,
-          transparent: false,
-          premultipliedAlpha: shaderMat.premultipliedAlpha || false,
-        });
-        // Slight polygon offset to reduce z-fighting with the visual mesh
-        depthMat.polygonOffset = true;
-        depthMat.polygonOffsetFactor = -1;
-        depthMat.polygonOffsetUnits = 1;
-        depthMaterialRef.current = depthMat;
-        try {
-          depthMesh.material = depthMat;
-        } catch (error) {
-          // Expected: Mesh may be disposed during unmount
-          reportMaterialError('depthMeshAssignment', 'ShaderMaterial', error);
-        }
-      } catch (err) {
-        // Fall back to basic depth-only material if shader material creation fails
-        reportMaterialError('shaderCreation', 'depthShaderMaterial', err);
-        const basic = new MeshBasicMaterial({
-          color: '#000',
-          depthWrite: true,
-          depthTest: true,
-          colorWrite: false,
-        });
-        depthMaterialRef.current = basic;
-        try {
-          depthMesh.material = basic;
-        } catch (error) {
-          // Expected: Mesh may be disposed during unmount
-          reportMaterialError('depthMeshAssignment', 'BasicMaterial', error);
-        }
-      }
-    } else {
-      // No shader available: simple depth-only basic material
-      const basic = new MeshBasicMaterial({
-        color: '#000',
-        depthWrite: true,
-        depthTest: true,
-        colorWrite: false,
-      });
-      depthMaterialRef.current = basic;
-      try {
-        depthMesh.material = basic;
-      } catch (error) {
-        // Expected: Mesh may be disposed during unmount
-        reportMaterialError('depthMeshAssignment', 'BasicMaterial', error);
-      }
+    const depthMat = createStarSphereDepthMaterial(
+      appliedMaterial instanceof ShaderMaterial ? appliedMaterial : null,
+    );
+    depthMaterialRef.current = depthMat;
+    try {
+      depthMesh.material = depthMat;
+    } catch (error) {
+      // Expected: Mesh may be disposed during unmount
+      reportMaterialError('depthMeshAssignment', 'depthMaterial', error);
     }
 
     return () => {
