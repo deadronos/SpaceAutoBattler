@@ -1,9 +1,13 @@
 import type { Vector3 } from 'three';
 import type { ShipEntity } from '../../types/index.js';
+import { WORLD_HALF } from '../../game/config.js';
 
 export type LodLevel = 'near' | 'far';
 
-export const DEFAULT_DISTANCE_THRESHOLD = 8000;
+// Impostors should engage for ships beyond half the world extent. A threshold
+// equal to the full world size (8000) never triggered at normal camera ranges,
+// so the impostor layer was effectively dead code.
+export const DEFAULT_DISTANCE_THRESHOLD = WORLD_HALF;
 export const DEFAULT_HYSTERESIS = 80;
 export const DEFAULT_IMPOSTOR_CAPACITY = 256;
 
