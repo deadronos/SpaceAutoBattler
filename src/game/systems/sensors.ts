@@ -1,4 +1,4 @@
-import { Vector3 } from 'three';
+import type { Vector3 } from 'three';
 import type {
   GameState,
   ShipEntity,
@@ -10,10 +10,11 @@ import { ensureDoctrineState, getDoctrineSensorModifiers } from '../aiDoctrine.j
 import { getForwardFromQuaternion } from '../../utils/vector.js';
 import { clamp } from '../../utils/math.js';
 import { SpatialGrid } from '../../utils/spatialGrid.js';
-
-const TMP_FORWARD = new Vector3();
-const TMP_VECTOR = new Vector3();
-const TMP_DIRECTION = new Vector3();
+import {
+  TEMP_SENSORS_FORWARD as TMP_FORWARD,
+  TEMP_SENSORS_VECTOR as TMP_VECTOR,
+  TEMP_SENSORS_DIRECTION as TMP_DIRECTION,
+} from '../../utils/tempVectors.js';
 
 const DEFAULT_SPATIAL_GRID_CELL_SIZE = 300;
 const MIN_SPATIAL_GRID_CELL_SIZE = 40;

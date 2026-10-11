@@ -1,13 +1,14 @@
 import { useFrame } from '@react-three/fiber';
 import React, { useEffect, useMemo, useRef } from 'react';
 import type { InstancedMesh } from 'three';
-import { Color, Matrix4, Quaternion, Vector3 } from 'three';
+import { Color, Matrix4 } from 'three';
 import { SphereGeometry } from 'three';
 import type { Archetype, GameEntity, TurretEntity, MuzzleFlash } from '../../types/index.js';
 import { useArchetypeEntities } from '../../hooks/useArchetypeEntities.js';
 import { useGameState } from '../../game/context.js';
 import { useBloomRegistration } from '../../renderer/bloom/index.js';
 import { getInstanceFriendlyMaterial } from '../../renderer/materialRegistry.js';
+import { TEMP_MUZZLE_POS, TEMP_MUZZLE_ROT, TEMP_MUZZLE_SCALE } from '../../utils/tempVectors.js';
 import { createInstancedLayerManager } from './instancedLayer.js';
 import { computeMuzzleFlashVisuals } from './muzzleFlashMath.js';
 import { createSaturationWarningState, warnOnSaturation } from './saturationWarning.js';
@@ -21,9 +22,6 @@ interface MuzzleFlashInstancedLayerProps {
 const DEFAULT_CAPACITY = 256;
 const DEFAULT_LIFETIME = 0.25;
 const TEMP_MATRIX = new Matrix4();
-const TEMP_SCALE = new Vector3();
-const TEMP_POS = new Vector3();
-const TEMP_ROT = new Quaternion();
 const TEMP_COLOR = new Color();
 // HIDDEN_MATRIX lifecycle is handled by InstancedLayerManager
 
@@ -111,7 +109,7 @@ export function MuzzleFlashInstancedLayer({
     for (const turret of turrets) {
       const flashes = turret.muzzleFlashes ?? [];
       if (!flashes.length) continue;
-      TEMP_ROT.copy(turret.transform.rotation);
+      TEMP_MUZZLE_ROT.copy(turret.transform.rotation);
 
       for (const flash of flashes) {
         const index = manager.allocate(flash);
@@ -127,9 +125,9 @@ export function MuzzleFlashInstancedLayer({
           continue;
         }
 
-        TEMP_POS.copy(flash.local)
+        TEMP_MUZZLE_POS.copy(flash.local)
           .multiplyScalar(turret.transform.scale)
-          .applyQuaternion(TEMP_ROT)
+          .applyQuaternion(TEMP_MUZZLE_ROT)
           .add(turret.transform.position);
         const visuals = computeMuzzleFlashVisuals({
           baseScale: turret.transform.scale * 1.4,
@@ -137,8 +135,8 @@ export function MuzzleFlashInstancedLayer({
           lifetime,
           elapsed,
         });
-        TEMP_SCALE.setScalar(visuals.scale);
-        TEMP_MATRIX.compose(TEMP_POS, TEMP_ROT, TEMP_SCALE);
+        TEMP_MUZZLE_SCALE.setScalar(visuals.scale);
+        TEMP_MATRIX.compose(TEMP_MUZZLE_POS, TEMP_MUZZLE_ROT, TEMP_MUZZLE_SCALE);
         manager.setMatrixAt(index, TEMP_MATRIX);
 
         const color = resolveFlashColor(flash.bulletType);
