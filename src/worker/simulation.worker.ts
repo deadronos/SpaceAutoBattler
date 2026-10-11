@@ -10,7 +10,9 @@ import { updateGame } from '../game/systems.js';
 import { SeededRng } from '../utils/rng.js';
 import { SlotAllocator } from './slotAllocator.js';
 import { createTransformSoAViews } from './transformsLayout.js';
-import type { GameEntity, GameState, ShipHull, Team } from '../types/index.js';
+import { copyTransformViews } from './transformViews.js';
+import { coerceHull, coerceTeam } from './entityCoercion.js';
+import type { GameEntity, GameState } from '../types/index.js';
 
 type WorkerScope = {
   postMessage: (message: unknown, transfer?: Transferable[]) => void;
@@ -119,23 +121,6 @@ function freeSlot(entityId: number): void {
   slots?.free(slot);
 }
 
-function coerceTeam(value: unknown): Team {
-  return value === 'red' ? 'red' : 'blue';
-}
-
-function coerceHull(value: unknown): ShipHull {
-  switch (value) {
-    case 'fighter':
-    case 'corvette':
-    case 'frigate':
-    case 'destroyer':
-    case 'carrier':
-      return value;
-    default:
-      return 'fighter';
-  }
-}
-
 function writeShipTransforms(game: GameState): void {
   if (!views) return;
 
@@ -228,12 +213,7 @@ function emitSnapshot(game: GameState): void {
   // Copy from the live buffer into a staging buffer, then transfer that staging buffer.
   const stagingViews = createTransformSoAViews(layout, buffer);
   if (views) {
-    stagingViews.positions.set(views.positions);
-    stagingViews.rotations.set(views.rotations);
-    stagingViews.scales.set(views.scales);
-    stagingViews.shipHp.set(views.shipHp);
-    stagingViews.shipShield.set(views.shipShield);
-    stagingViews.shipThrust.set(views.shipThrust);
+    copyTransformViews(views, stagingViews);
   }
 
   transferIndex = (transferIndex + 1) % transferBuffers.length;
