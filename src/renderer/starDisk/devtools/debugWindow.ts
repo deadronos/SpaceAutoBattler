@@ -1,3 +1,5 @@
+import { registerDebugHook, unregisterDebugHook } from '../../../debug/copilotDebugRegistry.js';
+
 interface StarDebugProperties {
   __copilot_forceStarOpaque?: boolean;
   __copilot_star_forcedOpaque?: boolean;
@@ -82,7 +84,8 @@ export const setForceOnTopFlag = (enabled: boolean | undefined): void => {
   if (!win) return;
   if (enabled == null) {
     delete win.__copilot_star_forceOnTop;
+    unregisterDebugHook('__copilot_star_forceOnTop');
   } else {
-    win.__copilot_star_forceOnTop = enabled;
+    registerDebugHook('__copilot_star_forceOnTop', enabled, 'star');
   }
 };

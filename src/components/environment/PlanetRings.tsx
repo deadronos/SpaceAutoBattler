@@ -6,6 +6,7 @@ import { colorFromConfig } from '../../utils/color.js';
 import { RENDER_ORDER_TRANSLUCENT_ADDITIVE } from '../../renderer/sceneLayerOrder.js';
 import { useUiStore } from '../../game/uiStore.js';
 import { isCopilotDebugEnabled } from '../../utils/copilotDebug.js';
+import { registerDebugHook, clearDebugHooks } from '../../debug/copilotDebugRegistry.js';
 import { reportMaterialError } from '../../utils/errorReporting.js';
 import type { PlanetRingsUniforms } from '../../types/renderer.js';
 import { createPlanetRingGeometry } from '../../renderer/environment/planetRingGeometry.js';
@@ -238,26 +239,14 @@ export function PlanetRings({
     penumbra,
   ]);
 
-  // Debug window interface for ring material access
-  interface CopilotDebugWindow extends Window {
-    __copilot_ringMaterial?: ShaderMaterial | MeshBasicMaterial;
-    __copilot_setRingOpacity?: (v: unknown) => { set: boolean; value?: number; reason?: string };
-    __copilot_setRingRenderOrder?: (v: unknown) => {
-      set: boolean;
-      value?: number;
-      reason?: string;
-    };
-  }
-
   // Attach debug helpers once the material exists so we can adjust uniforms
-  // and render order from the console during interactive debugging.
+  // and render order from the console during interactive debugging. Hooks are
+  // registered under the `rings` owner so they are cleaned up on unmount.
   try {
     if (isCopilotDebugEnabled()) {
       try {
-        const debugWindow = window as CopilotDebugWindow;
-        // Use a lightweight effect-like attachment without requiring React's useEffect
-        debugWindow.__copilot_ringMaterial = materialToUse;
-        debugWindow.__copilot_setRingOpacity = (v: unknown) => {
+        registerDebugHook('__copilot_ringMaterial', materialToUse, 'rings');
+        const setRingOpacity = (v: unknown) => {
           try {
             const n = Number(v);
             if (!Number.isFinite(n)) return { set: false, reason: 'not-a-number' };
@@ -282,7 +271,8 @@ export function PlanetRings({
             return { set: false, reason: String(e) };
           }
         };
-        debugWindow.__copilot_setRingRenderOrder = (v: unknown) => {
+        registerDebugHook('__copilot_setRingOpacity', setRingOpacity, 'rings');
+        const setRingRenderOrder = (v: unknown) => {
           try {
             const n = Number(v);
             if (!meshRef.current) return { set: false, reason: 'no-mesh' };
@@ -293,6 +283,7 @@ export function PlanetRings({
             return { set: false, reason: String(e) };
           }
         };
+        registerDebugHook('__copilot_setRingRenderOrder', setRingRenderOrder, 'rings');
       } catch (error) {
         // Expected: Debug helper attachment may fail in some environments
         reportMaterialError('debug.attach', 'ringMaterial', error);
@@ -302,6 +293,8 @@ export function PlanetRings({
     // Expected: isCopilotDebugEnabled check may fail in some environments
     reportMaterialError('debug.check', 'ringMaterial', error);
   }
+
+  useEffect(() => () => clearDebugHooks('rings'), []);
 
   useFrame((_, delta) => {
     if (meshRef.current && rotationSpeed !== 0) {
