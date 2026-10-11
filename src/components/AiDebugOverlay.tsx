@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import type React from 'react';
 import type { AIKpiSummary, ShipEntity } from '../types/index.js';
 import { useOptionalGameState } from '../game/context.js';
 import { useUiStore } from '../game/uiStore.js';
+import { useInterval } from '../hooks/useInterval.js';
 import { resolveBehaviorProfile } from '../game/aiProfiles.js';
 import { formatPercent, formatSeconds } from '../utils/format.js';
 
@@ -39,11 +40,7 @@ export function AiDebugOverlay(): React.ReactElement | null {
   const debugEnabled = useUiStore((s) => s.aiDebugEnabled);
   const [refreshTick, setRefreshTick] = useState(0);
 
-  useEffect(() => {
-    if (!debugEnabled) return undefined;
-    const id = setInterval(() => setRefreshTick((v) => v + 1), REFRESH_INTERVAL_MS);
-    return () => clearInterval(id);
-  }, [debugEnabled]);
+  useInterval(() => setRefreshTick((v) => v + 1), debugEnabled ? REFRESH_INTERVAL_MS : null);
 
   const snapshot = useMemo<SnapshotData | null>(() => {
     void refreshTick;

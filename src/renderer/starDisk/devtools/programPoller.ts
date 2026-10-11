@@ -1,4 +1,5 @@
 import type { ShaderMaterial, WebGLRenderer } from 'three';
+import { pollUntil } from '../../../utils/polling.js';
 import { registerPollerCleanup } from './debugWindow.js';
 
 type ShaderPropertiesAccessor = { get: (key: ShaderMaterial) => unknown };
@@ -36,28 +37,18 @@ export const installProgramPoller = ({
   intervalMs = 200,
 }: ProgramPollerOptions): (() => void) => {
   const props = (renderer as unknown as { properties?: ShaderPropertiesAccessor })?.properties;
-  const start = Date.now();
 
-  const handle = setInterval(() => {
-    try {
+  const dispose = pollUntil(
+    () => {
       const matProp = props?.get(material);
       const program = extractProgram((matProp as { program?: unknown })?.program ?? matProp);
-      if (program) {
-        clearInterval(handle);
-        onProgramReady(renderer.getContext(), program);
-        return;
-      }
-      if (Date.now() - start > maxWaitMs) {
-        clearInterval(handle);
-        onTimeout();
-      }
-    } catch (err) {
-      clearInterval(handle);
-      onError(err);
-    }
-  }, intervalMs);
+      if (!program) return false;
+      onProgramReady(renderer.getContext(), program);
+      return true;
+    },
+    { intervalMs, maxWaitMs, onTimeout, onError },
+  );
 
-  const dispose = (): void => clearInterval(handle);
   registerPollerCleanup(dispose);
   return dispose;
 };
