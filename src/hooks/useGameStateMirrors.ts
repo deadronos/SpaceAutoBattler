@@ -1,19 +1,12 @@
 import { useEffect } from 'react';
 import type { GameState } from '../types/index.js';
-import { mirrorHudHealthBarsFlag, useUiStore } from '../game/uiStore.js';
-import { reportConfigError } from '../utils/errorReporting.js';
-
-let warnedAiDisableContext = false;
-function warnAiDisableInContext(): void {
-  if (warnedAiDisableContext) return;
-  warnedAiDisableContext = true;
-  try {
-    globalThis.console?.warn?.('AI v2 disable attempts are ignored in the simulation context.');
-  } catch (error) {
-    // Expected: Console may not be available in some environments
-    reportConfigError('console.warn', error);
-  }
-}
+import {
+  applyAiEnabled,
+  applyPausedTimeScale,
+  applySimulationProfile,
+  mirrorHudHealthBarsFlag,
+  useUiStore,
+} from '../game/uiStore.js';
 
 /**
  * Mirrors UI store state onto the canonical `GameState` for core systems:
@@ -32,37 +25,23 @@ export function useGameStateMirrors(state: GameState | null): void {
 
   // Mirror UI state to GameState for core systems.
   useEffect(() => {
-    if (!state) return;
-    state.paused = paused;
-    state.timeScale = timeScale;
+    applyPausedTimeScale(state, paused, timeScale);
   }, [state, paused, timeScale]);
 
   useEffect(() => {
-    if (!state) return;
-    state.simulation.profileSubsystems = simProfileSubsystems;
-    state.simulation.profileSampleRate = simProfileSampleRate;
-    state.simulation.enableSubsystemGuards = simEnableSubsystemGuards;
+    applySimulationProfile(
+      state,
+      simProfileSubsystems,
+      simProfileSampleRate,
+      simEnableSubsystemGuards,
+    );
   }, [state, simProfileSubsystems, simProfileSampleRate, simEnableSubsystemGuards]);
 
   useEffect(() => {
-    if (!state?.ai) return;
-    if (!aiV2Enabled) {
-      warnAiDisableInContext();
-      try {
-        const store = useUiStore.getState();
-        if (!store.aiV2Enabled) {
-          store.setAiV2Enabled(true);
-        }
-      } catch (error) {
-        // Expected: Store may be in invalid state during hot reload
-        reportConfigError('aiV2Enabled.sync', error);
-      }
-    }
-    state.ai.enabled = true;
+    applyAiEnabled(state, aiV2Enabled);
   }, [state, aiV2Enabled]);
 
   useEffect(() => {
-    if (!state) return;
     mirrorHudHealthBarsFlag(state, hudHealthBarsEnabled);
   }, [state, hudHealthBarsEnabled]);
 }
