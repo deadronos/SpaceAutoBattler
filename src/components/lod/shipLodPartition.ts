@@ -81,14 +81,9 @@ export function partitionShipsByDistance(
   hysteresis: number,
   previous: Map<number, LodLevel>,
 ): LodPartitionResult {
-  return partitionShipsByDistanceInto(
-    ships,
-    cameraPosition,
-    threshold,
-    hysteresis,
-    previous,
-    createLodPartitionBuffer(),
-  );
+  const buffer = createLodPartitionBuffer();
+  partitionShipsByDistanceInto(ships, cameraPosition, threshold, hysteresis, previous, buffer);
+  return { nearShips: buffer.nearShips, farShips: buffer.farShips };
 }
 
 export function computeLodPartition(

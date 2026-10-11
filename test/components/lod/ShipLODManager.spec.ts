@@ -1,4 +1,6 @@
-import { describe, expect, it } from 'vite-plus/test';
+import React from 'react';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
+import { act, cleanup, render } from '@testing-library/react';
 import {
   Color,
   InstancedBufferAttribute,
@@ -10,6 +12,45 @@ import {
   Vector3,
 } from 'three';
 import type { ShipEntity, Team } from '../../../src/types/index.js';
+
+const { frameCallbacks, camera, thrusterShipsCalls, impostorShipsCalls } = vi.hoisted(() => ({
+  frameCallbacks: [] as Array<() => void>,
+  camera: { position: { x: 0, y: 0, z: 0 } },
+  thrusterShipsCalls: [] as Array<readonly ShipEntity[]>,
+  impostorShipsCalls: [] as Array<readonly ShipEntity[]>,
+}));
+
+vi.mock('@react-three/fiber', () => ({
+  useThree: () => ({ camera }),
+  useFrame: (fn: () => void) => {
+    frameCallbacks.push(fn);
+  },
+}));
+
+vi.mock('../../../src/components/Ship.js', () => ({
+  ShipObject: () => null,
+}));
+
+vi.mock('../../../src/components/thrusters/ThrusterInstancedManager.js', () => ({
+  ThrusterInstancedManager: (props: { ships: readonly ShipEntity[] }) => {
+    thrusterShipsCalls.push(props.ships);
+    return null;
+  },
+}));
+
+vi.mock('../../../src/components/lod/ShipImpostorLayer.js', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('../../../src/components/lod/ShipImpostorLayer.js')>();
+  return {
+    ...actual,
+    ShipImpostorLayer: (props: { ships: readonly ShipEntity[] }) => {
+      impostorShipsCalls.push(props.ships);
+      return null;
+    },
+  };
+});
+
+import { ShipLODManager } from '../../../src/components/lod/ShipLODManager.js';
 import {
   createLodPartitionBuffer,
   partitionShipsByDistance,
@@ -306,5 +347,58 @@ describe('populateImpostorInstances', () => {
 
     geometry.dispose();
     material.dispose();
+  });
+});
+
+describe('ShipLODManager buffer reuse', () => {
+  afterEach(() => {
+    cleanup();
+    frameCallbacks.length = 0;
+    thrusterShipsCalls.length = 0;
+    impostorShipsCalls.length = 0;
+    camera.position.x = 0;
+    camera.position.y = 0;
+    camera.position.z = 0;
+  });
+
+  it('does not mutate the committed partition arrays when a frame writes a new partition', () => {
+    const ships = [createShip(1, 100), createShip(2, 800)];
+    render(
+      React.createElement(ShipLODManager, {
+        ships,
+        distanceThreshold: 500,
+        hysteresis: 50,
+      }),
+    );
+
+    const committedNear = thrusterShipsCalls.at(-1)!;
+    const committedFar = impostorShipsCalls.at(-1)!;
+    expect(committedNear.map((s) => s.id)).toEqual([1]);
+    expect(committedFar.map((s) => s.id)).toEqual([2]);
+
+    // Two frame updates in one batch: React defers the commit of the first flip,
+    // so the second frame runs while the first flip's buffer is still pending.
+    // A scheme that writes into the "non-active" buffer would clobber the arrays
+    // the still-mounted children reference; a scheme that only writes into a
+    // buffer that is neither committed nor pending leaves them untouched.
+    act(() => {
+      camera.position.x = 800; // ship 2 near, ship 1 far
+      for (const cb of frameCallbacks) cb();
+      camera.position.x = 5000; // both far
+      for (const cb of frameCallbacks) cb();
+    });
+
+    // Arrays captured from the previously committed render are unchanged.
+    expect(committedNear.map((s) => s.id)).toEqual([1]);
+    expect(committedFar.map((s) => s.id)).toEqual([2]);
+
+    // The latest committed render reflects the newest partition (both far).
+    expect(thrusterShipsCalls.at(-1)!.map((s) => s.id)).toEqual([]);
+    expect(
+      impostorShipsCalls
+        .at(-1)!
+        .map((s) => s.id)
+        .sort(),
+    ).toEqual([1, 2]);
   });
 });
