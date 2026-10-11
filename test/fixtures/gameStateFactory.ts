@@ -6,6 +6,7 @@ import { createDefaultMetrics } from '../../src/game/metrics.js';
 import { createDefaultDoctrineState } from '../../src/game/aiDoctrine.js';
 import { createDefaultMotionStats } from '../../src/game/ships.js';
 import { createProgressionDefaults, createSubsystems } from '../../src/game/progression.js';
+import { createTestSimulationState } from './simulationFixture.js';
 
 // Centralized test fixture factory for SpaceAutoBattler unit tests
 export const TEST_GAME_SEED = 42;
@@ -51,44 +52,7 @@ export function createMockGameState(overrides: Partial<GameState> = {}): GameSta
     explosions: [],
     explosionPool: [],
     progressionEvents: new Map(),
-    simulation: {
-      step: 1 / 20,
-      accumulator: 0,
-      maxSubSteps: 5,
-      profileSubsystems: false,
-      profileSampleRate: 1,
-      enableSubsystemGuards: true,
-      alpha: 0,
-      lastTickIndex: 0,
-      lastTickStart: 0,
-      lastTickDuration: 1 / 20,
-      deferredMutations: [],
-      postStepMutations: [],
-      rapierDiagnostics: {
-        deferredMutationFailures: 0,
-        guardTrips: 0,
-        lastFailureTick: -1,
-        lastGuardTick: -1,
-        lastDeferredMutationError: undefined,
-        stepPanics: 0,
-        lastStepPanicTick: -1,
-        lastStepPanicTime: 0,
-        lastStepPanicDelta: 0,
-        lastStepPanicMessage: undefined,
-        lastStepPanicStack: undefined,
-        lastStepPanicTimestamp: 0,
-        subsystemFailures: 0,
-        lastSubsystemFailureTick: -1,
-        lastSubsystemFailureMessage: undefined,
-        lastSubsystemFailureStack: undefined,
-        lastSubsystemFailureTimestamp: 0,
-      },
-      subsystemTimings: {
-        durations: {},
-        lastTickIndex: -1,
-        lastTickTime: 0,
-      },
-    },
+    simulation: createTestSimulationState(),
     ai: {
       enabled: true,
       tickInterval: 0.1,

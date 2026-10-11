@@ -2,6 +2,7 @@ import { Vector3 } from 'three';
 import type { GameState, AIBlackboard, AIState, ShipEntity } from '../../../src/types/index.js';
 import { createDefaultMetrics } from '../../../src/game/metrics.js';
 import { createDefaultMotionStats } from '../../../src/game/ships.js';
+import { createTestSimulationState } from '../../fixtures/simulationFixture.js';
 
 /**
  * Create a fully initialized blackboard for tests.
@@ -67,34 +68,7 @@ export function createTestGameState(overrides?: Partial<GameState>): GameState {
     rng: {} as never,
     paused: false,
     timeScale: 1,
-    simulation: {
-      step: 1 / 20,
-      accumulator: 0,
-      maxSubSteps: 5,
-      profileSubsystems: false,
-      profileSampleRate: 1,
-      enableSubsystemGuards: true,
-      alpha: 0,
-      lastTickIndex: 0,
-      lastTickStart: 0,
-      lastTickDuration: 1 / 20,
-      deferredMutations: [],
-      postStepMutations: [],
-      rapierDiagnostics: {
-        deferredMutationFailures: 0,
-        guardTrips: 0,
-        lastFailureTick: -1,
-        lastGuardTick: -1,
-        lastDeferredMutationError: undefined,
-        stepPanics: 0,
-        lastStepPanicTick: -1,
-        lastStepPanicTime: 0,
-        lastStepPanicDelta: 0,
-        lastStepPanicMessage: undefined,
-        lastStepPanicStack: undefined,
-        lastStepPanicTimestamp: 0,
-      },
-    },
+    simulation: createTestSimulationState(),
     progressionEvents: new Map(),
   } as unknown as GameState;
 
