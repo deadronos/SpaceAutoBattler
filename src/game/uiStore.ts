@@ -225,3 +225,65 @@ export function mirrorHudHealthBarsFlag(state: GameState | null, enabled: boolea
   }
   state.uiFlags.hudHealthBars = enabled;
 }
+
+/**
+ * Mirrors the pause/time-scale UI state onto the canonical game state.
+ */
+export function applyPausedTimeScale(
+  state: GameState | null,
+  paused: boolean,
+  timeScale: number,
+): void {
+  if (!state) return;
+  state.paused = paused;
+  state.timeScale = timeScale;
+}
+
+/**
+ * Mirrors the simulation profiling UI flags onto the canonical game state.
+ */
+export function applySimulationProfile(
+  state: GameState | null,
+  profileSubsystems: boolean,
+  profileSampleRate: number,
+  enableSubsystemGuards: boolean,
+): void {
+  if (!state) return;
+  state.simulation.profileSubsystems = profileSubsystems;
+  state.simulation.profileSampleRate = profileSampleRate;
+  state.simulation.enableSubsystemGuards = enableSubsystemGuards;
+}
+
+let warnedAiDisableContext = false;
+function warnAiDisableInContext(): void {
+  if (warnedAiDisableContext) return;
+  warnedAiDisableContext = true;
+  try {
+    globalThis.console?.warn?.('AI v2 disable attempts are ignored in the simulation context.');
+  } catch (error) {
+    // Expected: Console may not be available in some environments
+    reportConfigError('console.warn', error);
+  }
+}
+
+/**
+ * Mirrors the AI-v2 enable flag onto the canonical game state. AI v2 cannot be
+ * disabled from the simulation context: a disable request is ignored (and the UI
+ * store is re-synced to `true`), while `state.ai.enabled` is always forced on.
+ */
+export function applyAiEnabled(state: GameState | null, aiV2Enabled: boolean): void {
+  if (!state?.ai) return;
+  if (!aiV2Enabled) {
+    warnAiDisableInContext();
+    try {
+      const store = useUiStore.getState();
+      if (!store.aiV2Enabled) {
+        store.setAiV2Enabled(true);
+      }
+    } catch (error) {
+      // Expected: Store may be in invalid state during hot reload
+      reportConfigError('aiV2Enabled.sync', error);
+    }
+  }
+  state.ai.enabled = true;
+}
