@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import type React from 'react';
 import { useOptionalGameState } from '../game/context.js';
 import { useUiStore } from '../game/uiStore.js';
 import { requestReset, spawnRandomShip } from '../game/state.js';
+import { useTimeout } from '../hooks/useTimeout.js';
 
 /**
  * UI component rendering the top-level controls bar (Pause, Reset, Spawn).
@@ -17,12 +18,7 @@ export function Controls(): React.ReactElement {
   const setTimeScale = useUiStore((s) => s.setTimeScale);
   const [resetConfirm, setResetConfirm] = useState(false);
 
-  useEffect(() => {
-    if (resetConfirm) {
-      const timer = setTimeout(() => setResetConfirm(false), 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [resetConfirm]);
+  useTimeout(() => setResetConfirm(false), resetConfirm ? 3000 : null);
 
   const addShip = (team: 'red' | 'blue') => {
     if (!state) return;

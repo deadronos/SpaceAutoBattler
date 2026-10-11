@@ -5,7 +5,7 @@
  * use to provide visibility into suppressed errors without cluttering the UI.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   getErrorCounts,
   getTotalErrorCount,
@@ -13,6 +13,7 @@ import {
   ErrorCategory,
   type ErrorReport,
 } from '../utils/errorReporting.js';
+import { useInterval } from '../hooks/useInterval.js';
 import './debugPanel.css';
 
 interface ErrorCountsPanelProps {
@@ -31,19 +32,19 @@ export function ErrorCountsPanel({
   const [expanded, setExpanded] = useState(false);
   const [recentErrors, setRecentErrors] = useState<ErrorReport[]>([]);
 
-  useEffect(() => {
-    const update = () => {
-      setCounts(getErrorCounts());
-      setTotal(getTotalErrorCount());
-      if (expanded && showDetails) {
-        setRecentErrors(getRecentErrors(10));
-      }
-    };
+  const update = useCallback(() => {
+    setCounts(getErrorCounts());
+    setTotal(getTotalErrorCount());
+    if (expanded && showDetails) {
+      setRecentErrors(getRecentErrors(10));
+    }
+  }, [expanded, showDetails]);
 
+  useEffect(() => {
     update();
-    const interval = setInterval(update, refreshInterval);
-    return () => clearInterval(interval);
-  }, [refreshInterval, expanded, showDetails]);
+  }, [update, refreshInterval]);
+
+  useInterval(update, refreshInterval);
 
   if (total === 0) return null;
 

@@ -53,4 +53,62 @@ describe('pollUntil', () => {
     vi.advanceTimersByTime(100);
     expect(calls).toBe(2);
   });
+
+  it('stops once the maxWaitMs budget elapses', () => {
+    vi.useFakeTimers();
+    const onTimeout = vi.fn();
+    let calls = 0;
+
+    pollUntil(
+      () => {
+        calls += 1;
+        return false;
+      },
+      { intervalMs: 10, maxWaitMs: 50, onTimeout },
+    );
+
+    vi.advanceTimersByTime(100);
+    const callsAtTimeout = calls;
+    expect(onTimeout).toHaveBeenCalledTimes(1);
+
+    vi.advanceTimersByTime(100);
+    expect(calls).toBe(callsAtTimeout);
+  });
+
+  it('stops at maxAttempts when it is reached before maxWaitMs', () => {
+    vi.useFakeTimers();
+    const onTimeout = vi.fn();
+    let calls = 0;
+
+    pollUntil(
+      () => {
+        calls += 1;
+        return false;
+      },
+      { intervalMs: 10, maxAttempts: 2, maxWaitMs: 10000, onTimeout },
+    );
+
+    vi.advanceTimersByTime(100);
+    expect(calls).toBe(2);
+    expect(onTimeout).toHaveBeenCalledTimes(1);
+  });
+
+  it('calls onError and stops when the predicate throws and onError is provided', () => {
+    vi.useFakeTimers();
+    const onError = vi.fn();
+    let calls = 0;
+
+    pollUntil(
+      () => {
+        calls += 1;
+        throw new Error('boom');
+      },
+      { intervalMs: 10, onError },
+    );
+
+    vi.advanceTimersByTime(100);
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(onError).toHaveBeenCalledWith(expect.any(Error));
+    expect(calls).toBe(1);
+  });
 });

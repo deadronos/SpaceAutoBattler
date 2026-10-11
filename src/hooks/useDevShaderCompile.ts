@@ -9,6 +9,7 @@
 import { useEffect, type RefObject } from 'react';
 import type { Mesh, ShaderMaterial, WebGLRenderer, Scene, Camera } from 'three';
 import { isProductionEnv } from '../utils/env.js';
+import { pollUntil } from '../utils/polling.js';
 
 /**
  * Force shader compilation in development mode for debugging.
@@ -44,13 +45,10 @@ export function useDevShaderCompile(
     }
 
     // Poll until the mesh is parented into the scene (or until we give up).
-    let attempts = 0;
-    const pollInterval = 150; // ms
-    const maxAttempts = 20; // ~3s of retries
-    const intervalId = setInterval(() => {
-      attempts += 1;
-      const mesh = meshRef.current;
-      if (mesh && mesh.parent) {
+    const cancel = pollUntil(
+      () => {
+        const mesh = meshRef.current;
+        if (!mesh || !mesh.parent) return false;
         try {
           if (scene && camera && typeof gl.compile === 'function') {
             gl.compile(scene, camera);
@@ -64,17 +62,16 @@ export function useDevShaderCompile(
         } catch (err) {
           console.warn('[StarDisk][DEV] Forced compile failed', err);
         }
-        clearInterval(intervalId);
-        return;
-      }
-      if (attempts >= maxAttempts) {
-        console.warn('[StarDisk][DEV] Giving up waiting for mesh to be parented before compile');
-        clearInterval(intervalId);
-      }
-    }, pollInterval);
+        return true;
+      },
+      {
+        intervalMs: 150,
+        maxAttempts: 20, // ~3s of retries
+        onTimeout: () =>
+          console.warn('[StarDisk][DEV] Giving up waiting for mesh to be parented before compile'),
+      },
+    );
 
-    return () => {
-      clearInterval(intervalId);
-    };
+    return cancel;
   }, [enabled, shaderMaterial, gl, scene, camera, meshRef]);
 }
