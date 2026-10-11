@@ -7,12 +7,15 @@ import { ShipObject } from '../Ship.js';
 import { ThrusterInstancedManager } from '../thrusters/ThrusterInstancedManager.js';
 import {
   computeLodPartition,
+  createLodPartitionBuffer,
   partitionShipsByDistance,
+  partitionShipsByDistanceInto,
   partitionsEqual,
   DEFAULT_DISTANCE_THRESHOLD,
   DEFAULT_HYSTERESIS,
   DEFAULT_IMPOSTOR_CAPACITY,
   type LodLevel,
+  type LodPartitionBuffer,
   type LodPartitionResult,
 } from './shipLodPartition.js';
 import {
@@ -38,17 +41,22 @@ export function ShipLODManager({
   const lodStateRef = useRef(new Map<number, LodLevel>());
   const shipsRef = useRef<readonly ShipEntity[]>(ships);
   const thresholdsRef = useRef({ distanceThreshold, hysteresis });
+  const buffersRef = useRef<[LodPartitionBuffer, LodPartitionBuffer]>([
+    createLodPartitionBuffer(),
+    createLodPartitionBuffer(),
+  ]);
+  const activeBufferRef = useRef(0);
 
   const [partition, setPartition] = useState<LodPartitionResult>(() =>
-    computeLodPartition(
+    partitionShipsByDistanceInto(
       ships,
-      camera.position.clone(),
+      camera.position,
       distanceThreshold,
       hysteresis,
       lodStateRef.current,
+      buffersRef.current[0],
     ),
   );
-  const partitionRef = useRef(partition);
 
   useEffect(() => {
     shipsRef.current = ships;
@@ -58,26 +66,25 @@ export function ShipLODManager({
     thresholdsRef.current = { distanceThreshold, hysteresis };
   }, [distanceThreshold, hysteresis]);
 
-  useEffect(() => {
-    partitionRef.current = partition;
-  }, [partition]);
-
   const updatePartition = useCallback((cameraPosition: Vector3) => {
-    const next = computeLodPartition(
+    const activeIndex = activeBufferRef.current;
+    const nextIndex = activeIndex === 0 ? 1 : 0;
+    const next = partitionShipsByDistanceInto(
       shipsRef.current,
       cameraPosition,
       thresholdsRef.current.distanceThreshold,
       thresholdsRef.current.hysteresis,
       lodStateRef.current,
+      buffersRef.current[nextIndex]!,
     );
-    if (!partitionsEqual(partitionRef.current, next)) {
-      partitionRef.current = next;
+    if (!partitionsEqual(buffersRef.current[activeIndex]!, next)) {
+      activeBufferRef.current = nextIndex;
       setPartition(next);
     }
   }, []);
 
   useEffect(() => {
-    updatePartition(camera.position.clone());
+    updatePartition(camera.position);
   }, [ships, distanceThreshold, hysteresis, updatePartition, camera]);
 
   useFrame(() => {

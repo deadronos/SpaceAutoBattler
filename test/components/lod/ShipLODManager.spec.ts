@@ -11,7 +11,9 @@ import {
 } from 'three';
 import type { ShipEntity, Team } from '../../../src/types/index.js';
 import {
+  createLodPartitionBuffer,
   partitionShipsByDistance,
+  partitionShipsByDistanceInto,
   computeLodPartition,
   partitionsEqual,
   DEFAULT_DISTANCE_THRESHOLD,
@@ -87,6 +89,103 @@ describe('partitionShipsByDistance', () => {
     ships[1]!.transform.position.set(300, 0, 0);
     const third = partitionShipsByDistance(ships, camera, 500, 50, previous);
     expect(third.nearShips.map((s) => s.id)).toContain(2);
+  });
+});
+
+describe('partitionShipsByDistanceInto', () => {
+  it('creates an empty reusable buffer', () => {
+    const buffer = createLodPartitionBuffer();
+    expect(buffer.nearShips).toEqual([]);
+    expect(buffer.farShips).toEqual([]);
+    expect(buffer.activeIds.size).toBe(0);
+  });
+
+  it('reuses the same buffer, arrays and Set across calls without reallocating', () => {
+    const buffer = createLodPartitionBuffer();
+    const nearRef = buffer.nearShips;
+    const farRef = buffer.farShips;
+    const idsRef = buffer.activeIds;
+    const previous = new Map<number, 'near' | 'far'>();
+    const camera = new Vector3(0, 0, 0);
+    const ships = [createShip(1, 100), createShip(2, 800)];
+
+    const first = partitionShipsByDistanceInto(ships, camera, 500, 50, previous, buffer);
+    expect(first).toBe(buffer);
+    expect(buffer.nearShips).toBe(nearRef);
+    expect(buffer.farShips).toBe(farRef);
+    expect(buffer.activeIds).toBe(idsRef);
+    expect(first.nearShips.map((s) => s.id)).toEqual([1]);
+    expect(first.farShips.map((s) => s.id)).toEqual([2]);
+
+    const second = partitionShipsByDistanceInto(ships, camera, 500, 50, previous, buffer);
+    expect(second).toBe(buffer);
+    expect(buffer.nearShips).toBe(nearRef);
+    expect(buffer.farShips).toBe(farRef);
+    expect(buffer.activeIds).toBe(idsRef);
+  });
+
+  it('clears stale cohort entries when ships move between cohorts', () => {
+    const buffer = createLodPartitionBuffer();
+    const nearRef = buffer.nearShips;
+    const previous = new Map<number, 'near' | 'far'>();
+    const camera = new Vector3(0, 0, 0);
+    const nearShip = createShip(1, 100);
+    const farShip = createShip(2, 800);
+
+    const first = partitionShipsByDistanceInto(
+      [nearShip, farShip],
+      camera,
+      500,
+      50,
+      previous,
+      buffer,
+    );
+    expect(first.nearShips.map((s) => s.id)).toEqual([1]);
+
+    // Ship 1 moves far; the reused near array must drop the stale entry.
+    nearShip.transform.position.set(900, 0, 0);
+    const second = partitionShipsByDistanceInto(
+      [nearShip, farShip],
+      camera,
+      500,
+      50,
+      previous,
+      buffer,
+    );
+    expect(second.nearShips).toBe(nearRef);
+    expect(second.nearShips).toHaveLength(0);
+    expect(second.farShips.map((s) => s.id).sort()).toEqual([1, 2]);
+  });
+
+  it('matches the pure partitionShipsByDistance result for identical inputs', () => {
+    const camera = new Vector3(0, 0, 0);
+    const ships = [
+      createShip(1, 100),
+      createShip(2, 470),
+      createShip(3, 800),
+      createShip(4, 0, { position: new Vector3(-200, 50, 30) }),
+    ];
+
+    const pure = partitionShipsByDistance(
+      ships,
+      camera,
+      500,
+      50,
+      new Map<number, 'near' | 'far'>(),
+    );
+    const buffer = createLodPartitionBuffer();
+    const into = partitionShipsByDistanceInto(
+      ships,
+      camera,
+      500,
+      50,
+      new Map<number, 'near' | 'far'>(),
+      buffer,
+    );
+
+    expect(into.nearShips.map((s) => s.id)).toEqual(pure.nearShips.map((s) => s.id));
+    expect(into.farShips.map((s) => s.id)).toEqual(pure.farShips.map((s) => s.id));
+    expect(partitionsEqual(into, pure)).toBe(true);
   });
 });
 
