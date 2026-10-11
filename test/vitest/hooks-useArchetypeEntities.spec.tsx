@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vite-plus/test';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { renderHook, act } from '@testing-library/react';
 import { useArchetypeEntities } from '../../src/hooks/useArchetypeEntities.js';
 
@@ -21,31 +21,46 @@ class MockEvent {
   }
 }
 
-// Mock an archetype that follows the Miniplex pattern
+// Mock an archetype that follows the Miniplex pattern. `entities` is exposed
+// through a getter so tests can count how many snapshot reads the hook makes.
 class MockArchetype {
-  entities = [];
+  _entities = [];
+  entitiesReadCount = 0;
   onEntityAdded = new MockEvent();
   onEntityRemoved = new MockEvent();
 
   constructor(initialEntities = []) {
-    this.entities = [...initialEntities];
+    this._entities = [...initialEntities];
+  }
+
+  get entities() {
+    this.entitiesReadCount += 1;
+    return this._entities;
+  }
+
+  set entities(next) {
+    this._entities = next;
   }
 
   addEntity(entity) {
-    this.entities.push(entity);
+    this._entities.push(entity);
     this.onEntityAdded.emit();
   }
 
   removeEntity(entity) {
-    const index = this.entities.indexOf(entity);
+    const index = this._entities.indexOf(entity);
     if (index > -1) {
-      this.entities.splice(index, 1);
+      this._entities.splice(index, 1);
       this.onEntityRemoved.emit();
     }
   }
 }
 
 describe('useArchetypeEntities', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('returns empty array when archetype is null', () => {
     const { result } = renderHook(() => useArchetypeEntities(null));
 
@@ -121,6 +136,7 @@ describe('useArchetypeEntities', () => {
   });
 
   it('updates when entities are added to archetype', () => {
+    vi.useFakeTimers();
     const archetype = new MockArchetype([]);
 
     const { result } = renderHook(() => useArchetypeEntities(archetype));
@@ -135,10 +151,16 @@ describe('useArchetypeEntities', () => {
       archetype.onEntityAdded.emit();
     });
 
+    // The snapshot is coalesced to the next frame.
+    act(() => {
+      vi.advanceTimersToNextFrame();
+    });
+
     expect(result.current).toEqual([newEntity]);
   });
 
   it('updates when entities are removed from archetype', () => {
+    vi.useFakeTimers();
     const entity1 = { id: 1 };
     const entity2 = { id: 2 };
     const archetype = new MockArchetype([entity1, entity2]);
@@ -153,6 +175,41 @@ describe('useArchetypeEntities', () => {
       archetype.onEntityRemoved.emit();
     });
 
+    act(() => {
+      vi.advanceTimersToNextFrame();
+    });
+
+    expect(result.current).toEqual([entity2]);
+  });
+
+  it('coalesces a burst of entity events into one snapshot per frame', () => {
+    vi.useFakeTimers();
+    const entity1 = { id: 1 };
+    const entity2 = { id: 2 };
+    const archetype = new MockArchetype([]);
+
+    const { result } = renderHook(() => useArchetypeEntities(archetype));
+
+    expect(result.current).toEqual([]);
+
+    const readsAfterMount = archetype.entitiesReadCount;
+
+    // 3+ synchronous events without a frame boundary.
+    act(() => {
+      archetype.addEntity(entity1);
+      archetype.addEntity(entity2);
+      archetype.removeEntity(entity1);
+    });
+
+    // No per-event copy: the entity list was not read at all during the burst.
+    expect(archetype.entitiesReadCount).toBe(readsAfterMount);
+
+    act(() => {
+      vi.advanceTimersToNextFrame();
+    });
+
+    // Exactly one additional snapshot copy at the frame boundary.
+    expect(archetype.entitiesReadCount).toBe(readsAfterMount + 1);
     expect(result.current).toEqual([entity2]);
   });
 
@@ -165,5 +222,30 @@ describe('useArchetypeEntities', () => {
 
     expect(archetype.onEntityAdded.unsubscribeCallbacks).toHaveLength(1);
     expect(archetype.onEntityRemoved.unsubscribeCallbacks).toHaveLength(1);
+  });
+
+  it('cancels a pending flush on unmount without updating state', () => {
+    vi.useFakeTimers();
+    const entity = { id: 1 };
+    const archetype = new MockArchetype([]);
+
+    const { unmount } = renderHook(() => useArchetypeEntities(archetype));
+
+    const readsAfterMount = archetype.entitiesReadCount;
+
+    act(() => {
+      archetype.addEntity(entity);
+    });
+
+    unmount();
+
+    expect(() => {
+      act(() => {
+        vi.advanceTimersToNextFrame();
+      });
+    }).not.toThrow();
+
+    // The pending flush was cancelled: no snapshot copy after unmount.
+    expect(archetype.entitiesReadCount).toBe(readsAfterMount);
   });
 });

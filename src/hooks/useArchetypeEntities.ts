@@ -11,6 +11,19 @@ interface ArchetypeLike<T> {
   onEntityRemoved: ArchetypeSubscription;
 }
 
+// Schedule a callback for the next animation frame, returning a cancel handle.
+// Falls back to a macrotask (`setTimeout`) when `requestAnimationFrame` is
+// unavailable (e.g. non-DOM environments) so updates still coalesce off the
+// event stack.
+function scheduleFrame(callback: () => void): () => void {
+  if (typeof requestAnimationFrame === 'function') {
+    const id = requestAnimationFrame(callback);
+    return () => cancelAnimationFrame(id);
+  }
+  const id = setTimeout(callback, 0);
+  return () => clearTimeout(id);
+}
+
 // Accept a nullable archetype so callers can use this hook unconditionally
 // (avoids violating React's rules of hooks). When `archetype` is null the hook
 // returns an empty array and does not subscribe to events.
@@ -28,19 +41,36 @@ export function useArchetypeEntities<T extends GameEntity>(
       return;
     }
 
-    const updateEntities = () => {
+    let scheduled = false;
+    let cancelScheduled: (() => void) | null = null;
+
+    const flush = () => {
+      scheduled = false;
+      cancelScheduled = null;
       setEntities(Array.from(archetype.entities) as T[]);
     };
 
-    // Initialize and subscribe to entity changes
-    updateEntities();
+    // Initialize synchronously on mount / archetype change so the initial
+    // value and archetype swaps stay synchronous.
+    flush();
 
-    const unsubscribeAdded = archetype.onEntityAdded.subscribe(updateEntities);
-    const unsubscribeRemoved = archetype.onEntityRemoved.subscribe(updateEntities);
+    // Coalesce a burst of add/remove events into a single snapshot copy at the
+    // next frame; events that arrive before the flush are dropped.
+    const scheduleUpdate = () => {
+      if (scheduled) return;
+      scheduled = true;
+      cancelScheduled = scheduleFrame(flush);
+    };
+
+    const unsubscribeAdded = archetype.onEntityAdded.subscribe(scheduleUpdate);
+    const unsubscribeRemoved = archetype.onEntityRemoved.subscribe(scheduleUpdate);
 
     return () => {
       unsubscribeAdded();
       unsubscribeRemoved();
+      // Cancel any pending flush so no setState fires after unmount.
+      cancelScheduled?.();
+      scheduled = false;
     };
   }, [archetype]);
 
