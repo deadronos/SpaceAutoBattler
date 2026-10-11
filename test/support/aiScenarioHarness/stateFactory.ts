@@ -5,6 +5,7 @@ import { AI_CONFIG } from '../../../src/game/config.js';
 import { createDefaultMetrics } from '../../../src/game/metrics.js';
 import type { HarnessGameState, HarnessQueries, HarnessShip } from './types.js';
 import { createPhysicsWorldShim, createRapierShim } from './rapierShim.js';
+import { createTestSimulationState } from '../../fixtures/simulationFixture.js';
 
 /**
  * Creates a harness game state with all necessary queries and environment wiring.
@@ -90,24 +91,10 @@ export function createHarnessState(options: {
     rng,
     paused: false,
     timeScale: 1,
-    simulation: {
+    simulation: createTestSimulationState({
       step: tickInterval,
-      accumulator: 0,
-      maxSubSteps: 5,
-      alpha: 0,
-      lastTickIndex: 0,
-      lastTickStart: 0,
       lastTickDuration: tickInterval,
-      deferredMutations: [],
-      postStepMutations: [],
-      rapierDiagnostics: {
-        deferredMutationFailures: 0,
-        guardTrips: 0,
-        lastFailureTick: -1,
-        lastGuardTick: -1,
-        lastDeferredMutationError: undefined,
-      },
-    },
+    }),
   } as unknown as HarnessGameState;
 
   return state;
