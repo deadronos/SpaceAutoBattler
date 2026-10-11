@@ -19,6 +19,7 @@ import { useBloomRegistration } from '../../renderer/bloom/index.js';
 import { createInstancedLayerManager } from './instancedLayer.js';
 import type { InstancedLayerManager } from './types.js';
 import { createSaturationWarningState, warnOnSaturation } from './saturationWarning.js';
+import { shouldUpdateProjectileMatrix } from '../../renderer/projectileLod.js';
 
 interface ProjectilesInstancedLayerProps {
   archetype: Archetype<GameEntity, ['projectile']>;
@@ -40,8 +41,6 @@ interface ProjectileGroupState {
 }
 
 const DEFAULT_CAPACITY = 512;
-const LOD_CLOSE_DISTANCE_SQ = 200 * 200; // Projects within 200 units are updated at full 60 FPS
-const LOD_FAR_UPDATE_INTERVAL = 2; // Far projectiles update every 2 frames
 // HIDDEN_MATRIX is exported from `instancedLayer.ts` and used globally to
 // hide released instances. Keeping a single canonical source avoids dupes.
 const TEMP_MATRIX = new Matrix4();
@@ -231,11 +230,12 @@ export function ProjectilesInstancedLayer({
       }
 
       // 3. Distance LOD checking
-      const distSq = cameraPos.distanceToSquared(tempSphereRef.current.center);
-      const isClose = distSq < LOD_CLOSE_DISTANCE_SQ;
-      const isNew = !group.manager.has(projectile.id);
-      const shouldUpdateMatrix =
-        isClose || isNew || (frameId + projectile.id) % LOD_FAR_UPDATE_INTERVAL === 0;
+      const shouldUpdateMatrix = shouldUpdateProjectileMatrix({
+        distanceSq: cameraPos.distanceToSquared(tempSphereRef.current.center),
+        isNew: !group.manager.has(projectile.id),
+        frameId,
+        projectileId: projectile.id,
+      });
 
       if (totalAllocated >= maxTotal) {
         saturated = true;

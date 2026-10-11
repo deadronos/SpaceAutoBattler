@@ -14,6 +14,7 @@ import {
   useThrusterAnchors,
   computeThrusterAnchorsWorld as computeAnchorsWorld,
 } from '../renderer/particles/useThrusterAnchors.js';
+import { markAttributeUpdateRange } from '../renderer/particles/trailUpdateRanges.js';
 
 interface ParticleTrailProps {
   ships: ShipEntity[];
@@ -22,36 +23,6 @@ interface ParticleTrailProps {
 }
 
 const TRAIL_RNG_SEED = 0x54524149; // 'TRAI'
-
-function markAttributeUpdateRange(
-  itemSize: number,
-  startParticleIndex: number,
-  spawnedParticleCount: number,
-  maxParticles: number,
-  attribute: ParticleTrailResources['attributes'][keyof ParticleTrailResources['attributes']],
-): void {
-  attribute.clearUpdateRanges();
-
-  if (spawnedParticleCount <= 0) {
-    return;
-  }
-
-  if (spawnedParticleCount >= maxParticles) {
-    attribute.addUpdateRange(0, maxParticles * itemSize);
-    attribute.needsUpdate = true;
-    return;
-  }
-
-  const firstRangeCount = Math.min(spawnedParticleCount, maxParticles - startParticleIndex);
-  attribute.addUpdateRange(startParticleIndex * itemSize, firstRangeCount * itemSize);
-
-  const overflowCount = spawnedParticleCount - firstRangeCount;
-  if (overflowCount > 0) {
-    attribute.addUpdateRange(0, overflowCount * itemSize);
-  }
-
-  attribute.needsUpdate = true;
-}
 
 /**
  * Simple particle trail system for ship thrusters.
