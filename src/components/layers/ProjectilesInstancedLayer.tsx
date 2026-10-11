@@ -1,29 +1,12 @@
-import { useFrame } from '@react-three/fiber';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import type { InstancedMesh } from 'three';
-import { Color, Frustum, Matrix4, Sphere, Vector3 } from 'three';
+import React, { useEffect } from 'react';
 import type { Archetype, GameEntity, ProjectileEntity } from '../../types/index.js';
 import { useArchetypeEntities } from '../../hooks/useArchetypeEntities.js';
 import { useGameState } from '../../game/context.js';
-import { getProjectileGeometry } from '../../utils/projectileGeometries.js';
-import {
-  computeBeamTransform,
-  resolveProjectileInfo,
-  type ResolvedProjectileInfo,
-} from '../../utils/projectileInfo.js';
-import {
-  createInstancedMaterial,
-  type InstancedMaterialInfo,
-} from '../../renderer/materialRegistry.js';
 import { useBloomRegistration } from '../../renderer/bloom/index.js';
-import { createInstancedLayerManager } from './instancedLayer.js';
-import type { InstancedLayerManager } from './types.js';
-import { createSaturationWarningState, warnOnSaturation } from './saturationWarning.js';
-import { shouldUpdateProjectileMatrix } from '../../renderer/projectileLod.js';
 import {
-  TEMP_PROJECTILES_LAYER_POSITION,
-  TEMP_PROJECTILES_LAYER_SCALE,
-} from '../../utils/tempVectors.js';
+  useProjectileInstancedGroups,
+  type ProjectileGroupState,
+} from '../../hooks/useProjectileInstancedGroups.js';
 
 interface ProjectilesInstancedLayerProps {
   archetype: Archetype<GameEntity, ['projectile']>;
@@ -32,22 +15,7 @@ interface ProjectilesInstancedLayerProps {
   maxTotal?: number;
 }
 
-interface ProjectileGroupState {
-  key: string;
-  capacity: number;
-  manager: InstancedLayerManager<number>;
-  meshRef: React.MutableRefObject<InstancedMesh | null>;
-  materialInfo: InstancedMaterialInfo;
-  geometry: ReturnType<typeof getProjectileGeometry>;
-  baseColor: Color;
-  maxIndex: number;
-  info: ResolvedProjectileInfo;
-}
-
 const DEFAULT_CAPACITY = 512;
-// HIDDEN_MATRIX is exported from `instancedLayer.ts` and used globally to
-// hide released instances. Keeping a single canonical source avoids dupes.
-const TEMP_MATRIX = new Matrix4();
 
 function ProjectileGroupMesh({ group }: { group: ProjectileGroupState }): React.ReactElement {
   const { meshRef, materialInfo, geometry, capacity, baseColor } = group;
@@ -102,198 +70,13 @@ export function ProjectilesInstancedLayer({
   maxTotal = Number.POSITIVE_INFINITY,
 }: ProjectilesInstancedLayerProps): React.ReactElement {
   const projectiles = useArchetypeEntities<ProjectileEntity>(archetype);
-  const groupsRef = useRef<Map<string, ProjectileGroupState>>(new Map());
-  const [, forceRender] = useState(0);
-  const warningStateRef = useRef(createSaturationWarningState());
-  const frameRef = useRef(0);
-  const lastTickRef = useRef<number | null>(null);
-  const frustumRef = useRef(new Frustum());
-  const projScreenMatrixRef = useRef(new Matrix4());
-  const tempSphereRef = useRef(new Sphere());
-  const tempBeamCenterRef = useRef(new Vector3());
   const state = useGameState();
-
-  const ensureGroup = useCallback(
-    (key: string): ProjectileGroupState => {
-      const existing = groupsRef.current.get(key);
-      if (existing) return existing;
-      const resolvedCapacity = Math.max(1, capacityByType?.[key] ?? defaultCapacity);
-      const geometry = getProjectileGeometry(key);
-      const info = resolveProjectileInfo(key);
-      const materialInfo = createInstancedMaterial(key);
-      const meshRef: React.MutableRefObject<InstancedMesh | null> = { current: null };
-      const baseColor = new Color(1, 1, 1);
-      const manager = createInstancedLayerManager<number>(meshRef, {
-        capacity: resolvedCapacity,
-        supportsInstanceColor: materialInfo.supportsInstanceColor,
-        baseColor,
-      });
-      const group: ProjectileGroupState = {
-        key,
-        capacity: resolvedCapacity,
-        manager,
-        meshRef,
-        materialInfo,
-        geometry,
-        baseColor,
-        maxIndex: -1,
-        info,
-      };
-      groupsRef.current.set(key, group);
-      forceRender((n) => n + 1);
-      return group;
-    },
-    [capacityByType, defaultCapacity],
-  );
-
-  useEffect(() => {
-    const keys = new Set<string>();
-    for (const projectile of projectiles) {
-      const key =
-        projectile.projectile.renderKey ?? projectile.projectile.bulletType ?? 'bullet:laser';
-      keys.add(key);
-    }
-    for (const key of keys) {
-      ensureGroup(key);
-    }
-  }, [projectiles, ensureGroup]);
-  useFrame((r3fState) => {
-    frameRef.current += 1;
-    const frameId = frameRef.current;
-    const simTick = state?.simulation.lastTickIndex ?? null;
-    const tickUnchanged = simTick != null && lastTickRef.current === simTick;
-
-    if (tickUnchanged) {
-      let hasBeam = false;
-      for (const projectile of projectiles) {
-        const projectedCategory =
-          projectile.projectile.category ?? projectile.projectile.renderInfo?.category;
-        if (projectedCategory === 'beam') {
-          hasBeam = true;
-          break;
-        }
-      }
-      if (!hasBeam) return;
-    }
-    lastTickRef.current = simTick;
-
-    const camera = r3fState.camera;
-    projScreenMatrixRef.current.multiplyMatrices(
-      camera.projectionMatrix,
-      camera.matrixWorldInverse,
-    );
-    frustumRef.current.setFromProjectionMatrix(projScreenMatrixRef.current);
-    const cameraPos = camera.position;
-
-    let totalAllocated = 0;
-    let saturated = false;
-
-    for (const group of groupsRef.current.values()) {
-      group.manager.beginFrame();
-      group.maxIndex = -1;
-    }
-
-    for (const projectile of projectiles) {
-      const key =
-        projectile.projectile.renderKey ?? projectile.projectile.bulletType ?? 'bullet:laser';
-      const group = ensureGroup(key);
-      if (!group) continue;
-
-      const info = projectile.projectile.renderInfo ?? group.info;
-      const category = projectile.projectile.category ?? info.category;
-
-      // 1. Compute bounding sphere for frustum culling
-      const pos = projectile.transform.position;
-      if (category === 'beam' && projectile.projectile.beam) {
-        const beam = projectile.projectile.beam;
-        let beamLength =
-          beam.maxLength ?? projectile.projectile.speed * projectile.projectile.maxTtl;
-        if (beam.hitPoint) {
-          beamLength = tempBeamCenterRef.current.copy(beam.hitPoint).sub(pos).length();
-        }
-        if (!Number.isFinite(beamLength) || beamLength <= 0) {
-          beamLength = projectile.projectile.speed * Math.max(projectile.projectile.maxTtl, 0);
-        }
-        beamLength = Math.max(0.1, beamLength);
-
-        // Midpoint center
-        tempBeamCenterRef.current.copy(pos).addScaledVector(projectile.direction, beamLength / 2);
-        tempSphereRef.current.center.copy(tempBeamCenterRef.current);
-        tempSphereRef.current.radius = beamLength / 2 + 1.0;
-      } else {
-        const baseScale = projectile.transform.scale * info.visualMultiplier;
-        tempSphereRef.current.center.copy(pos);
-        tempSphereRef.current.radius = baseScale + 1.0;
-      }
-
-      // 2. Frustum Culling
-      if (!frustumRef.current.intersectsSphere(tempSphereRef.current)) {
-        continue;
-      }
-
-      // 3. Distance LOD checking
-      const shouldUpdateMatrix = shouldUpdateProjectileMatrix({
-        distanceSq: cameraPos.distanceToSquared(tempSphereRef.current.center),
-        isNew: !group.manager.has(projectile.id),
-        frameId,
-        projectileId: projectile.id,
-      });
-
-      if (totalAllocated >= maxTotal) {
-        saturated = true;
-        continue;
-      }
-
-      const index = group.manager.allocate(projectile.id);
-      if (index == null) {
-        saturated = true;
-        continue;
-      }
-
-      totalAllocated += 1;
-
-      // If we don't need to update matrix on this frame, skip the calculations and keep existing matrix
-      if (!shouldUpdateMatrix) {
-        continue;
-      }
-
-      const mesh = group.meshRef.current;
-      if (!mesh) continue;
-
-      if (category === 'beam' && projectile.projectile.beam) {
-        const result = computeBeamTransform({
-          projectile,
-          info,
-          matrix: TEMP_MATRIX,
-          scratchScale: TEMP_PROJECTILES_LAYER_SCALE,
-          scratchPosition: TEMP_PROJECTILES_LAYER_POSITION,
-        });
-        group.manager.setMatrixAt(index, result.matrix);
-      } else {
-        const baseScale = projectile.transform.scale * info.visualMultiplier;
-        TEMP_PROJECTILES_LAYER_SCALE.setScalar(baseScale);
-        TEMP_MATRIX.compose(
-          projectile.transform.position,
-          projectile.transform.rotation,
-          TEMP_PROJECTILES_LAYER_SCALE,
-        );
-        group.manager.setMatrixAt(index, TEMP_MATRIX);
-      }
-    }
-
-    for (const group of groupsRef.current.values()) {
-      const mesh = group.meshRef.current;
-      if (!mesh) continue;
-      const summary = group.manager.endFrame();
-      if (summary.saturated) saturated = true;
-    }
-
-    warnOnSaturation({
-      saturated,
-      frameId,
-      state: warningStateRef.current,
-      message: '[ProjectilesInstancedLayer] Capacity saturated, clamping projectile render count.',
-    });
+  const groupsRef = useProjectileInstancedGroups({
+    projectiles,
+    state,
+    capacityByType,
+    defaultCapacity,
+    maxTotal,
   });
 
   return (

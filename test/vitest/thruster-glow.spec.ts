@@ -66,13 +66,18 @@ describe('Thruster glow enhancement', () => {
 
     const txt = fs.readFileSync(file, 'utf-8');
 
-    // Check for particle system functionality
+    // Component wires the per-frame simulation hook
     expect(txt).toContain('ParticleTrails');
-    expect(txt).toContain('useThrusterAnchors');
-    expect(txt).toContain('InstancedBufferGeometry');
-    expect(txt).toContain('ShaderMaterial');
-    expect(txt).toContain('resolveThrusterAnchorsWorld');
-    expect(txt).toContain('throttle');
+    expect(txt).toContain('useParticleTrailSimulation');
+
+    // Check for particle system functionality (now owned by the simulation hook)
+    const simulationFile = path.resolve(__dirname, '../../src/hooks/useParticleTrailSimulation.ts');
+    const simulationTxt = fs.readFileSync(simulationFile, 'utf-8');
+    expect(simulationTxt).toContain('useThrusterAnchors');
+    expect(simulationTxt).toContain('InstancedBufferGeometry');
+    expect(simulationTxt).toContain('ShaderMaterial');
+    expect(simulationTxt).toContain('resolveThrusterAnchorsWorld');
+    expect(simulationTxt).toContain('throttle');
 
     const resourcesFile = path.resolve(__dirname, '../../src/renderer/particles/trailResources.ts');
     const resourcesTxt = fs.readFileSync(resourcesFile, 'utf-8');
