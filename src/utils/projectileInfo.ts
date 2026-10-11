@@ -9,9 +9,9 @@ import {
   type ProjectileConfigItem,
 } from '../config/projectiles.js';
 import { getProjectileGeometry, type ProjectileGeometryMetadata } from './projectileGeometries.js';
+import { TEMP_PROJECTILE_INFO_HIT_VECTOR } from './tempVectors.js';
 
 const FALLBACK_PROJECTILE_KEY = 'bullet:laser';
-const TEMP_HIT_VECTOR = new Vector3();
 
 export interface ResolvedProjectileGeometryMetadata {
   category?: ProjectileCategory;
@@ -158,7 +158,7 @@ export function computeBeamTransform({
   const workingMatrix = matrix ?? new Matrix4();
   const scale = scratchScale ?? new Vector3();
   const position = scratchPosition ?? new Vector3();
-  const directionScratch = scratchDirection ?? TEMP_HIT_VECTOR;
+  const directionScratch = scratchDirection ?? TEMP_PROJECTILE_INFO_HIT_VECTOR;
 
   const baseScale = projectile.transform.scale * info.visualMultiplier;
   const baseWidth =

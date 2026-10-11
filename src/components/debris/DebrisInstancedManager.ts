@@ -1,17 +1,15 @@
-import { InstancedBufferAttribute, Quaternion, Vector3 } from 'three';
+import { InstancedBufferAttribute } from 'three';
 import type { InstancedMesh } from 'three';
 import { DEBRIS_DELAY } from '../explosions/constants.js';
 import { getCachedColor } from '../explosions/derived.js';
 import { clamp01 } from '../../utils/math.js';
+import { TEMP_DEBRIS_QUAT, TEMP_DEBRIS_VEC } from '../../utils/tempVectors.js';
 import {
   EMPTY_EFFECT_RESULT,
   type EffectUpdateContext,
   type EffectUpdateResult,
 } from '../explosions/effectUpdaters/types.js';
 import { HIDDEN_MATRIX } from '../layers/instancedLayer.js';
-
-const TMP_QUAT = new Quaternion();
-const TMP_VEC = new Vector3();
 
 function ensureInstanceColor(mesh: InstancedMesh, capacity: number): void {
   if (!mesh.instanceColor) {
@@ -69,14 +67,14 @@ export class DebrisInstancedManager {
       const shardProgress = clamp01(debrisT / shard.lifetime);
       const distance = shard.speed * debrisT;
 
-      TMP_VEC.copy(shard.direction).multiplyScalar(distance).add(event.position);
-      dummy.position.copy(TMP_VEC);
+      TEMP_DEBRIS_VEC.copy(shard.direction).multiplyScalar(distance).add(event.position);
+      dummy.position.copy(TEMP_DEBRIS_VEC);
 
       const shardScale = Math.max(event.radius * 0.05 * shard.scale * (1 - shardProgress), 0.04);
       dummy.scale.setScalar(shardScale);
 
-      TMP_QUAT.setFromAxisAngle(shard.axis, shard.spin * debrisT);
-      dummy.quaternion.copy(TMP_QUAT);
+      TEMP_DEBRIS_QUAT.setFromAxisAngle(shard.axis, shard.spin * debrisT);
+      dummy.quaternion.copy(TEMP_DEBRIS_QUAT);
       dummy.updateMatrix();
 
       mesh.setMatrixAt(startIndex + count, dummy.matrix);

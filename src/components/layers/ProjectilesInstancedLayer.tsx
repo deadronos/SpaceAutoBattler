@@ -20,6 +20,10 @@ import { createInstancedLayerManager } from './instancedLayer.js';
 import type { InstancedLayerManager } from './types.js';
 import { createSaturationWarningState, warnOnSaturation } from './saturationWarning.js';
 import { shouldUpdateProjectileMatrix } from '../../renderer/projectileLod.js';
+import {
+  TEMP_PROJECTILES_LAYER_POSITION,
+  TEMP_PROJECTILES_LAYER_SCALE,
+} from '../../utils/tempVectors.js';
 
 interface ProjectilesInstancedLayerProps {
   archetype: Archetype<GameEntity, ['projectile']>;
@@ -44,8 +48,6 @@ const DEFAULT_CAPACITY = 512;
 // HIDDEN_MATRIX is exported from `instancedLayer.ts` and used globally to
 // hide released instances. Keeping a single canonical source avoids dupes.
 const TEMP_MATRIX = new Matrix4();
-const TEMP_SCALE = new Vector3();
-const TEMP_POSITION = new Vector3();
 
 function ProjectileGroupMesh({ group }: { group: ProjectileGroupState }): React.ReactElement {
   const { meshRef, materialInfo, geometry, capacity, baseColor } = group;
@@ -263,17 +265,17 @@ export function ProjectilesInstancedLayer({
           projectile,
           info,
           matrix: TEMP_MATRIX,
-          scratchScale: TEMP_SCALE,
-          scratchPosition: TEMP_POSITION,
+          scratchScale: TEMP_PROJECTILES_LAYER_SCALE,
+          scratchPosition: TEMP_PROJECTILES_LAYER_POSITION,
         });
         group.manager.setMatrixAt(index, result.matrix);
       } else {
         const baseScale = projectile.transform.scale * info.visualMultiplier;
-        TEMP_SCALE.setScalar(baseScale);
+        TEMP_PROJECTILES_LAYER_SCALE.setScalar(baseScale);
         TEMP_MATRIX.compose(
           projectile.transform.position,
           projectile.transform.rotation,
-          TEMP_SCALE,
+          TEMP_PROJECTILES_LAYER_SCALE,
         );
         group.manager.setMatrixAt(index, TEMP_MATRIX);
       }

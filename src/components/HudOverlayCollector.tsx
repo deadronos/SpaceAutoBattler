@@ -1,13 +1,12 @@
 import { useEffect, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { Vector3 } from 'three';
 import type { ShipEntity, StatusEffectTag } from '../types/index.js';
 import { useGameState } from '../game/context.js';
 import { useUiStore } from '../game/uiStore.js';
 import { clamp01 } from '../utils/math.js';
+import { TEMP_HUD_POSITION } from '../utils/tempVectors.js';
 import { useHudOverlayStore, type ShipHudOverlaySnapshot } from '../renderer/hudOverlayStore.js';
 
-const tmpPosition = new Vector3();
 let frameCounter = 0;
 
 export function HudOverlayCollector(): null {
@@ -41,11 +40,11 @@ export function HudOverlayCollector(): null {
       const transform = ship.transform;
       if (!transform) continue;
 
-      tmpPosition.copy(transform.position);
-      tmpPosition.project(camera);
-      const visible = tmpPosition.z >= -1 && tmpPosition.z <= 1;
-      const x = (tmpPosition.x * 0.5 + 0.5) * size.width;
-      const y = (-tmpPosition.y * 0.5 + 0.5) * size.height;
+      TEMP_HUD_POSITION.copy(transform.position);
+      TEMP_HUD_POSITION.project(camera);
+      const visible = TEMP_HUD_POSITION.z >= -1 && TEMP_HUD_POSITION.z <= 1;
+      const x = (TEMP_HUD_POSITION.x * 0.5 + 0.5) * size.width;
+      const y = (-TEMP_HUD_POSITION.y * 0.5 + 0.5) * size.height;
       const healthRatio = safeRatio(ship.ship.hp, ship.ship.maxHp);
       const shieldRatio =
         ship.ship.maxShield > 0 ? safeRatio(ship.ship.shield, ship.ship.maxShield) : Number.NaN;

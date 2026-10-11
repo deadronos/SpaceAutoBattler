@@ -110,3 +110,26 @@ export const TEMP_CARRIERS_POS = new Vector3();
 
 // projectileDamage.ts
 export const TEMP_PROJECTILE_DAMAGE_RIPPLE_DIR = new Vector3();
+
+// --- Remaining module-local scratch temps (#663, Task 2) ---
+// Each former module-local scratch temp gets its own distinct slot so two
+// modules (or two call chains) can never alias the same buffer.
+
+// utils/projectileInfo.ts
+export const TEMP_PROJECTILE_INFO_HIT_VECTOR = new Vector3();
+
+// components/debris/DebrisInstancedManager.ts
+export const TEMP_DEBRIS_QUAT = new Quaternion();
+export const TEMP_DEBRIS_VEC = new Vector3();
+
+// components/layers/ProjectilesInstancedLayer.tsx
+export const TEMP_PROJECTILES_LAYER_SCALE = new Vector3();
+export const TEMP_PROJECTILES_LAYER_POSITION = new Vector3();
+
+// components/layers/MuzzleFlashInstancedLayer.tsx
+export const TEMP_MUZZLE_SCALE = new Vector3();
+export const TEMP_MUZZLE_POS = new Vector3();
+export const TEMP_MUZZLE_ROT = new Quaternion();
+
+// components/HudOverlayCollector.tsx
+export const TEMP_HUD_POSITION = new Vector3();
