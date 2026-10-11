@@ -1,19 +1,16 @@
 import { useEffect, useMemo, useRef } from 'react';
 import type { Mesh } from 'three';
-import { AdditiveBlending, MeshBasicMaterial, NormalBlending, ShaderMaterial } from 'three';
 import { useFrame } from '@react-three/fiber';
-import { colorFromConfig } from '../../utils/color.js';
 import { RENDER_ORDER_TRANSLUCENT_ADDITIVE } from '../../renderer/sceneLayerOrder.js';
 import { useUiStore } from '../../game/uiStore.js';
-import { isCopilotDebugEnabled } from '../../utils/copilotDebug.js';
-import { registerDebugHook, clearDebugHooks } from '../../debug/copilotDebugRegistry.js';
-import { reportMaterialError } from '../../utils/errorReporting.js';
-import type { PlanetRingsUniforms } from '../../types/renderer.js';
+import { clearDebugHooks } from '../../debug/copilotDebugRegistry.js';
 import { createPlanetRingGeometry } from '../../renderer/environment/planetRingGeometry.js';
 import {
   createPlanetRingBasicMaterial,
   createPlanetRingMaterial,
 } from '../../renderer/environment/planetRingMaterial.js';
+import { installPlanetRingsDebug } from '../../debug/planetRingsDebug.js';
+import { usePlanetRingUniforms } from '../../hooks/usePlanetRingUniforms.js';
 
 interface PlanetRingsProps {
   /** Inner radius of the rings */
@@ -139,55 +136,16 @@ export function PlanetRings({
 
   const materialToUse = postprocessingEnabled ? material : basicMaterial;
 
-  // Type guard to check if material has uniforms (ShaderMaterial)
-  const isShaderMat = (
-    mat: ShaderMaterial | MeshBasicMaterial,
-  ): mat is ShaderMaterial & { uniforms: PlanetRingsUniforms } => {
-    return 'uniforms' in mat;
-  };
-
-  // Update uniforms and blending when postprocessing toggles or props change.
-  useEffect(() => {
-    try {
-      if (isShaderMat(materialToUse)) {
-        const uniforms = materialToUse.uniforms;
-        const desiredTintMix =
-          typeof tintMix === 'number' ? tintMix : postprocessingEnabled ? 0.0 : 0.9;
-        uniforms.uTintMix.value = desiredTintMix;
-        uniforms.uTintColor.value = colorFromConfig(tintColor ?? '#d9efff');
-        uniforms.uBrightness.value = postprocessingEnabled ? brightness : Math.max(brightness, 1.6);
-        uniforms.uOpacity.value = postprocessingEnabled ? opacity : Math.max(0.45, opacity);
-        uniforms.uBandFreq.value = bandFrequency;
-        uniforms.uBandStrength.value = bandStrength;
-        uniforms.uBandNoiseScale.value = bandNoiseScale;
-        uniforms.uBandDarkness.value = bandDarkness;
-        uniforms.uPlanetCenter.value = [planetCenter.x, planetCenter.y, planetCenter.z];
-        uniforms.uPlanetRadius.value = planetRadius;
-        uniforms.uShadowStrength.value = shadowStrength;
-        uniforms.uPenumbra.value = penumbra;
-        uniforms.uLightDir.value = [lightDir.x, lightDir.y, lightDir.z];
-        try {
-          materialToUse.blending = postprocessingEnabled ? AdditiveBlending : NormalBlending;
-        } catch (error) {
-          // Expected: Blending mode may be read-only
-          reportMaterialError('blending', 'ringMaterial', error);
-        }
-        try {
-          materialToUse.needsUpdate = true;
-        } catch (error) {
-          // Expected: Material may be disposed during React unmount cycle
-          reportMaterialError('needsUpdate', 'ringMaterial', error);
-        }
-      }
-    } catch (error) {
-      // Expected: Material may be disposed during React unmount cycle
-      reportMaterialError('uniformUpdate.postprocessing', 'ringMaterial', error);
-    }
-  }, [
+  usePlanetRingUniforms({
     materialToUse,
     postprocessingEnabled,
     opacity,
     brightness,
+    innerRadius,
+    outerRadius,
+    fresnelStrength,
+    tintColor,
+    tintMix,
     bandFrequency,
     bandStrength,
     bandNoiseScale,
@@ -197,102 +155,12 @@ export function PlanetRings({
     shadowStrength,
     penumbra,
     lightDir,
-    tintColor,
-    tintMix,
-  ]);
+  });
 
-  // Keep uniforms in sync when props change
-  useEffect(() => {
-    try {
-      if (isShaderMat(materialToUse)) {
-        const uniforms = materialToUse.uniforms;
-        uniforms.uOpacity.value = opacity;
-        uniforms.uInnerRadius.value = innerRadius;
-        uniforms.uOuterRadius.value = outerRadius;
-        uniforms.uBrightness.value = brightness;
-        uniforms.uFresnelStrength.value = fresnelStrength;
-        uniforms.uBandFreq.value = bandFrequency;
-        uniforms.uPlanetCenter.value = [planetCenter.x, planetCenter.y, planetCenter.z];
-        uniforms.uPlanetRadius.value = planetRadius;
-        uniforms.uPenumbra.value = penumbra;
-        try {
-          materialToUse.needsUpdate = true;
-        } catch (error) {
-          // Expected: Material may be disposed during React unmount cycle
-          reportMaterialError('needsUpdate', 'ringMaterial', error);
-        }
-      }
-    } catch (error) {
-      // Expected: Material may be disposed during React unmount cycle
-      reportMaterialError('uniformUpdate.props', 'ringMaterial', error);
-    }
-  }, [
-    materialToUse,
-    opacity,
-    innerRadius,
-    outerRadius,
-    brightness,
-    fresnelStrength,
-    bandFrequency,
-    planetCenter,
-    planetRadius,
-    penumbra,
-  ]);
-
-  // Attach debug helpers once the material exists so we can adjust uniforms
-  // and render order from the console during interactive debugging. Hooks are
+  // Attach debug helpers once the material exists so uniforms and render order
+  // can be adjusted from the console during interactive debugging. Hooks are
   // registered under the `rings` owner so they are cleaned up on unmount.
-  try {
-    if (isCopilotDebugEnabled()) {
-      try {
-        registerDebugHook('__copilot_ringMaterial', materialToUse, 'rings');
-        const setRingOpacity = (v: unknown) => {
-          try {
-            const n = Number(v);
-            if (!Number.isFinite(n)) return { set: false, reason: 'not-a-number' };
-            if (isShaderMat(materialToUse)) {
-              materialToUse.uniforms.uOpacity.value = Math.max(0, Math.min(n, 1));
-            } else if ('opacity' in materialToUse) {
-              materialToUse.opacity = Math.max(0, Math.min(n, 1));
-            }
-            try {
-              materialToUse.needsUpdate = true;
-            } catch (error) {
-              // Expected: Material may be disposed
-              reportMaterialError('debug.needsUpdate', 'ringMaterial', error);
-            }
-            const resultValue = isShaderMat(materialToUse)
-              ? materialToUse.uniforms.uOpacity.value
-              : 'opacity' in materialToUse
-                ? materialToUse.opacity
-                : undefined;
-            return { set: true, value: resultValue };
-          } catch (e) {
-            return { set: false, reason: String(e) };
-          }
-        };
-        registerDebugHook('__copilot_setRingOpacity', setRingOpacity, 'rings');
-        const setRingRenderOrder = (v: unknown) => {
-          try {
-            const n = Number(v);
-            if (!meshRef.current) return { set: false, reason: 'no-mesh' };
-            if (!Number.isFinite(n)) return { set: false, reason: 'not-a-number' };
-            meshRef.current.renderOrder = Math.floor(n);
-            return { set: true, value: meshRef.current.renderOrder };
-          } catch (e) {
-            return { set: false, reason: String(e) };
-          }
-        };
-        registerDebugHook('__copilot_setRingRenderOrder', setRingRenderOrder, 'rings');
-      } catch (error) {
-        // Expected: Debug helper attachment may fail in some environments
-        reportMaterialError('debug.attach', 'ringMaterial', error);
-      }
-    }
-  } catch (error) {
-    // Expected: isCopilotDebugEnabled check may fail in some environments
-    reportMaterialError('debug.check', 'ringMaterial', error);
-  }
+  installPlanetRingsDebug({ materialToUse, meshRef });
 
   useEffect(() => () => clearDebugHooks('rings'), []);
 
