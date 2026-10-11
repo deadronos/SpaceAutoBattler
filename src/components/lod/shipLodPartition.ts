@@ -16,6 +16,14 @@ export interface LodPartitionResult {
   farShips: ShipEntity[];
 }
 
+export interface LodPartitionBuffer extends LodPartitionResult {
+  activeIds: Set<number>;
+}
+
+export function createLodPartitionBuffer(): LodPartitionBuffer {
+  return { nearShips: [], farShips: [], activeIds: new Set<number>() };
+}
+
 function classifyLod(
   distance: number,
   previous: LodLevel | undefined,
@@ -31,17 +39,18 @@ function classifyLod(
   return distance > threshold ? 'far' : 'near';
 }
 
-export function partitionShipsByDistance(
+export function partitionShipsByDistanceInto(
   ships: readonly ShipEntity[],
   cameraPosition: Vector3,
   threshold: number,
   hysteresis: number,
   previous: Map<number, LodLevel>,
+  buffer: LodPartitionBuffer,
 ): LodPartitionResult {
-  const nearShips: ShipEntity[] = [];
-  const farShips: ShipEntity[] = [];
-
-  const activeIds = new Set<number>();
+  const { nearShips, farShips, activeIds } = buffer;
+  nearShips.length = 0;
+  farShips.length = 0;
+  activeIds.clear();
 
   for (const ship of ships) {
     activeIds.add(ship.id);
@@ -62,7 +71,19 @@ export function partitionShipsByDistance(
     }
   }
 
-  return { nearShips, farShips };
+  return buffer;
+}
+
+export function partitionShipsByDistance(
+  ships: readonly ShipEntity[],
+  cameraPosition: Vector3,
+  threshold: number,
+  hysteresis: number,
+  previous: Map<number, LodLevel>,
+): LodPartitionResult {
+  const buffer = createLodPartitionBuffer();
+  partitionShipsByDistanceInto(ships, cameraPosition, threshold, hysteresis, previous, buffer);
+  return { nearShips: buffer.nearShips, farShips: buffer.farShips };
 }
 
 export function computeLodPartition(

@@ -1,4 +1,6 @@
-import { describe, expect, it } from 'vite-plus/test';
+import React from 'react';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
+import { act, cleanup, render } from '@testing-library/react';
 import {
   Color,
   InstancedBufferAttribute,
@@ -10,8 +12,49 @@ import {
   Vector3,
 } from 'three';
 import type { ShipEntity, Team } from '../../../src/types/index.js';
+
+const { frameCallbacks, camera, thrusterShipsCalls, impostorShipsCalls } = vi.hoisted(() => ({
+  frameCallbacks: [] as Array<() => void>,
+  camera: { position: { x: 0, y: 0, z: 0 } },
+  thrusterShipsCalls: [] as Array<readonly ShipEntity[]>,
+  impostorShipsCalls: [] as Array<readonly ShipEntity[]>,
+}));
+
+vi.mock('@react-three/fiber', () => ({
+  useThree: () => ({ camera }),
+  useFrame: (fn: () => void) => {
+    frameCallbacks.push(fn);
+  },
+}));
+
+vi.mock('../../../src/components/Ship.js', () => ({
+  ShipObject: () => null,
+}));
+
+vi.mock('../../../src/components/thrusters/ThrusterInstancedManager.js', () => ({
+  ThrusterInstancedManager: (props: { ships: readonly ShipEntity[] }) => {
+    thrusterShipsCalls.push(props.ships);
+    return null;
+  },
+}));
+
+vi.mock('../../../src/components/lod/ShipImpostorLayer.js', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('../../../src/components/lod/ShipImpostorLayer.js')>();
+  return {
+    ...actual,
+    ShipImpostorLayer: (props: { ships: readonly ShipEntity[] }) => {
+      impostorShipsCalls.push(props.ships);
+      return null;
+    },
+  };
+});
+
+import { ShipLODManager } from '../../../src/components/lod/ShipLODManager.js';
 import {
+  createLodPartitionBuffer,
   partitionShipsByDistance,
+  partitionShipsByDistanceInto,
   computeLodPartition,
   partitionsEqual,
   DEFAULT_DISTANCE_THRESHOLD,
@@ -87,6 +130,103 @@ describe('partitionShipsByDistance', () => {
     ships[1]!.transform.position.set(300, 0, 0);
     const third = partitionShipsByDistance(ships, camera, 500, 50, previous);
     expect(third.nearShips.map((s) => s.id)).toContain(2);
+  });
+});
+
+describe('partitionShipsByDistanceInto', () => {
+  it('creates an empty reusable buffer', () => {
+    const buffer = createLodPartitionBuffer();
+    expect(buffer.nearShips).toEqual([]);
+    expect(buffer.farShips).toEqual([]);
+    expect(buffer.activeIds.size).toBe(0);
+  });
+
+  it('reuses the same buffer, arrays and Set across calls without reallocating', () => {
+    const buffer = createLodPartitionBuffer();
+    const nearRef = buffer.nearShips;
+    const farRef = buffer.farShips;
+    const idsRef = buffer.activeIds;
+    const previous = new Map<number, 'near' | 'far'>();
+    const camera = new Vector3(0, 0, 0);
+    const ships = [createShip(1, 100), createShip(2, 800)];
+
+    const first = partitionShipsByDistanceInto(ships, camera, 500, 50, previous, buffer);
+    expect(first).toBe(buffer);
+    expect(buffer.nearShips).toBe(nearRef);
+    expect(buffer.farShips).toBe(farRef);
+    expect(buffer.activeIds).toBe(idsRef);
+    expect(first.nearShips.map((s) => s.id)).toEqual([1]);
+    expect(first.farShips.map((s) => s.id)).toEqual([2]);
+
+    const second = partitionShipsByDistanceInto(ships, camera, 500, 50, previous, buffer);
+    expect(second).toBe(buffer);
+    expect(buffer.nearShips).toBe(nearRef);
+    expect(buffer.farShips).toBe(farRef);
+    expect(buffer.activeIds).toBe(idsRef);
+  });
+
+  it('clears stale cohort entries when ships move between cohorts', () => {
+    const buffer = createLodPartitionBuffer();
+    const nearRef = buffer.nearShips;
+    const previous = new Map<number, 'near' | 'far'>();
+    const camera = new Vector3(0, 0, 0);
+    const nearShip = createShip(1, 100);
+    const farShip = createShip(2, 800);
+
+    const first = partitionShipsByDistanceInto(
+      [nearShip, farShip],
+      camera,
+      500,
+      50,
+      previous,
+      buffer,
+    );
+    expect(first.nearShips.map((s) => s.id)).toEqual([1]);
+
+    // Ship 1 moves far; the reused near array must drop the stale entry.
+    nearShip.transform.position.set(900, 0, 0);
+    const second = partitionShipsByDistanceInto(
+      [nearShip, farShip],
+      camera,
+      500,
+      50,
+      previous,
+      buffer,
+    );
+    expect(second.nearShips).toBe(nearRef);
+    expect(second.nearShips).toHaveLength(0);
+    expect(second.farShips.map((s) => s.id).sort()).toEqual([1, 2]);
+  });
+
+  it('matches the pure partitionShipsByDistance result for identical inputs', () => {
+    const camera = new Vector3(0, 0, 0);
+    const ships = [
+      createShip(1, 100),
+      createShip(2, 470),
+      createShip(3, 800),
+      createShip(4, 0, { position: new Vector3(-200, 50, 30) }),
+    ];
+
+    const pure = partitionShipsByDistance(
+      ships,
+      camera,
+      500,
+      50,
+      new Map<number, 'near' | 'far'>(),
+    );
+    const buffer = createLodPartitionBuffer();
+    const into = partitionShipsByDistanceInto(
+      ships,
+      camera,
+      500,
+      50,
+      new Map<number, 'near' | 'far'>(),
+      buffer,
+    );
+
+    expect(into.nearShips.map((s) => s.id)).toEqual(pure.nearShips.map((s) => s.id));
+    expect(into.farShips.map((s) => s.id)).toEqual(pure.farShips.map((s) => s.id));
+    expect(partitionsEqual(into, pure)).toBe(true);
   });
 });
 
@@ -207,5 +347,58 @@ describe('populateImpostorInstances', () => {
 
     geometry.dispose();
     material.dispose();
+  });
+});
+
+describe('ShipLODManager buffer reuse', () => {
+  afterEach(() => {
+    cleanup();
+    frameCallbacks.length = 0;
+    thrusterShipsCalls.length = 0;
+    impostorShipsCalls.length = 0;
+    camera.position.x = 0;
+    camera.position.y = 0;
+    camera.position.z = 0;
+  });
+
+  it('does not mutate the committed partition arrays when a frame writes a new partition', () => {
+    const ships = [createShip(1, 100), createShip(2, 800)];
+    render(
+      React.createElement(ShipLODManager, {
+        ships,
+        distanceThreshold: 500,
+        hysteresis: 50,
+      }),
+    );
+
+    const committedNear = thrusterShipsCalls.at(-1)!;
+    const committedFar = impostorShipsCalls.at(-1)!;
+    expect(committedNear.map((s) => s.id)).toEqual([1]);
+    expect(committedFar.map((s) => s.id)).toEqual([2]);
+
+    // Two frame updates in one batch: React defers the commit of the first flip,
+    // so the second frame runs while the first flip's buffer is still pending.
+    // A scheme that writes into the "non-active" buffer would clobber the arrays
+    // the still-mounted children reference; a scheme that only writes into a
+    // buffer that is neither committed nor pending leaves them untouched.
+    act(() => {
+      camera.position.x = 800; // ship 2 near, ship 1 far
+      for (const cb of frameCallbacks) cb();
+      camera.position.x = 5000; // both far
+      for (const cb of frameCallbacks) cb();
+    });
+
+    // Arrays captured from the previously committed render are unchanged.
+    expect(committedNear.map((s) => s.id)).toEqual([1]);
+    expect(committedFar.map((s) => s.id)).toEqual([2]);
+
+    // The latest committed render reflects the newest partition (both far).
+    expect(thrusterShipsCalls.at(-1)!.map((s) => s.id)).toEqual([]);
+    expect(
+      impostorShipsCalls
+        .at(-1)!
+        .map((s) => s.id)
+        .sort(),
+    ).toEqual([1, 2]);
   });
 });

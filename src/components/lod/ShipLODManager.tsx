@@ -7,12 +7,15 @@ import { ShipObject } from '../Ship.js';
 import { ThrusterInstancedManager } from '../thrusters/ThrusterInstancedManager.js';
 import {
   computeLodPartition,
+  createLodPartitionBuffer,
   partitionShipsByDistance,
+  partitionShipsByDistanceInto,
   partitionsEqual,
   DEFAULT_DISTANCE_THRESHOLD,
   DEFAULT_HYSTERESIS,
   DEFAULT_IMPOSTOR_CAPACITY,
   type LodLevel,
+  type LodPartitionBuffer,
   type LodPartitionResult,
 } from './shipLodPartition.js';
 import {
@@ -28,6 +31,21 @@ export interface ShipLODManagerProps {
   impostorCapacity?: number;
 }
 
+// Number of reusable partition buffers. Three is the minimum that lets a frame
+// always write into a buffer that is neither the currently committed one (which
+// mounted children may still be reading) nor the one already scheduled for the
+// next commit, even when React defers the commit past the next `useFrame`.
+const LOD_BUFFER_COUNT = 3;
+
+function pickWriteIndex(committedIndex: number, pendingIndex: number | null): number {
+  for (let i = 0; i < LOD_BUFFER_COUNT; i += 1) {
+    if (i !== committedIndex && i !== pendingIndex) {
+      return i;
+    }
+  }
+  return (committedIndex + 1) % LOD_BUFFER_COUNT;
+}
+
 export function ShipLODManager({
   ships,
   distanceThreshold = DEFAULT_DISTANCE_THRESHOLD,
@@ -38,17 +56,25 @@ export function ShipLODManager({
   const lodStateRef = useRef(new Map<number, LodLevel>());
   const shipsRef = useRef<readonly ShipEntity[]>(ships);
   const thresholdsRef = useRef({ distanceThreshold, hysteresis });
+  const buffersRef = useRef<LodPartitionBuffer[]>(
+    Array.from({ length: LOD_BUFFER_COUNT }, () => createLodPartitionBuffer()),
+  );
+  // `committedIndexRef` tracks the buffer referenced by the last committed
+  // render; `pendingIndexRef` tracks a buffer handed to `setPartition` whose
+  // commit may not have landed yet. Neither may be written in place.
+  const committedIndexRef = useRef(0);
+  const pendingIndexRef = useRef<number | null>(null);
 
   const [partition, setPartition] = useState<LodPartitionResult>(() =>
-    computeLodPartition(
+    partitionShipsByDistanceInto(
       ships,
-      camera.position.clone(),
+      camera.position,
       distanceThreshold,
       hysteresis,
       lodStateRef.current,
+      buffersRef.current[0]!,
     ),
   );
-  const partitionRef = useRef(partition);
 
   useEffect(() => {
     shipsRef.current = ships;
@@ -59,25 +85,35 @@ export function ShipLODManager({
   }, [distanceThreshold, hysteresis]);
 
   useEffect(() => {
-    partitionRef.current = partition;
+    const index = buffersRef.current.indexOf(partition as LodPartitionBuffer);
+    if (index >= 0) {
+      committedIndexRef.current = index;
+      pendingIndexRef.current = null;
+    }
   }, [partition]);
 
   const updatePartition = useCallback((cameraPosition: Vector3) => {
-    const next = computeLodPartition(
+    const buffers = buffersRef.current;
+    const committedIndex = committedIndexRef.current;
+    const pendingIndex = pendingIndexRef.current;
+    const decidedIndex = pendingIndex ?? committedIndex;
+    const writeIndex = pickWriteIndex(committedIndex, pendingIndex);
+    const next = partitionShipsByDistanceInto(
       shipsRef.current,
       cameraPosition,
       thresholdsRef.current.distanceThreshold,
       thresholdsRef.current.hysteresis,
       lodStateRef.current,
+      buffers[writeIndex]!,
     );
-    if (!partitionsEqual(partitionRef.current, next)) {
-      partitionRef.current = next;
+    if (!partitionsEqual(buffers[decidedIndex]!, next)) {
+      pendingIndexRef.current = writeIndex;
       setPartition(next);
     }
   }, []);
 
   useEffect(() => {
-    updatePartition(camera.position.clone());
+    updatePartition(camera.position);
   }, [ships, distanceThreshold, hysteresis, updatePartition, camera]);
 
   useFrame(() => {
