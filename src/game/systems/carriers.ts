@@ -1,4 +1,5 @@
-import { Quaternion, Vector3 } from 'three';
+import { Vector3 } from 'three';
+import type { Quaternion } from 'three';
 import type {
   CarrierComponent,
   CarrierLaunchConfig,
@@ -9,12 +10,14 @@ import type {
 } from '../../types/index.js';
 import { spawnShip } from '../ships.js';
 import { enqueuePostPhysicsMutation } from '../simulationQueue.js';
+import {
+  TEMP_CARRIERS_FORWARD as TEMP_FORWARD,
+  TEMP_CARRIERS_RIGHT as TEMP_RIGHT,
+  TEMP_CARRIERS_UP as TEMP_UP,
+  TEMP_CARRIERS_OFFSET as TEMP_OFFSET,
+  TEMP_CARRIERS_POS as TEMP_POS,
+} from '../../utils/tempVectors.js';
 
-const TEMP_FORWARD = new Vector3();
-const TEMP_RIGHT = new Vector3();
-const TEMP_UP = new Vector3();
-const TEMP_OFFSET = new Vector3();
-const TEMP_POS = new Vector3();
 const GLOBAL_FORWARD = new Vector3(0, 0, 1);
 const GLOBAL_UP = new Vector3(0, 1, 0);
 const FALLBACK_SLOT: CarrierLaunchSlot = { forward: 14, lateral: 0, vertical: 0 };

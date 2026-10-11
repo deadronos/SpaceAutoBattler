@@ -1,4 +1,3 @@
-import { Vector3 } from 'three';
 import type { GameState, ProjectileEntity, ShipEntity, ShieldRipple } from '../../types/index.js';
 import { resolveProjectileCategory } from '../../utils/projectileInfo.js';
 import { awardDamageXp, awardKillXp } from '../progression.js';
@@ -14,8 +13,7 @@ import {
 import { safeNormalize } from '../../utils/steering.js';
 import { appendCappedMutable } from '../../utils/cappedBuffer.js';
 import type { SpatialHash } from '../utils/spatialHash.js';
-
-const TEMP_RIPPLE_DIR = new Vector3();
+import { TEMP_PROJECTILE_DAMAGE_RIPPLE_DIR as TEMP_RIPPLE_DIR } from '../../utils/tempVectors.js';
 
 // Per-state reusable buffers. Keyed off GameState so two states stepped in the
 // same process cannot share scratch data (see src/game/AGENTS.md).

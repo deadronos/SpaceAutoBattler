@@ -1,4 +1,3 @@
-import { Vector3 } from 'three';
 import type {
   AIState,
   AIMetrics,
@@ -12,13 +11,18 @@ import { AI_CONFIG, getEffectiveAIConfig } from '../../config.js';
 import { hashToInt } from './utils.js';
 import { computeEffectiveDesiredRange } from './hysteresis.js';
 import { getShipVelocity, computeInterceptHeadingVector } from '../../combat/aiming.js';
+import {
+  TEMP_DECISION_DIR as TEMP_DIR,
+  TEMP_DECISION_POS as TEMP_POS,
+  TEMP_DECISION_REL_POS as TEMP_REL_POS,
+  TEMP_DECISION_TARGET_VEL as TEMP_TARGET_VEL,
+  TEMP_DECISION_SHIP_VEL as TEMP_SHIP_VEL,
+  TEMP_DECISION_REL_VEL as TEMP_REL_VEL,
+} from '../../../utils/tempVectors.js';
 
-export const TEMP_DIR = new Vector3();
-export const TEMP_POS = new Vector3();
-export const TEMP_REL_POS = new Vector3();
-export const TEMP_TARGET_VEL = new Vector3();
-export const TEMP_SHIP_VEL = new Vector3();
-export const TEMP_REL_VEL = new Vector3();
+// Re-exported from the central scratch pool under the historical public names so
+// consumers importing from this module keep working.
+export { TEMP_DIR, TEMP_POS, TEMP_REL_POS, TEMP_TARGET_VEL, TEMP_SHIP_VEL, TEMP_REL_VEL };
 
 // Re-export for backward compatibility
 // The re-exported symbols are intended for backward compatibility and may not

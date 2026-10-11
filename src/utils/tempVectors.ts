@@ -60,3 +60,53 @@ export const TEMP_LOCAL_DIR = TEMP_VEC3_11;
 export const TEMP_TARGET_VEL = TEMP_VEC3_12;
 export const TEMP_SHIP_VEL = TEMP_VEC3_13;
 export const TEMP_REL_VEL = TEMP_VEC3_14;
+
+// --- Game/systems cluster slots (#663) ---
+// Each former module-local scratch temp gets its own distinct slot so two
+// modules (or two call chains) can never alias the same buffer.
+
+// motion/sharedTemps.ts
+export const TEMP_MOTION_FORWARD = new Vector3();
+export const TEMP_MOTION_TARGET_DIR = new Vector3();
+export const TEMP_MOTION_VELOCITY_CHANGE = new Vector3();
+export const TEMP_MOTION_ROTATION = new Quaternion();
+export const TEMP_MOTION_RIGHT = new Vector3();
+export const TEMP_MOTION_AXIS = new Vector3();
+export const TEMP_MOTION_DESIRED_AV = new Vector3();
+export const TEMP_MOTION_AV_DELTA = new Vector3();
+export const TEMP_MOTION_UP = new Vector3(0, 1, 0);
+export const TEMP_MOTION_HEADING = new Vector3();
+export const TEMP_MOTION_NEXT_POS = new Vector3();
+
+// shipControl/sharedTemps.ts
+export const TEMP_SHIPCONTROL_DIR = new Vector3();
+export const TEMP_SHIPCONTROL_POS = new Vector3();
+export const TEMP_SHIPCONTROL_REL_POS = new Vector3();
+export const TEMP_SHIPCONTROL_QUAT = new Quaternion();
+
+// projectiles/sharedTemps.ts
+export const TEMP_PROJECTILES_POS = new Vector3();
+export const TEMP_PROJECTILES_TARGET = new Vector3();
+
+// decision/intent-utils.ts
+export const TEMP_DECISION_DIR = new Vector3();
+export const TEMP_DECISION_POS = new Vector3();
+export const TEMP_DECISION_REL_POS = new Vector3();
+export const TEMP_DECISION_TARGET_VEL = new Vector3();
+export const TEMP_DECISION_SHIP_VEL = new Vector3();
+export const TEMP_DECISION_REL_VEL = new Vector3();
+
+// sensors.ts
+export const TEMP_SENSORS_FORWARD = new Vector3();
+export const TEMP_SENSORS_VECTOR = new Vector3();
+export const TEMP_SENSORS_DIRECTION = new Vector3();
+
+// carriers.ts
+export const TEMP_CARRIERS_FORWARD = new Vector3();
+export const TEMP_CARRIERS_RIGHT = new Vector3();
+export const TEMP_CARRIERS_UP = new Vector3();
+export const TEMP_CARRIERS_OFFSET = new Vector3();
+export const TEMP_CARRIERS_POS = new Vector3();
+
+// projectileDamage.ts
+export const TEMP_PROJECTILE_DAMAGE_RIPPLE_DIR = new Vector3();
