@@ -14,6 +14,7 @@ import { useStarTextures } from '../../hooks/useStarTextures.js';
 import { useStarMaterial } from '../../hooks/useStarMaterial.js';
 import { updateMainSequenceStarUniforms } from '../../renderer/starDiskMaterial.js';
 import { isCopilotDebugEnabled } from '../../utils/copilotDebug.js';
+import { registerDebugHook, hasDebugHook } from '../../debug/copilotDebugRegistry.js';
 import { useUiStore } from '../../game/uiStore.js';
 import { clamp, clamp01 } from '../../utils/math.js';
 import { reportMaterialError, reportWebGLError } from '../../utils/errorReporting.js';
@@ -318,16 +319,24 @@ export function StarSphere({
       debugWin =
         typeof window !== 'undefined' ? (window as unknown as CopilotDebugWindow) : undefined;
       if (debugWin) {
-        debugWin.__copilot_cameraPosition = {
-          x: camera.position.x,
-          y: camera.position.y,
-          z: camera.position.z,
-        };
-        debugWin.__copilot_cameraRotation = {
-          x: camera.rotation.x,
-          y: camera.rotation.y,
-          z: camera.rotation.z,
-        };
+        registerDebugHook(
+          '__copilot_cameraPosition',
+          {
+            x: camera.position.x,
+            y: camera.position.y,
+            z: camera.position.z,
+          },
+          'star',
+        );
+        registerDebugHook(
+          '__copilot_cameraRotation',
+          {
+            x: camera.rotation.x,
+            y: camera.rotation.y,
+            z: camera.rotation.z,
+          },
+          'star',
+        );
       }
 
       // Handle camera rotation delta request from E2E tests
@@ -341,13 +350,13 @@ export function StarSphere({
           camera.rotation.y += (deg * Math.PI) / 180;
           camera.updateMatrixWorld();
           try {
-            debugWin.__copilot_rotateAppliedAt = Date.now();
+            registerDebugHook('__copilot_rotateAppliedAt', Date.now(), 'star');
           } catch {
             /* ignore */
           }
         }
         try {
-          debugWin.__copilot_rotateCameraDeltaDeg = null;
+          registerDebugHook('__copilot_rotateCameraDeltaDeg', null, 'star');
         } catch {
           /* ignore */
         }
@@ -355,9 +364,9 @@ export function StarSphere({
 
       // Handle basic material request / setup methods on window
       if (debugWin && mesh) {
-        debugWin.__copilot_visualMesh = mesh;
-        debugWin.__copilot_appliedMaterial = appliedMaterial;
-        if (!debugWin.__copilot_setStarBasicMaterial) {
+        registerDebugHook('__copilot_visualMesh', mesh, 'star');
+        registerDebugHook('__copilot_appliedMaterial', appliedMaterial, 'star');
+        if (!hasDebugHook('__copilot_setStarBasicMaterial')) {
           debugWin.__copilot_setStarBasicMaterial = (opts: { color?: string } = {}) => {
             try {
               const meshLocal = visualMeshRef.current;
@@ -380,17 +389,22 @@ export function StarSphere({
                 userData.__copilot_forcedMaterial.color.set(color);
               }
               meshLocal.material = userData.__copilot_forcedMaterial;
-              debugWin!.__copilot_forceBasicMaterialActive = true;
-              debugWin!.__copilot_forceBasicMaterialColor = color;
-              debugWin!.__copilot_forceBasicMaterialApplied = Date.now();
+              registerDebugHook('__copilot_forceBasicMaterialActive', true, 'star');
+              registerDebugHook('__copilot_forceBasicMaterialColor', color, 'star');
+              registerDebugHook('__copilot_forceBasicMaterialApplied', Date.now(), 'star');
               return { applied: true };
             } catch (error) {
               return { applied: false, reason: String(error) };
             }
           };
+          registerDebugHook(
+            '__copilot_setStarBasicMaterial',
+            debugWin.__copilot_setStarBasicMaterial,
+            'star',
+          );
         }
 
-        if (!debugWin.__copilot_restoreStarMaterial) {
+        if (!hasDebugHook('__copilot_restoreStarMaterial')) {
           debugWin.__copilot_restoreStarMaterial = () => {
             try {
               const meshLocal = visualMeshRef.current;
@@ -405,7 +419,11 @@ export function StarSphere({
                 meshLocal.material = originalMaterial;
                 delete userData.__copilot_origMaterial;
                 delete userData.__copilot_forcedMaterial;
-                debugWin!.__copilot_restoreOriginalStarMaterialApplied = Date.now();
+                registerDebugHook(
+                  '__copilot_restoreOriginalStarMaterialApplied',
+                  Date.now(),
+                  'star',
+                );
                 return { restored: true };
               }
               return { restored: false, reason: 'no-orig' };
@@ -413,6 +431,11 @@ export function StarSphere({
               return { restored: false, reason: String(error) };
             }
           };
+          registerDebugHook(
+            '__copilot_restoreStarMaterial',
+            debugWin.__copilot_restoreStarMaterial,
+            'star',
+          );
         }
 
         if (!mesh.userData) {
@@ -425,7 +448,7 @@ export function StarSphere({
           meshUserData.__copilot_origLayerMask = Number.isFinite(mask) ? mask : 1;
         }
 
-        if (!debugWin.__copilot_setStarLayer) {
+        if (!hasDebugHook('__copilot_setStarLayer')) {
           debugWin.__copilot_setStarLayer = (layerIndex: unknown = 0) => {
             try {
               const meshLocal = visualMeshRef.current;
@@ -442,15 +465,16 @@ export function StarSphere({
               } else if (layers) {
                 layers.mask = idx;
               }
-              debugWin!.__copilot_starLayerSetAt = Date.now();
+              registerDebugHook('__copilot_starLayerSetAt', Date.now(), 'star');
               return { set: true, layer: idx };
             } catch (error) {
               return { set: false, reason: String(error) };
             }
           };
+          registerDebugHook('__copilot_setStarLayer', debugWin.__copilot_setStarLayer, 'star');
         }
 
-        if (!debugWin.__copilot_resetStarLayer) {
+        if (!hasDebugHook('__copilot_resetStarLayer')) {
           debugWin.__copilot_resetStarLayer = () => {
             try {
               const meshLocal = visualMeshRef.current;
@@ -478,12 +502,13 @@ export function StarSphere({
                   layers.mask = 0;
                 }
               }
-              debugWin!.__copilot_starLayerResetAt = Date.now();
+              registerDebugHook('__copilot_starLayerResetAt', Date.now(), 'star');
               return { reset: true };
             } catch (error) {
               return { reset: false, reason: String(error) };
             }
           };
+          registerDebugHook('__copilot_resetStarLayer', debugWin.__copilot_resetStarLayer, 'star');
         }
       }
 
@@ -511,8 +536,11 @@ export function StarSphere({
           if (mesh.material !== userData.__copilot_forcedMaterial) {
             mesh.material = userData.__copilot_forcedMaterial;
           }
-          debugWin.__copilot_forceBasicMaterialApplied =
-            debugWin.__copilot_forceBasicMaterialApplied || Date.now();
+          registerDebugHook(
+            '__copilot_forceBasicMaterialApplied',
+            debugWin.__copilot_forceBasicMaterialApplied || Date.now(),
+            'star',
+          );
         } catch {
           /* ignore */
         }

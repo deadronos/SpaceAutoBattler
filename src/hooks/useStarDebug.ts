@@ -7,6 +7,7 @@
  */
 
 import { useEffect, useCallback } from 'react';
+import { clearDebugHooks } from '../debug/copilotDebugRegistry.js';
 
 /**
  * Remove the debug overlay DOM element.
@@ -35,42 +36,11 @@ export function useDebugOverlayCleanup(): () => void {
  */
 export function useStarDebug(debugEnabled: boolean, removeDebugOverlay: () => void): void {
   useEffect(() => {
+    // All star debug hooks are registered under the `star` owner by
+    // StarSphere, so cleanup is derived from the registry rather than a
+    // hand-maintained key list.
     const clearDebugWindow = () => {
-      if (typeof window === 'undefined') {
-        return;
-      }
-      const win = window as unknown as Record<string, unknown>;
-      const keys = [
-        '__copilot_setStarLayer',
-        '__copilot_resetStarLayer',
-        '__copilot_setStarBasicMaterial',
-        '__copilot_restoreStarMaterial',
-        '__copilot_forceBasicMaterialActive',
-        '__copilot_forceBasicMaterialColor',
-        '__copilot_forceBasicMaterialApplied',
-        '__copilot_starLayerSetAt',
-        '__copilot_starLayerResetAt',
-        '__copilot_forceStarOpaqueRequest',
-        '__copilot_forceStarOpaque',
-        '__copilot_forceStarOpaqueApplied',
-        '__copilot_forceStarOnTopRequest',
-        '__copilot_star_forceOnTop',
-        '__copilot_forceBasicMaterialRequest',
-        '__copilot_restoreOriginalStarMaterial',
-        '__copilot_restoreOriginalStarMaterialApplied',
-        '__copilot_starMeshStatus',
-        '__copilot_rotateCameraDeltaDeg',
-        '__copilot_rotateAppliedAt',
-      ];
-      for (const key of keys) {
-        if (key in win) {
-          try {
-            delete win[key];
-          } catch {
-            win[key] = undefined;
-          }
-        }
-      }
+      clearDebugHooks('star');
     };
 
     if (debugEnabled) {
