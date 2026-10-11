@@ -1,5 +1,8 @@
 import { useMemo } from 'react';
-import { ShaderMaterial, AdditiveBlending, DoubleSide } from 'three';
+import { AdditiveBlending, DoubleSide } from 'three';
+import planetRimVertexShader from '../../renderer/shaders/planetRim.vertex.glsl';
+import planetRimFragmentShader from '../../renderer/shaders/planetRim.fragment.glsl';
+import { createGlslMaterial } from '../../renderer/materials/createGlslMaterial.js';
 import { colorFromConfig } from '../../utils/color.js';
 
 interface PlanetRimShellProps {
@@ -14,39 +17,14 @@ export function PlanetRimShell({
   rimColor = '#ffffff',
 }: PlanetRimShellProps) {
   const material = useMemo(() => {
-    return new ShaderMaterial({
+    return createGlslMaterial({
       uniforms: {
         uRimStrength: { value: rimStrength },
         uRimColor: { value: colorFromConfig(rimColor) },
       },
-      vertexShader: `
-        varying vec3 vNormal;
-        varying vec3 vViewPosition;
-        void main() {
-          vNormal = normalize(normalMatrix * normal);
-          vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-          vViewPosition = -mvPosition.xyz;
-          gl_Position = projectionMatrix * mvPosition;
-        }
-      `,
-      fragmentShader: `
-        uniform float uRimStrength;
-        uniform vec3 uRimColor;
-        varying vec3 vNormal;
-        varying vec3 vViewPosition;
-        void main() {
-          vec3 normal = normalize(vNormal);
-          if (!gl_FrontFacing) {
-            normal = -normal;
-          }
-          vec3 viewDir = normalize(vViewPosition);
-          float ndv = abs(dot(normal, viewDir));
-          float fresnel = 1.0 - ndv;
-          fresnel = pow(fresnel, 2.0);
-          vec3 outColor = uRimColor * uRimStrength * fresnel;
-          gl_FragColor = vec4(outColor, fresnel);
-        }
-      `,
+      vertexShader: planetRimVertexShader,
+      fragmentShader: planetRimFragmentShader,
+      prependCommonGlsl: false,
       transparent: true,
       blending: AdditiveBlending,
       depthWrite: false,

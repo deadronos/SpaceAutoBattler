@@ -35,3 +35,5 @@ export {
   createBasicMaterial,
   createMaterialFromPreset,
 } from './materialFactory.js';
+export { createGlslMaterial } from './createGlslMaterial.js';
+export type { GlslMaterialOptions } from './createGlslMaterial.js';

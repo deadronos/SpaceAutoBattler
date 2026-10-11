@@ -1,7 +1,7 @@
 import { AdditiveBlending, ShaderMaterial, Texture, Vector3, Vector4 } from 'three';
 import fragmentShaderRaw from '../shaders/mainsequencestar.glsl';
 import vertexShader from '../shaders/starDisk.vertex.glsl';
-import { withCommonGlsl } from '../shaders/index.js';
+import { createGlslMaterial } from '../materials/createGlslMaterial.js';
 import { clamp01 } from '../../utils/math.js';
 import {
   StarDiskBoundaryUniformInput,
@@ -78,16 +78,14 @@ export function createMainSequenceStarMaterial(
   const noiseTexture = resolveTexture(options.noise, FALLBACK_NOISE);
   applyTextureSettings(noiseTexture, { anisotropy: 16 });
 
-  const fragmentShader = withCommonGlsl(fragmentShaderRaw);
-
-  const material = new ShaderMaterial({
+  const material = createGlslMaterial({
     name: 'MainSequenceStarMaterial',
     transparent: true,
     premultipliedAlpha: true,
     depthWrite: false,
     blending: AdditiveBlending,
     vertexShader: options.vertexShader ?? vertexShader,
-    fragmentShader,
+    fragmentShader: fragmentShaderRaw,
     uniforms: {
       iTime: { value: 0 },
       iResolution: { value: DEFAULT_RESOLUTION.clone() },
