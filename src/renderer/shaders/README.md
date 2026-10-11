@@ -4,13 +4,17 @@ Custom GLSL shaders for specialized visual effects and rendering.
 
 ## Shader Files
 
-| File                       | Purpose                                                             |
-| -------------------------- | ------------------------------------------------------------------- |
-| **index.ts**               | Main shader export and registry                                     |
-| **common.glsl**            | Common utility functions shared across shaders (noise, color, etc.) |
-| **starDisk.vertex.glsl**   | Vertex shader for star disk rendering                               |
-| **starDisk.fragment.glsl** | Fragment shader for star disk with Gooch-style rendering            |
-| **mainsequencestar.glsl**  | Main sequence star appearance and coloring                          |
+| File                         | Purpose                                                             |
+| ---------------------------- | ------------------------------------------------------------------- |
+| **index.ts**                 | Main shader export and registry                                     |
+| **common.glsl**              | Common utility functions shared across shaders (noise, color, etc.) |
+| **starDisk.vertex.glsl**     | Vertex shader for star disk rendering                               |
+| **starDisk.fragment.glsl**   | Fragment shader for star disk with Gooch-style rendering            |
+| **mainsequencestar.glsl**    | Main sequence star appearance and coloring                          |
+| **planetRing.vertex.glsl**   | Vertex shader for planet ring geometry and radii                    |
+| **planetRing.fragment.glsl** | Fragment shader for planet ring banding, fresnel, and shadowing     |
+| **planetRim.vertex.glsl**    | Vertex shader for planet rim shell fresnel                          |
+| **planetRim.fragment.glsl**  | Fragment shader for planet rim shell highlight                      |
 
 ## Shader Types
 
