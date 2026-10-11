@@ -1,9 +1,9 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import type { GameState, GameEntity } from '../types/index.js';
+import type { GameState } from '../types/index.js';
 import { createGameState, disposeGameState, spawnInitialFleets } from './state.js';
-import { updateGame } from './systems.js';
 import { mirrorHudHealthBarsFlag, useUiStore } from './uiStore.js';
+import { installE2eDebugSurface } from './e2eDebugSurface.js';
 import {
   SimulationBridge,
   shouldDebugWorkerSimulation,
@@ -11,7 +11,6 @@ import {
   shouldRenderWorkerShipsOnly,
 } from './SimulationBridge.js';
 import { reportE2EError, reportConfigError } from '../utils/errorReporting.js';
-import { readQueryParam } from '../utils/queryParams.js';
 
 let warnedAiDisableContext = false;
 function warnAiDisableInContext(): void {
@@ -28,51 +27,6 @@ function warnAiDisableInContext(): void {
 interface GameContextValue {
   state: GameState | null;
 }
-
-interface SabDebugSurface {
-  getCounts: () => { ships: number; projectiles: number };
-  getWorkerCounts: () => {
-    tick: number | null;
-    ships: number | null;
-    ready: boolean;
-    usingShared: boolean;
-    error: unknown;
-  };
-  getWorkerStatus: () => {
-    ready: boolean;
-    tick: number | null;
-    shipCount: number | null;
-    usingShared: boolean;
-    error: unknown;
-  };
-  sampleShipMotion: () => {
-    tick: number;
-    time: number;
-    ships: Array<{
-      id: number;
-      team: string | null;
-      hull: string | null;
-      position: { x: number; y: number; z: number };
-      rotation: { x: number; y: number; z: number; w: number };
-      velocity: { x: number; y: number; z: number };
-      angularVelocity: { x: number; y: number; z: number };
-      lateralAcceleration: number;
-    }>;
-  };
-  sampleWorkerShipMotion: (limit?: number) => {
-    tick: number | null;
-    shipCount: number | null;
-    ships: Array<unknown>;
-  };
-  tick: (steps?: number, dt?: number) => void;
-  startAutoTick: (dt?: number) => void;
-  stopAutoTick: () => void;
-}
-
-type SabWindow = Window & {
-  __SAB?: SabDebugSurface;
-  __sabAutoTick__?: ReturnType<typeof setInterval> | null;
-};
 
 const GameContext = createContext<GameContextValue | undefined>(undefined);
 const SimulationBridgeContext = createContext<SimulationBridge | null>(null);
@@ -175,146 +129,8 @@ export function GameProvider({ children, fallback = null }: GameProviderProps): 
         spawnInitialFleets(created);
       }
       // E2E-only debug surface: when the URL contains ?e2e=1, expose a minimal
-      // introspection API on window for Playwright to poll entity counts. This
-      // avoids adding app-visible UI and keeps all runtime state on GameState.
-      try {
-        if (typeof window !== 'undefined') {
-          if (readQueryParam('e2e') !== null) {
-            const win = window as SabWindow;
-            win.__SAB = {
-              getCounts: () => ({
-                ships: created.queries.ships.entities.length,
-                projectiles: created.queries.projectiles.entities.length,
-              }),
-              getWorkerCounts: () => {
-                const bridge = simBridgeRef.current;
-                const sample = bridge?.sampleWorkerShipMotion(0);
-                const status = bridge?.getStatus();
-                return {
-                  tick: sample?.tick ?? null,
-                  ships: sample?.shipCount ?? null,
-                  ready: status?.ready ?? false,
-                  usingShared: status?.usingShared ?? false,
-                  error: status?.error ?? null,
-                };
-              },
-              getWorkerStatus: () => {
-                const bridge = simBridgeRef.current;
-                return (
-                  bridge?.getStatus() ?? {
-                    ready: false,
-                    tick: null,
-                    shipCount: null,
-                    usingShared: false,
-                    error: null,
-                  }
-                );
-              },
-              sampleShipMotion: () => {
-                try {
-                  const ships = created.queries.ships.entities;
-                  return {
-                    tick: created.simulation.lastTickIndex,
-                    time: created.time,
-                    ships: ships.map((entity: GameEntity) => {
-                      const transform = entity.transform;
-                      const ship = entity.ship;
-                      return {
-                        id: entity.id,
-                        team: ship?.team ?? null,
-                        hull: ship?.hull ?? null,
-                        position: transform
-                          ? {
-                              x: transform.position.x,
-                              y: transform.position.y,
-                              z: transform.position.z,
-                            }
-                          : { x: 0, y: 0, z: 0 },
-                        rotation: transform
-                          ? {
-                              x: transform.rotation.x,
-                              y: transform.rotation.y,
-                              z: transform.rotation.z,
-                              w: transform.rotation.w,
-                            }
-                          : { x: 0, y: 0, z: 0, w: 1 },
-                        velocity: ship
-                          ? { x: ship.velocity.x, y: ship.velocity.y, z: ship.velocity.z }
-                          : { x: 0, y: 0, z: 0 },
-                        angularVelocity: ship
-                          ? {
-                              x: ship.angularVelocity.x,
-                              y: ship.angularVelocity.y,
-                              z: ship.angularVelocity.z,
-                            }
-                          : { x: 0, y: 0, z: 0 },
-                        lateralAcceleration: ship?.lateralAcceleration ?? 0,
-                      };
-                    }),
-                  };
-                } catch (error) {
-                  // Expected: Ship data may be unavailable during state transitions
-                  reportE2EError('sampleShipMotion', error);
-                  return { tick: created.simulation.lastTickIndex, time: created.time, ships: [] };
-                }
-              },
-              sampleWorkerShipMotion: (limit = 10) => {
-                try {
-                  const bridge = simBridgeRef.current;
-                  return (
-                    bridge?.sampleWorkerShipMotion(limit) ?? {
-                      tick: null,
-                      shipCount: null,
-                      ships: [],
-                    }
-                  );
-                } catch (error) {
-                  reportE2EError('sampleWorkerShipMotion', error);
-                  return { tick: null, shipCount: null, ships: [] };
-                }
-              },
-              // Advance the simulation by `steps` frames of `dt` seconds each
-              tick: (steps = 1, dt = 1 / 60) => {
-                try {
-                  for (let i = 0; i < steps; i += 1) updateGame(created, dt);
-                } catch (error) {
-                  // Expected: Physics may fail during stress testing
-                  reportE2EError('tick', error);
-                }
-              },
-              // Start an interval to progress the sim even if R3F frames don't run (e.g., WebKit headless)
-              startAutoTick: (dt = 1 / 60) => {
-                try {
-                  const w = window as SabWindow;
-                  if (w.__sabAutoTick__) return; // already running
-                  w.__sabAutoTick__ = setInterval(
-                    () => updateGame(created, dt),
-                    Math.max(1, Math.round(dt * 1000)),
-                  );
-                } catch (error) {
-                  // Expected: setInterval may fail in restricted contexts
-                  reportE2EError('startAutoTick', error);
-                }
-              },
-              stopAutoTick: () => {
-                try {
-                  const w = window as SabWindow;
-                  if (w.__sabAutoTick__) {
-                    clearInterval(w.__sabAutoTick__);
-                    w.__sabAutoTick__ = null;
-                  }
-                } catch (error) {
-                  // Expected: clearInterval may fail if interval was never started
-                  reportE2EError('stopAutoTick', error);
-                }
-              },
-            };
-          }
-        }
-      } catch (error) {
-        // Expected: E2E hooks are best-effort; must not interfere with app behavior
-        reportE2EError('e2e-setup', error);
-      }
+      // introspection API on window for Playwright to poll entity counts.
+      installE2eDebugSurface({ state: created, getBridge: () => simBridgeRef.current });
       if (!cancelled) {
         setState(created);
       } else {
