@@ -371,6 +371,15 @@ const shouldApplyReactCompiler = (id: string): boolean => {
 
 const vitestDebugBench = Boolean(process.env.VITEST_DEBUG_BENCH);
 
+// SharedArrayBuffer requires the page to be cross-origin isolated. Send COOP/COEP on
+// both the dev server and the preview server so `crossOriginIsolated === true` locally.
+// GitHub Pages cannot set custom headers, so production stays on the transfer-buffer
+// fallback; see docs/compression.md.
+const crossOriginHeaders = {
+  'Cross-Origin-Opener-Policy': 'same-origin',
+  'Cross-Origin-Embedder-Policy': 'require-corp',
+};
+
 export default defineConfig({
   fmt: fmtConfig,
   lint: lintConfig,
@@ -417,10 +426,12 @@ export default defineConfig({
   server: {
     port: 8080,
     strictPort: true,
+    headers: crossOriginHeaders,
   },
   preview: {
     port: 8080,
     strictPort: true,
+    headers: crossOriginHeaders,
   },
   worker: {
     format: 'es',

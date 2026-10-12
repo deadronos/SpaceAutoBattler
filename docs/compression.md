@@ -31,6 +31,19 @@ During production builds (`npm run build`), the compression plugin automatically
 
 Whether clients actually receive the pre-compressed files depends on your hosting/CDN configuration. Many hosts compress responses automatically, but serving pre-compressed `*.br` / `*.gz` assets often requires explicit configuration.
 
+### SharedArrayBuffer (Cross-Origin Isolation)
+
+The simulation worker can use a `SharedArrayBuffer` (SAB) transport when the page is cross-origin isolated. The bridge selects the SAB path only when `crossOriginIsolated === true`; otherwise it falls back to the transfer-buffer path, which is always available.
+
+Browsers only expose `SharedArrayBuffer` when the hosting layer sends both:
+
+- `Cross-Origin-Opener-Policy: same-origin`
+- `Cross-Origin-Embedder-Policy: require-corp`
+
+These headers are set in `vite.config.ts` for both `server` (dev) and `preview`, and in `scripts/e2e-static-server.mjs` for every response, so local dev, preview, and E2E runs are cross-origin isolated.
+
+**Known limitation:** GitHub Pages cannot set custom response headers, so the GitHub Pages deployment is **not** cross-origin isolated and production keeps using the transfer-buffer fallback. If production SAB is required, host on a platform that lets you configure COOP/COEP (or set them at the CDN edge) and re-check `crossOriginIsolated === true` plus `window.__SAB.getWorkerStatus().usingShared === true` (with `?sim_worker=1`) on the deployed page.
+
 ## Compression Results
 
 ### Measured Compression Ratios (v0.1.0)
