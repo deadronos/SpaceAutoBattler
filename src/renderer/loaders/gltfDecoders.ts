@@ -49,24 +49,25 @@ export function getDecoderDirs(): { draco: string; basis: string } {
 useGLTF.setDecoderPath(getDecoderDirs().draco);
 
 let ktx2Loader: KTX2Loader | null = null;
+let ktx2InitAttempted = false;
 
 /**
- * Configure glTF decoders for the live renderer. Idempotent: the KTX2 loader is created at
- * most once. If KTX2 support detection fails we log and leave the loader unset, so
- * uncompressed assets keep loading through the normal fallback path.
+ * Configure glTF decoders for the live renderer. Idempotent: initialisation is attempted at
+ * most once, on both the success and failure paths. The whole KTX2 init (construction,
+ * transcoder path, support detection) is guarded — any throw is logged and leaves the loader
+ * unset, so uncompressed assets keep loading through the normal fallback path.
  */
 export function configureGltfDecoders(gl: WebGLRenderer): void {
-  if (ktx2Loader) return;
+  if (ktx2InitAttempted) return;
+  ktx2InitAttempted = true;
 
-  const ktx2 = new KTX2Loader().setTranscoderPath(getDecoderDirs().basis);
   try {
+    const ktx2 = new KTX2Loader().setTranscoderPath(getDecoderDirs().basis);
     ktx2.detectSupport(gl);
+    ktx2Loader = ktx2;
   } catch (error) {
-    console.warn('[gltfDecoders] KTX2 support detection failed; continuing without KTX2.', error);
-    return;
+    console.warn('[gltfDecoders] KTX2 init failed; continuing without KTX2.', error);
   }
-
-  ktx2Loader = ktx2;
 }
 
 /**

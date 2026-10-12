@@ -6,6 +6,7 @@ const h = vi.hoisted(() => ({
   setDecoderPath: vi.fn(),
   ktx2Instances: [] as Array<Record<string, unknown>>,
   failDetectSupport: false,
+  failSetTranscoderPath: false,
 }));
 
 vi.mock('@react-three/drei', () => ({
@@ -14,7 +15,10 @@ vi.mock('@react-three/drei', () => ({
 
 vi.mock('three-stdlib', () => {
   class KTX2Loader {
-    setTranscoderPath = vi.fn(() => this);
+    setTranscoderPath = vi.fn(() => {
+      if (h.failSetTranscoderPath) throw new Error('setTranscoderPath failed');
+      return this;
+    });
     detectSupport = vi.fn(() => {
       if (h.failDetectSupport) throw new Error('detectSupport failed');
       return this;
@@ -56,6 +60,7 @@ beforeEach(() => {
   h.setDecoderPath.mockClear();
   h.ktx2Instances.length = 0;
   h.failDetectSupport = false;
+  h.failSetTranscoderPath = false;
 });
 
 describe('gltfDecoders', () => {
@@ -84,6 +89,21 @@ describe('gltfDecoders', () => {
     const gl = {} as never;
 
     expect(() => mod.configureGltfDecoders(gl)).not.toThrow();
+
+    const loader = { setKTX2Loader: vi.fn() };
+    mod.extendShipGltfLoader(loader as never);
+    expect(loader.setKTX2Loader).not.toHaveBeenCalled();
+  });
+
+  it('falls back without throwing when KTX2 construction/init throws', async () => {
+    h.failSetTranscoderPath = true;
+    const mod = await loadModule();
+    const gl = {} as never;
+
+    expect(() => mod.configureGltfDecoders(gl)).not.toThrow();
+    // Idempotent on the failure path too: a second call does not retry construction.
+    expect(() => mod.configureGltfDecoders(gl)).not.toThrow();
+    expect(h.ktx2Instances).toHaveLength(1);
 
     const loader = { setKTX2Loader: vi.fn() };
     mod.extendShipGltfLoader(loader as never);
