@@ -11,6 +11,14 @@ const repoRoot = projectRoot;
 const portArgIndex = process.argv.findIndex((arg) => arg === '--port' || arg === '-p');
 const port = portArgIndex >= 0 ? Number(process.argv[portArgIndex + 1]) : 8080;
 
+// Keep the E2E server aligned with dev/preview so the page is cross-origin isolated
+// and the SharedArrayBuffer worker path is exercised. All E2E resources are same-origin,
+// so `require-corp` does not block them.
+const CROSS_ORIGIN_HEADERS = {
+  'Cross-Origin-Opener-Policy': 'same-origin',
+  'Cross-Origin-Embedder-Policy': 'require-corp',
+};
+
 const mimeByExt = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
@@ -83,6 +91,9 @@ function sendFile(res, filePath) {
   // Match prior e2e behavior: no caching.
   res.setHeader('Content-Type', contentType);
   res.setHeader('Cache-Control', 'no-store');
+  for (const [name, value] of Object.entries(CROSS_ORIGIN_HEADERS)) {
+    res.setHeader(name, value);
+  }
 
   const stream = fs.createReadStream(filePath);
   stream.on('error', (err) => {
@@ -127,6 +138,9 @@ const server = http.createServer((req, res) => {
   res.statusCode = 404;
   res.setHeader('Content-Type', 'text/plain; charset=utf-8');
   res.setHeader('Cache-Control', 'no-store');
+  for (const [name, value] of Object.entries(CROSS_ORIGIN_HEADERS)) {
+    res.setHeader(name, value);
+  }
   res.end(`Not found: ${pathname}`);
 });
 

@@ -2,23 +2,25 @@
 
 ## Overview
 
-SpaceAutoBattler can generate pre-compressed assets with both gzip and brotli compression to reduce bundle delivery sizes. This is implemented via Vite build plugins that emit `.gz` and `.br` files alongside the original assets during a production build.
+SpaceAutoBattler can generate pre-compressed assets with both gzip and brotli compression to reduce bundle delivery sizes. This is implemented via a local, dependency-free Vite build plugin that emits `.gz` and `.br` files alongside the original assets during a production build.
 
 ## Implementation
 
 ### Vite Configuration
 
-The compression is configured in `vite.config.ts` using `vite-plugin-compression`:
+The compression is configured in `vite.config.ts` using a local `node:zlib` plugin (`spaceautobattler:precompress-assets`), which emits both formats in a single `closeBundle` pass:
 
 - **Gzip compression**: Generates `.gz` files alongside original assets
 - **Brotli compression**: Generates `.br` files alongside original assets
-- **Threshold**: Only files larger than 10KB are compressed
-- **Compression ratio**: Only compress if achieving better than 80% of original size
-- **File types**: JavaScript (`.js`), CSS (`.css`), HTML (`.html`), SVG (`.svg`), and WebAssembly (`.wasm`) files
+- **Threshold**: Only files of at least 10KB are compressed
+- **File types**: JavaScript (`.js`, `.mjs`), CSS (`.css`), HTML (`.html`), SVG (`.svg`), and WebAssembly (`.wasm`) files
+- **Originals**: Kept in place (compressed files are written alongside them)
+
+The plugin walks the `dist` output directory recursively, so nested chunks and assets are compressed too. It replaces the previous two `vite-plugin-compression` instances: those shared a module-level `mtimeCache`, which caused the brotli instance to skip files the gzip instance had already processed, so no `.br` assets were emitted.
 
 ### Build Process
 
-During production builds (`npm run build`), the compression plugins automatically:
+During production builds (`npm run build`), the compression plugin automatically:
 
 1. Process all eligible files in the output directory
 2. Generate compressed versions with `.gz` and `.br` extensions
@@ -28,6 +30,19 @@ During production builds (`npm run build`), the compression plugins automaticall
 ### Deployment
 
 Whether clients actually receive the pre-compressed files depends on your hosting/CDN configuration. Many hosts compress responses automatically, but serving pre-compressed `*.br` / `*.gz` assets often requires explicit configuration.
+
+### SharedArrayBuffer (Cross-Origin Isolation)
+
+The simulation worker can use a `SharedArrayBuffer` (SAB) transport when the page is cross-origin isolated. The bridge selects the SAB path only when `crossOriginIsolated === true`; otherwise it falls back to the transfer-buffer path, which is always available.
+
+Browsers only expose `SharedArrayBuffer` when the hosting layer sends both:
+
+- `Cross-Origin-Opener-Policy: same-origin`
+- `Cross-Origin-Embedder-Policy: require-corp`
+
+These headers are set in `vite.config.ts` for both `server` (dev) and `preview`, and in `scripts/e2e-static-server.mjs` for every response, so local dev, preview, and E2E runs are cross-origin isolated.
+
+**Known limitation:** GitHub Pages cannot set custom response headers, so the GitHub Pages deployment is **not** cross-origin isolated and production keeps using the transfer-buffer fallback. If production SAB is required, host on a platform that lets you configure COOP/COEP (or set them at the CDN edge) and re-check `crossOriginIsolated === true` plus `window.__SAB.getWorkerStatus().usingShared === true` (with `?sim_worker=1`) on the deployed page.
 
 ## Compression Results
 
@@ -117,25 +132,36 @@ npm run preview
 
 ### Updating Compression Configuration
 
-The compression configuration is in `vite.config.ts`. Key settings:
+The compression configuration is in `vite.config.ts`. Key settings live in `createPrecompressPlugin()`:
 
 ```javascript
-compression({
-  algorithm: 'gzip',
-  ext: '.gz',
-  threshold: 10 * 1024,
-  deleteOriginFile: false,
-  filter: /\.(js|mjs|css|html|svg|wasm)$/i,
-});
+const compressibleFilePattern = /\.(js|mjs|css|html|svg|wasm)$/i;
+const sizeThreshold = 10 * 1024;
 ```
+
+To add a file type, extend `compressibleFilePattern`. To change the minimum size, update `sizeThreshold`.
+
+### CI Verification
+
+The Unit Tests workflow (`.github/workflows/unit-tests.yml`) runs a production build and asserts that both formats are emitted:
+
+```bash
+vp build
+BR_COUNT=$(find dist -name '*.br' | wc -l | xargs)
+GZ_COUNT=$(find dist -name '*.gz' | wc -l | xargs)
+test "$BR_COUNT" -gt 0
+test "$GZ_COUNT" -gt 0
+```
+
+If either count is zero the job fails, catching regressions such as the shared `mtimeCache` bug that previously produced no `.br` files.
 
 ### Troubleshooting
 
 **Compressed files not generated?**
 
-- Check that `isProd` is true (production mode)
-- Verify files meet the size threshold (>10KB)
-- Ensure compression ratio meets minimum (better than 80%)
+- Check that the build ran in production mode
+- Verify files meet the size threshold (>=10KB)
+- Ensure the file extension matches `compressibleFilePattern`
 
 **Compressed files not served?**
 
@@ -151,6 +177,6 @@ compression({
 
 ## References
 
-- [vite-plugin-compression](https://github.com/vbenjs/vite-plugin-compression)
+- [Node.js zlib documentation](https://nodejs.org/api/zlib.html)
 - [GitHub Pages Documentation](https://docs.github.com/en/pages)
 - [Brotli Compression Specification](https://tools.ietf.org/html/rfc7932)
