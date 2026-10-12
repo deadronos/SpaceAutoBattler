@@ -11,6 +11,7 @@ import {
 } from '../../renderer/environment/planetRingMaterial.js';
 import { installPlanetRingsDebug } from '../../debug/planetRingsDebug.js';
 import { usePlanetRingUniforms } from '../../hooks/usePlanetRingUniforms.js';
+import { usePrefersReducedMotion } from '../../hooks/usePrefersReducedMotion.js';
 
 interface PlanetRingsProps {
   /** Inner radius of the rings */
@@ -76,6 +77,7 @@ export function PlanetRings({
   enabled = true,
 }: PlanetRingsProps): React.ReactElement | null {
   const meshRef = useRef<Mesh>(null);
+  const reducedMotion = usePrefersReducedMotion();
 
   const geometry = useMemo(
     () => createPlanetRingGeometry(innerRadius, outerRadius, segments),
@@ -165,7 +167,8 @@ export function PlanetRings({
   useEffect(() => () => clearDebugHooks('rings'), []);
 
   useFrame((_, delta) => {
-    if (meshRef.current && rotationSpeed !== 0) {
+    // WCAG 2.3.3: freeze ring rotation when reduced motion is requested.
+    if (meshRef.current && rotationSpeed !== 0 && !reducedMotion) {
       meshRef.current.rotation.z += rotationSpeed * delta;
     }
   });

@@ -18,6 +18,7 @@ import { clamp, clamp01 } from '../../utils/math.js';
 import { reportMaterialError, reportWebGLError } from '../../utils/errorReporting.js';
 import { useStarDebug, useDebugOverlayCleanup } from '../../hooks/useStarDebug.js';
 import { useStarSphereFrame } from '../../hooks/useStarSphereUniforms.js';
+import { usePrefersReducedMotion } from '../../hooks/usePrefersReducedMotion.js';
 import {
   computeStarDiskQuaternion,
   createViewAlignmentScratch,
@@ -86,6 +87,7 @@ export function StarSphere({
   const { gl, camera, size: viewportSize } = useThree();
 
   const paused = useUiStore((s) => s.paused);
+  const reducedMotion = usePrefersReducedMotion();
   const lastTimeRef = useRef(0);
   const accumulatedTimeRef = useRef(0);
 
@@ -269,6 +271,7 @@ export function StarSphere({
     organic,
     noise,
     paused,
+    reducedMotion,
     radius,
     config,
     haze,

@@ -4,6 +4,7 @@ import { Frustum, InstancedBufferGeometry, Matrix4, Mesh, ShaderMaterial, Vector
 import type { ShipEntity } from '../types/index.js';
 import { PARTICLE_TRAILS_CONFIG, THRUSTER_GLOW_CONFIG } from '../config/effects.js';
 import { useUiStore } from '../app/uiStore.js';
+import { usePrefersReducedMotion } from './usePrefersReducedMotion.js';
 import { SeededRng } from '../utils/rng.js';
 import type { ParticleTrailResources } from '../renderer/particles/trailResources.js';
 import {
@@ -42,6 +43,7 @@ export function useParticleTrailSimulation(
   const camera = useThree((s) => s.camera);
 
   const paused = useUiStore((s) => s.paused);
+  const reducedMotion = usePrefersReducedMotion();
   const lastTimeRef = useRef(0);
   const accumulatedTimeRef = useRef(0);
 
@@ -84,7 +86,7 @@ export function useParticleTrailSimulation(
     }
     const d = elapsed - lastTimeRef.current;
     lastTimeRef.current = elapsed;
-    if (!paused) {
+    if (!paused && !reducedMotion) {
       accumulatedTimeRef.current += d;
     }
 
@@ -155,7 +157,10 @@ export function useParticleTrailSimulation(
         if (!anchor) continue;
         const rate = throttle * spawnRatePerAnchor;
         const remainder = remainderForShip[i] ?? 0;
-        const actualDelta = paused ? 0 : delta;
+        // WCAG 2.3.3: with reduced motion requested, feed a zero delta so the
+        // spawn loop emits nothing while the frustum/LOD and remainder
+        // bookkeeping continue to run and instanceCount stays stable.
+        const actualDelta = paused || reducedMotion ? 0 : delta;
         const desired = rate * actualDelta + remainder;
         const spawnCount = Math.floor(desired);
         remainderForShip[i] = desired - spawnCount;
