@@ -2,6 +2,7 @@ import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { cleanup, render } from '@testing-library/react';
 import { AxesHelper } from 'three';
+import { Grid } from '@react-three/drei';
 import {
   ErrorCategory,
   getErrorCounts,
@@ -23,7 +24,7 @@ vi.mock('@react-three/fiber', () => ({
 
 vi.mock('@react-three/drei', () => ({
   OrbitControls: () => null,
-  Grid: () => null,
+  Grid: vi.fn(() => null),
 }));
 
 vi.mock('../../src/game/context.js', () => ({
@@ -92,18 +93,30 @@ vi.mock('three', async () => {
   };
 });
 
+let originalLocation: Location | undefined;
+
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  delete (window as Window & { __copilotDebugForce?: boolean }).__copilotDebugForce;
+  if (originalLocation) {
+    Object.defineProperty(window, 'location', {
+      value: originalLocation,
+      writable: true,
+      configurable: true,
+    });
+  }
 });
 
 beforeEach(() => {
   resetErrorCounts();
   setErrorReportingEnabled(true);
+  originalLocation = window.location;
 });
 
 describe('Battlefield', () => {
   it('creates AxesHelper once across rerenders', async () => {
+    (window as Window & { __copilotDebugForce?: boolean }).__copilotDebugForce = true;
     const { Battlefield } = await import('../../src/components/Battlefield.js');
     const { rerender } = render(<Battlefield />);
 
@@ -113,6 +126,44 @@ describe('Battlefield', () => {
     const axesHelperCtor = vi.mocked(AxesHelper);
     expect(axesHelperCtor).toHaveBeenCalledTimes(1);
     expect(axesHelperCtor).toHaveBeenCalledWith(200);
+  });
+
+  it('does not mount Grid or AxesHelper when debug is off', async () => {
+    const { Battlefield } = await import('../../src/components/Battlefield.js');
+    const { container } = render(<Battlefield />);
+
+    expect(vi.mocked(Grid)).not.toHaveBeenCalled();
+    expect(vi.mocked(AxesHelper)).not.toHaveBeenCalled();
+    expect(container.querySelector('primitive')).toBeNull();
+  });
+
+  it('mounts Grid and AxesHelper when copilot_debug=1 is in the query string', async () => {
+    Object.defineProperty(window, 'location', {
+      value: { search: '?copilot_debug=1' },
+      writable: true,
+      configurable: true,
+    });
+    const { Battlefield } = await import('../../src/components/Battlefield.js');
+    const { container } = render(<Battlefield />);
+
+    expect(vi.mocked(Grid)).toHaveBeenCalled();
+    expect(vi.mocked(AxesHelper)).toHaveBeenCalledWith(200);
+    expect(container.querySelector('primitive')).not.toBeNull();
+  });
+
+  it('does not mount Grid or AxesHelper when debug is on but planets are hidden', async () => {
+    (window as Window & { __copilotDebugForce?: boolean }).__copilotDebugForce = true;
+    Object.defineProperty(window, 'location', {
+      value: { search: '?copilot_debug=1&copilot_hide_planets=1' },
+      writable: true,
+      configurable: true,
+    });
+    const { Battlefield } = await import('../../src/components/Battlefield.js');
+    const { container } = render(<Battlefield />);
+
+    expect(vi.mocked(Grid)).not.toHaveBeenCalled();
+    expect(vi.mocked(AxesHelper)).not.toHaveBeenCalled();
+    expect(container.querySelector('primitive')).toBeNull();
   });
 
   it('reports WebGL hook installation failures', async () => {
