@@ -4,10 +4,8 @@ import { performance } from 'node:perf_hooks';
 import process from 'node:process';
 import { Quaternion, Vector3 } from 'three';
 import type { GameState, ShipEntity } from '../../src/types/index.js';
-import { __aiTestHooks } from '../../src/game/systems.js';
+import { updateDecisionSystem } from '../../src/game/systems.js';
 import { createTestGameState, createTestAIState } from '../../test/vitest/helpers/fixtures.js';
-
-const { updateDecisionSystem } = __aiTestHooks;
 
 console.log('[ai-budget] booting harness');
 
