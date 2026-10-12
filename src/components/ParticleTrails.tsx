@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo } from 'react';
 import { PARTICLE_TRAILS_CONFIG, THRUSTER_GLOW_CONFIG } from '../config/effects.js';
 import type { ShipEntity } from '../types/index.js';
+import { useUiStore } from '../app/uiStore.js';
+import { resolveQualitySettings } from '../config/quality.js';
 import {
   createParticleTrailResources,
   disposeParticleTrailResources,
@@ -22,12 +24,18 @@ interface ParticleTrailProps {
  * @returns {React.ReactElement} The rendered particle system mesh.
  */
 export function ParticleTrails({ ships, resources }: ParticleTrailProps): React.ReactElement {
+  // Resolved quality knobs (render-only). `high` keeps the shipped pool/spawn
+  // rate from PARTICLE_TRAILS_CONFIG, so this is a no-op by default.
+  const qualityPreset = useUiStore((s) => s.qualityPreset);
+  const detectedQualityTier = useUiStore((s) => s.detectedQualityTier);
+  const quality = resolveQualitySettings(qualityPreset, detectedQualityTier);
+
   if (!PARTICLE_TRAILS_CONFIG.enabled) return <></>;
 
   const ownsResources = resources == null;
   const trailResources = useMemo(() => {
     if (resources) return resources;
-    return createParticleTrailResources(PARTICLE_TRAILS_CONFIG.maxParticles, {
+    return createParticleTrailResources(quality.particles.maxParticles, {
       size: PARTICLE_TRAILS_CONFIG.size,
       color: PARTICLE_TRAILS_CONFIG.color || THRUSTER_GLOW_CONFIG.defaultEmissiveColor,
       opacity: PARTICLE_TRAILS_CONFIG.opacity,
@@ -36,7 +44,7 @@ export function ParticleTrails({ ships, resources }: ParticleTrailProps): React.
       depthWrite: PARTICLE_TRAILS_CONFIG.depthWrite,
       spriteSoftness: PARTICLE_TRAILS_CONFIG.spriteSoftness,
     });
-  }, [resources]);
+  }, [resources, quality.particles.maxParticles]);
 
   useEffect(() => {
     if (!ownsResources) return;
@@ -45,7 +53,11 @@ export function ParticleTrails({ ships, resources }: ParticleTrailProps): React.
     };
   }, [ownsResources, trailResources]);
 
-  const meshRef = useParticleTrailSimulation(ships, trailResources);
+  const meshRef = useParticleTrailSimulation(
+    ships,
+    trailResources,
+    quality.particles.spawnRatePerAnchor,
+  );
 
   return (
     <mesh

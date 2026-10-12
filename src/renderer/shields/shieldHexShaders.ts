@@ -186,10 +186,18 @@ export function buildShieldHexFragmentShader(): string {
         float w = max(0.0001, uEdgeWidth);
         float border = 1.0 - smoothstep(0.0, w, abs(d));
 
-        // Chromatic aberration for ripples
+        // Chromatic aberration for ripples. LOW_QUALITY collapses the three
+        // chromatic evaluations into one (reuse the green channel for R/B)
+        // while keeping the ripple displacement math unchanged.
+#ifndef LOW_QUALITY
         float rippleR = getRippleIntensity(N, 0.01);
         float rippleG = getRippleIntensity(N, 0.0);
         float rippleB = getRippleIntensity(N, -0.01);
+#else
+        float rippleG = getRippleIntensity(N, 0.0);
+        float rippleR = rippleG;
+        float rippleB = rippleG;
+#endif
         
         float rippleMax = max(rippleR, max(rippleG, rippleB));
         vec3 rippleColor = vec3(rippleR, rippleG, rippleB);

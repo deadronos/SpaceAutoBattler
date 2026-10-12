@@ -107,7 +107,15 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
 	
 	float newTime1	= abs( snoise( coord + vec3( 0.0, -time * ( 0.35 + brightness * 0.001 ), time * 0.015 ), 15.0 ) );
 	float newTime2	= abs( snoise( coord + vec3( 0.0, -time * ( 0.15 + brightness * 0.001 ), time * 0.015 ), 45.0 ) );
-	for( int i=1; i<=7; i++ ){
+// Low-quality fallback halves the procedural octave count (2 vs 7). The loop
+// bound must stay a compile-time constant for GLSL ES 1.00; the renderer injects
+// `LOW_QUALITY` via the material's `defines` when the performance tier is low.
+#ifdef LOW_QUALITY
+	const int STAR_OCTAVES = 2;
+#else
+	const int STAR_OCTAVES = 7;
+#endif
+	for( int i=1; i<=STAR_OCTAVES; i++ ){
 		float power = pow( 2.0, float(i + 1) );
 		fVal1 += ( 0.5 / power ) * snoise( coord + vec3( 0.0, -time, time * 0.2 ), ( power * ( 10.0 ) * ( newTime1 + 1.0 ) ) );
 		fVal2 += ( 0.5 / power ) * snoise( coord + vec3( 0.0, -time, time * 0.2 ), ( power * ( 25.0 ) * ( newTime2 + 1.0 ) ) );

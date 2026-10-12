@@ -21,11 +21,14 @@ const TRAIL_RNG_SEED = 0x54524149; // 'TRAI'
  *
  * @param {ShipEntity[]} ships - Ships to emit trails for.
  * @param {ParticleTrailResources} trailResources - GPU resources backing the trail instances.
+ * @param {number} [spawnRatePerAnchor] - Particles/sec per anchor at full throttle. Defaults to the
+ *   shipped `PARTICLE_TRAILS_CONFIG.spawnRatePerAnchor` (the `high` quality baseline).
  * @returns {React.RefObject<Mesh<InstancedBufferGeometry, ShaderMaterial> | null>} Ref to the trail mesh.
  */
 export function useParticleTrailSimulation(
   ships: ShipEntity[],
   trailResources: ParticleTrailResources,
+  spawnRatePerAnchor: number = PARTICLE_TRAILS_CONFIG.spawnRatePerAnchor,
 ): React.RefObject<Mesh<InstancedBufferGeometry, ShaderMaterial> | null> {
   const meshRef = useRef<Mesh<InstancedBufferGeometry, ShaderMaterial>>(null);
   const nextParticleIndex = useRef(0);
@@ -99,7 +102,6 @@ export function useParticleTrailSimulation(
     projScreenMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
     frustum.setFromProjectionMatrix(projScreenMatrix);
 
-    const spawnRatePerAnchor = PARTICLE_TRAILS_CONFIG.spawnRatePerAnchor;
     const minThrottle = PARTICLE_TRAILS_CONFIG.minThrottle;
     const backwardMin = PARTICLE_TRAILS_CONFIG.backwardSpeed.min;
     const backwardMax = PARTICLE_TRAILS_CONFIG.backwardSpeed.max;

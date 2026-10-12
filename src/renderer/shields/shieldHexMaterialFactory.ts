@@ -6,6 +6,7 @@ import {
   SHIELD_TUNING,
   TEAM_COLORS,
   SHIELD_RIPPLE_TUNING,
+  RENDERER_VISUAL_CONFIG,
 } from '../../config/renderer.js';
 import { colorFromConfig } from '../../utils/color.js';
 import {
@@ -37,6 +38,9 @@ export function createShieldHexShaderMaterial(hull: ShipHull, team: Team): Shade
     transparent: true,
     depthWrite: false,
     depthTest: SHIELD_TUNING.depthTest,
+    // Low tier collapses the shield's 3 chromatic ripple evaluations to 1 at
+    // compile time. Read from config (never React) to keep this boundary clean.
+    ...(RENDERER_VISUAL_CONFIG.performanceTier === 'low' ? { defines: { LOW_QUALITY: '1' } } : {}),
     uniforms: {
       uTime: { value: 0 },
       uTint: { value: colorFromConfig(team === 'blue' ? TEAM_COLORS.blue : SHIELD_TUNING.redTint) },

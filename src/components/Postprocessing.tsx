@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useThree, useFrame } from '@react-three/fiber';
 import {
   type EffectComposer,
@@ -8,7 +8,9 @@ import {
 } from 'postprocessing';
 import { type WebGLRenderer, type Scene, type Camera, type WebGLRenderTarget } from 'three';
 import { useBloomContext } from '../renderer/bloom/index.js';
-import { POSTPROCESSING_CONFIG } from '../config/renderer.js';
+import { POSTPROCESSING_CONFIG, type AmbientOcclusionConfig } from '../config/renderer.js';
+import { useUiStore } from '../app/uiStore.js';
+import { resolveQualitySettings } from '../config/quality.js';
 import { createComposer, type ComposerSetupResult } from './postprocessing/createComposer.js';
 import { buildEffects, type BloomContextLike } from './postprocessing/buildEffects.js';
 import { buildAmbientOcclusion } from './postprocessing/buildAmbientOcclusion.js';
@@ -46,6 +48,24 @@ export function Postprocessing({ enabled = false }: Props): null {
   const bloomCtx = useBloomContext();
   const activeBloomCtx = bloomCtx ?? null;
   const enableCameraLayers = activeBloomCtx?.enableCameraLayers;
+
+  // Resolved quality knobs (render-only). `high` reproduces the shipped
+  // POSTPROCESSING_CONFIG.ao values exactly, so this is a no-op by default.
+  const qualityPreset = useUiStore((s) => s.qualityPreset);
+  const detectedQualityTier = useUiStore((s) => s.detectedQualityTier);
+  const quality = useMemo(
+    () => resolveQualitySettings(qualityPreset, detectedQualityTier),
+    [qualityPreset, detectedQualityTier],
+  );
+  const aoConfig = useMemo<AmbientOcclusionConfig>(
+    () => ({
+      ...POSTPROCESSING_CONFIG.ao,
+      enabled: quality.ao.enabled,
+      halfRes: quality.ao.halfRes,
+      quality: quality.ao.quality,
+    }),
+    [quality.ao.enabled, quality.ao.halfRes, quality.ao.quality],
+  );
 
   const cleanupComposer = useCallback(() => {
     const setup = composerSetupRef.current;
@@ -115,7 +135,7 @@ export function Postprocessing({ enabled = false }: Props): null {
         typeof window !== 'undefined'
           ? (window as DebugWindow).__copilot_forceAmbientOcclusion
           : undefined;
-      const aoEnabled = forcedAo === undefined ? POSTPROCESSING_CONFIG.ao.enabled : forcedAo;
+      const aoEnabled = forcedAo === undefined ? aoConfig.enabled : forcedAo;
 
       aoPass = aoEnabled
         ? buildAmbientOcclusion({
@@ -123,7 +143,7 @@ export function Postprocessing({ enabled = false }: Props): null {
             camera: camera as unknown as Camera,
             width: sizeRef.current.width,
             height: sizeRef.current.height,
-            config: POSTPROCESSING_CONFIG.ao,
+            config: aoConfig,
           })
         : null;
 
@@ -162,7 +182,16 @@ export function Postprocessing({ enabled = false }: Props): null {
     return () => {
       cleanupComposer();
     };
-  }, [effectiveEnabled, activeBloomCtx, gl, scene, camera, cleanupComposer]);
+  }, [
+    effectiveEnabled,
+    activeBloomCtx,
+    gl,
+    scene,
+    camera,
+    cleanupComposer,
+    aoConfig,
+    quality.tier,
+  ]);
 
   useEffect(() => {
     sizeRef.current = size;

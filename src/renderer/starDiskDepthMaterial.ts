@@ -3,6 +3,7 @@ import fragmentShaderRaw from './shaders/mainsequencestar.glsl';
 import { withCommonGlsl } from './shaders/index.js';
 import vertexShader from './shaders/starSphere.vertex.glsl';
 import { reportMaterialError } from '../utils/errorReporting.js';
+import { RENDERER_VISUAL_CONFIG } from '../config/renderer.js';
 
 /**
  * Builds the depth-pass material for the star sphere.
@@ -20,11 +21,22 @@ export function createStarSphereDepthMaterial(
 ): ShaderMaterial | MeshBasicMaterial {
   if (appliedMaterial instanceof ShaderMaterial) {
     try {
+      // Mirror the visual pass's low-quality define so both passes compile the
+      // same octave count. Prefer the visual material's own defines (the single
+      // source of truth); fall back to the config for materials built without it.
+      const defines: Record<string, string> = { DEPTH_PASS: '1' };
+      const visualDefines = appliedMaterial.defines as Record<string, string> | undefined;
+      if (visualDefines?.LOW_QUALITY !== undefined) {
+        defines.LOW_QUALITY = visualDefines.LOW_QUALITY;
+      } else if (RENDERER_VISUAL_CONFIG.performanceTier === 'low') {
+        defines.LOW_QUALITY = '1';
+      }
+
       const depthMat = new ShaderMaterial({
         vertexShader,
         fragmentShader: withCommonGlsl(fragmentShaderRaw),
         uniforms: appliedMaterial.uniforms,
-        defines: { DEPTH_PASS: '1' },
+        defines,
         depthWrite: true,
         depthTest: true,
         colorWrite: false,
