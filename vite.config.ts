@@ -81,6 +81,10 @@ function createOutputConfig(isProd: boolean): UserConfig['build'] {
           const name = assetInfo.name ?? '';
           const ext = path.extname(name).toLowerCase();
 
+          // Self-hosted glTF decoders must keep stable, unhashed filenames because the
+          // loaders fetch them by fixed name from the derived `decoders/` directory.
+          if (/^(draco_|basis_transcoder)/.test(name)) return `decoders/${name}`;
+
           if (ext === '.css') {
             return isProd ? 'styles/[name].[hash][extname]' : 'styles/[name][extname]';
           }
@@ -118,7 +122,7 @@ const gzipAsync = promisify(gzip);
 const brotliCompressAsync = promisify(brotliCompress);
 
 function createPrecompressPlugin(): Plugin {
-  const compressibleFilePattern = /\.(js|mjs|css|html|svg|wasm)$/i;
+  const compressibleFilePattern = /\.(js|mjs|css|html|svg|wasm|glb|gltf|bin)$/i;
   const sizeThreshold = 10 * 1024;
 
   async function collectFiles(dir: string): Promise<string[]> {
@@ -385,7 +389,7 @@ export default defineConfig({
   lint: lintConfig,
   staged: stagedConfig,
   base: './',
-  assetsInclude: ['**/*.glb', '**/*.gltf', '**/*.bin', '**/*.wasm', '**/*.glsl'],
+  assetsInclude: ['**/*.glb', '**/*.gltf', '**/*.bin', '**/*.wasm', '**/*.glsl', '**/*.ktx2'],
   plugins: [
     createJsToTsResolvePlugin(),
     createGlslRawPlugin(),

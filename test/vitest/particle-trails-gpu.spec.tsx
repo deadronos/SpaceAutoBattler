@@ -29,7 +29,7 @@ vi.mock('@react-three/fiber', () => ({
 }));
 
 vi.mock('@react-three/drei', () => ({
-  useGLTF: () => ({ scene: null }),
+  useGLTF: Object.assign(() => ({ scene: null }), { setDecoderPath: vi.fn() }),
 }));
 
 afterEach(() => {

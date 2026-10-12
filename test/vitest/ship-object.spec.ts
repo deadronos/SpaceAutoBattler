@@ -7,7 +7,9 @@ vi.mock('@react-three/drei', async () => {
   const actual = await vi.importActual<any>('@react-three/drei');
   return {
     ...actual,
-    useGLTF: () => ({ scene: { clone: () => ({}) } }),
+    useGLTF: Object.assign(() => ({ scene: { clone: () => ({}) } }), {
+      setDecoderPath: vi.fn(),
+    }),
   };
 });
 
