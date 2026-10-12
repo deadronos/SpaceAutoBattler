@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import type { ShipEntity, StatusEffectTag } from '../types/index.js';
-import { useGameState } from '../game/context.js';
-import { useUiStore } from '../game/uiStore.js';
+import { useGameState } from '../app/context.js';
+import { useUiStore } from '../app/uiStore.js';
 import { clamp01 } from '../utils/math.js';
 import { TEMP_HUD_POSITION } from '../utils/tempVectors.js';
 import { useHudOverlayStore, type ShipHudOverlaySnapshot } from '../renderer/hudOverlayStore.js';

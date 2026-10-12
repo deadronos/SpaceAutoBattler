@@ -5,7 +5,7 @@ import { Color, Matrix4 } from 'three';
 import { SphereGeometry } from 'three';
 import type { Archetype, GameEntity, TurretEntity, MuzzleFlash } from '../../types/index.js';
 import { useArchetypeEntities } from '../../hooks/useArchetypeEntities.js';
-import { useGameState } from '../../game/context.js';
+import { useGameState } from '../../app/context.js';
 import { useBloomRegistration } from '../../renderer/bloom/index.js';
 import { getInstanceFriendlyMaterial } from '../../renderer/materialRegistry.js';
 import { TEMP_MUZZLE_POS, TEMP_MUZZLE_ROT, TEMP_MUZZLE_SCALE } from '../../utils/tempVectors.js';

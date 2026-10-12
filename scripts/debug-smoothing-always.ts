@@ -1,7 +1,7 @@
 import { Vector3 } from 'three';
 import { resolveBehaviorProfile } from '../src/game/aiProfiles.js';
 import { __aiTestHooks } from '../src/game/systems.js';
-import { useUiStore } from '../src/game/uiStore.js';
+import { useUiStore } from '../src/app/uiStore.js';
 import { createDefaultMetrics } from '../src/game/metrics.js';
 import { getEffectiveAIConfig } from '../src/game/config.js';
 

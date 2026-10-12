@@ -11,7 +11,7 @@ vi.mock('r3f-perf', async () => {
 import React from 'react';
 import { act, cleanup, render, waitFor } from '@testing-library/react';
 import { PerfMonitorOverlay } from '../../src/components/PerfMonitorOverlay.js';
-import { useUiStore } from '../../src/game/uiStore.js';
+import { useUiStore } from '../../src/app/uiStore.js';
 
 const PANEL_CLASS = 'hud-perf-monitor';
 

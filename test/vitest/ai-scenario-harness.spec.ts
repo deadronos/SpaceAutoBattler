@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test';
 import { runAIScenario, collectTestMetrics } from '../support/aiScenarioHarness.js';
-import { useUiStore } from '../../src/game/uiStore.js';
+import { useUiStore } from '../../src/app/uiStore.js';
 import type { AIScenarioConfig, AIScenarioLog } from '../support/aiScenarioHarness.js';
 import escortScenario from './fixtures/ai-escort-scenario.json';
 import bomberInterceptScenario from './fixtures/ai-bomber-intercept-scenario.json';

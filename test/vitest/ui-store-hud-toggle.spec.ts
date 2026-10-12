@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vite-plus/test';
-import { mirrorHudHealthBarsFlag, useUiStore } from '../../src/game/uiStore.js';
+import { mirrorHudHealthBarsFlag, useUiStore } from '../../src/app/uiStore.js';
 import type { GameState } from '../../src/types/index.js';
 
 describe('UI store HUD health toggle', () => {

@@ -10,7 +10,7 @@ import {
   HULL_TINT,
 } from '../../config/renderer.js';
 import { getMaterial } from '../../renderer/materialRegistry.js';
-import { useOptionalGameState } from '../../game/context.js';
+import { useOptionalGameState } from '../../app/context.js';
 import { useBloomRegistration } from '../../renderer/bloom/index.js';
 import type { HullMaterial } from './ShipModel.js';
 import { applyHullTint } from './ShipModel.js';

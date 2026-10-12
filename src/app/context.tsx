@@ -1,9 +1,9 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { GameState } from '../types/index.js';
-import { createGameState, disposeGameState, spawnInitialFleets } from './state.js';
-import { installE2eDebugSurface } from './e2eDebugSurface.js';
-import { SimulationBridge, shouldRenderWorkerShipsOnly } from './SimulationBridge.js';
+import { createGameState, disposeGameState, spawnInitialFleets } from '../game/state.js';
+import { installE2eDebugSurface } from '../game/e2eDebugSurface.js';
+import { SimulationBridge, shouldRenderWorkerShipsOnly } from '../game/SimulationBridge.js';
 import { useSimulationBridge } from '../hooks/useSimulationBridge.js';
 import { useGameStateMirrors } from '../hooks/useGameStateMirrors.js';
 

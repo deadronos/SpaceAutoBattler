@@ -2,16 +2,16 @@ import React from 'react';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vite-plus/test';
 import { Controls } from '../../src/components/Controls';
-import * as GameContext from '../../src/game/context';
-import * as UiStore from '../../src/game/uiStore';
+import * as GameContext from '../../src/app/context';
+import * as UiStore from '../../src/app/uiStore';
 import * as GameState from '../../src/game/state';
 
 // Mock the context and hooks
-vi.mock('../../src/game/context', () => ({
+vi.mock('../../src/app/context', () => ({
   useOptionalGameState: vi.fn(),
 }));
 
-vi.mock('../../src/game/uiStore', () => ({
+vi.mock('../../src/app/uiStore', () => ({
   useUiStore: vi.fn(),
 }));
 

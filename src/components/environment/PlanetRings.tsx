@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import type { Mesh } from 'three';
 import { useFrame } from '@react-three/fiber';
 import { RENDER_ORDER_TRANSLUCENT_ADDITIVE } from '../../renderer/sceneLayerOrder.js';
-import { useUiStore } from '../../game/uiStore.js';
+import { useUiStore } from '../../app/uiStore.js';
 import { clearDebugHooks } from '../../debug/copilotDebugRegistry.js';
 import { createPlanetRingGeometry } from '../../renderer/environment/planetRingGeometry.js';
 import {

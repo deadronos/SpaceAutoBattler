@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
 import type React from 'react';
 import type { AIKpiSummary, ShipEntity } from '../types/index.js';
-import { useOptionalGameState } from '../game/context.js';
-import { useUiStore } from '../game/uiStore.js';
+import { useOptionalGameState } from '../app/context.js';
+import { useUiStore } from '../app/uiStore.js';
 import { useInterval } from '../hooks/useInterval.js';
 import { resolveBehaviorProfile } from '../game/aiProfiles.js';
 import { formatPercent, formatSeconds } from '../utils/format.js';

@@ -2,7 +2,7 @@ import { memo, useMemo, useRef } from 'react';
 import type { Group } from 'three';
 import { Color, Euler, Quaternion, Vector3 } from 'three';
 import { useFrame } from '@react-three/fiber';
-import { useOptionalGameState } from '../../game/context.js';
+import { useOptionalGameState } from '../../app/context.js';
 import { usePlanetTexture } from '../../hooks/usePlanetTexture.js';
 import type { PlanetBodyConfig } from '../../config/environment.js';
 import { PLANET_GEOMETRY_SEGMENTS, CELESTIAL_ENVIRONMENT } from '../../config/environment.js';

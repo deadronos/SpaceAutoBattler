@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { GameState } from '../types/index.js';
-import { AI_CONFIG } from './config.js';
+import { AI_CONFIG } from '../game/config.js';
 import { reportConfigError } from '../utils/errorReporting.js';
 
 let warnedAiDisableToggle = false;

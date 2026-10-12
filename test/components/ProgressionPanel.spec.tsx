@@ -2,15 +2,15 @@ import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vite-plus/test';
 import { ProgressionPanel } from '../../src/components/ProgressionPanel';
-import * as GameContext from '../../src/game/context';
-import * as UiStore from '../../src/game/uiStore';
+import * as GameContext from '../../src/app/context';
+import * as UiStore from '../../src/app/uiStore';
 
 // Mock the dependencies
-vi.mock('../../src/game/context', () => ({
+vi.mock('../../src/app/context', () => ({
   useOptionalGameState: vi.fn(),
 }));
 
-vi.mock('../../src/game/uiStore', () => ({
+vi.mock('../../src/app/uiStore', () => ({
   useUiStore: vi.fn(),
 }));
 

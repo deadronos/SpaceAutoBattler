@@ -4,13 +4,12 @@ The heart of the game engine. Contains game state management, AI systems, physic
 
 ## Core Architecture Files
 
-| File              | Purpose                                                                                            |
-| ----------------- | -------------------------------------------------------------------------------------------------- |
-| **context.tsx**   | React Context provider for GameState; initializes and manages global game state throughout the app |
-| **state.ts**      | Core GameState type definitions and initial state factory                                          |
-| **config.ts**     | Game configuration parameters and constants                                                        |
-| **subsystems.ts** | Coordinates all game subsystems and their update order                                             |
-| **systems.ts**    | Main system orchestration; determines which systems run each frame                                 |
+| File              | Purpose                                                            |
+| ----------------- | ------------------------------------------------------------------ |
+| **state.ts**      | Core GameState type definitions and initial state factory          |
+| **config.ts**     | Game configuration parameters and constants                        |
+| **subsystems.ts** | Coordinates all game subsystems and their update order             |
+| **systems.ts**    | Main system orchestration; determines which systems run each frame |
 
 ## Game Data & Profiles
 
@@ -29,7 +28,6 @@ The heart of the game engine. Contains game state management, AI systems, physic
 | ---------------------- | ------------------------------------------------- |
 | **progression.ts**     | Ship progression, leveling, and experience system |
 | **metrics.ts**         | Tracking game metrics and statistics              |
-| **uiStore.ts**         | UI state management (independent of game state)   |
 | **safeSnapshot.ts**    | Utilities for safely serializing game state       |
 | **validation.ts**      | Game state validation and integrity checks        |
 | **simulationQueue.ts** | Queues and schedules AI simulation work           |

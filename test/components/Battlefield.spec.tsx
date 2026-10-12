@@ -27,11 +27,11 @@ vi.mock('@react-three/drei', () => ({
   Grid: vi.fn(() => null),
 }));
 
-vi.mock('../../src/game/context.js', () => ({
+vi.mock('../../src/app/context.js', () => ({
   useOptionalGameState: () => mockState,
 }));
 
-vi.mock('../../src/game/uiStore.js', () => ({
+vi.mock('../../src/app/uiStore.js', () => ({
   useUiStore: (selector: (state: { postprocessingEnabled: boolean }) => boolean) =>
     selector({ postprocessingEnabled: false }),
 }));

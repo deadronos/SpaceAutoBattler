@@ -1,13 +1,13 @@
 import { useMemo } from 'react';
 import type { ShipEntity } from '../types/index.js';
-import { useOptionalGameState } from '../game/context.js';
+import { useOptionalGameState } from '../app/context.js';
 import { useArchetypeEntities } from '../hooks/useArchetypeEntities.js';
 import type React from 'react';
 import { AiDebugOverlay } from './AiDebugOverlay.js';
 import { ExplosionDebugOverlay } from './ExplosionDebugOverlay.js';
 import { HudHealthLayer } from './HudHealthLayer.js';
 import { ProgressionPanel } from './ProgressionPanel.js';
-import { useUiStore } from '../game/uiStore.js';
+import { useUiStore } from '../app/uiStore.js';
 import { SettingsDrawer, DebugDrawer } from './HudToggleDrawer.js';
 import { formatPercentRounded } from '../utils/format.js';
 import { clamp } from '../utils/math.js';

@@ -5,7 +5,7 @@ import {
   shouldDebugWorkerSimulation,
   shouldEnableWorkerSimulation,
 } from '../game/SimulationBridge.js';
-import { useUiStore } from '../game/uiStore.js';
+import { useUiStore } from '../app/uiStore.js';
 import { reportE2EError, reportConfigError } from '../utils/errorReporting.js';
 
 export interface SimulationBridgeHandle {

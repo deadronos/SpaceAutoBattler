@@ -3,7 +3,7 @@ import { useLayoutEffect, useMemo, useRef } from 'react';
 import type { RefObject } from 'react';
 import type { Group } from 'three';
 import type { ShipEntity } from '../types/index.js';
-import { useOptionalGameState } from '../game/context.js';
+import { useOptionalGameState } from '../app/context.js';
 import { clamp01 } from '../utils/math.js';
 import { createSmoothingConfig, type SmoothingConfig } from './interpolation/config.js';
 import {

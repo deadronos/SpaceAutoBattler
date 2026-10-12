@@ -29,7 +29,7 @@ const moduleKeys = [
   '../../../src/game/systems/motion.ts',
   '../../../src/game/systems.ts',
   '../../../src/game/turretRegistry.ts',
-  '../../../src/game/uiStore.ts',
+  '../../../src/app/uiStore.ts',
   '../../../src/game/validation.ts',
   '../../../src/hooks/useArchetypeEntities.ts',
   '../../../src/hooks/usePlanetTexture.ts',
