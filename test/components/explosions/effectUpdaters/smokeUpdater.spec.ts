@@ -74,7 +74,7 @@ describe('smokeUpdater', () => {
       { capacity: 100, supportsInstanceColor: true },
     );
     mgr.beginFrame();
-    const result = updateSmoke(ctx, mgr, String(event.id));
+    const result = updateSmoke(ctx, mgr, event.id);
     expect(result.count).toBe(0);
     expect(result.saturated).toBe(false);
   });
@@ -86,7 +86,7 @@ describe('smokeUpdater', () => {
       { capacity: 100, supportsInstanceColor: true },
     );
     mgr.beginFrame();
-    const result = updateSmoke(ctx, mgr, String(event.id));
+    const result = updateSmoke(ctx, mgr, event.id);
     expect(result.count).toBeGreaterThan(0);
     expect(result.count).toBeLessThanOrEqual(event.particles.smoke);
     expect(result.saturated).toBe(false);
@@ -99,7 +99,7 @@ describe('smokeUpdater', () => {
       { capacity: 5, supportsInstanceColor: true },
     );
     mgr.beginFrame();
-    const result = updateSmoke(ctx, mgr, String(event.id));
+    const result = updateSmoke(ctx, mgr, event.id);
     expect(result.count).toBeLessThanOrEqual(5);
   });
 
@@ -110,7 +110,7 @@ describe('smokeUpdater', () => {
       { capacity: 100, supportsInstanceColor: true },
     );
     mgr1.beginFrame();
-    updateSmoke(ctx, mgr1, String(event.id));
+    updateSmoke(ctx, mgr1, event.id);
     const dummy1 = new Object3D();
     mesh.getMatrixAt(0, dummy1.matrix);
     dummy1.matrix.decompose(dummy1.position, dummy1.quaternion, dummy1.scale);
@@ -122,7 +122,7 @@ describe('smokeUpdater', () => {
       { capacity: 100, supportsInstanceColor: true },
     );
     mgr2.beginFrame();
-    updateSmoke(ctx, mgr2, String(event.id));
+    updateSmoke(ctx, mgr2, event.id);
     const dummy2 = new Object3D();
     mesh.getMatrixAt(0, dummy2.matrix);
     dummy2.matrix.decompose(dummy2.position, dummy2.quaternion, dummy2.scale);
@@ -139,7 +139,7 @@ describe('smokeUpdater', () => {
       { capacity: 100, supportsInstanceColor: true },
     );
     mgr3.beginFrame();
-    updateSmoke(ctx, mgr3, String(event.id));
+    updateSmoke(ctx, mgr3, event.id);
     const color1 = new Color();
     mesh.getColorAt(0, color1);
     const intensity1 = color1.r + color1.g + color1.b;
@@ -150,7 +150,7 @@ describe('smokeUpdater', () => {
       { capacity: 100, supportsInstanceColor: true },
     );
     mgr4.beginFrame();
-    updateSmoke(ctx, mgr4, String(event.id));
+    updateSmoke(ctx, mgr4, event.id);
     const color2 = new Color();
     mesh.getColorAt(0, color2);
     const intensity2 = color2.r + color2.g + color2.b;
@@ -165,7 +165,7 @@ describe('smokeUpdater', () => {
       { capacity: 1, supportsInstanceColor: true },
     );
     mgr.beginFrame();
-    const result = updateSmoke(ctx, mgr, String(event.id));
+    const result = updateSmoke(ctx, mgr, event.id);
     expect(result.count).toBeLessThanOrEqual(1);
     expect(result.saturated).toBe(true);
   });

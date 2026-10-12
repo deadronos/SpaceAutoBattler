@@ -7,21 +7,22 @@ import type { EffectUpdateResult } from './types.js';
  * dummy transform and color, returning the standard effect result. Shared by
  * the single-instance updaters (flash, fireball, shockwave).
  *
- * @param {InstancedLayerManager<string>} manager - The effect's instanced layer manager.
- * @param {string} keyBase - Per-event key base (usually the event id).
- * @param {string} suffix - Effect name, used to namespace the allocation key.
+ * Each single-instance effect has its own manager, so the event id is already
+ * unique within that manager and can be used directly as the numeric key.
+ *
+ * @param {InstancedLayerManager<number>} manager - The effect's instanced layer manager.
+ * @param {number} eventId - Numeric per-event identity used as the allocation key.
  * @param {Object3D} dummy - Configured transform (matrix already updated).
  * @param {Color} color - Configured instance color.
  * @returns {EffectUpdateResult} Count/saturation result.
  */
 export function emitSingleInstance(
-  manager: InstancedLayerManager<string>,
-  keyBase: string,
-  suffix: string,
+  manager: InstancedLayerManager<number>,
+  eventId: number,
   dummy: Object3D,
   color: Color,
 ): EffectUpdateResult {
-  const idx = manager.allocate(`${keyBase}:${suffix}`);
+  const idx = manager.allocate(eventId);
   if (idx == null) return { count: 0, saturated: true };
   manager.setMatrixAt(idx, dummy.matrix);
   manager.setColorAt(idx, color);

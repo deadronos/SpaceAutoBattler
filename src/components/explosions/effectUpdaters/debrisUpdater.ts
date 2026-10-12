@@ -12,7 +12,7 @@ import { processParticleArray } from './particleLoopHelper.js';
 export const updateDebris: EffectUpdater = (
   ctx: EffectUpdateContext,
   manager,
-  keyBase: string,
+  eventId: number,
 ): EffectUpdateResult => {
   const { event, time, derived, dummy, tmpQuat, tmpVec, color } = ctx;
 
@@ -22,8 +22,7 @@ export const updateDebris: EffectUpdater = (
     derived.debris,
     debrisT,
     manager,
-    keyBase,
-    'shard',
+    eventId,
     (shard) => shard.lifetime,
     (shard, idx, debrisTime) => {
       const shardProgress = clamp01(debrisTime / shard.lifetime);

@@ -15,7 +15,7 @@ import { emitSingleInstance } from './instanceHelpers.js';
 export const updateShockwave: EffectUpdater = (
   ctx: EffectUpdateContext,
   manager,
-  keyBase: string,
+  eventId: number,
 ): EffectUpdateResult => {
   const { event, time, camera, dummy, color } = ctx;
 
@@ -36,5 +36,5 @@ export const updateShockwave: EffectUpdater = (
     .copy(getCachedColor(event.palette.shockwave))
     .multiplyScalar(Math.max(0.2, 1 - phase * 0.9));
 
-  return emitSingleInstance(manager, keyBase, 'shockwave', dummy, color);
+  return emitSingleInstance(manager, eventId, dummy, color);
 };

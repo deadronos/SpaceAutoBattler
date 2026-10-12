@@ -28,8 +28,8 @@ export interface EffectUpdateResult {
  */
 export type EffectUpdater = (
   ctx: EffectUpdateContext,
-  manager: InstancedLayerManager<string>,
-  keyBase: string,
+  manager: InstancedLayerManager<number>,
+  eventId: number,
 ) => EffectUpdateResult;
 
 export const EMPTY_EFFECT_RESULT: EffectUpdateResult = Object.freeze({

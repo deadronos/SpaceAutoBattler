@@ -73,7 +73,7 @@ describe('debrisUpdater', () => {
       { capacity: 100, supportsInstanceColor: true },
     );
     mgr.beginFrame();
-    const result = updateDebris(ctx, mgr, String(event.id));
+    const result = updateDebris(ctx, mgr, event.id);
     expect(result.count).toBe(0);
     expect(result.saturated).toBe(false);
   });
@@ -85,7 +85,7 @@ describe('debrisUpdater', () => {
       { capacity: 100, supportsInstanceColor: true },
     );
     mgr.beginFrame();
-    const result = updateDebris(ctx, mgr, String(event.id));
+    const result = updateDebris(ctx, mgr, event.id);
     expect(result.count).toBeGreaterThan(0);
     expect(result.count).toBeLessThanOrEqual(event.debris.count);
     expect(result.saturated).toBe(false);
@@ -98,7 +98,7 @@ describe('debrisUpdater', () => {
       { capacity: 5, supportsInstanceColor: true },
     );
     mgr.beginFrame();
-    const result = updateDebris(ctx, mgr, String(event.id));
+    const result = updateDebris(ctx, mgr, event.id);
     expect(result.count).toBeLessThanOrEqual(5);
   });
 
@@ -109,7 +109,7 @@ describe('debrisUpdater', () => {
       { capacity: 100, supportsInstanceColor: true },
     );
     mgr1.beginFrame();
-    updateDebris(ctx, mgr1, String(event.id));
+    updateDebris(ctx, mgr1, event.id);
 
     const dummy = new Object3D();
     mesh.getMatrixAt(0, dummy.matrix);
@@ -123,7 +123,7 @@ describe('debrisUpdater', () => {
       { capacity: 100, supportsInstanceColor: true },
     );
     mgr2.beginFrame();
-    updateDebris(ctx, mgr2, String(event.id));
+    updateDebris(ctx, mgr2, event.id);
     mesh.getMatrixAt(0, dummy.matrix);
     dummy.matrix.decompose(dummy.position, dummy.quaternion, dummy.scale);
 
@@ -138,7 +138,7 @@ describe('debrisUpdater', () => {
       { capacity: 100, supportsInstanceColor: true },
     );
     mgr.beginFrame();
-    const result1 = updateDebris(ctx, mgr, String(event.id));
+    const result1 = updateDebris(ctx, mgr, event.id);
 
     const ctx2 = { ...ctx, event: { ...event } };
     ctx2.derived = getDerived(ctx2.event);
@@ -148,7 +148,7 @@ describe('debrisUpdater', () => {
       { capacity: 100, supportsInstanceColor: true },
     );
     mgr2.beginFrame();
-    const result2 = updateDebris(ctx2, mgr2, String(event.id));
+    const result2 = updateDebris(ctx2, mgr2, event.id);
 
     expect(result1.count).toBe(result2.count);
     expect(result1.saturated).toBe(result2.saturated);
@@ -161,7 +161,7 @@ describe('debrisUpdater', () => {
       { capacity: 1, supportsInstanceColor: true },
     );
     mgr.beginFrame();
-    const result = updateDebris(ctx, mgr, String(event.id));
+    const result = updateDebris(ctx, mgr, event.id);
     expect(result.count).toBeLessThanOrEqual(1);
     expect(result.saturated).toBe(true);
   });
