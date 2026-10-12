@@ -33,9 +33,29 @@ export interface AmbientOcclusionConfig {
   transparencyAware?: boolean;
 }
 
+export interface ColorPipelineConfig {
+  /** Master toggle. `false` reproduces the legacy sRGB / NoToneMapping pipeline exactly. */
+  enabled: boolean;
+  /** Tone-mapping operator applied as the last effect before FXAA. */
+  toneMapping: 'agx' | 'aces' | 'neutral';
+  /** Pre-tone-map exposure multiplier fed to the tone-mapping effect. */
+  exposure: number;
+  /** Multiplier applied to every bloom group intensity when the pipeline is on. */
+  bloomScale: number;
+  /** Optional asset-free vignette grade. */
+  vignette: { enabled: boolean; offset: number; darkness: number };
+}
+
 export interface PostprocessingConfig {
   /** Ambient-occlusion (N8AO) configuration. */
   ao: AmbientOcclusionConfig;
+  /**
+   * Linear-HDR + tone-mapping pipeline. Enabled by default: the composer renders
+   * into a linear (`NoColorSpace`) HalfFloat target and applies a tone-mapping
+   * effect immediately before FXAA. `enabled: false` reproduces the legacy
+   * sRGB / `NoToneMapping` pipeline exactly.
+   */
+  colorPipeline: ColorPipelineConfig;
   /** Luminance threshold for bloom (higher = fewer pixels bloom) */
   bloomThreshold: number;
   /** Smoothing applied around the threshold (0..1) */
@@ -66,6 +86,16 @@ export const POSTPROCESSING_CONFIG: PostprocessingConfig = {
     intensity: 5,
     color: '#000000',
     transparencyAware: false,
+  },
+  // Linear-HDR + tone-mapping pipeline (#645). `bloomScale` is `1` here so the
+  // first visual delta is tone mapping only; Task 2 lowers it to rebalance bloom.
+  // Reverting the whole look is a single `enabled: false`.
+  colorPipeline: {
+    enabled: true,
+    toneMapping: 'agx',
+    exposure: 1,
+    bloomScale: 1,
+    vignette: { enabled: false, offset: 0.3, darkness: 0.6 },
   },
   bloomThreshold: 0.8,
   bloomSmoothing: 0.001,

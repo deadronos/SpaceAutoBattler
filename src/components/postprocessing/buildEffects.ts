@@ -4,10 +4,14 @@ import {
   FXAAEffect,
   KernelSize,
   SelectiveBloomEffect,
+  ToneMappingEffect,
+  ToneMappingMode,
+  VignetteEffect,
   type Selection,
 } from 'postprocessing';
 import type { Camera, Scene } from 'three';
-import type { PostprocessingConfig } from '../../config/renderer.js';
+import type { ColorPipelineConfig, PostprocessingConfig } from '../../config/renderer.js';
+import { reportWebGLError } from '../../utils/errorReporting.js';
 
 export interface BloomContextLike {
   defaultGroup: string;
@@ -19,14 +23,35 @@ export interface BuildEffectsOptions {
   camera: Camera;
   bloomContext: BloomContextLike | null;
   config: PostprocessingConfig;
+  /** Linear-HDR + tone-mapping pipeline config. */
+  colorPipeline: ColorPipelineConfig;
 }
 
 export interface BuildEffectsResult {
   effectPass: EffectPass;
   bloomEffects: SelectiveBloomEffect[];
   fxaa: FXAAEffect;
-  effects: (SelectiveBloomEffect | FXAAEffect)[];
+  /** Tone-mapping effect when the pipeline is on; `null` on the legacy path. */
+  toneMapping: ToneMappingEffect | null;
+  /** Vignette effect when the pipeline and vignette are both on; else `null`. */
+  vignette: VignetteEffect | null;
+  effects: (SelectiveBloomEffect | FXAAEffect | ToneMappingEffect | VignetteEffect)[];
 }
+
+/**
+ * postprocessing@6.39.5's `ToneMappingEffect` exposes no `exposure` accessor;
+ * three's built-in `toneMappingExposure` uniform drives the operator instead.
+ * The field is declared here so the config knob can be threaded through without
+ * a type error, and so it takes effect automatically if the dependency later
+ * exposes it.
+ */
+type ToneMappingEffectWithExposure = ToneMappingEffect & { exposure?: number };
+
+const TONE_MAPPING_MODES: Record<ColorPipelineConfig['toneMapping'], ToneMappingMode> = {
+  agx: ToneMappingMode.AGX,
+  aces: ToneMappingMode.ACES_FILMIC,
+  neutral: ToneMappingMode.NEUTRAL,
+};
 
 type SelectiveBloomWithInternals = SelectiveBloomEffect & {
   depthMaskMaterial?: { keepFar: boolean };
@@ -39,6 +64,7 @@ export function buildEffects({
   camera,
   bloomContext,
   config,
+  colorPipeline,
 }: BuildEffectsOptions): BuildEffectsResult {
   const groupConfigs = config.bloomGroups ?? {};
   const defaultGroup = bloomContext?.defaultGroup ?? config.bloomDefaultGroup ?? 'default';
@@ -77,7 +103,36 @@ export function buildEffects({
   });
 
   const fxaa = new FXAAEffect();
-  const effects = [...bloomEffects, fxaa];
+  let toneMapping: ToneMappingEffect | null = null;
+  let vignette: VignetteEffect | null = null;
+
+  if (colorPipeline.enabled) {
+    // Headless-safe: under jsdom/happy-dom (no WebGL) effect construction may
+    // throw. Degrade to the legacy effect list rather than breaking the
+    // composer, mirroring `buildAmbientOcclusion`.
+    try {
+      toneMapping = new ToneMappingEffect({
+        mode: TONE_MAPPING_MODES[colorPipeline.toneMapping],
+      });
+      (toneMapping as ToneMappingEffectWithExposure).exposure = colorPipeline.exposure;
+
+      if (colorPipeline.vignette.enabled) {
+        vignette = new VignetteEffect({
+          offset: colorPipeline.vignette.offset,
+          darkness: colorPipeline.vignette.darkness,
+        });
+      }
+    } catch (error) {
+      reportWebGLError('buildEffects.toneMapping', error);
+      toneMapping = null;
+      vignette = null;
+    }
+  }
+
+  const effects =
+    toneMapping === null
+      ? [...bloomEffects, fxaa]
+      : [...bloomEffects, toneMapping, ...(vignette === null ? [] : [vignette]), fxaa];
   const effectPass = new EffectPass(camera, ...effects);
   effectPass.renderToScreen = true;
 
@@ -85,6 +140,8 @@ export function buildEffects({
     effectPass,
     bloomEffects,
     fxaa,
+    toneMapping,
+    vignette,
     effects,
   };
 }

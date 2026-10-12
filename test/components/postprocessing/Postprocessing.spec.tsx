@@ -110,6 +110,10 @@ describe('Postprocessing component', () => {
 
   afterEach(() => {
     cleanup();
+    delete (window as unknown as { __copilot_forceHdrPipeline?: boolean })
+      .__copilot_forceHdrPipeline;
+    delete (window as unknown as { __copilot_forceAmbientOcclusion?: boolean })
+      .__copilot_forceAmbientOcclusion;
   });
 
   it('wires composer lifecycle when enabled', async () => {
@@ -120,11 +124,21 @@ describe('Postprocessing component', () => {
       expect(createComposerMock).toHaveBeenCalledTimes(1);
     });
 
+    const expectedColorPipeline = {
+      ...POSTPROCESSING_CONFIG.colorPipeline,
+      enabled: POSTPROCESSING_CONFIG.colorPipeline.enabled,
+    };
+
+    expect(buildEffectsMock).toHaveBeenCalledWith(
+      expect.objectContaining({ colorPipeline: expectedColorPipeline }),
+    );
+
     expect(createComposerMock).toHaveBeenCalledWith({
       renderer: rendererStub,
       scene: sceneStub,
       camera: cameraStub,
       effectPass: effectPassStub,
+      colorPipeline: expectedColorPipeline,
       aoPass: aoPassStub,
     });
 
@@ -193,5 +207,28 @@ describe('Postprocessing component', () => {
     } finally {
       warnSpy.mockRestore();
     }
+  });
+
+  it('forces the legacy pipeline when __copilot_forceHdrPipeline is false', async () => {
+    (window as unknown as { __copilot_forceHdrPipeline?: boolean }).__copilot_forceHdrPipeline =
+      false;
+
+    render(<Postprocessing enabled />);
+
+    await waitFor(() => {
+      expect(createComposerMock).toHaveBeenCalledTimes(1);
+    });
+
+    const expectedLegacy = {
+      ...POSTPROCESSING_CONFIG.colorPipeline,
+      enabled: false,
+    };
+
+    expect(buildEffectsMock).toHaveBeenCalledWith(
+      expect.objectContaining({ colorPipeline: expectedLegacy }),
+    );
+    expect(createComposerMock).toHaveBeenCalledWith(
+      expect.objectContaining({ colorPipeline: expectedLegacy }),
+    );
   });
 });

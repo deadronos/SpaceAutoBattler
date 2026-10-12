@@ -20,6 +20,60 @@ The post-processing pipeline includes:
 - **Tone Mapping** - Color grading and exposure adjustment
 - **FXAA** - Fast approximate anti-aliasing
 
+## Linear-HDR + tone-mapping pipeline (#645)
+
+By default the composer renders the scene into a **linear** (`NoColorSpace`)
+HalfFloat target and applies a `ToneMappingEffect` as the **last effect before
+FXAA**. Emissive materials are authored in HDR (values `> 1`); keeping the
+target linear preserves those values so bloom samples them before the display
+transform, instead of flattening them to white.
+
+The final sRGB encode still happens on the renderer output
+(`renderer.outputColorSpace = SRGBColorSpace`). The renderer keeps
+`toneMapping = NoToneMapping` and `toneMappingExposure = 1`: tone mapping is the
+effect, not the renderer.
+
+### Configuration
+
+All knobs live in `POSTPROCESSING_CONFIG.colorPipeline`
+(`src/config/postprocessing.ts`):
+
+| Knob          | Meaning                                                                                       |
+| ------------- | --------------------------------------------------------------------------------------------- |
+| `enabled`     | Master toggle. `false` reproduces the legacy sRGB / `NoToneMapping` pipeline exactly          |
+| `toneMapping` | Operator applied before FXAA: `agx` (default) / `aces` / `neutral`                            |
+| `exposure`    | Pre-tone-map exposure multiplier                                                              |
+| `bloomScale`  | Multiplier applied to every bloom group intensity when the pipeline is on (Task 2 rebalances) |
+| `vignette`    | Optional asset-free vignette: `{ enabled, offset, darkness }`                                 |
+
+Effect order when enabled: `[...bloomEffects, toneMapping, vignette?, fxaa]`.
+When disabled the effect list is exactly `[...bloomEffects, fxaa]` and the
+target keeps its historical `SRGBColorSpace` tag.
+
+> **Note:** `postprocessing@6.39.5`'s `ToneMappingEffect` exposes no `exposure`
+> accessor; the operator's exposure is driven by three's built-in
+> `toneMappingExposure` uniform. `buildEffects` still assigns the configured
+> value defensively, so the knob is wired and will take effect if the dependency
+> later exposes the accessor. With the default `exposure: 1` there is no visual
+> difference.
+
+Construction of the tone-mapping/vignette effects is wrapped in `try/catch` and
+reported through `reportWebGLError`; on failure the pipeline degrades to the
+legacy effect list (mirroring `buildAmbientOcclusion`), so headless
+(jsdom/happy-dom) unit tests stay safe.
+
+### Debug override
+
+`Postprocessing` reads `window.__copilot_forceHdrPipeline` during mount
+(mirroring `__copilot_forceAmbientOcclusion`):
+
+- `true` — force the linear-HDR pipeline on regardless of the config
+- `false` — force the legacy sRGB / `NoToneMapping` pipeline
+- `undefined` — use `POSTPROCESSING_CONFIG.colorPipeline.enabled`
+
+Because the flag is read at mount time, set it with `page.addInitScript` before
+navigation; changing it at runtime does not rebuild the composer.
+
 ## Ambient Occlusion (N8AO)
 
 `buildAmbientOcclusion()` wraps `N8AOPostPass` from the `n8ao` package. When
