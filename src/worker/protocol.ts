@@ -1,12 +1,5 @@
-export type AiOverrideSlice = {
-  aiVerticalEnabled: boolean | null;
-  aiEngagementBoostEnabled: boolean | null;
-  aiTickRateExperimentEnabled: boolean | null;
-  aiRangePolicy: string | null;
-  aiSmoothingEnabled?: boolean | null;
-  aiHysteresisEnabled?: boolean | null;
-  aiVerticalDampingEnabled?: boolean | null;
-};
+import type { AiOverrideSlice } from '../game/config/aiOverrides.js';
+export type { AiOverrideSlice };
 
 import type { TransformSoALayout } from './transformsLayout.js';
 export type { TransformSoALayout } from './transformsLayout.js';

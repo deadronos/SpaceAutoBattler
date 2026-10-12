@@ -2,6 +2,7 @@ import { reportConfigError } from '../../utils/errorReporting.js';
 import { ErrorCategory, reportRecoverableGameError } from '../errors.js';
 import { readBooleanEnv, readStringEnv } from '../../utils/env.js';
 import { readBooleanParam, readQueryParam, readStringParam } from '../../utils/queryParams.js';
+import { getAiOverrideProvider, type AiOverrideSlice } from './aiOverrides.js';
 
 // AI configuration.
 // Env/query readers live in ../../utils/env.js and ../../utils/queryParams.js.
@@ -138,39 +139,12 @@ export const AI_CONFIG = {
  * the effective configuration values, allowing for real-time experimentation.
  */
 
-interface UiStoreSlice {
-  aiVerticalEnabled: boolean | null | undefined;
-  aiEngagementBoostEnabled: boolean | null | undefined;
-  aiTickRateExperimentEnabled: boolean | null | undefined;
-  aiRangePolicy: string | null | undefined;
-  aiSmoothingEnabled?: boolean | null | undefined;
-  aiHysteresisEnabled?: boolean | null | undefined;
-  aiVerticalDampingEnabled?: boolean | null | undefined;
-}
-
-interface UiStoreLike {
-  getState(): UiStoreSlice;
-}
-
-function resolveUiStore(): UiStoreLike | null {
-  try {
-    const possibleStore = (globalThis as { __spaceAutobattlerUiStore?: unknown })
-      .__spaceAutobattlerUiStore;
-    if (possibleStore && typeof (possibleStore as { getState?: unknown }).getState === 'function') {
-      return possibleStore as UiStoreLike;
-    }
-  } catch (error) {
-    reportConfigError('__spaceAutobattlerUiStore', error);
-  }
-  return null;
-}
-
 /**
  * Retrieves the effective AI configuration, accounting for runtime UI overrides.
  *
  * @returns {typeof AI_CONFIG} The effective AI configuration.
  */
-function computeEffectiveAIConfig(uiState: UiStoreSlice) {
+function computeEffectiveAIConfig(uiState: AiOverrideSlice) {
   return {
     ...AI_CONFIG,
     verticalEnabled: uiState.aiVerticalEnabled ?? AI_CONFIG.verticalEnabled,
@@ -192,7 +166,7 @@ let cachedEffectiveAIConfig: ReturnType<typeof computeEffectiveAIConfig> | null 
 
 function matchesCachedEffectiveAIConfig(
   cached: ReturnType<typeof computeEffectiveAIConfig>,
-  uiState: UiStoreSlice,
+  uiState: AiOverrideSlice,
 ): boolean {
   return (
     cached.verticalEnabled === (uiState.aiVerticalEnabled ?? AI_CONFIG.verticalEnabled) &&
@@ -209,13 +183,13 @@ function matchesCachedEffectiveAIConfig(
 }
 
 export function getEffectiveAIConfig() {
-  const uiStore = resolveUiStore();
-  if (!uiStore) {
+  const provider = getAiOverrideProvider();
+  if (!provider) {
     return AI_CONFIG;
   }
 
   try {
-    const uiState = uiStore.getState();
+    const uiState = provider();
     if (
       cachedEffectiveAIConfig &&
       matchesCachedEffectiveAIConfig(cachedEffectiveAIConfig, uiState)
@@ -226,7 +200,7 @@ export function getEffectiveAIConfig() {
     cachedEffectiveAIConfig = next;
     return next;
   } catch (error) {
-    reportConfigError('uiStore.getState', error);
+    reportConfigError('aiOverrideProvider', error);
     return AI_CONFIG;
   }
 }
