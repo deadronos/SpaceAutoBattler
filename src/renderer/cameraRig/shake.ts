@@ -119,3 +119,74 @@ export function isFovKickBlast(radius: number): boolean {
 export function addFovKick(s: TraumaState, degrees: number): void {
   s.fovKick = clamp(s.fovKick + degrees, 0, FOV_KICK_MAX_DEG);
 }
+
+/** Minimal read-only view of an explosion event used by the cursor helpers. */
+export interface ExplosionLike {
+  /** Monotonic id assigned when the event was emitted. */
+  id: number;
+  /** Explosion radius in world units. */
+  radius: number;
+  /** Optional flash intensity from the event. */
+  flashIntensity?: number;
+}
+
+/** Highest explosion id at/after `cursor` (never lowers the cursor). */
+export function maxExplosionId(events: readonly ExplosionLike[], cursor: number): number {
+  let max = cursor;
+  for (const event of events) {
+    if (event.id > max) max = event.id;
+  }
+  return max;
+}
+
+/** Highest explosion id present in the list only (`-Infinity` when empty). */
+function listMaxExplosionId(events: readonly ExplosionLike[]): number {
+  let max = Number.NEGATIVE_INFINITY;
+  for (const event of events) {
+    if (event.id > max) max = event.id;
+  }
+  return max;
+}
+
+/**
+ * Advances the explosion cursor and accrues trauma/FOV kick from events newer
+ * than `cursor`.
+ *
+ * A simulation reset clears the list and restarts ids at 1, so the previous
+ * cursor can be higher than every new id. Two guards handle that:
+ * - an empty list resets the cursor to 0, so the first kill of the new match
+ *   still shakes;
+ * - if the first post-reset frame already has events, all ids below the cursor
+ *   are treated as a reset and the cursor is re-synced to the list max without
+ *   adding trauma.
+ *
+ * @param {readonly ExplosionLike[]} events - Active explosion events.
+ * @param {number} cursor - Last explosion id already accounted for.
+ * @param {TraumaState} s - Trauma state to mutate.
+ * @returns {number} The updated explosion cursor.
+ */
+export function advanceExplosionCursor(
+  events: readonly ExplosionLike[],
+  cursor: number,
+  s: TraumaState,
+): number {
+  if (events.length === 0) return 0;
+
+  let next = cursor;
+  const listMax = listMaxExplosionId(events);
+  if (listMax < cursor) {
+    // Ids moved backwards: treat as a reset and adopt the new list max.
+    next = listMax;
+  }
+
+  for (const event of events) {
+    if (event.id <= next) continue;
+    addExplosionTrauma(s, event.radius, event.flashIntensity);
+    if (isFovKickBlast(event.radius)) {
+      addFovKick(s, FOV_KICK_MAX_DEG);
+    }
+    next = event.id;
+  }
+
+  return next;
+}

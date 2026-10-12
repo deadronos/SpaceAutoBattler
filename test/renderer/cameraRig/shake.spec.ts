@@ -7,8 +7,10 @@ import {
   TRAUMA_RADIUS_REF,
   addExplosionTrauma,
   addFovKick,
+  advanceExplosionCursor,
   createTraumaState,
   isFovKickBlast,
+  maxExplosionId,
   traumaAmplitude,
   updateTrauma,
 } from '../../../src/renderer/cameraRig/shake.js';
@@ -104,5 +106,92 @@ describe('camera rig shake math', () => {
     expect(s.fovKick).toBe(FOV_KICK_MAX_DEG);
     addFovKick(s, -10);
     expect(s.fovKick).toBe(0);
+  });
+
+  it('maxExplosionId never lowers the cursor below the list max', () => {
+    expect(maxExplosionId([], 7)).toBe(7);
+    expect(
+      maxExplosionId(
+        [
+          { id: 3, radius: 1 },
+          { id: 9, radius: 1 },
+        ],
+        7,
+      ),
+    ).toBe(9);
+    expect(maxExplosionId([{ id: 2, radius: 1 }], 7)).toBe(7);
+  });
+
+  it('advanceExplosionCursor accrues trauma for new ids only', () => {
+    const s = createTraumaState();
+    const cursor = advanceExplosionCursor(
+      [
+        { id: 1, radius: TRAUMA_RADIUS_REF, flashIntensity: 1.2 },
+        { id: 2, radius: TRAUMA_RADIUS_REF },
+      ],
+      0,
+      s,
+    );
+    expect(cursor).toBe(2);
+    expect(s.trauma).toBe(TRAUMA_MAX);
+  });
+
+  it('advanceExplosionCursor adds an FOV kick for large blasts', () => {
+    const s = createTraumaState();
+    advanceExplosionCursor([{ id: 1, radius: FOV_KICK_RADIUS_THRESHOLD }], 0, s);
+    expect(s.fovKick).toBeGreaterThan(0);
+  });
+
+  it('advanceExplosionCursor re-syncs after a reset and shakes again', () => {
+    const s = createTraumaState();
+    // Pre-reset session: cursor advanced into the forties.
+    let cursor = advanceExplosionCursor(
+      [
+        { id: 41, radius: 4 },
+        { id: 42, radius: 4 },
+      ],
+      40,
+      s,
+    );
+    expect(cursor).toBe(42);
+
+    // Reset: the list is cleared and ids restart at 1. The cursor must drop so
+    // the first kill of the new match still shakes (this is the regression that
+    // the old `maxExplosionId(events, cursor) < cursor` check missed).
+    s.trauma = 0;
+    cursor = advanceExplosionCursor([], cursor, s);
+    expect(cursor).toBe(0);
+    expect(s.trauma).toBe(0);
+
+    cursor = advanceExplosionCursor([{ id: 1, radius: TRAUMA_RADIUS_REF }], cursor, s);
+    expect(cursor).toBe(1);
+    expect(s.trauma).toBeGreaterThan(0);
+  });
+
+  it('advanceExplosionCursor skips stale ids when the first post-reset frame already has events', () => {
+    const s = createTraumaState();
+    // No empty-list frame observed: the list already holds restarted ids below
+    // the stale cursor, so they are treated as a reset (no trauma burst).
+    const cursor = advanceExplosionCursor(
+      [
+        { id: 1, radius: TRAUMA_RADIUS_REF },
+        { id: 2, radius: TRAUMA_RADIUS_REF },
+      ],
+      50,
+      s,
+    );
+    expect(cursor).toBe(2);
+    expect(s.trauma).toBe(0);
+
+    // A genuinely new kill then shakes.
+    advanceExplosionCursor(
+      [
+        { id: 2, radius: TRAUMA_RADIUS_REF },
+        { id: 3, radius: TRAUMA_RADIUS_REF },
+      ],
+      cursor,
+      s,
+    );
+    expect(s.trauma).toBeGreaterThan(0);
   });
 });

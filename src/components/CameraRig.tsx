@@ -6,16 +6,12 @@ import { useOptionalGameState } from '../app/context.js';
 import { useUiStore } from '../app/uiStore.js';
 import { usePrefersReducedMotion } from '../hooks/usePrefersReducedMotion.js';
 import {
-  FOV_KICK_MAX_DEG,
-  addExplosionTrauma,
-  addFovKick,
+  advanceExplosionCursor,
   createTraumaState,
-  isFovKickBlast,
+  maxExplosionId,
   traumaAmplitude,
   updateTrauma,
 } from '../renderer/cameraRig/shake.js';
-import type { ExplosionEvent } from '../types/index.js';
-import type { TraumaState } from '../renderer/cameraRig/shake.js';
 
 type DebugWindow = Window & {
   __copilot_forceCameraTrauma?: number;
@@ -64,7 +60,7 @@ function createDeterministicNoise(): SimplexNoise {
       state ^= state << 13;
       state ^= state >>> 17;
       state ^= state << 5;
-      return (state >>> 0) / 0xffffffff;
+      return (state >>> 0) / 0x100000000;
     },
   };
   return new SimplexNoise(generator);
@@ -77,49 +73,6 @@ function readFov(camera: Camera): number | null {
 
 function captureRotation(camera: Camera): BasePose {
   return { x: camera.rotation.x, y: camera.rotation.y, z: camera.rotation.z };
-}
-
-/** Highest explosion id at/after the current cursor (never lowers the cursor). */
-function maxExplosionId(explosions: readonly ExplosionEvent[], cursor: number): number {
-  let max = cursor;
-  for (const event of explosions) {
-    if (event.id > max) max = event.id;
-  }
-  return max;
-}
-
-/**
- * Accrues trauma/FOV kick from explosions newer than `cursor`. A simulation
- * reset (ids moving backwards) re-syncs the cursor without adding trauma.
- *
- * @param {readonly ExplosionEvent[]} explosions - Active explosion events.
- * @param {number} cursor - Last explosion id already accounted for.
- * @param {TraumaState} s - Trauma state to mutate.
- * @returns {number} The updated explosion cursor.
- */
-function accrueExplosions(
-  explosions: readonly ExplosionEvent[],
-  cursor: number,
-  s: TraumaState,
-): number {
-  if (explosions.length === 0) return cursor;
-
-  let next = cursor;
-  if (maxExplosionId(explosions, cursor) < cursor) {
-    // Ids moved backwards: treat as a reset and adopt the new max silently.
-    next = maxExplosionId(explosions, Number.NEGATIVE_INFINITY);
-  }
-
-  for (const event of explosions) {
-    if (event.id <= next) continue;
-    addExplosionTrauma(s, event.radius, event.flashIntensity);
-    if (isFovKickBlast(event.radius)) {
-      addFovKick(s, FOV_KICK_MAX_DEG);
-    }
-    next = event.id;
-  }
-
-  return next;
 }
 
 /** Restores the captured base rotation/FOV exactly (no shake). */
@@ -249,7 +202,7 @@ export function CameraRig(): null {
     lastSimTimeRef.current = state.time;
 
     if (forced === undefined) {
-      lastSeenExplosionIdRef.current = accrueExplosions(
+      lastSeenExplosionIdRef.current = advanceExplosionCursor(
         state.explosions,
         lastSeenExplosionIdRef.current,
         s,
