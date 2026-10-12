@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useId, useRef, useState } from 'react';
 import type React from 'react';
 import type { ShipEntity, ProgressionEvent } from '../types/index.js';
 import { buildProgressionPanelData, type ProgressionPanelShip } from './progressionPanelData.js';
@@ -208,11 +208,18 @@ const ShipProgressionCard = memo(function ShipProgressionCard({
   nowBucket: number;
 }): React.ReactElement {
   const [expanded, setExpanded] = useState(false);
+  const eventsId = useId();
 
   const progressPercent = ship.xpToNext > 0 ? (ship.xp / ship.xpToNext) * 100 : 100;
   const teamClass = `ship-progression-card ship-progression-card--${ship.team}`;
   const fillRef = useRef<HTMLDivElement | null>(null);
-  const toggleRef = useRef<HTMLButtonElement | null>(null);
+
+  const handleHeaderKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      setExpanded((value) => !value);
+    }
+  };
 
   // Update progress fill width via DOM to avoid inline JSX style props
   useEffect(() => {
@@ -222,16 +229,18 @@ const ShipProgressionCard = memo(function ShipProgressionCard({
     node.style.width = `${clamped}%`;
   }, [progressPercent]);
 
-  // Update aria-expanded attribute via DOM
-  useEffect(() => {
-    const node = toggleRef.current;
-    if (!node) return;
-    node.setAttribute('aria-expanded', expanded ? 'true' : 'false');
-  }, [expanded]);
-
   return (
     <div className={teamClass}>
-      <div className="ship-progression-card__header" onClick={() => setExpanded(!expanded)}>
+      <div
+        className="ship-progression-card__header"
+        role="button"
+        tabIndex={0}
+        aria-expanded={expanded}
+        aria-controls={eventsId}
+        aria-label={`${expanded ? 'Collapse' : 'Expand'} events for ${ship.name}`}
+        onClick={() => setExpanded(!expanded)}
+        onKeyDown={handleHeaderKeyDown}
+      >
         <div className="ship-progression-card__info">
           <span className="ship-progression-card__name">{ship.name}</span>
           <span className="ship-progression-card__level">Lv {ship.level}</span>
@@ -244,17 +253,12 @@ const ShipProgressionCard = memo(function ShipProgressionCard({
             <div className="ship-progression-card__progress-fill" ref={fillRef} />
           </div>
         </div>
-        <button
-          type="button"
-          ref={toggleRef}
-          className="ship-progression-card__toggle"
-          aria-label={expanded ? 'Collapse events' : 'Expand events'}
-        >
+        <span className="ship-progression-card__toggle" aria-hidden="true">
           {expanded ? '−' : '+'}
-        </button>
+        </span>
       </div>
       {expanded && (
-        <div className="ship-progression-card__events">
+        <div id={eventsId} className="ship-progression-card__events">
           {ship.events.length > 0 ? (
             <ul className="progression-events">
               {ship.events.map((event, index) => (

@@ -4,6 +4,7 @@ import { Color, Euler, Quaternion, Vector3 } from 'three';
 import { useFrame } from '@react-three/fiber';
 import { useOptionalGameState } from '../../app/context.js';
 import { usePlanetTexture } from '../../hooks/usePlanetTexture.js';
+import { usePrefersReducedMotion } from '../../hooks/usePrefersReducedMotion.js';
 import type { PlanetBodyConfig } from '../../config/environment.js';
 import { PLANET_GEOMETRY_SEGMENTS, CELESTIAL_ENVIRONMENT } from '../../config/environment.js';
 import { PlanetRings } from './PlanetRings.js';
@@ -18,6 +19,7 @@ export const PlanetBody = memo(function PlanetBody({
 }: PlanetBodyProps): React.ReactElement {
   const groupRef = useRef<Group>(null);
   const state = useOptionalGameState();
+  const reducedMotion = usePrefersReducedMotion();
   const { texture, fallbackColor, error } = usePlanetTexture(config.textureKey);
 
   const tiltQuat = useMemo(() => {
@@ -51,7 +53,9 @@ export const PlanetBody = memo(function PlanetBody({
 
     workingQuat.copy(tiltQuat);
 
-    if (config.rotation && rotationAxis) {
+    // WCAG 2.3.3: when reduced motion is requested, skip the spin block so
+    // only the static tilt is applied. The sim-time source is unchanged.
+    if (config.rotation && rotationAxis && !reducedMotion) {
       const sim = state?.simulation;
       const elapsed = sim ? sim.lastTickStart + sim.alpha * sim.step : 0;
       const angle = (config.rotation.offset ?? 0) + elapsed * config.rotation.speed;

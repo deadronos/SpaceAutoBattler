@@ -1,0 +1,17 @@
+/* Global keyboard focus ring. Additive: only shows for keyboard navigation. */
+:focus-visible {
+  outline: 2px solid var(--blue, #5ab8ff);
+  outline-offset: 2px;
+}
+
+/* WCAG 2.3.3: collapse CSS motion for users who request reduced motion. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

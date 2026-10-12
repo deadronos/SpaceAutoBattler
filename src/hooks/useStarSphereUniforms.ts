@@ -35,6 +35,8 @@ export interface StarSphereFrameParams {
   organic: Texture | null;
   noise: Texture | null;
   paused: boolean;
+  /** When true, freeze the shader `time` uniform (WCAG 2.3.3 reduced motion). */
+  reducedMotion: boolean;
   radius: number;
   config?: StarLightConfig;
   haze?: StarDiskHazeConfig;
@@ -68,6 +70,7 @@ export function useStarSphereFrame(params: StarSphereFrameParams): void {
     organic,
     noise,
     paused,
+    reducedMotion,
     radius,
     config,
     haze,
@@ -130,7 +133,7 @@ export function useStarSphereFrame(params: StarSphereFrameParams): void {
     }
     const delta = elapsed - lastTimeRef.current;
     lastTimeRef.current = elapsed;
-    if (!paused) {
+    if (!paused && !reducedMotion) {
       accumulatedTimeRef.current += delta;
     }
 
