@@ -1,8 +1,13 @@
 import { describe, it, expect } from 'vite-plus/test';
-import type { ProgressionEvent } from '../../src/types/index.js';
+import type { ProgressionEvent, ShipEntity } from '../../src/types/index.js';
 import { createProgressionDefaults } from '../../src/game/progression.js';
+import {
+  buildProgressionPanelData,
+  DEFAULT_MAX_EVENTS_PER_SHIP,
+  DEFAULT_MAX_PROGRESSION_SHIPS,
+} from '../../src/components/progressionPanelData.js';
 
-// Test the core data transformation logic separately from React rendering
+// Test the real shipped transform used by ProgressionPanel, not a duplicated copy.
 describe('Progression Panel Data Transformation', () => {
   it('transforms GameState ships to progression panel format', () => {
     // Create mock ship data
@@ -50,21 +55,7 @@ describe('Progression Panel Data Transformation', () => {
       },
     ]);
 
-    // Transform to progression panel format
-    const progressionShips = [];
-    for (const ship of mockShips) {
-      const events = progressionEvents.get(ship.id) || [];
-      progressionShips.push({
-        id: ship.id,
-        name: `${ship.ship.hull}-${ship.id}`,
-        type: ship.ship.hull,
-        team: ship.ship.team,
-        level: ship.ship.level,
-        xp: ship.ship.xp,
-        xpToNext: ship.ship.xpToNext,
-        events: events.slice(-5),
-      });
-    }
+    const progressionShips = buildProgressionPanelData(mockShips, progressionEvents);
 
     // Validate transformation
     expect(progressionShips).toHaveLength(1);
@@ -104,19 +95,16 @@ describe('Progression Panel Data Transformation', () => {
       },
     ] as any;
 
-    const progressionShips = mockShips
-      .map((ship: any) => ({
-        id: ship.id,
-        level: ship.ship.level,
-        xp: ship.ship.xp,
-      }))
-      .sort((a: any, b: any) => {
-        if (a.level !== b.level) return b.level - a.level;
-        return b.xp - a.xp;
-      });
+    const progressionShips = buildProgressionPanelData(mockShips, undefined);
 
     // Should be: Level 2 first, then Level 1 ships ordered by XP
-    expect(progressionShips).toEqual([
+    expect(
+      progressionShips.map((ship) => ({
+        id: ship.id,
+        level: ship.level,
+        xp: ship.xp,
+      })),
+    ).toEqual([
       { id: 2, level: 2, xp: 30 }, // Level 2
       { id: 3, level: 1, xp: 75 }, // Level 1, higher XP
       { id: 1, level: 1, xp: 50 }, // Level 1, lower XP
@@ -134,11 +122,38 @@ describe('Progression Panel Data Transformation', () => {
       });
     }
 
-    const MAX_EVENTS = 5;
-    const limitedEvents = events.slice(-MAX_EVENTS);
+    const mockShips = [
+      {
+        id: 1,
+        ship: { level: 1, xp: 0, hull: 'fighter', team: 'blue' },
+      },
+    ] as any;
 
-    expect(limitedEvents).toHaveLength(5);
+    const progressionShips = buildProgressionPanelData(
+      mockShips,
+      new Map<number, ProgressionEvent[]>([[1, events]]),
+    );
+
+    const limitedEvents = progressionShips[0]!.events;
+    expect(limitedEvents).toHaveLength(DEFAULT_MAX_EVENTS_PER_SHIP);
     expect(limitedEvents[0]!.details).toBe('Event 6');
     expect(limitedEvents[4]!.details).toBe('Event 10');
+  });
+
+  it('caps the number of ships to the configured maximum', () => {
+    const mockShips: ShipEntity[] = [];
+    for (let i = 0; i < 60; i++) {
+      mockShips.push({
+        id: i,
+        ship: { level: 1, xp: i, hull: 'fighter', team: 'blue' },
+      } as unknown as ShipEntity);
+    }
+
+    const progressionShips = buildProgressionPanelData(mockShips, undefined);
+
+    expect(progressionShips).toHaveLength(DEFAULT_MAX_PROGRESSION_SHIPS);
+
+    const limited = buildProgressionPanelData(mockShips, undefined, { maxShips: 3 });
+    expect(limited).toHaveLength(3);
   });
 });

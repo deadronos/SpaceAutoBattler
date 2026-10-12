@@ -1,25 +1,82 @@
-import { useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import type React from 'react';
 import type { ShipEntity, ProgressionEvent } from '../types/index.js';
+import { buildProgressionPanelData, type ProgressionPanelShip } from './progressionPanelData.js';
 import { useOptionalGameState } from '../game/context.js';
 import { useUiStore } from '../game/uiStore.js';
 import { useInterval } from '../hooks/useInterval.js';
 import { clamp } from '../utils/math.js';
 import './progression-panel.css';
 
-interface ProgressionPanelShip {
-  id: number;
-  name?: string;
-  type?: string;
-  team: 'blue' | 'red';
-  level: number;
-  xp: number;
-  xpToNext: number;
-  events: ProgressionEvent[]; // capped to recent N
+const REFRESH_INTERVAL_MS = 250;
+
+/**
+ * Field-equality check used by the stable-identity reconciler. Two rows are
+ * considered equal when every rendered field (including the capped event slice)
+ * matches, so the previous object can be reused for the next render.
+ */
+function progressionShipsEqual(a: ProgressionPanelShip, b: ProgressionPanelShip): boolean {
+  if (
+    a.id !== b.id ||
+    a.name !== b.name ||
+    a.type !== b.type ||
+    a.team !== b.team ||
+    a.level !== b.level ||
+    a.xp !== b.xp ||
+    a.xpToNext !== b.xpToNext ||
+    a.events.length !== b.events.length
+  ) {
+    return false;
+  }
+
+  for (let i = 0; i < a.events.length; i++) {
+    const prev = a.events[i]!;
+    const next = b.events[i]!;
+    if (prev === next) continue;
+    if (
+      prev.ts !== next.ts ||
+      prev.type !== next.type ||
+      prev.deltaXp !== next.deltaXp ||
+      prev.source !== next.source ||
+      prev.details !== next.details
+    ) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
-const REFRESH_INTERVAL_MS = 250;
-const MAX_EVENTS_PER_SHIP = 5;
+/**
+ * Reconciles freshly built panel rows against a per-id cache, reusing the
+ * previous object reference whenever the row is field-equal. This keeps `ship`
+ * props referentially stable across 250 ms re-renders so memoized cards can
+ * skip work. Ids that disappeared are evicted from the cache.
+ */
+function reconcileProgressionPanelShips(
+  cache: Map<number, ProgressionPanelShip>,
+  next: readonly ProgressionPanelShip[],
+): ProgressionPanelShip[] {
+  const seen = new Set<number>();
+  const reconciled: ProgressionPanelShip[] = [];
+
+  for (const entry of next) {
+    seen.add(entry.id);
+    const previous = cache.get(entry.id);
+    if (previous && progressionShipsEqual(previous, entry)) {
+      reconciled.push(previous);
+    } else {
+      cache.set(entry.id, entry);
+      reconciled.push(entry);
+    }
+  }
+
+  for (const id of cache.keys()) {
+    if (!seen.has(id)) cache.delete(id);
+  }
+
+  return reconciled;
+}
 
 export function ProgressionPanel(): React.ReactElement | null {
   const state = useOptionalGameState();
@@ -30,6 +87,8 @@ export function ProgressionPanel(): React.ReactElement | null {
   const [dragging, setDragging] = useState(false);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const posRef = useRef(position);
+  // Per-ship cache so unchanged rows keep referential identity across ticks.
+  const progressionCacheRef = useRef<Map<number, ProgressionPanelShip>>(new Map());
   useEffect(() => {
     posRef.current = position;
   }, [position]);
@@ -98,32 +157,14 @@ export function ProgressionPanel(): React.ReactElement | null {
     if (!enabled || !state) return null;
 
     const ships = state.queries.ships.entities as ShipEntity[];
-    const progressionShips: ProgressionPanelShip[] = [];
-
-    for (const ship of ships) {
-      // Get events for this ship from GameState
-      const events = state.progressionEvents?.get(ship.id) || [];
-
-      progressionShips.push({
-        id: ship.id,
-        name: `${ship.ship.hull}-${ship.id}`,
-        type: ship.ship.hull,
-        team: ship.ship.team,
-        level: ship.ship.level,
-        xp: ship.ship.xp,
-        xpToNext: ship.ship.xpToNext,
-        events: events.slice(-MAX_EVENTS_PER_SHIP),
-      });
-    }
-
-    // Sort by level descending, then by XP
-    progressionShips.sort((a, b) => {
-      if (a.level !== b.level) return b.level - a.level;
-      return b.xp - a.xp;
-    });
-
-    return progressionShips.slice(0, 50); // Cap at 50 ships for performance
+    const built = buildProgressionPanelData(ships, state.progressionEvents);
+    return reconcileProgressionPanelShips(progressionCacheRef.current, built);
   })();
+
+  // Wall-clock bucket (1s resolution) used only to re-render cards so their
+  // relative timestamps refresh. Memoized cards re-render at most once per
+  // second instead of on every 250 ms tick.
+  const nowBucket = Math.floor(Date.now() / 1000);
 
   // NOTE: This effect was intentionally placed before the component's early returns
   // so the hook is executed on every render. Moving it after conditional returns
@@ -152,14 +193,20 @@ export function ProgressionPanel(): React.ReactElement | null {
       </div>
       <div className="progression-panel__ships">
         {progressionData.map((ship) => (
-          <ShipProgressionCard key={ship.id} ship={ship} />
+          <ShipProgressionCard key={ship.id} ship={ship} nowBucket={nowBucket} />
         ))}
       </div>
     </div>
   );
 }
 
-function ShipProgressionCard({ ship }: { ship: ProgressionPanelShip }): React.ReactElement {
+const ShipProgressionCard = memo(function ShipProgressionCard({
+  ship,
+  nowBucket,
+}: {
+  ship: ProgressionPanelShip;
+  nowBucket: number;
+}): React.ReactElement {
   const [expanded, setExpanded] = useState(false);
 
   const progressPercent = ship.xpToNext > 0 ? (ship.xp / ship.xpToNext) * 100 : 100;
@@ -211,7 +258,7 @@ function ShipProgressionCard({ ship }: { ship: ProgressionPanelShip }): React.Re
           {ship.events.length > 0 ? (
             <ul className="progression-events">
               {ship.events.map((event, index) => (
-                <EventRow key={`${ship.id}-${index}`} event={event} />
+                <EventRow key={`${ship.id}-${index}`} event={event} nowBucket={nowBucket} />
               ))}
             </ul>
           ) : (
@@ -221,10 +268,16 @@ function ShipProgressionCard({ ship }: { ship: ProgressionPanelShip }): React.Re
       )}
     </div>
   );
-}
+});
 
-function EventRow({ event }: { event: ProgressionEvent }): React.ReactElement {
-  const timeAgo = formatTimeAgo(event.ts);
+function EventRow({
+  event,
+  nowBucket,
+}: {
+  event: ProgressionEvent;
+  nowBucket: number;
+}): React.ReactElement {
+  const timeAgo = formatTimeAgo(event.ts, nowBucket * 1000);
   const deltaText = event.deltaXp ? `+${formatXP(event.deltaXp)} XP` : '';
 
   const iconClass = `progression-event__icon progression-event__icon--${event.type}`;
@@ -254,8 +307,7 @@ function getEventIcon(type: string): string {
   }
 }
 
-function formatTimeAgo(timestamp: number): string {
-  const now = Date.now();
+function formatTimeAgo(timestamp: number, now: number): string {
   const diff = now - timestamp;
   const seconds = Math.floor(diff / 1000);
 
