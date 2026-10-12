@@ -12,34 +12,7 @@ import { DoubleSide, MeshBasicMaterial, Vector3 } from 'three';
 import type { Camera, Material, Mesh, ShaderMaterial } from 'three';
 import type { StarLightConfig } from '../config/environment.js';
 import { registerDebugHook, hasDebugHook } from './copilotDebugRegistry.js';
-
-interface CopilotDebugWindow {
-  __copilot_forceBasicMaterialRequest?: boolean;
-  __copilot_forceBasicMaterialActive?: boolean;
-  __copilot_forceBasicMaterialColor?: string;
-  __copilot_forceBasicMaterialApplied?: number;
-  __copilot_restoreOriginalStarMaterial?: boolean;
-  __copilot_restoreOriginalStarMaterialApplied?: number;
-  __copilot_setStarBasicMaterial?: (opts?: { color?: string }) => {
-    applied: boolean;
-    reason?: string;
-  };
-  __copilot_restoreStarMaterial?: () => { restored: boolean; reason?: string };
-  __copilot_setStarLayer?: (layerIndex?: unknown) => {
-    set: boolean;
-    layer?: number;
-    reason?: string;
-  };
-  __copilot_resetStarLayer?: () => { reset: boolean; reason?: string };
-  __copilot_starLayerSetAt?: number;
-  __copilot_starLayerResetAt?: number;
-  __copilot_rotateCameraDeltaDeg?: number | null;
-  __copilot_rotateAppliedAt?: number;
-  __copilot_cameraPosition?: { x: number; y: number; z: number };
-  __copilot_cameraRotation?: { x: number; y: number; z: number };
-  __copilot_visualMesh?: Mesh;
-  __copilot_appliedMaterial?: ShaderMaterial | null;
-}
+import { getStarDebugWindow } from './starDebugWindow.js';
 
 interface CopilotUserData {
   __copilot_origMaterial?: Material;
@@ -88,8 +61,7 @@ export function runStarSphereDebug({
   if (!debugEnabled) return;
 
   // We conditionally enable dev/debug tools at runtime based on query parameters
-  const debugWin: CopilotDebugWindow | undefined =
-    typeof window !== 'undefined' ? (window as unknown as CopilotDebugWindow) : undefined;
+  const debugWin = getStarDebugWindow();
   if (debugWin) {
     registerDebugHook(
       '__copilot_cameraPosition',
