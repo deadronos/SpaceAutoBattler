@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vite-plus/test';
+import { describe, expect, it } from 'vite-plus/test';
 import { Quaternion, Vector3 } from 'three';
 import { applyProgressionDefaults } from './helpers/progression.js';
 import { createDefaultMotionStats } from '../../src/game/ships.js';
@@ -8,6 +8,7 @@ import {
   flushPostPhysicsMutations,
 } from '../../src/game/simulationQueue.js';
 import { createDefaultMetrics } from '../../src/game/metrics.js';
+import { ErrorCategory, getGameErrors, resetGameErrorReporting } from '../../src/game/errors.js';
 import type { GameState, ShipEntity } from '../../src/types/index.js';
 import { updateMotionSystem } from '../../src/game/systems/motion.js';
 
@@ -145,7 +146,7 @@ describe('AI v2 enforcement', () => {
     const state = createState();
     state.ai.enabled = false;
 
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    resetGameErrorReporting();
 
     const { ship: blue, recorder } = createShip(1, 'blue', new Vector3(0, 0, 0));
     blue.ai!.command.thrust = 1;
@@ -175,9 +176,12 @@ describe('AI v2 enforcement', () => {
     expect(position.y).toBe(0);
     expect(position.z).toBeGreaterThan(0); // Ship moved forward
 
-    expect(warnSpy).toHaveBeenCalled();
-
-    warnSpy.mockRestore();
+    expect(
+      getGameErrors().some(
+        (report) =>
+          report.category === ErrorCategory.Config && report.message.includes('forcing AI enabled'),
+      ),
+    ).toBe(true);
   });
 });
 
@@ -187,7 +191,7 @@ describe('Missing AI safeguards', () => {
     const { ship, recorder } = createShip(5, 'blue', new Vector3(12, 0, -4));
     delete (ship as { ai?: unknown }).ai;
 
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    resetGameErrorReporting();
 
     const result = executeAICommand(state, ship, 0.1);
 
@@ -196,10 +200,10 @@ describe('Missing AI safeguards', () => {
 
     expect(result).toBeNull();
     expect(recorder.read()).toEqual({ x: 12, y: 0, z: -4 });
-    expect(errorSpy).toHaveBeenCalledWith(
-      expect.stringContaining('Ship 5 is missing an AI component'),
-    );
-
-    errorSpy.mockRestore();
+    expect(
+      getGameErrors().some((report) =>
+        report.message.includes('Ship 5 is missing an AI component'),
+      ),
+    ).toBe(true);
   });
 });

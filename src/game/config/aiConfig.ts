@@ -1,4 +1,5 @@
 import { reportConfigError } from '../../utils/errorReporting.js';
+import { ErrorCategory, reportRecoverableGameError } from '../errors.js';
 import { readBooleanEnv, readStringEnv } from '../../utils/env.js';
 import { readBooleanParam, readQueryParam, readStringParam } from '../../utils/queryParams.js';
 
@@ -7,14 +8,12 @@ import { readBooleanParam, readQueryParam, readStringParam } from '../../utils/q
 
 const REQUESTED_AI_V2_DEFAULT = readBooleanEnv('AI_V2_DEFAULT', true);
 const DEFAULT_AI_V2 = true;
-if (!REQUESTED_AI_V2_DEFAULT && typeof globalThis !== 'undefined') {
-  try {
-    globalThis.console?.warn?.(
-      'AI v2 fallback has been removed; ignoring AI_V2_DEFAULT=false and forcing v2 on.',
-    );
-  } catch (error) {
-    reportConfigError('AI_V2_DEFAULT', error);
-  }
+if (!REQUESTED_AI_V2_DEFAULT) {
+  reportRecoverableGameError(
+    ErrorCategory.Config,
+    'AI v2 fallback has been removed; ignoring AI_V2_DEFAULT=false and forcing v2 on.',
+    { source: 'aiConfig', code: 'ai-v2-default-ignored' },
+  );
 }
 const TICK_RATE_BASE = 12;
 
@@ -59,23 +58,18 @@ const TICK_RATE_FINAL = TICK_RATE_QUERY_OVERRIDE
 const TICK_RATE_EFFECTIVE_FINAL = TICK_RATE_FINAL ? TICK_RATE_EXPERIMENTAL : TICK_RATE_BASE;
 
 // Debug logging for feature flag configuration (only in development)
-if (typeof globalThis !== 'undefined' && globalThis.console) {
-  const isDev = readQueryParam('debug') === 'config' || readBooleanEnv('DEBUG_CONFIG');
-  if (isDev) {
-    console.log('🔧 AI Feature Flag Configuration:');
-    console.log(
-      `  verticalEnabled: ${VERTICAL_EXPERIMENT_ENABLED} (env: ${VERTICAL_FORCE_ON ? 'ON' : VERTICAL_FORCE_OFF ? 'OFF' : 'default'})`,
-    );
-    console.log(
-      `  engagementBoostEnabled: ${ENGAGEMENT_BOOST_ENABLED} (env: ${ENGAGEMENT_BOOST_FORCE_ON ? 'ON' : ENGAGEMENT_BOOST_FORCE_OFF ? 'OFF' : 'default'})`,
-    );
-    console.log(
-      `  tickRateHzExperiment: ${TICK_RATE_FINAL} (env: ${TICK_RATE_FORCE_ON ? 'ON' : TICK_RATE_FORCE_OFF ? 'OFF' : 'default'})`,
-    );
-    console.log(
-      `  rangePolicy: ${RANGE_POLICY_EFFECTIVE} (env: ${RANGE_POLICY_OVERRIDE || 'default'})`,
-    );
-  }
+const isDev = readQueryParam('debug') === 'config' || readBooleanEnv('DEBUG_CONFIG');
+if (isDev) {
+  reportRecoverableGameError(ErrorCategory.Config, '🔧 AI Feature Flag Configuration:', {
+    source: 'aiConfig',
+    code: 'ai-feature-flag-config',
+    context: {
+      verticalEnabled: `${VERTICAL_EXPERIMENT_ENABLED} (env: ${VERTICAL_FORCE_ON ? 'ON' : VERTICAL_FORCE_OFF ? 'OFF' : 'default'})`,
+      engagementBoostEnabled: `${ENGAGEMENT_BOOST_ENABLED} (env: ${ENGAGEMENT_BOOST_FORCE_ON ? 'ON' : ENGAGEMENT_BOOST_FORCE_OFF ? 'OFF' : 'default'})`,
+      tickRateHzExperiment: `${TICK_RATE_FINAL} (env: ${TICK_RATE_FORCE_ON ? 'ON' : TICK_RATE_FORCE_OFF ? 'OFF' : 'default'})`,
+      rangePolicy: `${RANGE_POLICY_EFFECTIVE} (env: ${RANGE_POLICY_OVERRIDE || 'default'})`,
+    },
+  });
 }
 
 /**

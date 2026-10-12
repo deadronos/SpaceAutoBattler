@@ -206,7 +206,6 @@ function flushQueue(state: GameState, queue: DeferredMutation[], tag: 'pre' | 'p
     try {
       op();
     } catch (error) {
-      console.warn(`[TASK230] ${tag}-physics deferred mutation failed`, error);
       recordDeferredFailure(state, error);
       reportRecoverableGameError(
         ErrorCategory.Physics,

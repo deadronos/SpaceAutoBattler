@@ -5,7 +5,7 @@ import {
   deferSetNextKinematicTranslation,
 } from '../../physics/safeKinematics.js';
 import { findNearestEnemy } from '../../utils/targetSelection.js';
-import { reportConfigError } from '../../../utils/errorReporting.js';
+import { ErrorCategory, reportRecoverableGameError } from '../../errors.js';
 
 const missingAiShips = new Set<number>();
 let warnedAiDisableInShips = false;
@@ -20,11 +20,11 @@ export function ensureAiEnabled(state: GameState): void {
   if (state.ai) state.ai.enabled = true;
   if (warnedAiDisableInShips) return;
   warnedAiDisableInShips = true;
-  try {
-    globalThis.console?.warn?.('AI v2 fallback removed: forcing AI enabled for all ships.');
-  } catch (error) {
-    reportConfigError('console.warn.aiForceEnable', error);
-  }
+  reportRecoverableGameError(
+    ErrorCategory.Config,
+    'AI v2 fallback removed: forcing AI enabled for all ships.',
+    { source: 'aiSafety', code: 'ai-force-enable' },
+  );
 }
 
 /**
@@ -65,13 +65,11 @@ export function keepShipStationary(state: GameState, ship: ShipEntity): void {
 export function handleMissingAi(state: GameState, ship: ShipEntity): ShipEntity | null {
   if (!missingAiShips.has(ship.id)) {
     missingAiShips.add(ship.id);
-    try {
-      globalThis.console?.error?.(
-        `Ship ${ship.id} is missing an AI component; keeping it stationary.`,
-      );
-    } catch (error) {
-      reportConfigError('console.error.missingAi', error);
-    }
+    reportRecoverableGameError(
+      ErrorCategory.Config,
+      `Ship ${ship.id} is missing an AI component; keeping it stationary.`,
+      { source: 'aiSafety', code: 'missing-ai-component', context: { shipId: ship.id } },
+    );
   }
   keepShipStationary(state, ship);
   return findNearestEnemy(state, ship);

@@ -1,8 +1,9 @@
-import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
+import { afterEach, describe, expect, it } from 'vite-plus/test';
 import React from 'react';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { SettingsDrawer } from '../../src/components/HudToggleDrawer.js';
 import { useUiStore } from '../../src/app/uiStore.js';
+import { getGameErrors, resetGameErrorReporting } from '../../src/game/errors.js';
 
 const DEFAULT_FLAGS = (() => {
   const snapshot = useUiStore.getState();
@@ -50,12 +51,13 @@ describe('SettingsDrawer', () => {
     expect(useUiStore.getState().hudHealthBarsEnabled).toBe(true);
 
     const aiSwitch = screen.getByRole('switch', { name: 'AI V2' });
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     expect(aiSwitch.getAttribute('aria-checked')).toBe('true');
+    resetGameErrorReporting();
     fireEvent.click(aiSwitch);
     expect(useUiStore.getState().aiV2Enabled).toBe(true);
     expect(aiSwitch.getAttribute('aria-checked')).toBe('true');
-    expect(warnSpy).toHaveBeenCalled();
-    warnSpy.mockRestore();
+    expect(getGameErrors().some((report) => report.context?.configKey === 'aiV2Disable')).toBe(
+      true,
+    );
   });
 });
