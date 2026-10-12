@@ -99,6 +99,8 @@ export function Postprocessing({ enabled = false }: Props): null {
         }
       : null;
 
+    let aoPass: Pass | null = null;
+
     try {
       const { effectPass, bloomEffects, fxaa } = buildEffects({
         scene: scene as unknown as Scene,
@@ -115,7 +117,7 @@ export function Postprocessing({ enabled = false }: Props): null {
           : undefined;
       const aoEnabled = forcedAo === undefined ? POSTPROCESSING_CONFIG.ao.enabled : forcedAo;
 
-      const aoPass = aoEnabled
+      aoPass = aoEnabled
         ? buildAmbientOcclusion({
             scene: scene as unknown as Scene,
             camera: camera as unknown as Camera,
@@ -140,6 +142,15 @@ export function Postprocessing({ enabled = false }: Props): null {
       fxaaRef.current = fxaa;
       aoPassRef.current = aoPass;
     } catch (err) {
+      // If `createComposer` threw after the AO pass was built, the pass was
+      // never handed to the composer, so release it here before cleanup.
+      if (aoPass) {
+        try {
+          aoPass.dispose();
+        } catch (error) {
+          reportWebGLError('aoPass.dispose', error);
+        }
+      }
       cleanupComposer();
       // If instantiation fails, fail gracefully and keep composer disabled
       // so the default R3F renderer can render without interruption.

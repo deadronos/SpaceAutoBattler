@@ -172,4 +172,26 @@ describe('Postprocessing component', () => {
     expect(createComposerMock).not.toHaveBeenCalled();
     expect(buildAmbientOcclusionMock).not.toHaveBeenCalled();
   });
+
+  it('disposes the AO pass when composer creation throws', async () => {
+    createComposerMock.mockImplementationOnce(() => {
+      throw new Error('composer construction failed');
+    });
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    try {
+      render(<Postprocessing enabled />);
+
+      await waitFor(() => {
+        expect(createComposerMock).toHaveBeenCalledTimes(1);
+      });
+
+      // The pass was built but never handed to the composer, so it must be
+      // released by the error path.
+      expect(aoPassDispose).toHaveBeenCalledTimes(1);
+      expect(composerDispose).not.toHaveBeenCalled();
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
 });

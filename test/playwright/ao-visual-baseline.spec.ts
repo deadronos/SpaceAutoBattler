@@ -224,8 +224,9 @@ test.describe('Ambient occlusion visual baseline (AO off vs on)', () => {
     const aoOffFps = (aoOff.fps + control.fps) / 2;
     const aoOnFps = aoOn.fps;
     const fpsDelta = aoOffFps - aoOnFps;
-    // Positive value = milliseconds per frame added by enabling AO.
-    const frameMsDelta = 1000 / aoOnFps - 1000 / aoOffFps;
+    // Positive value = milliseconds per frame added by enabling AO. Guard
+    // against a zero sample (FPS unavailable) to avoid a division by zero.
+    const frameMsDelta = aoOnFps > 0 && aoOffFps > 0 ? 1000 / aoOnFps - 1000 / aoOffFps : 0;
 
     console.info(
       `[ao-visual-baseline] animation noise (AO-off control): changed=${noise.changedRatio.toFixed(4)} meanChannelDelta=${noise.meanChannelDelta.toFixed(3)}`,

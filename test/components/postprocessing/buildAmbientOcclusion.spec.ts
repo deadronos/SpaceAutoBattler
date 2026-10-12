@@ -118,6 +118,32 @@ describe('buildAmbientOcclusion', () => {
     expect(pass.configuration.transparencyAware).toBe(false);
   });
 
+  it('honors an explicit transparencyAware setting', () => {
+    buildAmbientOcclusion({
+      scene,
+      camera,
+      width: 800,
+      height: 600,
+      config: { ...baseConfig, transparencyAware: true },
+    });
+
+    expect(hoisted.instances[0]!.configuration.transparencyAware).toBe(true);
+  });
+
+  it('falls back to transparencyAware = false when the knob is omitted', () => {
+    const { transparencyAware: _omitted, ...configWithoutKnob } = baseConfig;
+
+    buildAmbientOcclusion({
+      scene,
+      camera,
+      width: 800,
+      height: 600,
+      config: configWithoutKnob,
+    });
+
+    expect(hoisted.instances[0]!.configuration.transparencyAware).toBe(false);
+  });
+
   it('returns null and does not throw when construction fails', () => {
     hoisted.state.shouldThrow = true;
 

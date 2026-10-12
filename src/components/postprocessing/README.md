@@ -30,8 +30,16 @@ historical two-pass layout.
 Construction is wrapped in `try/catch` and returns `null` on failure. This is
 intentional: under headless environments (jsdom/happy-dom, no WebGL context)
 `new N8AOPostPass(...)` throws, and callers degrade to "no AO" instead of
-breaking the composer. `Postprocessing` owns the pass lifecycle and disposes it
-deterministically alongside the composer.
+breaking the composer. Failures are reported through the shared
+`reportWebGLError` channel (always counted, logged only in development), so a
+real N8AO failure is not invisible while staying quiet under tests.
+
+`Postprocessing` keeps a reference to the pass and calls `dispose()` on it
+during teardown on a best-effort basis. Note the upstream limitation: `n8ao`
+does not override `Pass.dispose()`, so `N8AOPostPass.dispose()` currently only
+runs the base `Pass` cleanup and does **not** release the pass's internal render
+targets/materials. Those are reclaimed when the WebGL context is torn down; the
+explicit call is kept so it becomes effective if upstream adds a proper dispose.
 
 ### Configuration
 
@@ -46,19 +54,20 @@ All knobs live in `POSTPROCESSING_CONFIG.ao` (`src/config/postprocessing.ts`):
 | `distanceFalloff`   | How fast AO fades with distance relative to the radius                   |
 | `intensity`         | Artistic occlusion strength (pow curve)                                  |
 | `color`             | Occlusion color (sRGB hex; default `#000000`)                            |
-| `transparencyAware` | Force transparency-aware mode; kept `false` here (see below)             |
+| `transparencyAware` | Transparency-aware mode; optional, defaults to `false` (see below)       |
 
 The shipped values are **provisional** and marked for tuning during visual
 review (#646).
 
-### `transparencyAware = false`
+### `transparencyAware` defaults to `false`
 
-`pass.configuration.transparencyAware` is set explicitly to `false`. N8AO's
+`buildAmbientOcclusion` honors `config.transparencyAware`, falling back to
+`false` when it is omitted (`pass.configuration.transparencyAware =
+config.transparencyAware ?? false`). The shipped config keeps it `false`: N8AO's
 auto-detection would enable transparency-aware mode for this scene (it contains
 many transparent objects), which renders the scene twice more per frame for a
-feature the visual review does not require. Keeping it `false` avoids that cost;
-the decision is re-evaluated if transparent objects later need correct
-occlusion.
+feature the visual review does not require. The knob stays available so the
+decision can be revisited if transparent objects later need correct occlusion.
 
 ### Debug override
 

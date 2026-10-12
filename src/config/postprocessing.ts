@@ -1,3 +1,5 @@
+import type { N8AOQualityMode } from 'n8ao';
+
 export interface BloomGroupConfig {
   /** Optional override for bloom intensity for this group. */
   intensity?: number;
@@ -13,7 +15,7 @@ export interface AmbientOcclusionConfig {
   /** Render AO at half resolution (perf, per issue). */
   halfRes: boolean;
   /** N8AO quality preset. */
-  quality: 'Performance' | 'Low' | 'Medium' | 'High' | 'Ultra';
+  quality: N8AOQualityMode;
   /** AO radius in world units (ship scale). */
   aoRadius: number;
   /** How fast AO fades with distance relative to radius. */
@@ -23,11 +25,12 @@ export interface AmbientOcclusionConfig {
   /** Occlusion color (sRGB hex). */
   color: string;
   /**
-   * Force transparency-aware mode. Keep `false` here: auto-detect would
-   * enable it for this scene (many transparent objects) and render the
-   * scene twice more per frame.
+   * Transparency-aware mode. Optional; when omitted it falls back to `false`.
+   * The shipped config keeps it `false`: N8AO auto-detect would enable it for
+   * this scene (many transparent objects) and render the scene twice more per
+   * frame.
    */
-  transparencyAware: boolean;
+  transparencyAware?: boolean;
 }
 
 export interface PostprocessingConfig {
