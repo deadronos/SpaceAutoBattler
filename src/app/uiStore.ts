@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { GameState } from '../types/index.js';
-import { AI_CONFIG } from '../game/config.js';
+import { AI_CONFIG, setAiOverrideProvider } from '../game/config.js';
 import { ErrorCategory, reportRecoverableGameError } from '../game/errors.js';
 import { reportConfigError } from '../utils/errorReporting.js';
 
@@ -202,10 +202,10 @@ export const useUiStore = create<UiState>((set) => ({
   setSimEnableSubsystemGuards: (value: boolean) => set({ simEnableSubsystemGuards: value }),
 }));
 
-const globalWithUiStore = globalThis as { __spaceAutobattlerUiStore?: unknown };
-if (typeof globalThis !== 'undefined') {
-  globalWithUiStore.__spaceAutobattlerUiStore = useUiStore;
-}
+// Register the live UI store as the AI-override provider. The closure reads
+// fresh state on every call, matching the previous `{ getState: useUiStore }`
+// globalThis shim without exposing a backdoor.
+setAiOverrideProvider(() => useUiStore.getState());
 
 /**
  * Mirrors the HUD health bars flag from the UI store to the game state.

@@ -13,6 +13,8 @@ import type {
   Team,
 } from '../types/index.js';
 import { clamp01 } from '../utils/math.js';
+import { validateDoctrineCards } from './config/aiTunablesValidation.js';
+import { ErrorCategory, reportRecoverableGameError } from './errors.js';
 
 const DEFAULT_CARD: DoctrineCardId = 'elasticDefense';
 
@@ -98,6 +100,16 @@ export const DOCTRINE_CARDS: Record<DoctrineCardId, DoctrineCard> = {
     },
   },
 };
+
+// Guard future tuning edits: invalid doctrine cards warn (never throw) at module
+// load so a mis-tuned constant cannot silently change simulation behaviour. The
+// shipped constants pass with zero issues and no values are mutated here.
+for (const issue of validateDoctrineCards(DOCTRINE_CARDS)) {
+  reportRecoverableGameError(ErrorCategory.Config, issue, {
+    source: 'aiDoctrine',
+    code: 'ai-tunables-invalid',
+  });
+}
 
 export function createDefaultDoctrineState(): DoctrineState {
   return {

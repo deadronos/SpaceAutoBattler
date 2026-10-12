@@ -7,6 +7,7 @@ import { createTransformSoAViews } from './transformsLayout.js';
 import { createWorkerState } from './workerState.js';
 import { writeShipTransforms } from './shipTransformWriter.js';
 import { emitSnapshot } from './snapshotEmitter.js';
+import { setAiOverrideProvider } from '../game/config.js';
 
 type WorkerScope = {
   postMessage: (message: unknown, transfer?: Transferable[]) => void;
@@ -19,6 +20,7 @@ type WorkerScope = {
 const workerScope = globalThis as unknown as WorkerScope;
 
 const ws = createWorkerState();
+setAiOverrideProvider(() => ws.aiOverrides);
 
 function post(message: WorkerToMainMessage): void {
   workerScope.postMessage(message);
@@ -32,16 +34,6 @@ function log(...args: unknown[]): void {
   if (!ws.debugEnabled) return;
   try {
     console.log('[sim-worker]', ...args);
-  } catch {
-    // ignore
-  }
-}
-
-function installUiStoreShim(): void {
-  try {
-    (globalThis as unknown as { __spaceAutobattlerUiStore?: unknown }).__spaceAutobattlerUiStore = {
-      getState: () => ws.aiOverrides,
-    };
   } catch {
     // ignore
   }
@@ -81,7 +73,6 @@ workerScope.onmessage = (event: MessageEvent) => {
         case 'init': {
           ws.debugEnabled = Boolean(message.debug);
           ws.aiOverrides = message.aiOverrides;
-          installUiStoreShim();
 
           const initLayout = message.transforms.layout;
           ws.layout = initLayout;
@@ -126,7 +117,6 @@ workerScope.onmessage = (event: MessageEvent) => {
 
         case 'setAiOverrides': {
           ws.aiOverrides = message.aiOverrides;
-          installUiStoreShim();
           return;
         }
 

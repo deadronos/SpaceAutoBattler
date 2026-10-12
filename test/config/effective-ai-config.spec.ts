@@ -1,28 +1,23 @@
 import { afterEach, describe, expect, it } from 'vite-plus/test';
-import { AI_CONFIG, getEffectiveAIConfig } from '../../src/game/config.js';
+import {
+  AI_CONFIG,
+  getEffectiveAIConfig,
+  setAiOverrideProvider,
+  type AiOverrideSlice,
+} from '../../src/game/config.js';
 
-interface UiSlice {
-  aiVerticalEnabled: boolean | null | undefined;
-  aiEngagementBoostEnabled: boolean | null | undefined;
-  aiTickRateExperimentEnabled: boolean | null | undefined;
-  aiRangePolicy: string | null | undefined;
-  aiSmoothingEnabled?: boolean | null | undefined;
-  aiHysteresisEnabled?: boolean | null | undefined;
-  aiVerticalDampingEnabled?: boolean | null | undefined;
-}
+type UiSlice = AiOverrideSlice;
 
-function installStore(initial: UiSlice): (next: UiSlice) => void {
+function installProvider(initial: UiSlice): (next: UiSlice) => void {
   let slice = initial;
-  (globalThis as { __spaceAutobattlerUiStore?: unknown }).__spaceAutobattlerUiStore = {
-    getState: () => slice,
-  };
+  setAiOverrideProvider(() => slice);
   return (next: UiSlice) => {
     slice = next;
   };
 }
 
 afterEach(() => {
-  delete (globalThis as { __spaceAutobattlerUiStore?: unknown }).__spaceAutobattlerUiStore;
+  setAiOverrideProvider(null);
 });
 
 describe('getEffectiveAIConfig', () => {
@@ -33,7 +28,7 @@ describe('getEffectiveAIConfig', () => {
       aiTickRateExperimentEnabled: false,
       aiRangePolicy: 'default',
     };
-    const setFlags = installStore(flags);
+    const setFlags = installProvider(flags);
 
     const first = getEffectiveAIConfig();
     const second = getEffectiveAIConfig();
@@ -56,7 +51,7 @@ describe('getEffectiveAIConfig', () => {
       aiHysteresisEnabled: true,
       aiVerticalDampingEnabled: true,
     };
-    installStore(flags);
+    installProvider(flags);
 
     const first = getEffectiveAIConfig();
     const second = getEffectiveAIConfig();
@@ -75,7 +70,7 @@ describe('getEffectiveAIConfig', () => {
       aiHysteresisEnabled: true,
       aiVerticalDampingEnabled: true,
     };
-    const setFlags = installStore(flags);
+    const setFlags = installProvider(flags);
     const baseline = getEffectiveAIConfig();
 
     const mutations: Array<{
@@ -123,11 +118,9 @@ describe('getEffectiveAIConfig', () => {
   });
 
   it('falls back to AI_CONFIG when the UI store throws', () => {
-    (globalThis as { __spaceAutobattlerUiStore?: unknown }).__spaceAutobattlerUiStore = {
-      getState: () => {
-        throw new Error('boom');
-      },
-    };
+    setAiOverrideProvider(() => {
+      throw new Error('boom');
+    });
     expect(getEffectiveAIConfig()).toBe(AI_CONFIG);
   });
 });
