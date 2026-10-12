@@ -74,7 +74,7 @@ describe('sparksUpdater', () => {
       { capacity: 100, supportsInstanceColor: true },
     );
     mgr.beginFrame();
-    const result = updateSparks(ctx, mgr, String(event.id));
+    const result = updateSparks(ctx, mgr, event.id);
     expect(result.count).toBe(0);
     expect(result.saturated).toBe(false);
   });
@@ -86,7 +86,7 @@ describe('sparksUpdater', () => {
       { capacity: 100, supportsInstanceColor: true },
     );
     mgr.beginFrame();
-    const result = updateSparks(ctx, mgr, String(event.id));
+    const result = updateSparks(ctx, mgr, event.id);
     expect(result.count).toBeGreaterThan(0);
     expect(result.count).toBeLessThanOrEqual(event.particles.sparks);
     expect(result.saturated).toBe(false);
@@ -99,7 +99,7 @@ describe('sparksUpdater', () => {
       { capacity: 5, supportsInstanceColor: true },
     );
     mgr.beginFrame();
-    const result = updateSparks(ctx, mgr, String(event.id));
+    const result = updateSparks(ctx, mgr, event.id);
     expect(result.count).toBeLessThanOrEqual(5);
   });
 
@@ -114,7 +114,7 @@ describe('sparksUpdater', () => {
       { capacity: 100, supportsInstanceColor: true },
     );
     mgr.beginFrame();
-    updateSparks(ctx, mgr, String(event.id));
+    updateSparks(ctx, mgr, event.id);
 
     const dummy = new Object3D();
     mesh.getMatrixAt(0, dummy.matrix);
@@ -134,7 +134,7 @@ describe('sparksUpdater', () => {
       { capacity: 1, supportsInstanceColor: true },
     );
     mgr.beginFrame();
-    const result = updateSparks(ctx, mgr, String(event.id));
+    const result = updateSparks(ctx, mgr, event.id);
     expect(result.count).toBeLessThanOrEqual(1);
     expect(result.saturated).toBe(true);
   });

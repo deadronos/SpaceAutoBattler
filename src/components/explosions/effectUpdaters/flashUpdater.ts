@@ -16,7 +16,7 @@ import { emitSingleInstance } from './instanceHelpers.js';
 export const updateFlash: EffectUpdater = (
   ctx: EffectUpdateContext,
   manager,
-  keyBase: string,
+  eventId: number,
 ): EffectUpdateResult => {
   const { event, time, camera, derived, dummy, color } = ctx;
 
@@ -34,5 +34,5 @@ export const updateFlash: EffectUpdater = (
 
   color.copy(getCachedColor(event.palette.flash)).multiplyScalar(Math.max(0.3, intensity));
 
-  return emitSingleInstance(manager, keyBase, 'flash', dummy, color);
+  return emitSingleInstance(manager, eventId, dummy, color);
 };

@@ -73,7 +73,7 @@ describe('fireballUpdater', () => {
       { capacity: 10, supportsInstanceColor: true },
     );
     mgr.beginFrame();
-    const result = updateFireball(ctx, mgr, String(event.id));
+    const result = updateFireball(ctx, mgr, event.id);
     expect(result.count).toBe(0);
     expect(result.saturated).toBe(false);
   });
@@ -85,7 +85,7 @@ describe('fireballUpdater', () => {
       { capacity: 10, supportsInstanceColor: true },
     );
     mgr.beginFrame();
-    const result = updateFireball(ctx, mgr, String(event.id));
+    const result = updateFireball(ctx, mgr, event.id);
     expect(result.count).toBe(1);
     expect(result.saturated).toBe(false);
   });
@@ -97,7 +97,7 @@ describe('fireballUpdater', () => {
       { capacity: 10, supportsInstanceColor: true },
     );
     mgr.beginFrame();
-    const result = updateFireball(ctx, mgr, String(event.id));
+    const result = updateFireball(ctx, mgr, event.id);
     expect(result.count).toBe(0);
     expect(result.saturated).toBe(false);
   });
@@ -109,7 +109,7 @@ describe('fireballUpdater', () => {
       { capacity: 10, supportsInstanceColor: true },
     );
     mgr1.beginFrame();
-    updateFireball(ctx, mgr1, String(event.id));
+    updateFireball(ctx, mgr1, event.id);
     const color1 = new Color();
     mesh.getColorAt(0, color1);
 
@@ -119,7 +119,7 @@ describe('fireballUpdater', () => {
       { capacity: 10, supportsInstanceColor: true },
     );
     mgr2.beginFrame();
-    updateFireball(ctx, mgr2, String(event.id));
+    updateFireball(ctx, mgr2, event.id);
     const color2 = new Color();
     mesh.getColorAt(1, color2);
 
@@ -134,7 +134,7 @@ describe('fireballUpdater', () => {
       { capacity: 10, supportsInstanceColor: true },
     );
     mgr3.beginFrame();
-    updateFireball(ctx, mgr3, String(event.id));
+    updateFireball(ctx, mgr3, event.id);
     const dummy1 = new Object3D();
     mesh.getMatrixAt(0, dummy1.matrix);
     dummy1.matrix.decompose(dummy1.position, dummy1.quaternion, dummy1.scale);
@@ -146,7 +146,7 @@ describe('fireballUpdater', () => {
       { capacity: 10, supportsInstanceColor: true },
     );
     mgr4.beginFrame();
-    updateFireball(ctx, mgr4, String(event.id));
+    updateFireball(ctx, mgr4, event.id);
     const dummy2 = new Object3D();
     mesh.getMatrixAt(1, dummy2.matrix);
     dummy2.matrix.decompose(dummy2.position, dummy2.quaternion, dummy2.scale);
@@ -165,7 +165,7 @@ describe('fireballUpdater', () => {
     for (let i = 0; i < 10; i += 1) {
       mgr.allocate(`${event.id}:fill:${i}` as any);
     }
-    const result = updateFireball(ctx, mgr, String(event.id) + ':overflow');
+    const result = updateFireball(ctx, mgr, event.id);
     expect(result.count).toBe(0);
     expect(result.saturated).toBe(true);
   });

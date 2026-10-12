@@ -11,7 +11,7 @@ import { processParticleArray } from './particleLoopHelper.js';
 export const updatePlasma: EffectUpdater = (
   ctx: EffectUpdateContext,
   manager,
-  keyBase: string,
+  eventId: number,
 ): EffectUpdateResult => {
   const { event, time, derived, dummy, tmpQuat, tmpVec, color } = ctx;
 
@@ -21,8 +21,7 @@ export const updatePlasma: EffectUpdater = (
     derived.plasma,
     plasmaT,
     manager,
-    keyBase,
-    'plume',
+    eventId,
     (plume) => plume.lifetime,
     (plume, idx, plasmaTime) => {
       const plumeProgress = clamp01(plasmaTime / plume.lifetime);

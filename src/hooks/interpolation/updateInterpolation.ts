@@ -4,18 +4,12 @@ import type { ShipEntity } from '../../types/index.js';
 import type { SmoothingConfig } from './config.js';
 import type { InterpolationState } from './state.js';
 import {
-  pickEffectiveDetailLevel,
-  resolveBankingMode,
   resolveEntityDetailLevel,
-  resolvePerformanceTier,
-  shouldEnableBob,
+  resolveInterpolationPolicy,
+  type InterpolationPolicy,
 } from './detailPolicy.js';
 import { updateVisualTargets } from './bob.js';
-import {
-  shouldApplyVisualSmoothing,
-  smoothVisualPosition,
-  smoothVisualRotation,
-} from './smoothing.js';
+import { smoothVisualPosition, smoothVisualRotation } from './smoothing.js';
 import { updateBanking } from './banking.js';
 
 function applyTrivialInterpolation(state: InterpolationState, alpha: number): void {
@@ -45,6 +39,7 @@ export function updateInterpolation(
   bankValueRef: MutableRefObject<number>,
   bankVelocityRef: MutableRefObject<number>,
   lastTickIndexRef: MutableRefObject<number>,
+  policy?: InterpolationPolicy,
 ): void {
   advanceSimulationState(
     entity,
@@ -58,13 +53,9 @@ export function updateInterpolation(
 
   const motion = entity.ship.motion;
   const visualCfg = motion.visual;
-  const performanceTier = resolvePerformanceTier();
-  const entityDetail = resolveEntityDetailLevel(entity);
-  const effectiveDetail = pickEffectiveDetailLevel(entityDetail, performanceTier);
-  const smoothingAllowed = effectiveDetail !== 'low';
-  const smoothingEnabled = smoothingAllowed && shouldApplyVisualSmoothing(visualCfg);
-  const bobEnabled = smoothingEnabled && shouldEnableBob(visualCfg, effectiveDetail);
-  const bankingMode = resolveBankingMode(visualCfg, effectiveDetail);
+  const resolved =
+    policy ?? resolveInterpolationPolicy(visualCfg, resolveEntityDetailLevel(entity));
+  const { smoothingEnabled, bobEnabled, bankingMode } = resolved;
 
   const clampedAlpha = MathUtils.clamp(alpha, 0, 1);
   const alphaIsExtreme = clampedAlpha <= 0 || clampedAlpha >= 1;

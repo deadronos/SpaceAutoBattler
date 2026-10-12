@@ -61,19 +61,29 @@ export function ExplosionRendererCore(): React.ReactElement {
   const color = useMemo(() => new Color(), []);
   const warningStateRef = useRef(createSaturationWarningState());
   const frameRef = useRef(0);
+  // Reused across frames; mutated in place each frame to avoid a per-frame
+  // object allocation. The manager only reads it during attach().
+  const refsRef = useRef<InstancedMeshRefs>({
+    flash: null,
+    shockwave: null,
+    fireball: null,
+    debris: null,
+    sparks: null,
+    plasma: null,
+    smoke: null,
+  });
 
   useFrame(({ camera }) => {
     frameRef.current += 1;
     const frameId = frameRef.current;
-    const refs: InstancedMeshRefs = {
-      flash: flashRef.current,
-      shockwave: shockwaveRef.current,
-      fireball: fireballRef.current,
-      debris: debrisRef.current,
-      sparks: sparksRef.current,
-      plasma: plasmaRef.current,
-      smoke: smokeRef.current,
-    };
+    const refs = refsRef.current;
+    refs.flash = flashRef.current;
+    refs.shockwave = shockwaveRef.current;
+    refs.fireball = fireballRef.current;
+    refs.debris = debrisRef.current;
+    refs.sparks = sparksRef.current;
+    refs.plasma = plasmaRef.current;
+    refs.smoke = smokeRef.current;
 
     const manager = managerRef.current;
 
@@ -83,8 +93,9 @@ export function ExplosionRendererCore(): React.ReactElement {
 
     manager.beginFrame();
 
-    // Reuse a single context object and event key across the frame instead of
-    // allocating an object plus seven strings per explosion event.
+    // Reuse a single context object across the frame instead of allocating
+    // an object plus seven strings per explosion event. Numeric event ids
+    // are passed straight through as allocation keys.
     let ctx: EffectUpdateContext | null = null;
 
     for (const event of state.explosions) {
@@ -97,28 +108,28 @@ export function ExplosionRendererCore(): React.ReactElement {
         ctx.derived = derived;
       }
 
-      const keyBase = String(event.id);
+      const eventId = event.id;
 
       const flashMgr = manager.getEffectManager('flash');
-      if (flashMgr) updateFlash(ctx, flashMgr, keyBase);
+      if (flashMgr) updateFlash(ctx, flashMgr, eventId);
 
       const shockwaveMgr = manager.getEffectManager('shockwave');
-      if (shockwaveMgr) updateShockwave(ctx, shockwaveMgr, keyBase);
+      if (shockwaveMgr) updateShockwave(ctx, shockwaveMgr, eventId);
 
       const fireballMgr = manager.getEffectManager('fireball');
-      if (fireballMgr) updateFireball(ctx, fireballMgr, keyBase);
+      if (fireballMgr) updateFireball(ctx, fireballMgr, eventId);
 
       const debrisMgr = manager.getEffectManager('debris');
-      if (debrisMgr) updateDebris(ctx, debrisMgr, keyBase);
+      if (debrisMgr) updateDebris(ctx, debrisMgr, eventId);
 
       const sparksMgr = manager.getEffectManager('sparks');
-      if (sparksMgr) updateSparks(ctx, sparksMgr, keyBase);
+      if (sparksMgr) updateSparks(ctx, sparksMgr, eventId);
 
       const plasmaMgr = manager.getEffectManager('plasma');
-      if (plasmaMgr) updatePlasma(ctx, plasmaMgr, keyBase);
+      if (plasmaMgr) updatePlasma(ctx, plasmaMgr, eventId);
 
       const smokeMgr = manager.getEffectManager('smoke');
-      if (smokeMgr) updateSmoke(ctx, smokeMgr, keyBase);
+      if (smokeMgr) updateSmoke(ctx, smokeMgr, eventId);
     }
 
     manager.finalize();

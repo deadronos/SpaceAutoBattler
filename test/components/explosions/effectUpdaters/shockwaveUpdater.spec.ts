@@ -74,7 +74,7 @@ describe('shockwaveUpdater', () => {
       { capacity: 10, supportsInstanceColor: true },
     );
     mgr.beginFrame();
-    const result = updateShockwave(ctx, mgr, String(event.id));
+    const result = updateShockwave(ctx, mgr, event.id);
     expect(result.count).toBe(0);
     expect(result.saturated).toBe(false);
   });
@@ -86,7 +86,7 @@ describe('shockwaveUpdater', () => {
       { capacity: 10, supportsInstanceColor: true },
     );
     mgr.beginFrame();
-    const result = updateShockwave(ctx, mgr, String(event.id));
+    const result = updateShockwave(ctx, mgr, event.id);
     expect(result.count).toBe(1);
     expect(result.saturated).toBe(false);
   });
@@ -98,7 +98,7 @@ describe('shockwaveUpdater', () => {
       { capacity: 10, supportsInstanceColor: true },
     );
     mgr.beginFrame();
-    const result = updateShockwave(ctx, mgr, String(event.id));
+    const result = updateShockwave(ctx, mgr, event.id);
     expect(result.count).toBe(0);
     expect(result.saturated).toBe(false);
   });
@@ -110,7 +110,7 @@ describe('shockwaveUpdater', () => {
       { capacity: 10, supportsInstanceColor: true },
     );
     mgr.beginFrame();
-    updateShockwave(ctx, mgr, String(event.id));
+    updateShockwave(ctx, mgr, event.id);
     const dummy1 = new Object3D();
     mesh.getMatrixAt(0, dummy1.matrix);
     dummy1.matrix.decompose(dummy1.position, dummy1.quaternion, dummy1.scale);
@@ -122,7 +122,7 @@ describe('shockwaveUpdater', () => {
       { capacity: 10, supportsInstanceColor: true },
     );
     mgr2.beginFrame();
-    updateShockwave(ctx, mgr2, String(event.id));
+    updateShockwave(ctx, mgr2, event.id);
     const dummy2 = new Object3D();
     mesh.getMatrixAt(1, dummy2.matrix);
     dummy2.matrix.decompose(dummy2.position, dummy2.quaternion, dummy2.scale);
@@ -138,7 +138,7 @@ describe('shockwaveUpdater', () => {
       { capacity: 10, supportsInstanceColor: true },
     );
     mgr1.beginFrame();
-    updateShockwave(ctx, mgr1, String(event.id));
+    updateShockwave(ctx, mgr1, event.id);
     const color1 = new Color();
     mesh.getColorAt(0, color1);
     const intensity1 = color1.r + color1.g + color1.b;
@@ -149,7 +149,7 @@ describe('shockwaveUpdater', () => {
       { capacity: 10, supportsInstanceColor: true },
     );
     mgr2.beginFrame();
-    updateShockwave(ctx, mgr2, String(event.id));
+    updateShockwave(ctx, mgr2, event.id);
     const color2 = new Color();
     mesh.getColorAt(1, color2);
     const intensity2 = color2.r + color2.g + color2.b;
@@ -167,7 +167,7 @@ describe('shockwaveUpdater', () => {
     for (let i = 0; i < 10; i += 1) {
       mgr.allocate(`${event.id}:fill:${i}` as any);
     }
-    const result = updateShockwave(ctx, mgr, String(event.id) + ':overflow');
+    const result = updateShockwave(ctx, mgr, event.id);
     expect(result.count).toBe(0);
     expect(result.saturated).toBe(true);
   });

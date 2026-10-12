@@ -76,7 +76,7 @@ describe('flashUpdater', () => {
       { capacity: 10, supportsInstanceColor: true },
     );
     mgr.beginFrame();
-    const result = updateFlash(ctx, mgr, String(event.id));
+    const result = updateFlash(ctx, mgr, event.id);
     expect(result.count).toBe(1);
     expect(result.saturated).toBe(false);
   });
@@ -88,7 +88,7 @@ describe('flashUpdater', () => {
       { capacity: 10, supportsInstanceColor: true },
     );
     mgr.beginFrame();
-    const result = updateFlash(ctx, mgr, String(event.id));
+    const result = updateFlash(ctx, mgr, event.id);
     expect(result.count).toBe(0);
     expect(result.saturated).toBe(false);
   });
@@ -99,7 +99,7 @@ describe('flashUpdater', () => {
       { capacity: 10, supportsInstanceColor: true },
     );
     mgr.beginFrame();
-    updateFlash(ctx, mgr, String(event.id));
+    updateFlash(ctx, mgr, event.id);
 
     const matrix = mesh.instanceMatrix.array;
     expect(matrix).toBeDefined();
@@ -116,14 +116,14 @@ describe('flashUpdater', () => {
       { capacity: 10, supportsInstanceColor: true },
     );
     mgr.beginFrame();
-    updateFlash(ctx, mgr, `${event.id}:t1`);
+    updateFlash(ctx, mgr, event.id);
     const dummy1 = new Object3D();
     mesh.getMatrixAt(0, dummy1.matrix);
     dummy1.matrix.decompose(dummy1.position, dummy1.quaternion, dummy1.scale);
     const scale1 = dummy1.scale.x;
 
     ctx.time = 0.1;
-    updateFlash(ctx, mgr, `${event.id}:t2`);
+    updateFlash(ctx, mgr, event.id + 1);
     const dummy2 = new Object3D();
     mesh.getMatrixAt(1, dummy2.matrix);
     dummy2.matrix.decompose(dummy2.position, dummy2.quaternion, dummy2.scale);
@@ -139,7 +139,7 @@ describe('flashUpdater', () => {
       { capacity: 10, supportsInstanceColor: true },
     );
     mgr1.beginFrame();
-    const result1 = updateFlash(ctx, mgr1, String(event.id));
+    const result1 = updateFlash(ctx, mgr1, event.id);
     const color1 = new Color();
     mesh.getColorAt(0, color1);
 
@@ -150,7 +150,7 @@ describe('flashUpdater', () => {
       { capacity: 10, supportsInstanceColor: true },
     );
     mgr2.beginFrame();
-    const result2 = updateFlash(ctx2, mgr2, String(event.id));
+    const result2 = updateFlash(ctx2, mgr2, event.id);
     const color2 = new Color();
     mesh2.getColorAt(0, color2);
 
@@ -171,7 +171,7 @@ describe('flashUpdater', () => {
     for (let i = 0; i < 10; i += 1) {
       mgr.allocate(`${event.id}:fill:${i}` as any);
     }
-    const result = updateFlash(ctx, mgr, String(event.id) + ':overflow');
+    const result = updateFlash(ctx, mgr, event.id);
     expect(result.count).toBe(0);
     expect(result.saturated).toBe(true);
   });

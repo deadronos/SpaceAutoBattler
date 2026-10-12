@@ -1,6 +1,7 @@
 import type { InstancedLayerManager } from '../../layers/types.js';
 import type { EffectUpdateResult } from './types.js';
 import { EMPTY_EFFECT_RESULT } from './types.js';
+import { EXPLOSION_PARTICLE_KEY_STRIDE } from '../constants.js';
 
 /**
  * Callback function for updating a single particle instance.
@@ -17,11 +18,14 @@ export type ParticleUpdateCallback<T> = (
  * Handles the common loop structure for particle arrays with delay, lifetime checks,
  * allocation, and saturation tracking.
  *
+ * Each particle effect has its own manager, so keys only need to be unique within
+ * this effect. The numeric key is derived from the event id and particle index
+ * without constructing any strings.
+ *
  * @param particles - Array of particle data (debris, plasma, sparks, smoke, etc.)
  * @param effectTime - Time relative to effect start (after delay is already subtracted)
  * @param manager - Instance manager for allocation
- * @param keyBase - Base key for allocation (e.g., "explosion:123")
- * @param keyType - Type suffix for allocation keys (e.g., "shard", "plume", "spark")
+ * @param eventId - Numeric per-event identity; combined with the particle index for the key
  * @param getLifetime - Function to get lifetime from a particle
  * @param updateCallback - Callback to update a single particle instance
  * @returns Result with count and saturation status
@@ -29,9 +33,8 @@ export type ParticleUpdateCallback<T> = (
 export function processParticleArray<T>(
   particles: readonly T[],
   effectTime: number,
-  manager: InstancedLayerManager<string>,
-  keyBase: string,
-  keyType: string,
+  manager: InstancedLayerManager<number>,
+  eventId: number,
   getLifetime: (particle: T) => number,
   updateCallback: ParticleUpdateCallback<T>,
 ): EffectUpdateResult {
@@ -51,7 +54,7 @@ export function processParticleArray<T>(
     }
 
     // Allocate instance
-    const key = `${keyBase}:${keyType}:${i}`;
+    const key = eventId * EXPLOSION_PARTICLE_KEY_STRIDE + i;
     const idx = manager.allocate(key);
     if (idx == null) {
       saturated = true;

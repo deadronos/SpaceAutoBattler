@@ -4,6 +4,13 @@ export const MAX_SPARKS = 32;
 export const MAX_PLASMA = 24;
 export const MAX_SMOKE = 28;
 
+/**
+ * Stride between per-event particle key ranges. Must be >= the largest
+ * per-effect particle count (MAX_SPARKS) so keys stay unique within a
+ * single effect's manager without any string construction.
+ */
+export const EXPLOSION_PARTICLE_KEY_STRIDE = 128;
+
 export const FLASH_DURATION = 0.12;
 export const DEBRIS_DELAY = 0.18;
 export const SPARKS_DELAY = 0.22;

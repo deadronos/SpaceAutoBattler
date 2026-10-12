@@ -15,7 +15,7 @@ import { emitSingleInstance } from './instanceHelpers.js';
 export const updateFireball: EffectUpdater = (
   ctx: EffectUpdateContext,
   manager,
-  keyBase: string,
+  eventId: number,
 ): EffectUpdateResult => {
   const { event, time, dummy, color } = ctx;
 
@@ -36,5 +36,5 @@ export const updateFireball: EffectUpdater = (
   const coolColor = getCachedColor(event.palette.smoke);
   color.copy(hotColor).lerp(coolColor, firePhase * 0.65);
 
-  return emitSingleInstance(manager, keyBase, 'fireball', dummy, color);
+  return emitSingleInstance(manager, eventId, dummy, color);
 };

@@ -26,7 +26,7 @@ export interface EffectCounts {
 export type EffectKey = keyof EffectCounts;
 
 interface PoolState {
-  manager: InstancedLayerManager<string> | null;
+  manager: InstancedLayerManager<number> | null;
   capacity: number;
 }
 
@@ -99,7 +99,7 @@ export class ExplosionsInstancedManager {
         // create manager with a null-ref placeholder; it will be initialized
         // lazily when attach() is called and the real mesh refs are provided.
         const placeholderRef = { current: null as InstancedMesh | null };
-        const mgr = createInstancedLayerManager(placeholderRef, { capacity: cap });
+        const mgr = createInstancedLayerManager<number>(placeholderRef, { capacity: cap });
         acc[key] = { manager: mgr, capacity: cap };
         return acc;
       },
@@ -134,7 +134,7 @@ export class ExplosionsInstancedManager {
     }
   }
 
-  getEffectManager(key: EffectKey): InstancedLayerManager<string> | null {
+  getEffectManager(key: EffectKey): InstancedLayerManager<number> | null {
     return this.pools[key].manager;
   }
 

@@ -11,7 +11,7 @@ import { processParticleArray } from './particleLoopHelper.js';
 export const updateSmoke: EffectUpdater = (
   ctx: EffectUpdateContext,
   manager,
-  keyBase: string,
+  eventId: number,
 ): EffectUpdateResult => {
   const { event, time, camera, derived, dummy, tmpVec, color } = ctx;
 
@@ -21,8 +21,7 @@ export const updateSmoke: EffectUpdater = (
     derived.smoke,
     smokeT,
     manager,
-    keyBase,
-    'wisp',
+    eventId,
     (wisp) => wisp.lifetime,
     (wisp, idx, smokeTime) => {
       const wispProgress = clamp01(smokeTime / wisp.lifetime);

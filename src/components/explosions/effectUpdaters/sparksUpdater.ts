@@ -11,7 +11,7 @@ import { processParticleArray } from './particleLoopHelper.js';
 export const updateSparks: EffectUpdater = (
   ctx: EffectUpdateContext,
   manager,
-  keyBase: string,
+  eventId: number,
 ): EffectUpdateResult => {
   const { event, time, camera, derived, dummy, tmpVec, color } = ctx;
 
@@ -21,8 +21,7 @@ export const updateSparks: EffectUpdater = (
     derived.sparks,
     sparksT,
     manager,
-    keyBase,
-    'spark',
+    eventId,
     (spark) => spark.lifetime,
     (spark, idx, sparksTime) => {
       const sparkProgress = clamp01(sparksTime / spark.lifetime);
