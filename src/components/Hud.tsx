@@ -35,6 +35,7 @@ export function Hud(): React.ReactElement {
 
   const [blue, red] = useMemo(() => summarize(ships), [ships]);
   const hudHealthBarsEnabled = useUiStore((s) => s.hudHealthBarsEnabled);
+  const selectedShipId = useUiStore((s) => s.selectedShipId);
   const showDevErrors = import.meta.env.DEV;
 
   return (
@@ -67,6 +68,11 @@ export function Hud(): React.ReactElement {
             {formatTeamPercent(blue)} · Reavers {formatTeamPercent(red)}.
           </p>
         )}
+        {selectedShipId != null ? (
+          <p className="hud-selection-status">
+            Selected ship #{selectedShipId} — enable “Follow Selected Ship” to track it.
+          </p>
+        ) : null}
       </div>
       {showDevErrors ? <ErrorCountsPanel /> : null}
     </div>

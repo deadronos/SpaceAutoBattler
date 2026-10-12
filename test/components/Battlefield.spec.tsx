@@ -2,7 +2,8 @@ import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { cleanup, render } from '@testing-library/react';
 import { AxesHelper } from 'three';
-import { Grid } from '@react-three/drei';
+import { Grid, OrbitControls } from '@react-three/drei';
+import { CameraRig } from '../../src/components/CameraRig.js';
 import {
   ErrorCategory,
   getErrorCounts,
@@ -23,9 +24,13 @@ vi.mock('@react-three/fiber', () => ({
 }));
 
 vi.mock('@react-three/drei', () => ({
-  OrbitControls: () => null,
+  OrbitControls: vi.fn(() => null),
   Grid: vi.fn(() => null),
   useGLTF: Object.assign(vi.fn(), { setDecoderPath: vi.fn() }),
+}));
+
+vi.mock('../../src/components/CameraRig.js', () => ({
+  CameraRig: vi.fn(() => null),
 }));
 
 vi.mock('../../src/app/context.js', () => ({
@@ -116,6 +121,14 @@ beforeEach(() => {
 });
 
 describe('Battlefield', () => {
+  it('mounts the camera rig alongside OrbitControls', async () => {
+    const { Battlefield } = await import('../../src/components/Battlefield.js');
+    render(<Battlefield />);
+
+    expect(vi.mocked(OrbitControls)).toHaveBeenCalled();
+    expect(vi.mocked(CameraRig)).toHaveBeenCalled();
+  });
+
   it('creates AxesHelper once across rerenders', async () => {
     (window as Window & { __copilotDebugForce?: boolean }).__copilotDebugForce = true;
     const { Battlefield } = await import('../../src/components/Battlefield.js');

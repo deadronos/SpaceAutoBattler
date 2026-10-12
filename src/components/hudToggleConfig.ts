@@ -31,6 +31,25 @@ export const SETTINGS_TOGGLES: HudToggleDefinition[] = [
     },
   },
   {
+    id: 'camera-shake',
+    label: 'Camera Shake',
+    description: 'Explosion screen shake + FOV kick',
+    select: (state) => state.cameraShakeEnabled,
+    toggle: () => {
+      useUiStore.getState().toggleCameraShake();
+    },
+  },
+  {
+    id: 'camera-follow',
+    label: 'Follow Selected Ship',
+    description: 'Smooth camera follow on click',
+    select: (state) => state.cameraFollowEnabled,
+    toggle: () => {
+      useUiStore.getState().toggleCameraFollow();
+    },
+    disabled: (state) => state.selectedShipId === null,
+  },
+  {
     id: 'progression-panel',
     label: 'Progression Panel',
     description: 'Ship XP, levels, and event tracking',
