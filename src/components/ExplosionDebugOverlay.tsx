@@ -1,6 +1,6 @@
 import React from 'react';
-import { useOptionalGameState } from '../game/context.js';
-import { useUiStore } from '../game/uiStore.js';
+import { useOptionalGameState } from '../app/context.js';
+import { useUiStore } from '../app/uiStore.js';
 import { getExplosionConfig } from '../config/explosions.js';
 import type { ShipHull } from '../types/index.js';
 

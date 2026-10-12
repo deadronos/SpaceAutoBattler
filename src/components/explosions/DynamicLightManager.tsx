@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Group, PointLight } from 'three';
-import { useGameState } from '../../game/context.js';
+import { useGameState } from '../../app/context.js';
 import { MAX_EVENTS } from './constants.js';
 
 export function DynamicLightManager(): React.ReactElement {

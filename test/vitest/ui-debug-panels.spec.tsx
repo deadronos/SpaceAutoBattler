@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
 import React from 'react';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { DebugDrawer } from '../../src/components/HudToggleDrawer.js';
-import { useUiStore } from '../../src/game/uiStore.js';
+import { useUiStore } from '../../src/app/uiStore.js';
 
 const DEFAULT_FLAGS = (() => {
   const snapshot = useUiStore.getState();

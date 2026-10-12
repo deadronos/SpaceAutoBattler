@@ -1,6 +1,6 @@
 import { useId, useState, useCallback } from 'react';
 import type React from 'react';
-import { useUiStore } from '../game/uiStore.js';
+import { useUiStore } from '../app/uiStore.js';
 import { DEBUG_TOGGLES, SETTINGS_TOGGLES, type HudToggleDefinition } from './hudToggleConfig.js';
 
 export function SettingsDrawer(): React.ReactElement {

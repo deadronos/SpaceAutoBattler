@@ -14,6 +14,7 @@ This directory contains the complete TypeScript/React source code for SpaceAutoB
 | Directory       | Purpose                                                                                        |
 | --------------- | ---------------------------------------------------------------------------------------------- |
 | **components/** | React components for rendering the game scene (ships, environment, effects, HUD)               |
+| **app/**        | React/zustand app-layer state (GameProvider context, UI store)                                 |
 | **game/**       | Core game logic including AI, physics, combat systems, state management, and progression       |
 | **renderer/**   | Three.js rendering infrastructure (materials, shaders, texture atlases, post-processing setup) |
 | **types/**      | TypeScript type definitions and interfaces for the entire application                          |
@@ -31,7 +32,7 @@ This directory contains the complete TypeScript/React source code for SpaceAutoB
 
 1. **Entry Point** (`main.tsx`) → Initializes patches and React
 2. **App Component** (`App.tsx`) → Sets up GameProvider and main scene components
-3. **GameProvider** (`game/context.tsx`) → Manages global game state using Miniplex ECS
+3. **GameProvider** (`app/context.tsx`) → Manages global game state using Miniplex ECS
 4. **Battlefield** (`components/Battlefield.tsx`) → Main scene component with React Three Fiber
 5. **Systems** (`game/systems/`) → Runs game logic (AI, physics, combat, projectiles)
 6. **Components** (`components/`) → Renders game entities (ships, environment, effects)

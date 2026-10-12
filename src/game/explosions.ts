@@ -1,6 +1,7 @@
 import { Vector3 } from 'three';
 import type { ExplosionEvent, GameState, ProjectileEntity, ShipEntity } from '../types/index.js';
 import { DEFAULT_EXPLOSION_CONFIG, getExplosionConfig } from '../config/explosions.js';
+import { ErrorCategory, reportRecoverableGameError } from './errors.js';
 
 const MAX_EXPLOSIONS = 48;
 
@@ -81,7 +82,11 @@ export function emitShipKillExplosion(
     if (evicted) recycleExplosion(state, evicted);
     if (!overflowWarned) {
       overflowWarned = true;
-      console.warn('[explosions] Explosion pool exhausted, evicting oldest event.');
+      reportRecoverableGameError(
+        ErrorCategory.Physics,
+        'Explosion pool exhausted; evicting oldest event',
+        { source: 'explosions', code: 'explosion-pool-exhausted' },
+      );
     }
   }
 

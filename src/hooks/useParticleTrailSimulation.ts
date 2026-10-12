@@ -3,7 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { Frustum, InstancedBufferGeometry, Matrix4, Mesh, ShaderMaterial, Vector3 } from 'three';
 import type { ShipEntity } from '../types/index.js';
 import { PARTICLE_TRAILS_CONFIG, THRUSTER_GLOW_CONFIG } from '../config/effects.js';
-import { useUiStore } from '../game/uiStore.js';
+import { useUiStore } from '../app/uiStore.js';
 import { SeededRng } from '../utils/rng.js';
 import type { ParticleTrailResources } from '../renderer/particles/trailResources.js';
 import {

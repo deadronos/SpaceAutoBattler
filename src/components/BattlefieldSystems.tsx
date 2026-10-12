@@ -1,8 +1,8 @@
 import type React from 'react';
 import { useFrame } from '@react-three/fiber';
-import { useGameState } from '../game/context.js';
+import { useGameState } from '../app/context.js';
 import { updateGame } from '../game/systems.js';
-import { useUiStore } from '../game/uiStore.js';
+import { useUiStore } from '../app/uiStore.js';
 import { shouldRenderWorkerShipsOnly } from '../game/SimulationBridge.js';
 import { reportPhysicsError } from '../utils/errorReporting.js';
 

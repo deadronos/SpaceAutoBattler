@@ -88,7 +88,7 @@ import { resetTempRng as resetIntentTempRng } from '../../src/game/systems/decis
 import { resetTempRng as resetVerticalTempRng } from '../../src/game/systems/decision/vertical-maneuvers.js';
 import { resetTempRng as resetBlackboardTempRng } from '../../src/game/systems/decision/blackboard.js';
 import { getEffectiveAIConfig } from '../../src/game/config.js';
-import { useUiStore } from '../../src/game/uiStore.js';
+import { useUiStore } from '../../src/app/uiStore.js';
 import { applyHarnessIntegration } from './aiScenarioHarness/integration.js';
 import {
   serializeCommands,

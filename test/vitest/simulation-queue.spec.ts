@@ -48,7 +48,6 @@ describe('simulation queue', () => {
     state.simulation.deferredMutations.length = 0;
     const diagnostics = state.simulation.rapierDiagnostics;
 
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const faulty = vi.fn(() => {
       throw new Error('mutation failed');
     });
@@ -61,8 +60,6 @@ describe('simulation queue', () => {
     expect(diagnostics.deferredMutationFailures).toBe(1);
     expect(diagnostics.lastFailureTick).toBe(state.simulation.lastTickIndex);
     expect(diagnostics.lastDeferredMutationError).toBe('mutation failed');
-
-    warnSpy.mockRestore();
   });
 
   it('supports a separate post-physics queue with identical semantics', () => {

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type React from 'react';
-import { useOptionalGameState } from '../game/context.js';
-import { useUiStore } from '../game/uiStore.js';
+import { useOptionalGameState } from '../app/context.js';
+import { useUiStore } from '../app/uiStore.js';
 import { requestReset, spawnRandomShip } from '../game/state.js';
 import { useTimeout } from '../hooks/useTimeout.js';
 

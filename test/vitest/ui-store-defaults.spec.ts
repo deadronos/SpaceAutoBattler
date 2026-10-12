@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vite-plus/test';
-import { useUiStore } from '../../src/game/uiStore.js';
+import { useUiStore } from '../../src/app/uiStore.js';
 import { AI_CONFIG } from '../../src/game/config.js';
 
 describe('uiStore defaults', () => {

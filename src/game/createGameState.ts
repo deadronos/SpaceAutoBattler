@@ -6,6 +6,7 @@ import { SeededRng } from '../utils/rng.js';
 import { createDefaultMetrics } from './metrics.js';
 import { AI_CONFIG } from './config.js';
 import { createDefaultDoctrineState } from './aiDoctrine.js';
+import { createRenderOnlyPhysics } from './physics/index.js';
 
 interface CreateGameStateOptions {
   renderOnly?: boolean;
@@ -24,18 +25,10 @@ export async function createGameState(options: CreateGameStateOptions = {}): Pro
   let eventQueue: GameState['eventQueue'];
   let rapierModule: GameState['rapier'];
   if (renderOnly) {
-    physicsWorld = {
-      integrationParameters: {
-        dt: 1 / 20,
-      },
-      free: () => {},
-      removeCollider: () => {},
-      removeRigidBody: () => {},
-    } as unknown as GameState['physicsWorld'];
-    eventQueue = {
-      free: () => {},
-    } as unknown as GameState['eventQueue'];
-    rapierModule = {} as GameState['rapier'];
+    const stub = createRenderOnlyPhysics();
+    physicsWorld = stub.physicsWorld;
+    eventQueue = stub.eventQueue;
+    rapierModule = stub.rapier;
   } else {
     await Rapier.init();
     physicsWorld = new Rapier.World({ x: 0, y: 0, z: 0 });

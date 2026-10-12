@@ -11,7 +11,7 @@ import {
   Quaternion,
   Vector3,
 } from 'three';
-import { useOptionalSimulationBridge } from '../../game/context.js';
+import { useOptionalSimulationBridge } from '../../app/context.js';
 
 const DEFAULT_CAPACITY = 2048;
 

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type React from 'react';
 import { Perf } from 'r3f-perf';
-import { useUiStore } from '../game/uiStore.js';
+import { useUiStore } from '../app/uiStore.js';
 import { clamp } from '../utils/math.js';
 
 const PANEL_CLASS = 'hud-perf-monitor';

@@ -1,17 +1,14 @@
 import { create } from 'zustand';
 import type { GameState } from '../types/index.js';
-import { AI_CONFIG } from './config.js';
+import { AI_CONFIG } from '../game/config.js';
+import { ErrorCategory, reportRecoverableGameError } from '../game/errors.js';
 import { reportConfigError } from '../utils/errorReporting.js';
 
 let warnedAiDisableToggle = false;
 function warnAiDisable(): void {
   if (warnedAiDisableToggle) return;
   warnedAiDisableToggle = true;
-  try {
-    globalThis.console?.warn?.('AI v2 cannot be disabled; ignoring toggle request.');
-  } catch (error) {
-    reportConfigError('console.warn.aiV2Disable', error);
-  }
+  reportConfigError('aiV2Disable');
 }
 
 /**
@@ -258,12 +255,11 @@ let warnedAiDisableContext = false;
 function warnAiDisableInContext(): void {
   if (warnedAiDisableContext) return;
   warnedAiDisableContext = true;
-  try {
-    globalThis.console?.warn?.('AI v2 disable attempts are ignored in the simulation context.');
-  } catch (error) {
-    // Expected: Console may not be available in some environments
-    reportConfigError('console.warn', error);
-  }
+  reportRecoverableGameError(
+    ErrorCategory.Config,
+    'AI v2 disable attempts are ignored in the simulation context.',
+    { source: 'uiStore', code: 'ai-v2-disable-in-context' },
+  );
 }
 
 /**

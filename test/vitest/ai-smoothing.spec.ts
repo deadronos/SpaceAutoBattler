@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vite-plus/test';
 import { Vector3 } from 'three';
 import { resolveBehaviorProfile } from '../../src/game/aiProfiles.js';
 import { __aiTestHooks } from '../support/aiTestHooks.js';
-import { useUiStore } from '../../src/game/uiStore.js';
+import { useUiStore } from '../../src/app/uiStore.js';
 import { createDefaultMetrics } from '../../src/game/metrics.js';
 import type { GameState, ShipEntity, AIState } from '../../src/types/index.js';
 

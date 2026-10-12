@@ -13,7 +13,7 @@ import type {
 import { useStarTextures } from '../../hooks/useStarTextures.js';
 import { useStarMaterial } from '../../hooks/useStarMaterial.js';
 import { isCopilotDebugEnabled } from '../../utils/copilotDebug.js';
-import { useUiStore } from '../../game/uiStore.js';
+import { useUiStore } from '../../app/uiStore.js';
 import { clamp, clamp01 } from '../../utils/math.js';
 import { reportMaterialError, reportWebGLError } from '../../utils/errorReporting.js';
 import { useStarDebug, useDebugOverlayCleanup } from '../../hooks/useStarDebug.js';

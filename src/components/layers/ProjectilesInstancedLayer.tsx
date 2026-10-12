@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import type { Archetype, GameEntity, ProjectileEntity } from '../../types/index.js';
 import { useArchetypeEntities } from '../../hooks/useArchetypeEntities.js';
-import { useGameState } from '../../game/context.js';
+import { useGameState } from '../../app/context.js';
 import { useBloomRegistration } from '../../renderer/bloom/index.js';
 import {
   useProjectileInstancedGroups,

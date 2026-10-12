@@ -1,4 +1,4 @@
-import { useUiStore, type UiState } from '../game/uiStore.js';
+import { useUiStore, type UiState } from '../app/uiStore.js';
 import { AI_CONFIG } from '../game/config.js';
 
 export type HudToggleDefinition = {

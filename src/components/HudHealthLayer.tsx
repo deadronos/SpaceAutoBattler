@@ -1,6 +1,6 @@
 import { useLayoutEffect, useMemo, useState } from 'react';
 import type React from 'react';
-import { useUiStore } from '../game/uiStore.js';
+import { useUiStore } from '../app/uiStore.js';
 import {
   DEFAULT_HUD_HEALTH_OVERLAY_CONFIG,
   STATUS_EFFECT_FALLBACK,

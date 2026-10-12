@@ -4,14 +4,14 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { act } from 'react-dom/test-utils';
 import type { GameState, ShipEntity, ProgressionEvent } from '../../src/types/index.js';
 import { ProgressionPanel } from '../../src/components/ProgressionPanel.js';
-import { GameProvider } from '../../src/game/context.js';
-import { useUiStore } from '../../src/game/uiStore.js';
+import { GameProvider } from '../../src/app/context.js';
+import { useUiStore } from '../../src/app/uiStore.js';
 import { createProgressionDefaults } from '../../src/game/progression.js';
 import { createTestGameState } from './helpers/fixtures.js';
 
 // Inject a mockable GameState into ProgressionPanel by mocking game context hooks/provider locally
 let __injectedGameState: GameState | null = null;
-vi.mock('../../src/game/context.js', async (importOriginal) => {
+vi.mock('../../src/app/context.js', async (importOriginal) => {
   const actual = await importOriginal<any>();
   return {
     ...actual,

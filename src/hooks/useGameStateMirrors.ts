@@ -6,7 +6,7 @@ import {
   applySimulationProfile,
   mirrorHudHealthBarsFlag,
   useUiStore,
-} from '../game/uiStore.js';
+} from '../app/uiStore.js';
 
 /**
  * Mirrors UI store state onto the canonical `GameState` for core systems:

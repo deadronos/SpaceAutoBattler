@@ -1,5 +1,5 @@
 import './styles/app.css';
-import { GameProvider } from './game/context.js';
+import { GameProvider } from './app/context.js';
 import { Battlefield } from './components/Battlefield.js';
 import { Hud } from './components/Hud.js';
 import { Controls } from './components/Controls.js';
