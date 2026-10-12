@@ -37,7 +37,7 @@ Open the local server at <http://localhost:8080> (or the URL printed by the serv
 
 ### Documentation
 
-- **Architecture Overview**: [`ARCHITECTURE.md`](ARCHITECTURE.md) — High-level system design, architectural principles, directory structure, core concepts, and data flow patterns
+- **Architecture Overview**: [`docs/high-level-architecture.md`](docs/high-level-architecture.md) — High-level system design, architectural principles, directory structure, core concepts, and data flow patterns
 - **Source Structure**: [`spec/src-structure.md`](spec/src-structure.md) — Detailed file-by-file breakdown of the `src/` directory
 - **Motion System**: [`spec/spec-physical-movement.md`](spec/spec-physical-movement.md) — Deterministic ship movement, renderer interpolation, and banking behavior specifications
 - **Inline Documentation**: Many core modules include JSDoc comments. Hover over symbols in your IDE to see usage details, parameters, and return types.

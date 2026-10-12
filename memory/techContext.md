@@ -10,7 +10,7 @@ Tech stack and notable dependencies:
 - Zustand — UI store (pause, timeScale).
 - Vitest — unit testing framework.
 - Playwright — end-to-end and visual regression testing; specs live under `test/playwright/` and baselines are captured to `playwright-debug/` or `playwright-report/`.
-- Build tooling: webpack (see `webpack.config.mjs`) and npm scripts.
+- Build tooling: vite-plus (`vp`) / Vite and npm scripts.
 
 Developer workflow notes:
 

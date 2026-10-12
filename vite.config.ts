@@ -205,7 +205,6 @@ const lintConfig = {
         postMessage: 'readonly',
         structuredClone: 'readonly',
         require: 'readonly',
-        __webpack_public_path__: 'readonly',
         process: 'readonly',
       },
     },
@@ -223,7 +222,6 @@ const lintConfig = {
       ],
       globals: {
         ...globals.node,
-        __webpack_public_path__: 'readonly',
       },
       rules: {
         '@typescript-eslint/no-require-imports': 'off',
@@ -235,13 +233,6 @@ const lintConfig = {
         ...globals.node,
         process: 'readonly',
         require: 'readonly',
-        __webpack_public_path__: 'readonly',
-      },
-    },
-    {
-      files: ['src/simWorker.ts', 'src/simWorker.js'],
-      globals: {
-        __webpack_public_path__: 'writable',
       },
     },
     {

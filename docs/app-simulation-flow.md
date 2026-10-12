@@ -78,4 +78,4 @@ The Zustand `useUiStore` centralizes all operator toggles (pause, speed, post-pr
 - **New systems:** Register additional deterministic systems inside `updateGame` (ideally guarded by the subsystem guard helpers) and provide ECS archetypes plus renderer hooks similar to existing layers.
 - **New UI interactions:** Add store fields in `useUiStore`, mirror them within `GameProvider` if the simulation needs to react, and surface controls in `Controls` or HUD drawers.
 
-Refer to `ARCHITECTURE.md` for a broader structural overview, and pair this guide with system-specific docs (e.g., `docs/postprocessing-pipeline.md`) when working on specialized subsystems.
+Refer to `docs/high-level-architecture.md` for a broader structural overview, and pair this guide with system-specific docs (e.g., `docs/postprocessing-pipeline.md`) when working on specialized subsystems.
