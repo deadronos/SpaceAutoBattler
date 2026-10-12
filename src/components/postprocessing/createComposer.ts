@@ -1,4 +1,4 @@
-import { EffectComposer, RenderPass, type EffectPass } from 'postprocessing';
+import { EffectComposer, RenderPass, type EffectPass, type Pass } from 'postprocessing';
 import {
   type WebGLRenderer,
   type Scene,
@@ -16,6 +16,11 @@ export interface CreateComposerOptions {
   scene: Scene;
   camera: Camera;
   effectPass: EffectPass;
+  /**
+   * Optional ambient-occlusion pass inserted between the render pass and the
+   * effect pass. Absent/`null` keeps the historical two-pass composer.
+   */
+  aoPass?: Pass | null;
 }
 
 export interface ComposerSetupResult {
@@ -30,6 +35,7 @@ export function createComposer({
   scene,
   camera,
   effectPass,
+  aoPass,
 }: CreateComposerOptions): ComposerSetupResult {
   const previousState = {
     autoClear: renderer.autoClear,
@@ -65,6 +71,9 @@ export function createComposer({
     const composer = new EffectComposer(renderer, renderTarget);
     const renderPass = new RenderPass(scene, camera);
     composer.addPass(renderPass);
+    if (aoPass) {
+      composer.addPass(aoPass);
+    }
     composer.addPass(effectPass);
 
     let disposed = false;

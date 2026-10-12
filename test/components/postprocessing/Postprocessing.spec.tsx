@@ -48,6 +48,15 @@ const bloomEffect = {
 const fxaaEffect = { id: 'fxaa' };
 const effectPassStub = { id: 'effectPass' };
 
+const aoPassDispose = vi.fn();
+const aoPassStub = { id: 'aoPass', dispose: aoPassDispose };
+
+const buildAmbientOcclusionMock = vi.fn(() => aoPassStub);
+
+vi.mock('../../../src/components/postprocessing/buildAmbientOcclusion.js', () => ({
+  buildAmbientOcclusion: (...args: unknown[]) => buildAmbientOcclusionMock(...args),
+}));
+
 const createComposerMock = vi.fn(() => ({
   composer: {
     render: composerRender,
@@ -81,6 +90,7 @@ vi.mock('../../../src/components/postprocessing/buildEffects.js', () => ({
 }));
 
 import { Postprocessing } from '../../../src/components/Postprocessing.js';
+import { POSTPROCESSING_CONFIG } from '../../../src/config/renderer.js';
 
 describe('Postprocessing component', () => {
   beforeEach(() => {
@@ -93,6 +103,8 @@ describe('Postprocessing component', () => {
     renderTargetDispose.mockClear();
     buildEffectsMock.mockClear();
     createComposerMock.mockClear();
+    buildAmbientOcclusionMock.mockClear();
+    aoPassDispose.mockClear();
     bloomSelection.size = 1;
   });
 
@@ -113,6 +125,16 @@ describe('Postprocessing component', () => {
       scene: sceneStub,
       camera: cameraStub,
       effectPass: effectPassStub,
+      aoPass: aoPassStub,
+    });
+
+    expect(buildAmbientOcclusionMock).toHaveBeenCalledTimes(1);
+    expect(buildAmbientOcclusionMock).toHaveBeenCalledWith({
+      scene: sceneStub,
+      camera: cameraStub,
+      width: size.width,
+      height: size.height,
+      config: POSTPROCESSING_CONFIG.ao,
     });
 
     expect(frameCallbacks).toHaveLength(1);
@@ -139,6 +161,7 @@ describe('Postprocessing component', () => {
       expect(restoreRendererState).toHaveBeenCalledTimes(1);
     });
 
+    expect(aoPassDispose).toHaveBeenCalledTimes(1);
     expect(buildEffectsMock).toHaveBeenCalledTimes(1);
   });
 
@@ -147,5 +170,28 @@ describe('Postprocessing component', () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(buildEffectsMock).not.toHaveBeenCalled();
     expect(createComposerMock).not.toHaveBeenCalled();
+    expect(buildAmbientOcclusionMock).not.toHaveBeenCalled();
+  });
+
+  it('disposes the AO pass when composer creation throws', async () => {
+    createComposerMock.mockImplementationOnce(() => {
+      throw new Error('composer construction failed');
+    });
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    try {
+      render(<Postprocessing enabled />);
+
+      await waitFor(() => {
+        expect(createComposerMock).toHaveBeenCalledTimes(1);
+      });
+
+      // The pass was built but never handed to the composer, so it must be
+      // released by the error path.
+      expect(aoPassDispose).toHaveBeenCalledTimes(1);
+      expect(composerDispose).not.toHaveBeenCalled();
+    } finally {
+      warnSpy.mockRestore();
+    }
   });
 });

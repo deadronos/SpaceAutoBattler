@@ -1,3 +1,5 @@
+import type { N8AOQualityMode } from 'n8ao';
+
 export interface BloomGroupConfig {
   /** Optional override for bloom intensity for this group. */
   intensity?: number;
@@ -7,7 +9,33 @@ export interface BloomGroupConfig {
   smoothing?: number;
 }
 
+export interface AmbientOcclusionConfig {
+  /** Master enable for the AO pass. */
+  enabled: boolean;
+  /** Render AO at half resolution (perf, per issue). */
+  halfRes: boolean;
+  /** N8AO quality preset. */
+  quality: N8AOQualityMode;
+  /** AO radius in world units (ship scale). */
+  aoRadius: number;
+  /** How fast AO fades with distance relative to radius. */
+  distanceFalloff: number;
+  /** Artistic occlusion strength (pow curve). */
+  intensity: number;
+  /** Occlusion color (sRGB hex). */
+  color: string;
+  /**
+   * Transparency-aware mode. Optional; when omitted it falls back to `false`.
+   * The shipped config keeps it `false`: N8AO auto-detect would enable it for
+   * this scene (many transparent objects) and render the scene twice more per
+   * frame.
+   */
+  transparencyAware?: boolean;
+}
+
 export interface PostprocessingConfig {
+  /** Ambient-occlusion (N8AO) configuration. */
+  ao: AmbientOcclusionConfig;
   /** Luminance threshold for bloom (higher = fewer pixels bloom) */
   bloomThreshold: number;
   /** Smoothing applied around the threshold (0..1) */
@@ -28,6 +56,17 @@ export interface PostprocessingConfig {
  * Configuration for post-processing effects, primarily bloom.
  */
 export const POSTPROCESSING_CONFIG: PostprocessingConfig = {
+  // Provisional values; to be tuned during visual review (#646).
+  ao: {
+    enabled: true,
+    halfRes: true,
+    quality: 'Medium',
+    aoRadius: 4,
+    distanceFalloff: 1.0,
+    intensity: 5,
+    color: '#000000',
+    transparencyAware: false,
+  },
   bloomThreshold: 0.8,
   bloomSmoothing: 0.001,
   bloomIntensity: 0.1,
