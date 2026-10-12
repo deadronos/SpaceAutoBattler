@@ -77,26 +77,73 @@ describe('SpatialGrid', () => {
       }
     ).packCellKey.bind(grid);
 
-    const coords: Array<[number, number, number]> = [];
+    const inBound: Array<[number, number, number]> = [];
     for (let x = -70; x <= 70; x += 17) {
       for (let y = -70; y <= 70; y += 23) {
         for (let z = -70; z <= 70; z += 31) {
-          coords.push([x, y, z]);
+          inBound.push([x, y, z]);
         }
       }
     }
-    // Out-of-range coordinates (|c| >= 2^16) must use the string fallback.
-    coords.push([70000, 0, 0], [70000, 0, 1], [0, -70000, 0], [0, 0, 131072]);
+    // Probe the documented bound (|c| < 2^16) and the top-of-radix digit:
+    // cx = 65535 biases to 131071 = KEY_BASE - 1.
+    for (const sx of [1, -1]) {
+      for (const sy of [1, -1]) {
+        for (const sz of [1, -1]) {
+          inBound.push([sx * 65535, sy * 65535, sz * 65535]);
+        }
+      }
+    }
+    inBound.push(
+      [65535, 0, 0],
+      [-65535, 0, 0],
+      [0, 65535, 0],
+      [0, -65535, 0],
+      [0, 0, 65535],
+      [0, 0, -65535],
+      [65535, 65534, 65533],
+      [-65535, 65534, -65533],
+      [65534, -65535, 65535],
+      [0, 0, 0],
+    );
+
+    // Out-of-bound triples (|c| >= 2^16) must use the string fallback and can
+    // never collide with an in-bound numeric key.
+    const outOfBound: Array<[number, number, number]> = [
+      [65536, 0, 0],
+      [-65536, 0, 0],
+      [0, 65536, 0],
+      [0, -65536, 0],
+      [0, 0, 65536],
+      [0, 0, -65536],
+      [65536, 65535, 65535],
+      [70000, 0, 0],
+      [70000, 0, 1],
+      [0, -70000, 0],
+      [0, 0, 131072],
+    ];
 
     const keys = new Set<string>();
-    for (const [x, y, z] of coords) {
+    let maxKey = -Infinity;
+    for (const [x, y, z] of [...inBound, ...outOfBound]) {
       const key = pack(x, y, z);
       const tagged = `${typeof key}:${key}`;
       expect(keys.has(tagged)).toBe(false);
       keys.add(tagged);
+      if (typeof key === 'number') maxKey = Math.max(maxKey, key);
     }
-    expect(keys.size).toBe(coords.length);
+    expect(keys.size).toBe(inBound.length + outOfBound.length);
 
+    // The top-of-radix triple pins the exact packing: KEY_BASE^3 - 1 = 2^51 - 1.
+    expect(pack(65535, 65535, 65535)).toBe(2 ** 51 - 1);
+    // A wider radix (e.g. the brief's 2^18) would overflow the safe integer
+    // range here and start merging distinct cells.
+    expect(maxKey).toBe(2 ** 51 - 1);
+    expect(maxKey).toBeLessThan(Number.MAX_SAFE_INTEGER);
+
+    // Numeric/string boundary pair: 65535 is in-bound, 65536 is not.
+    expect(typeof pack(65535, 0, 0)).toBe('number');
+    expect(typeof pack(65536, 0, 0)).toBe('string');
     expect(typeof pack(1, 2, 3)).toBe('number');
     expect(typeof pack(0, 0, 0)).toBe('number');
     expect(typeof pack(-1, -2, -3)).toBe('number');
