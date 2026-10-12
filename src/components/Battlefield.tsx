@@ -138,7 +138,7 @@ export function Battlefield(): React.ReactElement {
     <Canvas
       shadows
       frameloop="always"
-      gl={{ preserveDrawingBuffer: true }}
+      gl={{ preserveDrawingBuffer: isCopilotDebugEnabled() }}
       camera={{
         position: [...CAMERA_DEFAULTS.position],
         fov: CAMERA_DEFAULTS.fov,
