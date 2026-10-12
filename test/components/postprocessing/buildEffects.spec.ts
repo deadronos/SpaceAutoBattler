@@ -38,7 +38,6 @@ const hoisted = vi.hoisted(() => {
   } as const;
 
   class MockToneMappingEffect {
-    public exposure: number | undefined;
     public static created: MockToneMappingEffect[] = [];
     public static shouldThrow = false;
 
@@ -238,7 +237,6 @@ describe('buildEffects', () => {
       typeof hoisted.MockToneMappingEffect
     >;
     expect(toneMappingInstance.options.mode).toBe(hoisted.ToneMappingMode.AGX);
-    expect(toneMappingInstance.exposure).toBe(hdrPipeline.exposure);
 
     // Order: [...bloomEffects, toneMapping, fxaa].
     expect(effects).toEqual([...bloomEffects, toneMapping, fxaa]);
@@ -274,7 +272,6 @@ describe('buildEffects', () => {
       typeof hoisted.MockToneMappingEffect
     >;
     expect(toneMappingInstance.options.mode).toBe(hoisted.ToneMappingMode.ACES_FILMIC);
-    expect(toneMappingInstance.exposure).toBe(1.4);
 
     const vignetteInstance = vignette as unknown as InstanceType<typeof hoisted.MockVignetteEffect>;
     expect(vignetteInstance.options).toEqual({ offset: 0.35, darkness: 0.5 });

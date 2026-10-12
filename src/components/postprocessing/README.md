@@ -30,8 +30,11 @@ transform, instead of flattening them to white.
 
 The final sRGB encode still happens on the renderer output
 (`renderer.outputColorSpace = SRGBColorSpace`). The renderer keeps
-`toneMapping = NoToneMapping` and `toneMappingExposure = 1`: tone mapping is the
-effect, not the renderer.
+`toneMapping = NoToneMapping`: tone mapping is the effect, not the renderer.
+Because the effect's operator reads three's built-in `toneMappingExposure`
+uniform (uploaded from `renderer.toneMappingExposure`), `createComposer` drives
+that value from `colorPipeline.exposure` when the pipeline is enabled, and pins
+it to `1` (today's value) on the legacy path.
 
 ### Configuration
 
@@ -51,11 +54,10 @@ When disabled the effect list is exactly `[...bloomEffects, fxaa]` and the
 target keeps its historical `SRGBColorSpace` tag.
 
 > **Note:** `postprocessing@6.39.5`'s `ToneMappingEffect` exposes no `exposure`
-> accessor; the operator's exposure is driven by three's built-in
-> `toneMappingExposure` uniform. `buildEffects` still assigns the configured
-> value defensively, so the knob is wired and will take effect if the dependency
-> later exposes the accessor. With the default `exposure: 1` there is no visual
-> difference.
+> accessor; its operator reads three's built-in `toneMappingExposure` uniform.
+> `colorPipeline.exposure` is therefore applied by `createComposer` through
+> `renderer.toneMappingExposure` (restored on teardown like the other renderer
+> state). The default `exposure: 1` keeps the current visual.
 
 Construction of the tone-mapping/vignette effects is wrapped in `try/catch` and
 reported through `reportWebGLError`; on failure the pipeline degrades to the

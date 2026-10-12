@@ -67,7 +67,11 @@ export function createComposer({
     renderer.autoClear = false;
     renderer.outputColorSpace = SRGBColorSpace;
     renderer.toneMapping = NoToneMapping;
-    renderer.toneMappingExposure = 1;
+    // The tone-mapping effect's operator reads three's built-in
+    // `toneMappingExposure` uniform, which the renderer uploads from this value.
+    // Driving it here is what makes `colorPipeline.exposure` take effect; the
+    // legacy path pins it to `1` (today's value) exactly as before.
+    renderer.toneMappingExposure = colorPipeline.enabled ? colorPipeline.exposure : 1;
 
     const size = renderer.getSize(new Vector2());
     const pixelRatio = renderer.getPixelRatio();

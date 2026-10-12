@@ -38,15 +38,6 @@ export interface BuildEffectsResult {
   effects: (SelectiveBloomEffect | FXAAEffect | ToneMappingEffect | VignetteEffect)[];
 }
 
-/**
- * postprocessing@6.39.5's `ToneMappingEffect` exposes no `exposure` accessor;
- * three's built-in `toneMappingExposure` uniform drives the operator instead.
- * The field is declared here so the config knob can be threaded through without
- * a type error, and so it takes effect automatically if the dependency later
- * exposes it.
- */
-type ToneMappingEffectWithExposure = ToneMappingEffect & { exposure?: number };
-
 const TONE_MAPPING_MODES: Record<ColorPipelineConfig['toneMapping'], ToneMappingMode> = {
   agx: ToneMappingMode.AGX,
   aces: ToneMappingMode.ACES_FILMIC,
@@ -111,10 +102,11 @@ export function buildEffects({
     // throw. Degrade to the legacy effect list rather than breaking the
     // composer, mirroring `buildAmbientOcclusion`.
     try {
+      // Exposure is applied by `createComposer` via `renderer.toneMappingExposure`
+      // (the effect's operator reads three's built-in uniform).
       toneMapping = new ToneMappingEffect({
         mode: TONE_MAPPING_MODES[colorPipeline.toneMapping],
       });
-      (toneMapping as ToneMappingEffectWithExposure).exposure = colorPipeline.exposure;
 
       if (colorPipeline.vignette.enabled) {
         vignette = new VignetteEffect({

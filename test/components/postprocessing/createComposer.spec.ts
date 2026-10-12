@@ -178,6 +178,34 @@ describe('createComposer', () => {
     // effect, so the renderer only performs the final sRGB encode.
     expect(renderer.outputColorSpace).toBe(SRGBColorSpace);
     expect(renderer.toneMapping).toBe(NoToneMapping);
+    // Legacy path pins exposure to today's value.
     expect(renderer.toneMappingExposure).toBe(1);
+  });
+
+  it('drives renderer tone-mapping exposure from colorPipeline when enabled', () => {
+    const renderer = {
+      autoClear: true,
+      toneMapping: NoToneMapping,
+      toneMappingExposure: 3,
+      outputColorSpace: SRGBColorSpace,
+      getPixelRatio: vi.fn(() => 1),
+      getSize: vi.fn((target: Vector2) => target.set(320, 240)),
+    } as unknown as WebGLRenderer;
+
+    const result = createComposer({
+      renderer,
+      scene: {} as Scene,
+      camera: {} as Camera,
+      effectPass: {} as unknown as EffectPass,
+      colorPipeline: { ...hdrPipeline, exposure: 1.4 },
+    });
+
+    // The tone-mapping operator reads three's built-in `toneMappingExposure`
+    // uniform, uploaded from `renderer.toneMappingExposure`.
+    expect(renderer.toneMappingExposure).toBe(1.4);
+
+    // Restoring still returns the renderer to its pre-composer exposure.
+    result.restoreRendererState();
+    expect(renderer.toneMappingExposure).toBe(3);
   });
 });
