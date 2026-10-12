@@ -171,6 +171,113 @@ dist/postprocessing.CKows2mI.js         823.21 kB │ gzip:   206.35 kB
 The v2.0.6b review recorded a ~45.2 s **webpack** build. The current toolchain is
 Vite/rolldown (`vp build`), so build time is not comparable across those reports.
 
+## Task 3 resolution — Branch B: one targeted `queryNearest` optimization
+
+Task 2 left the gate red and asked Task 3 to pick between re-baselining
+(Branch A) and one targeted optimization (Branch B).
+
+**Branch decision: B — one targeted optimization. Branch A was invalidated by
+Task 2's evidence.** Re-baselining is only justified when the gap is environment
+drift; Task 2's same-machine/same-Node A/B (old code `≈0.46 ms` vs current
+`≈3.15 ms` for an identical 3200-decision workload) shows the extra cost is in
+the measured AI workload, not the environment. Raising the budget would therefore
+have masked a real regression, so the budget was **left at 2.5 ms** and no
+`|| echo` swallow was added or removed.
+
+### The optimization
+
+`src/utils/spatialGrid.ts` — `queryNearest` only. The method expanded Chebyshev
+cell shells `r = 0, 1, 2, …` until its distance early-out fired. For candidates
+that sit several cells away (the far tail in this harness: 22 ships terminate at
+ring 9 ≈ 5 800 empty-cell `Map.get`s each) the shell enumerates vastly more empty
+cells than the grid actually populates.
+
+The change keeps the shell for the cheap close case and, once the shell has
+probed more cells than the grid populates (`(2r+1)^3 > cells.size`), finishes
+with an **exact linear scan** over the populated cells from the current
+incumbent. Both paths minimise the same global `(distanceSq, rank)` key, and the
+shell's early-out is provably optimal, so the cutoff is a **pure performance
+knob**: it cannot change the result. The change is allocation-free (a single
+incumbent is retained; no new arrays/objects) and does not touch the decision
+system, RNG, or `GameState`.
+
+Correctness scope note: for a _non-injective_ `rank` the `(distanceSq, rank)`
+minimum is not unique and the two paths could pick different items; every real
+caller (`refreshBlackboard` → unique ship id → unique `ships` index) ranks
+injectively, so results are identical. The equivalence specs below pin this.
+
+### Before / after (same machine, Node `v24.21.0`, Apple M4)
+
+Default harness (300 ships / 160 ticks / 2.5 ms):
+
+```
+# before — Task 2, commit 0f8eaf33 (5 runs)
+[ai-budget] ships=300 ticks=160 avgTick=3.148ms budget=2.500ms  FAIL
+[ai-budget] ships=300 ticks=160 avgTick=3.250ms budget=2.500ms  FAIL
+[ai-budget] ships=300 ticks=160 avgTick=3.116ms budget=2.500ms  FAIL
+[ai-budget] ships=300 ticks=160 avgTick=3.098ms budget=2.500ms  FAIL
+[ai-budget] ships=300 ticks=160 avgTick=3.259ms budget=2.500ms  FAIL
+
+# after — Task 3 (5 runs)
+[ai-budget] ships=300 ticks=160 avgTick=0.780ms budget=2.500ms  PASS
+[ai-budget] ships=300 ticks=160 avgTick=0.812ms budget=2.500ms  PASS
+[ai-budget] ships=300 ticks=160 avgTick=0.771ms budget=2.500ms  PASS
+[ai-budget] ships=300 ticks=160 avgTick=0.791ms budget=2.500ms  PASS
+[ai-budget] ships=300 ticks=160 avgTick=0.781ms budget=2.500ms  PASS
+```
+
+| Metric               | Before (Task 2)                | After (Task 3)                 |
+| -------------------- | ------------------------------ | ------------------------------ |
+| min / median / max   | `3.098` / `3.148` / `3.259` ms | `0.771` / `0.781` / `0.812` ms |
+| budget               | 2.500 ms                       | 2.500 ms                       |
+| utilization (median) | **125.9%**                     | **31.2%**                      |
+| verdict              | **FAIL** (exit 1)              | **PASS** (exit 0)              |
+| speed-up (median)    | —                              | **≈4.0×**                      |
+
+Extended load (450 ships / 200 ticks / 3.5 ms):
+
+```
+# before — Task 2 (3 runs): 14.416 / 14.461 / 14.820 ms  FAIL
+# after  — Task 3 (1 run):  1.914 ms                     PASS
+```
+
+| Metric      | Before (Task 2) | After (Task 3) |
+| ----------- | --------------- | -------------- |
+| median      | `14.461` ms     | `1.914` ms     |
+| utilization | **413.2%**      | **54.7%**      |
+| verdict     | FAIL            | PASS           |
+| speed-up    | —               | **≈7.6×**      |
+
+The extended run improves the most, which is expected: its far tail is where the
+shell enumeration dominated.
+
+### Determinism evidence
+
+The optimization changes no simulation result. Verified by:
+
+- `pnpm test` — includes `test/vitest/ai-determinism.spec.ts` (exact per-ship
+  command/intent snapshots over 40 ticks) and
+  `test/vitest/sim-state-isolation.spec.ts` — **green**.
+- `test/vitest/nearest-enemy-grid.spec.ts` (grid path ≡ legacy O(N²) fallback)
+  and `test/utils/spatial-grid.spec.ts` (`queryNearest` ≡ brute force across a
+  5×5×3 query sweep) — **green**.
+- A temporary probe compared the new method against the previous shell algorithm
+  for all 300 harness ships: identical winners (`sink` hash identical), then the
+  probe was deleted.
+
+### Commands run (Task 3)
+
+| Command                   | Result                                                                          |
+| ------------------------- | ------------------------------------------------------------------------------- |
+| `pnpm run typecheck`      | PASS (no output)                                                                |
+| `pnpm exec vp check`      | PASS — 0 errors, 46 pre-existing warnings (360 files)                           |
+| `pnpm test`               | PASS — 193 passed + 1 skipped (194 files); 1184 passed + 1 skipped (1185 tests) |
+| `pnpm run perf:ai-budget` | **PASS** — `0.771–0.812 ms` (was FAIL)                                          |
+| `AI_BUDGET_SHIPS=450 …`   | **PASS** — `1.914 ms` (was FAIL)                                                |
+| `pnpm run build`          | PASS — `built in 945ms`, `real 9.06 s`                                          |
+
+No new spec file → CI floor stays at 194 files. No `dist/` edit.
+
 ## Source audit vs. r3f / three / WebGL best practices
 
 This is a read-only audit. Concrete anchors:
@@ -239,11 +346,16 @@ This is a read-only audit. Concrete anchors:
    FAIL**), against `1.493 ms` recorded for v2.0.6b. A direct A/B (below) shows the
    v2.0.6b decision code measures `≈0.46 ms` on **this same machine and Node**, so
    the current code is **≈6.6× slower** for an identical workload. Severity: high.
+   **Resolved in Task 3** (Branch B): one `queryNearest` optimization brings the
+   default run to `0.771–0.812 ms` (**31.2% utilization, PASS**) — see
+   [Task 3 resolution](#task-3-resolution--branch-b-one-targeted-querynearest-optimization).
 2. **`queryNearest` dominates the AI tick** (64.2% of profile self-time,
    `src/utils/spatialGrid.ts:195-256`). Severity: high — this is the actionable
-   cause.
+   cause. **Resolved in Task 3** by bailing from empty-shell enumeration to an
+   exact linear scan once the shell probes more cells than the grid populates.
 3. **AI cost scales super-linearly**: 450 ships ≈ 14.5 ms/tick (413% of the 3.5 ms
-   extended budget). Severity: medium (Task 3 concern).
+   extended budget). Severity: medium. **Resolved in Task 3**: the extended run is
+   now `1.914 ms` (54.7% of the 3.5 ms extended budget).
 4. **The AI harness was broken from PR #640 (2026-10-09) until Task 1**
    (`35461c72` removed `__aiTestHooks`; `4c218f86` restored the harness on the
    public `updateDecisionSystem` export). Any CI "green" for `perf:ai-budget`
@@ -335,9 +447,13 @@ unresolved.
 3. **Optimise or bypass `queryNearest`** for the far-fleet case (e.g. cache the
    nearest-enemy result across the sensor throttle window, or fall back to a
    linear scan when populated cells are few — `queryBroad` already implements that
-   heuristic for the non-nearest path), then re-measure.
+   heuristic for the non-nearest path), then re-measure. **Done in Task 3**
+   (Branch B): the shell now bails to an exact linear scan once it has probed more
+   cells than the grid populates.
 4. **Decide the budget** in Task 3 against the evidence above (default and
    extended), explicitly separating "intended feature growth" from "regression".
+   **Decided in Task 3:** the budget is unchanged (`2.5 ms` / `3.5 ms`); the
+   regression was fixed at source (Branch B) rather than re-baselined.
 
 ## Determinism statement
 
@@ -345,6 +461,13 @@ Tasks 1–2 change **no** simulation logic and **no** budgets/thresholds. Task 1
 repaired the harness import only; Task 2 is measurement + documentation only. No
 seeded RNG paths, `GameState` shapes, or system behaviour are modified. The
 `1.493 ms`, `2.5 ms`, and `3.5 ms` figures are quoted, not changed.
+
+Task 3 changes one method (`SpatialGrid.queryNearest`) for speed only. Its linear
+finish minimises the same `(distanceSq, rank)` key as the shell walk it replaces,
+and every caller ranks by a unique id → index, so the selected item is identical.
+No `GameState`, budget, threshold, or RNG path is touched. The determinism specs
+(`ai-determinism.spec.ts`, `sim-state-isolation.spec.ts`) and the two grid
+equivalence specs pass unchanged.
 
 ## See also
 
