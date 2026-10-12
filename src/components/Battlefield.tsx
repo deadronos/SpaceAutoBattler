@@ -15,6 +15,7 @@ import { PerfMonitorOverlay } from './PerfMonitorOverlay.js';
 import DynamicResScaler from './DynamicResScaler.js';
 import { CelestialEnvironment } from './environment/CelestialEnvironment.js';
 import { BattlefieldSystems } from './BattlefieldSystems.js';
+import { CameraRig } from './CameraRig.js';
 import { ShipsLayer } from './layers/ShipsLayer.js';
 import { ProjectilesLayer } from './layers/ProjectilesLayer.js';
 import { MuzzleFlashInstancedLayer } from './layers/MuzzleFlashInstancedLayer.js';
@@ -78,6 +79,7 @@ function BattleSceneContent({ ppEnabled }: BattleSceneContentProps): React.React
         maxDistance={WORLD_SIZE * 2}
         minDistance={10}
       />
+      <CameraRig />
       {showDevGrid && <DevGridAndAxes ppEnabled={ppEnabled} />}
     </>
   );

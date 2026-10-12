@@ -22,6 +22,10 @@ export type UiState = {
   postprocessingEnabled: boolean;
   togglePostprocessing: () => void;
   setPostprocessingEnabled: (v: boolean) => void;
+  // Camera rig: deterministic explosion shake + FOV kick (render-only).
+  cameraShakeEnabled: boolean;
+  toggleCameraShake: () => void;
+  setCameraShakeEnabled: (v: boolean) => void;
   togglePause: () => void;
   setPaused: (p: boolean) => void;
   setTimeScale: (s: number) => void;
@@ -96,6 +100,9 @@ export const useUiStore = create<UiState>((set) => ({
   postprocessingEnabled: true,
   togglePostprocessing: () => set((s) => ({ postprocessingEnabled: !s.postprocessingEnabled })),
   setPostprocessingEnabled: (v: boolean) => set({ postprocessingEnabled: v }),
+  cameraShakeEnabled: true,
+  toggleCameraShake: () => set((s) => ({ cameraShakeEnabled: !s.cameraShakeEnabled })),
+  setCameraShakeEnabled: (v: boolean) => set({ cameraShakeEnabled: v }),
   togglePause: () => set((s) => ({ paused: !s.paused })),
   setPaused: (p: boolean) => set({ paused: p }),
   setTimeScale: (s: number) => set({ timeScale: Math.max(0, s) }),

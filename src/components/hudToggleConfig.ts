@@ -31,6 +31,15 @@ export const SETTINGS_TOGGLES: HudToggleDefinition[] = [
     },
   },
   {
+    id: 'camera-shake',
+    label: 'Camera Shake',
+    description: 'Explosion screen shake + FOV kick',
+    select: (state) => state.cameraShakeEnabled,
+    toggle: () => {
+      useUiStore.getState().toggleCameraShake();
+    },
+  },
+  {
     id: 'progression-panel',
     label: 'Progression Panel',
     description: 'Ship XP, levels, and event tracking',
