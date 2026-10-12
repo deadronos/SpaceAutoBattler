@@ -15,6 +15,7 @@ import {
 
 type DebugWindow = Window & {
   __copilot_forceCameraTrauma?: number;
+  __copilot_forceCameraFollowId?: number;
 };
 
 /** Peak shake rotation in radians (bounded to stay readable, not nauseating). */
@@ -26,6 +27,18 @@ const SHAKE_PITCH_FREQ = 7;
 const SHAKE_YAW_FREQ = 6;
 const SHAKE_ROLL_FREQ = 9;
 
+/**
+ * Exponential smoothing rate for the opt-in ship follow retarget (per second).
+ * The frame-rate-independent factor is `1 - exp(-k * dt)`.
+ */
+const FOLLOW_SMOOTHING_K = 6;
+/**
+ * Follow look-ahead distance along the ship's velocity direction (world
+ * units). Zero tracks the hull centre exactly; a small positive value frames
+ * the ship slightly ahead of its motion. Flagged for human tuning.
+ */
+const FOLLOW_LEAD = 0;
+
 interface BasePose {
   x: number;
   y: number;
@@ -36,6 +49,11 @@ interface BasePose {
 interface ControlsLike {
   addEventListener: (type: 'change', listener: () => void) => void;
   removeEventListener: (type: 'change', listener: () => void) => void;
+}
+
+/** Minimal shape of the OrbitControls instance used for follow retargeting. */
+interface FollowControlsLike {
+  target?: { x: number; y: number; z: number };
 }
 
 function clamp01(value: number): number {
@@ -100,11 +118,14 @@ function applyFov(camera: Camera, baseFov: number | null, fovKick: number): void
 
 /**
  * Render-only camera rig: deterministic trauma-based explosion shake plus a
- * small FOV kick. Reads `state.time` and `state.explosions` read-only and never
- * writes `GameState`; the shake noise is a pure function of sim time (no
- * `Math.random`). The camera rotation offset is layered on top of the base pose
- * captured from the OrbitControls `change` event, so it never fights the
- * controls (the proven drei `CameraShake` pattern).
+ * small FOV kick, plus an opt-in smooth follow of a click-selected ship.
+ * Reads `state.time`, `state.explosions`, and the selected ship's transform
+ * read-only and never writes `GameState`; the shake noise is a pure function of
+ * sim time (no `Math.random`). The camera rotation offset is layered on top of
+ * the base pose captured from the OrbitControls `change` event, so it never
+ * fights the controls (the proven drei `CameraShake` pattern). Follow moves both
+ * `controls.target` and `camera.position` by the same delta, preserving the
+ * user's orbit distance/angle, and is suppressed by reduced motion.
  *
  * @returns {null} This component renders no DOM.
  */
@@ -113,6 +134,8 @@ export function CameraRig(): null {
   const camera = useThree((s) => s.camera);
   const controls = useThree((s) => s.controls);
   const shakeEnabled = useUiStore((s) => s.cameraShakeEnabled);
+  const followEnabled = useUiStore((s) => s.cameraFollowEnabled);
+  const selectedShipId = useUiStore((s) => s.selectedShipId);
   const reducedMotion = usePrefersReducedMotion();
 
   const traumaRef = useRef(createTraumaState());
@@ -131,6 +154,17 @@ export function CameraRig(): null {
   const forcedTraumaRef = useRef<number | undefined>(
     typeof window !== 'undefined' ? (window as DebugWindow).__copilot_forceCameraTrauma : undefined,
   );
+  // Debug override for deterministic visual capture of the follow camera:
+  // when set, follow that ship id regardless of the UI toggle/selection.
+  const forcedFollowIdRef = useRef<number | undefined>(
+    typeof window !== 'undefined'
+      ? (window as DebugWindow).__copilot_forceCameraFollowId
+      : undefined,
+  );
+  // Smoothed absolute follow target (world space). `null` means "not tracking";
+  // re-adopts the current orbit target on the next active frame so toggling the
+  // feature on/off never yanks the camera.
+  const followTargetRef = useRef<BasePose | null>(null);
 
   useEffect(() => {
     if (baseRotationRef.current === null) {
@@ -153,7 +187,7 @@ export function CameraRig(): null {
     };
   }, [controls, camera]);
 
-  useFrame(({ camera: frameCamera }) => {
+  useFrame(({ camera: frameCamera }, delta) => {
     if (!state) return;
 
     if (baseRotationRef.current === null) {
@@ -161,6 +195,65 @@ export function CameraRig(): null {
     }
     if (baseFovRef.current === null) {
       baseFovRef.current = readFov(frameCamera);
+    }
+
+    // Opt-in ship follow (render-only): move `controls.target` and
+    // `camera.position` by the same delta so the user's orbit distance/angle is
+    // preserved. Off / reduced-motion / no ship is a no-op that leaves the
+    // camera exactly where the user left it.
+    const followControls = controls as unknown as FollowControlsLike | null;
+    const followShipId = forcedFollowIdRef.current ?? selectedShipId;
+    const followActive =
+      !reducedMotion &&
+      followControls?.target !== undefined &&
+      followShipId !== null &&
+      (followEnabled || forcedFollowIdRef.current !== undefined);
+    if (!followActive || !followControls?.target) {
+      followTargetRef.current = null;
+    } else {
+      const ship = state.shipById?.get(followShipId);
+      if (!ship) {
+        // Ship no longer exists: clear the selection and leave the camera put.
+        followTargetRef.current = null;
+        if (forcedFollowIdRef.current === undefined) {
+          useUiStore.getState().selectShip(null);
+        }
+      } else {
+        const position = ship.transform.position;
+        let desiredX = position.x;
+        let desiredY = position.y;
+        let desiredZ = position.z;
+        const velocity = ship.ship?.velocity;
+        if (FOLLOW_LEAD !== 0 && velocity) {
+          desiredX += velocity.x * FOLLOW_LEAD;
+          desiredY += velocity.y * FOLLOW_LEAD;
+          desiredZ += velocity.z * FOLLOW_LEAD;
+        }
+
+        const orbitTarget = followControls.target;
+        let smoothed = followTargetRef.current;
+        if (smoothed === null) {
+          // Start from the user's current orbit target so the retarget glides
+          // instead of jumping when follow is toggled on.
+          smoothed = { x: orbitTarget.x, y: orbitTarget.y, z: orbitTarget.z };
+          followTargetRef.current = smoothed;
+        }
+        const dt = Math.max(0, delta);
+        const alpha = 1 - Math.exp(-FOLLOW_SMOOTHING_K * dt);
+        smoothed.x += (desiredX - smoothed.x) * alpha;
+        smoothed.y += (desiredY - smoothed.y) * alpha;
+        smoothed.z += (desiredZ - smoothed.z) * alpha;
+
+        const dx = smoothed.x - orbitTarget.x;
+        const dy = smoothed.y - orbitTarget.y;
+        const dz = smoothed.z - orbitTarget.z;
+        orbitTarget.x += dx;
+        orbitTarget.y += dy;
+        orbitTarget.z += dz;
+        frameCamera.position.x += dx;
+        frameCamera.position.y += dy;
+        frameCamera.position.z += dz;
+      }
     }
 
     const s = traumaRef.current;

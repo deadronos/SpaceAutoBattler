@@ -26,6 +26,15 @@ export type UiState = {
   cameraShakeEnabled: boolean;
   toggleCameraShake: () => void;
   setCameraShakeEnabled: (v: boolean) => void;
+  // Camera rig: opt-in ship follow (render-only, UI-only selection state).
+  /** Currently selected ship id for the follow camera, or null when none. */
+  selectedShipId: number | null;
+  /** Select a ship for follow (pass null to clear). */
+  selectShip: (id: number | null) => void;
+  /** Whether the camera smoothly follows the selected ship. Defaults off. */
+  cameraFollowEnabled: boolean;
+  toggleCameraFollow: () => void;
+  setCameraFollowEnabled: (v: boolean) => void;
   togglePause: () => void;
   setPaused: (p: boolean) => void;
   setTimeScale: (s: number) => void;
@@ -103,6 +112,11 @@ export const useUiStore = create<UiState>((set) => ({
   cameraShakeEnabled: true,
   toggleCameraShake: () => set((s) => ({ cameraShakeEnabled: !s.cameraShakeEnabled })),
   setCameraShakeEnabled: (v: boolean) => set({ cameraShakeEnabled: v }),
+  selectedShipId: null,
+  selectShip: (id: number | null) => set({ selectedShipId: id }),
+  cameraFollowEnabled: false,
+  toggleCameraFollow: () => set((s) => ({ cameraFollowEnabled: !s.cameraFollowEnabled })),
+  setCameraFollowEnabled: (v: boolean) => set({ cameraFollowEnabled: v }),
   togglePause: () => set((s) => ({ paused: !s.paused })),
   setPaused: (p: boolean) => set({ paused: p }),
   setTimeScale: (s: number) => set({ timeScale: Math.max(0, s) }),

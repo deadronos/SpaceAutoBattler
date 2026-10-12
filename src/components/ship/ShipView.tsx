@@ -2,6 +2,7 @@ import { useMemo, type RefObject } from 'react';
 import type React from 'react';
 import { Box3, Color, Sphere, type Group } from 'three';
 import type { ShipEntity } from '../../types/index.js';
+import { useUiStore } from '../../app/uiStore.js';
 import { getShieldVisuals, TEAM_COLORS } from '../../config/renderer.js';
 import { FALLBACK_RADIUS_BY_HULL, type HullMaterial } from './ShipModel.js';
 import { ShieldBubble, SHIELD_RENDER_ORDER } from './ShipShield.js';
@@ -46,7 +47,15 @@ export function ShipView({
 
   if (scene && hasValidPath) {
     return (
-      <group ref={groupRef} dispose={null}>
+      <group
+        ref={groupRef}
+        dispose={null}
+        userData={{ shipId: entity.id }}
+        onPointerDown={(event) => {
+          event.stopPropagation();
+          useUiStore.getState().selectShip(entity.id);
+        }}
+      >
         <group ref={visualRef}>
           <primitive object={scene} />
         </group>
@@ -61,7 +70,15 @@ export function ShipView({
   );
 
   return (
-    <group ref={groupRef} dispose={null}>
+    <group
+      ref={groupRef}
+      dispose={null}
+      userData={{ shipId: entity.id }}
+      onPointerDown={(event) => {
+        event.stopPropagation();
+        useUiStore.getState().selectShip(entity.id);
+      }}
+    >
       <group ref={visualRef}>
         <mesh castShadow receiveShadow>
           <coneGeometry args={FALLBACK_CONE_ARGS} />

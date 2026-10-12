@@ -35,6 +35,10 @@ const PAGE_URL = '/spaceautobattler.html?copilot_debug=1';
 
 /** Minimum fraction of pixels that must change between shake-off and shake-on. */
 const SHAKE_SIGNAL_THRESHOLD = 0.05;
+/** Minimum fraction of pixels that must change between follow-off and follow-on. */
+const FOLLOW_SIGNAL_THRESHOLD = 0.02;
+/** Ship id forced for the deterministic follow capture (first spawned ship). */
+const FOLLOW_SHIP_ID = 1;
 
 /**
  * Load the app with camera trauma forced to `forcedTrauma`, pause the
@@ -44,6 +48,8 @@ const SHAKE_SIGNAL_THRESHOLD = 0.05;
  * @param {0 | 1} forcedTrauma - Value for `window.__copilot_forceCameraTrauma`.
  * @param {string} dir - Destination directory for the screenshot.
  * @param {string} fileName - Screenshot file name (project suffix included).
+ * @param {number} [forcedFollowId] - Optional ship id for
+ *   `window.__copilot_forceCameraFollowId` (forces deterministic follow).
  * @returns {Promise<string>} The written screenshot path.
  */
 async function captureScene(
@@ -51,6 +57,7 @@ async function captureScene(
   forcedTrauma: 0 | 1,
   dir: string,
   fileName: string,
+  forcedFollowId?: number,
 ): Promise<string> {
   page.on('pageerror', (err) => {
     console.error(`[camera-rig-visual] ${fileName} pageerror:`, err.message);
@@ -63,11 +70,20 @@ async function captureScene(
 
   await page.setViewportSize(VIEWPORT);
 
-  // Must run before `goto`: `<CameraRig />` reads this during mount.
-  await page.addInitScript((trauma: number) => {
-    (window as unknown as { __copilot_forceCameraTrauma?: number }).__copilot_forceCameraTrauma =
-      trauma;
-  }, forcedTrauma);
+  // Must run before `goto`: `<CameraRig />` reads these during mount.
+  await page.addInitScript(
+    (opts: { trauma: number; followId?: number }) => {
+      const debugWin = window as unknown as {
+        __copilot_forceCameraTrauma?: number;
+        __copilot_forceCameraFollowId?: number;
+      };
+      debugWin.__copilot_forceCameraTrauma = opts.trauma;
+      if (opts.followId !== undefined) {
+        debugWin.__copilot_forceCameraFollowId = opts.followId;
+      }
+    },
+    { trauma: forcedTrauma, followId: forcedFollowId },
+  );
 
   await page.goto(PAGE_URL);
   await page.waitForSelector('canvas');
@@ -84,6 +100,12 @@ async function captureScene(
 
   // Let the paused frame stabilize before capturing.
   await page.waitForTimeout(1000);
+
+  // Follow retargets over real time, so give it extra frames to glide once the
+  // simulation is paused.
+  if (forcedFollowId !== undefined) {
+    await page.waitForTimeout(1500);
+  }
 
   const canvas = page.locator('canvas');
   await expect(canvas).toBeVisible();
@@ -188,6 +210,52 @@ test.describe('Camera rig shake visual baseline (shake off vs on)', () => {
     // test fails if the shake is silently not applied. The control pair makes
     // this self-calibrating: if shake were a no-op, signal ≈ noise.
     expect(signalRatio).toBeGreaterThan(SHAKE_SIGNAL_THRESHOLD);
+    expect(signalRatio).toBeGreaterThan(noise.changedRatio * 1.5);
+    expect(signalMean).toBeGreaterThan(noise.meanChannelDelta * 1.5);
+  });
+
+  test('captures follow-off and follow-on full-scene screenshots', async ({
+    context,
+  }, testInfo) => {
+    test.setTimeout(120_000);
+    await fs.mkdir(BASELINE_DIR, { recursive: true });
+    await fs.mkdir(DEBUG_DIR, { recursive: true });
+
+    const projectName = testInfo.project.name.replace(/\s+/g, '-');
+    const followOffFile = `camera-rig-follow-off-${projectName}.png`;
+    const followOnFile = `camera-rig-follow-on-${projectName}.png`;
+    const controlFile = `camera-rig-follow-off-control-${projectName}.png`;
+
+    const offPage = await context.newPage();
+    const followOff = await captureScene(offPage, 0, BASELINE_DIR, followOffFile);
+    await offPage.close();
+
+    // Second follow-off capture measures the wall-clock star-shader noise floor.
+    const controlPage = await context.newPage();
+    const control = await captureScene(controlPage, 0, DEBUG_DIR, controlFile);
+    await controlPage.close();
+
+    // `__copilot_forceCameraFollowId` forces follow of the first spawned ship,
+    // independent of the UI toggle/selection, for a deterministic capture.
+    const onPage = await context.newPage();
+    const followOn = await captureScene(onPage, 0, BASELINE_DIR, followOnFile, FOLLOW_SHIP_ID);
+    await onPage.close();
+
+    const noise = await diffStats(followOff, control);
+    const signalFromOff = await diffStats(followOff, followOn);
+    const signalFromControl = await diffStats(control, followOn);
+    const signalRatio = Math.min(signalFromOff.changedRatio, signalFromControl.changedRatio);
+    const signalMean = Math.min(signalFromOff.meanChannelDelta, signalFromControl.meanChannelDelta);
+
+    console.info(
+      `[camera-rig-visual] follow noise (off control): changed=${noise.changedRatio.toFixed(4)} meanChannelDelta=${noise.meanChannelDelta.toFixed(3)}`,
+    );
+    console.info(
+      `[camera-rig-visual] follow signal (off vs on): changed=${signalRatio.toFixed(4)} meanChannelDelta=${signalMean.toFixed(3)}`,
+    );
+
+    // Self-calibrating gate: if follow were a no-op, signal ≈ noise.
+    expect(signalRatio).toBeGreaterThan(FOLLOW_SIGNAL_THRESHOLD);
     expect(signalRatio).toBeGreaterThan(noise.changedRatio * 1.5);
     expect(signalMean).toBeGreaterThan(noise.meanChannelDelta * 1.5);
   });
