@@ -1,9 +1,9 @@
 # Asset Compression (glTF decoders + encoding)
 
 This document describes how SpaceAutoBattler wires the glTF decoders used for compressed
-models, and how to produce those compressed models. Part 1 of issue #649 registers the
-decoders; the shipped models remain **uncompressed** until a human runs the encoder and
-signs off, so there is no visual change today.
+models, and how to produce those compressed models. The five ship hulls now ship
+**compressed** (Draco geometry + WebP textures, −91% download); KTX2/Basis — the VRAM win —
+remains a documented, opt-in step that requires native KTX-Software.
 
 ## Decoders used
 
@@ -50,8 +50,9 @@ before the generic hashed `.wasm` rule. Draco no longer points at the gstatic CD
 - The KTX2 loader is constructed at module scope inside a guard; if construction fails, the
   loader stays unset and `extendShipGltfLoader` becomes a no-op. Uncompressed assets continue
   to load through the normal glTF path — nothing throws.
-- Assets currently ship **uncompressed**. To keep the runtime uncompressed, restore the `.glb`
-  files from git; no loader changes are required.
+- The five ship hulls ship **compressed** (Draco + WebP). To revert to uncompressed assets,
+  run `pnpm run assets:compress --restore` (or `git checkout -- src/assets/gltf`); no loader
+  changes are required.
 
 ## Encoding runbook
 
@@ -121,8 +122,15 @@ Full default run (`--check`, draco + webp) over all five hulls:
 | frigate.glb   | 520,540    | 46,520    | -474,020   | -91.06%   |
 | **TOTAL**     | 2,586,636  | 231,888   | -2,354,748 | -91.04%   |
 
-> Fill in this table from the real `--in-place` run before committing compressed assets.
-> Numbers may shift slightly across `@gltf-transform` patch releases.
+**Shipped** (this table is the actual `--in-place` run committed in #723):
+
+| Verification                 | Result                                                                  |
+| ---------------------------- | ----------------------------------------------------------------------- |
+| Total download               | 2,586,636 B → **231,888 B (−91.04%)**                                   |
+| `ship-hulls` GPU screenshots | **4/5 hulls pixel-identical; destroyer 120 px (0.012%); total 0.0023%** |
+| App E2E (`e2e.spec.ts`)      | pass — GLTF models load, no decoder errors                              |
+
+Numbers may shift slightly across `@gltf-transform` patch releases.
 
 ### Format notes
 
