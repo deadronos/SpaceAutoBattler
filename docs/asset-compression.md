@@ -66,9 +66,10 @@ materials intact, and **never writes into `src/` unless you pass `--in-place`**.
 | Geometry + WebP | `@gltf-transform/cli@4.5.1` (pinned devDependency) | Installed by `pnpm install`; exposes `node_modules/.bin/gltf-transform`. |
 | KTX2 textures   | KTX-Software `ktx` ≥ 4.3                           | Required **only** for `--texture ktx2`; not currently installed here.    |
 
-KTX-Software: <https://github.com/KhronosGroup/KTX-Software/releases> (macOS:
-`brew install ktx-software`). Make sure `ktx` is on your `PATH`; the script checks for it and
-exits non-zero with install instructions if it is missing (no partial writes).
+KTX-Software: <https://github.com/KhronosGroup/KTX-Software/releases> (macOS: install the release
+`.pkg`/`.dmg` from that page — there is no Homebrew formula). Make sure `ktx` is on your `PATH`;
+the script checks for it and exits non-zero with install instructions if it is missing (no partial
+writes).
 
 ### Commands
 

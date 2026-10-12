@@ -10,7 +10,7 @@
  * Usage:
  *   node scripts/assets/compress-gltf.mjs --check                 # safe dry-run (defaults)
  *   node scripts/assets/compress-gltf.mjs --check --texture none  # geometry only
- *   node scripts/assets/compress-gltf.mjs --in-place              # write into src/ (after sign-off)
+ *   node scripts/assets/compress-gltf.mjs --in-place              # write into src/
  *   node scripts/assets/compress-gltf.mjs --restore               # git checkout originals
  *
  * Options:
@@ -38,7 +38,15 @@
  */
 
 import { spawnSync } from 'node:child_process';
-import { copyFileSync, existsSync, mkdtempSync, readdirSync, rmSync, statSync } from 'node:fs';
+import {
+  copyFileSync,
+  existsSync,
+  mkdtempSync,
+  readdirSync,
+  renameSync,
+  rmSync,
+  statSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -204,7 +212,8 @@ function ensureKtxAvailable() {
     `Install KTX-Software >=${KTX_SOFTWARE_MIN} and make sure \`ktx\` is on your PATH:`,
   );
   console.error('  https://github.com/KhronosGroup/KTX-Software/releases');
-  console.error('  macOS: brew install ktx-software   (then reopen your shell)');
+  console.error('  macOS: install the release .pkg/.dmg from the link above');
+  console.error('         (there is no Homebrew formula for KTX-Software).');
   console.error('');
   console.error('No files were written.');
   process.exit(1);
@@ -251,10 +260,20 @@ function compressAssets(options) {
     const { totalBefore, totalAfter } = printReport(rows);
 
     if (options.inPlace) {
+      let written = 0;
       for (const row of rows) {
-        if (row.output !== row.input) copyFileSync(row.output, row.input);
+        if (row.output === row.input) continue;
+        // Stage then rename so each swap is atomic (no truncated/mixed .glb on failure).
+        const staged = `${row.input}.tmp`;
+        copyFileSync(row.output, staged);
+        renameSync(staged, row.input);
+        written += 1;
       }
-      console.log(`compress-gltf: wrote ${rows.length} file(s) into src/assets/gltf/.`);
+      console.log(
+        written > 0
+          ? `compress-gltf: wrote ${written} file(s) into src/assets/gltf/.`
+          : 'compress-gltf: nothing to write — the pipeline produced no change.',
+      );
       console.log(
         'compress-gltf: run `pnpm run test:playwright:ship` and review pixels before committing.',
       );
