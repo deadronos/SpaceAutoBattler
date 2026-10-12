@@ -19,7 +19,7 @@ SpaceAutoBattler is a deterministic 3D space combat auto-battler built with Reac
 | AI System             | B+     | Sophisticated intent-based design            |
 | Type Safety           | A-     | Comprehensive typing, some `any` fallbacks   |
 | Performance Patterns  | B      | Good instancing, room for optimization       |
-| Documentation         | B+     | Good inline docs, existing ARCHITECTURE.md   |
+| Documentation         | B+     | Good inline docs; AGENTS.md + docs/          |
 | Error Handling        | B-     | Defensive try-catch, inconsistent patterns   |
 | Extensibility         | A-     | Well-defined extension points                |
 
