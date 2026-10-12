@@ -69,6 +69,16 @@ vi.mock('postprocessing', async (importOriginal) => {
 import { buildEffects } from '../../../src/components/postprocessing/buildEffects.js';
 
 const baseConfig: PostprocessingConfig = {
+  ao: {
+    enabled: false,
+    halfRes: true,
+    quality: 'Medium',
+    aoRadius: 4,
+    distanceFalloff: 1.0,
+    intensity: 5,
+    color: '#000000',
+    transparencyAware: false,
+  },
   bloomThreshold: 0.5,
   bloomSmoothing: 0.2,
   bloomIntensity: 0.8,

@@ -1,15 +1,25 @@
 import React, { useCallback, useEffect, useRef } from 'react';
 import { useThree, useFrame } from '@react-three/fiber';
-import { type EffectComposer, type FXAAEffect, type SelectiveBloomEffect } from 'postprocessing';
+import {
+  type EffectComposer,
+  type FXAAEffect,
+  type Pass,
+  type SelectiveBloomEffect,
+} from 'postprocessing';
 import { type WebGLRenderer, type Scene, type Camera, type WebGLRenderTarget } from 'three';
 import { useBloomContext } from '../renderer/bloom/index.js';
 import { POSTPROCESSING_CONFIG } from '../config/renderer.js';
 import { createComposer, type ComposerSetupResult } from './postprocessing/createComposer.js';
 import { buildEffects, type BloomContextLike } from './postprocessing/buildEffects.js';
+import { buildAmbientOcclusion } from './postprocessing/buildAmbientOcclusion.js';
 import { reportMaterialError, reportWebGLError } from '../utils/errorReporting.js';
 
 type Props = {
   enabled?: boolean;
+};
+
+type DebugWindow = Window & {
+  __copilot_forceAmbientOcclusion?: boolean;
 };
 
 /**
@@ -28,6 +38,11 @@ export function Postprocessing({ enabled = false }: Props): null {
   const fxaaRef = useRef<FXAAEffect | null>(null);
   const bloomEffectsRef = useRef<SelectiveBloomEffect[]>([]);
   const renderTargetRef = useRef<WebGLRenderTarget | null>(null);
+  const aoPassRef = useRef<Pass | null>(null);
+  // Tracks the latest canvas size so the AO pass can be built at the current
+  // resolution without recreating the composer on every resize (the composer's
+  // `setSize` path resizes passes afterwards).
+  const sizeRef = useRef(size);
   const bloomCtx = useBloomContext();
   const activeBloomCtx = bloomCtx ?? null;
   const enableCameraLayers = activeBloomCtx?.enableCameraLayers;
@@ -35,6 +50,9 @@ export function Postprocessing({ enabled = false }: Props): null {
   const cleanupComposer = useCallback(() => {
     const setup = composerSetupRef.current;
     composerSetupRef.current = null;
+
+    const aoPass = aoPassRef.current;
+    aoPassRef.current = null;
 
     if (setup) {
       try {
@@ -48,6 +66,15 @@ export function Postprocessing({ enabled = false }: Props): null {
       } catch (error) {
         // Expected: Renderer state may already be restored
         reportWebGLError('composer.restoreRendererState', error);
+      }
+    }
+
+    if (aoPass) {
+      try {
+        aoPass.dispose();
+      } catch (error) {
+        // Expected: AO pass may already be disposed by the composer
+        reportWebGLError('aoPass.dispose', error);
       }
     }
 
@@ -80,11 +107,30 @@ export function Postprocessing({ enabled = false }: Props): null {
         config: POSTPROCESSING_CONFIG,
       });
 
+      // Debug override: tests/automation can force AO on or off regardless of
+      // the shipped config, mirroring `__copilot_forcePostprocessingMount`.
+      const forcedAo =
+        typeof window !== 'undefined'
+          ? (window as DebugWindow).__copilot_forceAmbientOcclusion
+          : undefined;
+      const aoEnabled = forcedAo === undefined ? POSTPROCESSING_CONFIG.ao.enabled : forcedAo;
+
+      const aoPass = aoEnabled
+        ? buildAmbientOcclusion({
+            scene: scene as unknown as Scene,
+            camera: camera as unknown as Camera,
+            width: sizeRef.current.width,
+            height: sizeRef.current.height,
+            config: POSTPROCESSING_CONFIG.ao,
+          })
+        : null;
+
       const composerSetup = createComposer({
         renderer,
         scene: scene as unknown as Scene,
         camera: camera as unknown as Camera,
         effectPass,
+        aoPass,
       });
 
       composerSetupRef.current = composerSetup;
@@ -92,6 +138,7 @@ export function Postprocessing({ enabled = false }: Props): null {
       renderTargetRef.current = composerSetup.renderTarget;
       bloomEffectsRef.current = bloomEffects;
       fxaaRef.current = fxaa;
+      aoPassRef.current = aoPass;
     } catch (err) {
       cleanupComposer();
       // If instantiation fails, fail gracefully and keep composer disabled
@@ -107,6 +154,7 @@ export function Postprocessing({ enabled = false }: Props): null {
   }, [effectiveEnabled, activeBloomCtx, gl, scene, camera, cleanupComposer]);
 
   useEffect(() => {
+    sizeRef.current = size;
     const composer = composerRef.current;
     if (!composer) return;
     composer.setSize(size.width, size.height);

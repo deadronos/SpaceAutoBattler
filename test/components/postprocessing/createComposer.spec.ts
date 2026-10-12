@@ -1,7 +1,7 @@
 import { describe, expect, it, beforeEach, vi } from 'vite-plus/test';
 import { LinearSRGBColorSpace, NoToneMapping, SRGBColorSpace, Vector2 } from 'three';
 import type { Camera, Scene, WebGLRenderer } from 'three';
-import type { EffectPass } from 'postprocessing';
+import type { EffectPass, Pass } from 'postprocessing';
 
 const hoisted = vi.hoisted(() => {
   const mockComposerDispose = vi.fn();
@@ -79,6 +79,33 @@ describe('createComposer', () => {
     expect(renderer.autoClear).toBe(true);
     expect(renderer.outputColorSpace).toBe(LinearSRGBColorSpace);
     expect(renderer.toneMappingExposure).toBe(2);
+  });
+
+  it('inserts an optional AO pass between the render and effect passes', () => {
+    const renderer = {
+      autoClear: true,
+      toneMapping: NoToneMapping,
+      toneMappingExposure: 1,
+      outputColorSpace: SRGBColorSpace,
+      getPixelRatio: vi.fn(() => 1),
+      getSize: vi.fn((target: Vector2) => target.set(640, 480)),
+    } as unknown as WebGLRenderer;
+
+    const effectPass = { id: 'effectPass' } as unknown as EffectPass;
+    const aoPass = { id: 'aoPass' } as unknown as Pass;
+
+    const result = createComposer({
+      renderer,
+      scene: {} as Scene,
+      camera: {} as Camera,
+      effectPass,
+      aoPass,
+    });
+
+    const composer = result.composer as unknown as InstanceType<typeof hoisted.MockEffectComposer>;
+    expect(composer.passes).toHaveLength(3);
+    expect(composer.passes[1]).toBe(aoPass);
+    expect(composer.passes[2]).toBe(effectPass);
   });
 
   it('disposes render resources idempotently', () => {
