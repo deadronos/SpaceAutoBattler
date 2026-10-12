@@ -38,4 +38,22 @@ describe('computeNextDpr', () => {
     const next = computeNextDpr(current, 50, defaults);
     expect(next).toBe(current);
   });
+
+  it('never exceeds a shrunken maxDpr ceiling after the preset shrinks', () => {
+    // Ramped up to 2.0 under `high`, then the preset switches to `low` (maxDpr 1.0).
+    const shrunken = { ...defaults, maxDpr: 1.0 };
+    const current = 2.0;
+
+    // Downscale branch must clamp to the new ceiling, not `current - step`.
+    expect(computeNextDpr(current, 28, shrunken)).toBe(1.0);
+    // Dead-zone branch must also clamp.
+    expect(computeNextDpr(current, 50, shrunken)).toBeLessThanOrEqual(1.0);
+    // Upscale branch must stay under the ceiling.
+    expect(computeNextDpr(current, 100, shrunken)).toBeLessThanOrEqual(1.0);
+  });
+
+  it('never drops below minDpr', () => {
+    const next = computeNextDpr(0.5, 28, defaults);
+    expect(next).toBeGreaterThanOrEqual(defaults.minDpr);
+  });
 });

@@ -21,14 +21,19 @@ export function computeNextDpr(
 ): number {
   const { minDpr, maxDpr, targetFps, lowerFps, step } = options;
 
+  // Every branch is clamped into [minDpr, maxDpr] so a shrinking ceiling (e.g.
+  // switching the quality preset to a lower tier) can never leave the current
+  // DPR rendering above the new max.
+  const clamp = (value: number): number => Math.min(maxDpr, Math.max(minDpr, value));
+
   // Hysteresis: only upscale if comfortably above target, downscale if below lowerFps
   if (emaFps >= targetFps + 6) {
-    return Math.min(maxDpr, parseFloat((currentDpr + step).toFixed(3)));
+    return clamp(parseFloat((currentDpr + step).toFixed(3)));
   }
   if (emaFps <= lowerFps) {
-    return Math.max(minDpr, parseFloat((currentDpr - step).toFixed(3)));
+    return clamp(parseFloat((currentDpr - step).toFixed(3)));
   }
-  return currentDpr;
+  return clamp(currentDpr);
 }
 
 /**
@@ -74,6 +79,21 @@ export default function DynamicResScaler({
     };
     // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // When the preset ceiling changes (min/max/initial props), immediately pull the
+  // live DPR back inside the new range so the renderer never renders above the
+  // ceiling between adjustment ticks. A no-op when the value is already in range.
+  useEffect(() => {
+    const clamped = Math.min(maxDpr, Math.max(minDpr, dprRef.current));
+    if (clamped === dprRef.current) return;
+    dprRef.current = clamped;
+    try {
+      gl.setPixelRatio(clamped);
+      gl.setSize(size.width, size.height, false);
+    } catch (error) {
+      reportWebGLError('dynamicResScaler.clamp', error);
+    }
+  }, [minDpr, maxDpr, gl, size.width, size.height]);
 
   useFrame((state, delta) => {
     const now = performance.now();
