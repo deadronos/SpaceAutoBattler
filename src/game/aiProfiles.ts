@@ -1,4 +1,6 @@
 import type { BehaviorProfile, ShipHull } from '../types/index.js';
+import { validateAiProfiles } from './config/aiTunablesValidation.js';
+import { ErrorCategory, reportRecoverableGameError } from './errors.js';
 
 /**
  * Behavior profile configuration reference
@@ -238,6 +240,16 @@ export const AI_PROFILES: Record<string, BehaviorProfile> = {
     },
   },
 };
+
+// Guard future tuning edits: invalid profiles warn (never throw) at module load
+// so a mis-tuned constant cannot silently change simulation behaviour. The
+// shipped constants pass with zero issues and no values are mutated here.
+for (const issue of validateAiProfiles(AI_PROFILES)) {
+  reportRecoverableGameError(ErrorCategory.Config, issue, {
+    source: 'aiProfiles',
+    code: 'ai-tunables-invalid',
+  });
+}
 
 /**
  * PROFILE_BY_HULL
