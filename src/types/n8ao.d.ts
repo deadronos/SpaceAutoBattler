@@ -28,9 +28,25 @@ declare module 'n8ao' {
     width: number;
     height: number;
     configuration: N8AOConfiguration;
+    /**
+     * Rolling average of the AO pass GPU time in milliseconds. Only updated
+     * while debug mode is enabled (see {@link enableDebugMode}); stays `0`
+     * when `EXT_disjoint_timer_query_webgl2` is unavailable.
+     */
+    lastTime: number;
+    /** Weight for the rolling average applied to {@link lastTime} (0..1). */
+    timeRollingAverage: number;
 
     setQualityMode(mode: N8AOQualityMode): void;
     setDisplayMode(mode: string): void;
     setSize(width: number, height: number): void;
+    /**
+     * Start timing the AO pass. Requires `EXT_disjoint_timer_query_webgl2`;
+     * the pass self-disables debug mode (and logs an error) when absent, so
+     * `lastTime` remains `0` in headless/software contexts.
+     */
+    enableDebugMode(): void;
+    /** Stop timing the AO pass. */
+    disableDebugMode(): void;
   }
 }

@@ -86,3 +86,21 @@ runtime does not rebuild the composer.
 - AO runs at half resolution (`halfRes`) with a `Medium` quality preset
 - Bloom uses selective layer registration
 - Effects can be disabled individually for performance
+
+### Measuring the AO cost
+
+The proposed budget for the AO pass is **≤ ~1.5 ms added GPU time at
+1280×720, half-res**. If a measurement exceeds it, drop `quality` to
+`Performance` (keeping `halfRes`) and re-verify.
+
+- **Automated (spec output):** `test/playwright/ao-visual-baseline.spec.ts`
+  samples requestAnimationFrame frame times with AO forced off vs on and logs
+  `FPS AO-off≈… AO-on≈… delta=…`. Treat it as a smoke signal, not a precise
+  budget gate — headless/software rendering is noisy.
+- **Manual (visual sign-off):** enable the `r3f-perf` overlay
+  (`perfMonitorEnabled` in the UI store / HUD toggles) and compare AO off vs on.
+- **GPU pass time (when available):** call `N8AOPostPass.enableDebugMode()` and
+  read `N8AOPostPass.lastTime` (rolling average GPU time in ms). This requires
+  `EXT_disjoint_timer_query_webgl2`; the pass self-disables debug mode (and
+  logs an error) when the extension is absent, so `lastTime` stays `0` in
+  headless/software contexts.
