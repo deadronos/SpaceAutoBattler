@@ -40,6 +40,23 @@ function getSensorBroadphase(state: GameState): SensorBroadphase {
   return broadphase;
 }
 
+/**
+ * Returns the current sensor broad-phase grid for a state, or `null` when the
+ * sensor system has not populated one yet.
+ *
+ * `updateSensorSystem` repopulates this grid immediately before `manager.ts`
+ * calls `refreshBlackboard` on the same tick, so the blackboard can reuse it for
+ * nearest-enemy queries instead of scanning every ship pair. Callers that invoke
+ * `refreshBlackboard` directly (without a sensor update) receive `null` and must
+ * fall back to the full scan.
+ *
+ * @param {GameState} state - The game state.
+ * @returns {SpatialGrid<ShipEntity> | null} The populated grid, or `null`.
+ */
+export function getSensorBroadphaseGrid(state: GameState): SpatialGrid<ShipEntity> | null {
+  return getSensorBroadphase(state).grid;
+}
+
 function ensureVisibleMaps(state: GameState): void {
   if (!state.blackboard.visibleEnemies) {
     state.blackboard.visibleEnemies = { blue: new Map(), red: new Map() };
