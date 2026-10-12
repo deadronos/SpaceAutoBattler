@@ -67,10 +67,14 @@ export function buildEffects({
     if (!selection) return;
 
     const overrides = groupConfigs[groupName] ?? {};
+    // `bloomScale` rebalances the linear-HDR path only: the target preserves
+    // emissive values > 1, so bloom needs a lower multiplier than the legacy
+    // sRGB path. Pipeline off ⇒ raw legacy intensity.
+    const intensityScale = colorPipeline.enabled ? colorPipeline.bloomScale : 1;
     const bloom = new SelectiveBloomEffect(scene, camera, {
       blendFunction: BlendFunction.SCREEN,
       kernelSize: KernelSize.SMALL,
-      intensity: overrides.intensity ?? config.bloomIntensity ?? 1,
+      intensity: (overrides.intensity ?? config.bloomIntensity ?? 1) * intensityScale,
     }) as SelectiveBloomWithInternals;
 
     bloom.selection = selection;

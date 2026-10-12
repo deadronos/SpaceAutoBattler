@@ -87,14 +87,17 @@ export const POSTPROCESSING_CONFIG: PostprocessingConfig = {
     color: '#000000',
     transparencyAware: false,
   },
-  // Linear-HDR + tone-mapping pipeline (#645). `bloomScale` is `1` here so the
-  // first visual delta is tone mapping only; Task 2 lowers it to rebalance bloom.
-  // Reverting the whole look is a single `enabled: false`.
+  // Linear-HDR + tone-mapping pipeline (#645). `bloomScale` is the single knob
+  // for bloom rebalance: the linear-HDR target preserves emissive values > 1, so
+  // bloom is driven ~10x harder than the legacy sRGB path. It multiplies every
+  // group intensity in `buildEffects`; the per-group values stay untouched so
+  // the rebalance is revertible by toggling the pipeline off. Reverting the
+  // whole look is a single `enabled: false`.
   colorPipeline: {
     enabled: true,
     toneMapping: 'agx',
     exposure: 1,
-    bloomScale: 1,
+    bloomScale: 0.1,
     vignette: { enabled: false, offset: 0.3, darkness: 0.6 },
   },
   bloomThreshold: 0.8,
@@ -103,6 +106,9 @@ export const POSTPROCESSING_CONFIG: PostprocessingConfig = {
   bloomIgnoreBackground: false,
   bloomDefaultGroup: 'default',
   bloomLayerStart: 11,
+  // Per-group `threshold`/`smoothing` are the sign-off tuning surface for the
+  // linear-HDR look: values > 1 are now preserved, so thresholds may need
+  // raising. Do not change them in this PR unless sign-off requests it.
   bloomGroups: {
     default: {
       threshold: 0.9,

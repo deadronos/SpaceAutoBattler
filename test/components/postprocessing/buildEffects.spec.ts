@@ -251,6 +251,89 @@ describe('buildEffects', () => {
     expect(defaultBloom.options.intensity).toBe(0.6);
   });
 
+  it('scales bloom intensities by bloomScale when the pipeline is enabled', () => {
+    const bloomContext = {
+      defaultGroup: 'default',
+      selections: new Map([
+        ['default', new hoisted.MockSelection(1)],
+        ['engines', new hoisted.MockSelection(1)],
+      ]),
+    } as unknown as BloomContextLike;
+
+    const { bloomEffects } = buildEffects({
+      scene: {} as Scene,
+      camera: {} as Camera,
+      bloomContext,
+      config: baseConfig,
+      colorPipeline: { ...hdrPipeline, bloomScale: 0.1 },
+    });
+
+    // Pipeline on: raw per-group intensity × bloomScale (0.6 → 0.06, 1.2 → 0.12).
+    const defaultBloom = bloomEffects[0] as unknown as InstanceType<
+      typeof hoisted.MockSelectiveBloomEffect
+    >;
+    const enginesBloom = bloomEffects[1] as unknown as InstanceType<
+      typeof hoisted.MockSelectiveBloomEffect
+    >;
+    expect(defaultBloom.options.intensity).toBeCloseTo(0.06, 10);
+    expect(enginesBloom.options.intensity).toBeCloseTo(0.12, 10);
+  });
+
+  it('reproduces the raw bloom intensities when bloomScale is 1', () => {
+    const bloomContext = {
+      defaultGroup: 'default',
+      selections: new Map([
+        ['default', new hoisted.MockSelection(1)],
+        ['engines', new hoisted.MockSelection(1)],
+      ]),
+    } as unknown as BloomContextLike;
+
+    const { bloomEffects } = buildEffects({
+      scene: {} as Scene,
+      camera: {} as Camera,
+      bloomContext,
+      config: baseConfig,
+      colorPipeline: { ...hdrPipeline, bloomScale: 1 },
+    });
+
+    const defaultBloom = bloomEffects[0] as unknown as InstanceType<
+      typeof hoisted.MockSelectiveBloomEffect
+    >;
+    const enginesBloom = bloomEffects[1] as unknown as InstanceType<
+      typeof hoisted.MockSelectiveBloomEffect
+    >;
+    expect(defaultBloom.options.intensity).toBe(0.6);
+    expect(enginesBloom.options.intensity).toBe(1.2);
+  });
+
+  it('ignores bloomScale on the legacy path (pipeline disabled)', () => {
+    const bloomContext = {
+      defaultGroup: 'default',
+      selections: new Map([
+        ['default', new hoisted.MockSelection(1)],
+        ['engines', new hoisted.MockSelection(1)],
+      ]),
+    } as unknown as BloomContextLike;
+
+    const { bloomEffects } = buildEffects({
+      scene: {} as Scene,
+      camera: {} as Camera,
+      bloomContext,
+      config: baseConfig,
+      // Even with a tiny bloomScale, the legacy path keeps raw intensities.
+      colorPipeline: { ...baseConfig.colorPipeline, bloomScale: 0.1 },
+    });
+
+    const defaultBloom = bloomEffects[0] as unknown as InstanceType<
+      typeof hoisted.MockSelectiveBloomEffect
+    >;
+    const enginesBloom = bloomEffects[1] as unknown as InstanceType<
+      typeof hoisted.MockSelectiveBloomEffect
+    >;
+    expect(defaultBloom.options.intensity).toBe(0.6);
+    expect(enginesBloom.options.intensity).toBe(1.2);
+  });
+
   it('maps the configured tone-mapping operator and appends the vignette when enabled', () => {
     const { effects, toneMapping, vignette } = buildEffects({
       scene: {} as Scene,

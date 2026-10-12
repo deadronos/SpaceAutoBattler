@@ -41,13 +41,13 @@ it to `1` (today's value) on the legacy path.
 All knobs live in `POSTPROCESSING_CONFIG.colorPipeline`
 (`src/config/postprocessing.ts`):
 
-| Knob          | Meaning                                                                                       |
-| ------------- | --------------------------------------------------------------------------------------------- |
-| `enabled`     | Master toggle. `false` reproduces the legacy sRGB / `NoToneMapping` pipeline exactly          |
-| `toneMapping` | Operator applied before FXAA: `agx` (default) / `aces` / `neutral`                            |
-| `exposure`    | Pre-tone-map exposure multiplier                                                              |
-| `bloomScale`  | Multiplier applied to every bloom group intensity when the pipeline is on (Task 2 rebalances) |
-| `vignette`    | Optional asset-free vignette: `{ enabled, offset, darkness }`                                 |
+| Knob          | Meaning                                                                                                      |
+| ------------- | ------------------------------------------------------------------------------------------------------------ |
+| `enabled`     | Master toggle. `false` reproduces the legacy sRGB / `NoToneMapping` pipeline exactly                         |
+| `toneMapping` | Operator applied before FXAA: `agx` (default) / `aces` / `neutral`                                           |
+| `exposure`    | Pre-tone-map exposure multiplier                                                                             |
+| `bloomScale`  | Multiplier applied to every bloom group intensity when the pipeline is on (`0.1`; see Bloom rebalance below) |
+| `vignette`    | Optional asset-free vignette: `{ enabled, offset, darkness }`                                                |
 
 Effect order when enabled: `[...bloomEffects, toneMapping, vignette?, fxaa]`.
 When disabled the effect list is exactly `[...bloomEffects, fxaa]` and the
@@ -63,6 +63,43 @@ Construction of the tone-mapping/vignette effects is wrapped in `try/catch` and
 reported through `reportWebGLError`; on failure the pipeline degrades to the
 legacy effect list (mirroring `buildAmbientOcclusion`), so headless
 (jsdom/happy-dom) unit tests stay safe.
+
+### Bloom rebalance (`bloomScale`)
+
+The linear (`NoColorSpace`) HalfFloat target preserves emissive values `> 1`
+that the legacy sRGB path flattened, so the same per-group bloom intensities
+glow far harder once the pipeline is on. `colorPipeline.bloomScale` is the
+**single knob** that compensates: `buildEffects` computes
+
+```
+intensity = (overrides.intensity ?? config.bloomIntensity ?? 1)
+          * (colorPipeline.enabled ? colorPipeline.bloomScale : 1)
+```
+
+The shipped value is `0.1` (≈10× reduction). Per-group
+`bloomGroups[*].intensity`/`threshold`/`smoothing` are left **unchanged**, so the
+rebalance is revertible by toggling the pipeline off (or by setting
+`bloomScale: 1`). The per-group `threshold`/`smoothing` values are the sign-off
+tuning surface for the linear-HDR look — values `> 1` are now preserved, so
+thresholds may need raising. Do not change them without an explicit sign-off
+request.
+
+> **Baseline regeneration is required after sign-off.** The pipeline changes the
+> target color space, applies tone mapping, and rescales bloom, so the affected
+> Playwright baselines (celestial, ao, quality-high, camera-rig, and possibly
+> shield/ship-hulls) must be regenerated in a real-GPU/CI environment **only
+> after** a human signs off on the before/after capture. Do not regenerate or
+> commit baselines as part of the rebalance change itself.
+
+### Before/after capture
+
+`test/playwright/hdr-tonemapping-visual-baseline.spec.ts` produces the matched
+sign-off pair (`hdr-tonemapping-off-<project>.png` /
+`hdr-tonemapping-on-<project>.png`) under `test/playwright/baselines/`. It forces
+the pipeline with `window.__copilot_forceHdrPipeline` via `page.addInitScript`,
+captures a duplicate off-state control to measure the star-shader animation-noise
+floor, and gates that the on-vs-off signal clears it by a wide margin. It also
+logs FPS off vs on for the PR perf note. The screenshots are **not** committed.
 
 ### Debug override
 
