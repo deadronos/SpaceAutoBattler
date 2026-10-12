@@ -12,6 +12,26 @@ function warnAiDisable(): void {
   reportConfigError('aiV2Disable');
 }
 
+type DebugWindow = Window & {
+  __copilot_qualityPreset?: QualityPreset;
+};
+
+/**
+ * Reads the deterministic quality-preset override used by the Playwright visual
+ * harness (`window.__copilot_qualityPreset`). Set it with `page.addInitScript`
+ * *before* `goto`, mirroring the `__copilot_forcePostprocessingMount` /
+ * `__copilot_forceAmbientOcclusion` overrides, so each capture boots at a fixed
+ * preset. Falls back to the shipped `'high'` default for any other value.
+ */
+function readInitialQualityPreset(): QualityPreset {
+  if (typeof window === 'undefined') return 'high';
+  const forced = (window as DebugWindow).__copilot_qualityPreset;
+  if (forced === 'low' || forced === 'medium' || forced === 'high' || forced === 'auto') {
+    return forced;
+  }
+  return 'high';
+}
+
 /**
  * State interface for the UI store (Zustand).
  * Controls game pause, time scale, debug toggles, and UI visibility.
@@ -227,7 +247,7 @@ export const useUiStore = create<UiState>((set) => ({
   toggleSimEnableSubsystemGuards: () =>
     set((s) => ({ simEnableSubsystemGuards: !s.simEnableSubsystemGuards })),
   setSimEnableSubsystemGuards: (value: boolean) => set({ simEnableSubsystemGuards: value }),
-  qualityPreset: 'high',
+  qualityPreset: readInitialQualityPreset(),
   setQualityPreset: (v: QualityPreset) => set({ qualityPreset: v }),
   detectedQualityTier: 'high',
   setDetectedQualityTier: (v: QualityTier) => set({ detectedQualityTier: v }),

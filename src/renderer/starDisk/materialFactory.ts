@@ -12,6 +12,7 @@ import {
 import { FALLBACK_NOISE, FALLBACK_ORGANIC, resolveTexture } from './textures.js';
 import { installDevHelpers, shouldEnableStarDiskDevHelpers } from './devHelpers.js';
 import { applyTextureSettings } from '../../utils/textureUtils.js';
+import { RENDERER_VISUAL_CONFIG } from '../../config/renderer.js';
 
 interface MainSequenceUniformMap {
   iTime: { value: number };
@@ -84,6 +85,9 @@ export function createMainSequenceStarMaterial(
     premultipliedAlpha: true,
     depthWrite: false,
     blending: AdditiveBlending,
+    // Low tier halves the star's procedural octave count at compile time. The
+    // renderer reads the tier from config (never React) to keep this boundary clean.
+    ...(RENDERER_VISUAL_CONFIG.performanceTier === 'low' ? { defines: { LOW_QUALITY: '1' } } : {}),
     vertexShader: options.vertexShader ?? vertexShader,
     fragmentShader: fragmentShaderRaw,
     uniforms: {

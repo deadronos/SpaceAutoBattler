@@ -1,3 +1,5 @@
+// Legacy StarDisk fragment shader. Not imported by runtime code today (the live
+// star shader is `mainsequencestar.glsl`); kept in sync for parity/reference.
 precision highp float;
 
 varying vec2 vUv;
@@ -99,7 +101,13 @@ void main() {
 
   float fVal1 = 1.0 - fade;
   float fVal2 = 1.0 - fade;
-  for (int i = 1; i <= 6; i++) {
+  // Mirrors `mainsequencestar.glsl`: 2 octaves under LOW_QUALITY, 6 otherwise.
+#ifdef LOW_QUALITY
+  const int STAR_OCTAVES = 2;
+#else
+  const int STAR_OCTAVES = 6;
+#endif
+  for (int i = 1; i <= STAR_OCTAVES; i++) {
     float power = pow(2.0, float(i + 1));
     float scale1 = power * 10.0 * (drift1 + 1.0);
     float scale2 = power * 25.0 * (drift2 + 1.0);

@@ -17,11 +17,15 @@ import { reportConfigError, reportMaterialError } from '../utils/errorReporting.
  * Create and manage the star disk shader material.
  *
  * @param debugEnabled - Whether debug mode is enabled (for debug indicators)
+ * @param vertexShaderOverride - Optional vertex shader override
+ * @param qualityTier - Resolved quality tier; part of the memo key so a preset
+ *   change rebuilds the material with the correct `LOW_QUALITY` define.
  * @returns ShaderMaterial instance or null if creation failed
  */
 export function useStarMaterial(
   debugEnabled: boolean,
   vertexShaderOverride?: string,
+  qualityTier?: string,
 ): ShaderMaterial | null {
   const shaderMaterialRef = useRef<ShaderMaterial | null>(null);
 
@@ -92,7 +96,10 @@ export function useStarMaterial(
       shaderMaterialRef.current = null;
       return null;
     }
-  }, [debugEnabled, vertexShaderOverride]);
+    // `qualityTier` is intentionally part of the key: the factory reads
+    // RENDERER_VISUAL_CONFIG at creation time, so a preset change must rebuild.
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
+  }, [debugEnabled, vertexShaderOverride, qualityTier]);
 
   // Cleanup: dispose material when component unmounts or material changes
   useEffect(() => {

@@ -14,6 +14,7 @@ import { useStarTextures } from '../../hooks/useStarTextures.js';
 import { useStarMaterial } from '../../hooks/useStarMaterial.js';
 import { isCopilotDebugEnabled } from '../../utils/copilotDebug.js';
 import { useUiStore } from '../../app/uiStore.js';
+import { resolveQualitySettings } from '../../config/quality.js';
 import { clamp, clamp01 } from '../../utils/math.js';
 import { reportMaterialError, reportWebGLError } from '../../utils/errorReporting.js';
 import { useStarDebug, useDebugOverlayCleanup } from '../../hooks/useStarDebug.js';
@@ -87,6 +88,15 @@ export function StarSphere({
   const { gl, camera, size: viewportSize } = useThree();
 
   const paused = useUiStore((s) => s.paused);
+  const qualityPreset = useUiStore((s) => s.qualityPreset);
+  const detectedQualityTier = useUiStore((s) => s.detectedQualityTier);
+  // Part of the material memo key: a preset change rebuilds the star material so
+  // it recompiles with the correct LOW_QUALITY define. (The tier-keyed
+  // CelestialEnvironment remount also covers this; kept explicit for safety.)
+  const qualityTier = useMemo(
+    () => resolveQualitySettings(qualityPreset, detectedQualityTier).tier,
+    [qualityPreset, detectedQualityTier],
+  );
   const reducedMotion = usePrefersReducedMotion();
   const lastTimeRef = useRef(0);
   const accumulatedTimeRef = useRef(0);
@@ -103,7 +113,7 @@ export function StarSphere({
   const removeDebugOverlay = useDebugOverlayCleanup();
   useStarDebug(debugEnabled, removeDebugOverlay);
 
-  const createdMaterial = useStarMaterial(debugEnabled, vertexShader);
+  const createdMaterial = useStarMaterial(debugEnabled, vertexShader, qualityTier);
   // Allow callers to fully override the material if desired (for testing or
   // special-case rendering). Otherwise use the created shader material.
   const appliedMaterial = materialOverride ?? createdMaterial;

@@ -55,6 +55,13 @@ export function QualityController(): React.ReactElement | null {
 
   const quality = resolveQualitySettings(qualityPreset, detectedQualityTier);
 
+  // Mirror the resolved tier into the module singleton synchronously during
+  // render, before any tier-dependent children render. Material factories read
+  // this config (never React) at creation time, and `BattleSceneContent` renders
+  // after this component, so a preset change must land here first or the
+  // remounted/rebuild materials would compile with the previous tier's defines.
+  RENDERER_VISUAL_CONFIG.performanceTier = quality.tier;
+
   useEffect(() => {
     RENDERER_VISUAL_CONFIG.performanceTier = quality.tier;
   }, [quality.tier]);
