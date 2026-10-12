@@ -7,6 +7,9 @@
 
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
+import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js';
+import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 
 // Pre-initialize test API to ensure availability
 window.__TEST__ = {
@@ -82,6 +85,20 @@ renderer.setPixelRatio(1); // Fixed pixel ratio for deterministic rendering
 
 // GLTF loader
 const loader = new GLTFLoader();
+
+// Attach decoders so compressed GLBs (Draco / Meshopt / KTX2) can be decoded.
+// Decoder assets are served from the repo root by scripts/e2e-static-server.mjs, so the
+// page works without a prior build (E2E_BUILD=false). With the current uncompressed
+// assets these decoders stay dormant, so rendering is unchanged.
+const dracoLoader = new DRACOLoader().setDecoderPath(
+  '/node_modules/three/examples/jsm/libs/draco/',
+);
+loader.setDRACOLoader(dracoLoader);
+
+const ktx2Loader = new KTX2Loader()
+  .setTranscoderPath('/node_modules/three/examples/jsm/libs/basis/')
+  .detectSupport(renderer);
+loader.setKTX2Loader(ktx2Loader);
 
 // --- Shield Config & Logic (ported from src/renderer/shields/shieldHexShader.tsx & src/config/shields.ts) ---
 
@@ -604,6 +621,11 @@ function renderFrame() {
  */
 async function initInternal() {
   try {
+    // The Meshopt decoder instantiates its embedded WASM asynchronously; gate loading on
+    // readiness so compressed GLBs decode on first load. Dormant for uncompressed assets.
+    await MeshoptDecoder.ready;
+    loader.setMeshoptDecoder(MeshoptDecoder);
+
     await loadShip();
 
     // Render the target frame
