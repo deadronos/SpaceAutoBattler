@@ -30,9 +30,17 @@ export interface QualitySettings {
   bloom: boolean;
   /** Engine-exhaust particle budget. */
   particles: { maxParticles: number; spawnRatePerAnchor: number };
-  /** Star shader noise octave count (model-only knob; reserved for star work). */
+  /**
+   * Star shader noise octave count. Binary knob — the shader only distinguishes
+   * the `low` tier (2 octaves) from everything else (7 octaves); applied only
+   * for `low`. `medium` therefore matches `high` here.
+   */
   starShaderOctaves: number;
-  /** Whether shield materials enable chromatic aberration. */
+  /**
+   * Whether shield materials enable chromatic aberration. Binary knob — applied
+   * only for the `low` tier (chromatic collapsed to 1 evaluation); `medium`
+   * therefore matches `high` (3 evaluations).
+   */
   shieldChromatic: boolean;
 }
 
@@ -65,8 +73,10 @@ export const QUALITY_PRESETS: Record<QualityTier, QualitySettings> = {
     ao: { enabled: true, halfRes: true, quality: 'Low' },
     bloom: true,
     particles: { maxParticles: 3000, spawnRatePerAnchor: 8 },
-    starShaderOctaves: 4,
-    shieldChromatic: false,
+    // Binary shader knobs: `medium` matches `high` (only `low` differs). Medium
+    // is distinguished from high via DPR/shadow/AO/particle knobs instead.
+    starShaderOctaves: 7,
+    shieldChromatic: true,
   },
   low: {
     tier: 'low',

@@ -12,6 +12,7 @@ import {
   disposeMainSequenceStarMaterial,
 } from '../renderer/starDiskMaterial.js';
 import { reportConfigError, reportMaterialError } from '../utils/errorReporting.js';
+import type { QualityTier } from '../config/quality.js';
 
 /**
  * Create and manage the star disk shader material.
@@ -25,7 +26,7 @@ import { reportConfigError, reportMaterialError } from '../utils/errorReporting.
 export function useStarMaterial(
   debugEnabled: boolean,
   vertexShaderOverride?: string,
-  qualityTier?: string,
+  qualityTier?: QualityTier,
 ): ShaderMaterial | null {
   const shaderMaterialRef = useRef<ShaderMaterial | null>(null);
 

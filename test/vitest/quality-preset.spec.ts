@@ -36,6 +36,8 @@ afterEach(() => {
 });
 
 function countChangedKnobs(a: QualitySettings, b: QualitySettings): number {
+  // Only the non-shader knobs: `starShaderOctaves`/`shieldChromatic` are binary
+  // (applied for `low` only), so `medium` intentionally matches `high` on them.
   return [
     a.dpr.min !== b.dpr.min,
     a.dpr.max !== b.dpr.max,
@@ -48,8 +50,6 @@ function countChangedKnobs(a: QualitySettings, b: QualitySettings): number {
     a.bloom !== b.bloom,
     a.particles.maxParticles !== b.particles.maxParticles,
     a.particles.spawnRatePerAnchor !== b.particles.spawnRatePerAnchor,
-    a.starShaderOctaves !== b.starShaderOctaves,
-    a.shieldChromatic !== b.shieldChromatic,
   ].filter(Boolean).length;
 }
 
@@ -83,6 +83,14 @@ describe('quality presets', () => {
     expect(high.particles).toEqual({ maxParticles: 5000, spawnRatePerAnchor: 12 });
     expect(high.starShaderOctaves).toBe(7);
     expect(high.shieldChromatic).toBe(true);
+  });
+
+  it('keeps the binary shader knobs equal for medium and high (only low differs)', () => {
+    const { high, medium, low } = QUALITY_PRESETS;
+    expect(medium.starShaderOctaves).toBe(high.starShaderOctaves);
+    expect(medium.shieldChromatic).toBe(high.shieldChromatic);
+    expect(low.starShaderOctaves).toBe(2);
+    expect(low.shieldChromatic).toBe(false);
   });
 
   it('changes at least three knobs between adjacent presets', () => {
