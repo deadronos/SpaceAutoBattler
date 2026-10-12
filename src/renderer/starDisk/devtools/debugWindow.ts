@@ -1,26 +1,8 @@
 import { registerDebugHook, unregisterDebugHook } from '../../../debug/copilotDebugRegistry.js';
+import { getStarDebugWindow } from '../../../debug/starDebugWindow.js';
 
-interface StarDebugProperties {
-  __copilot_forceStarOpaque?: boolean;
-  __copilot_star_forcedOpaque?: boolean;
-  __STAR_COMPILED?: boolean;
-  __copilot_starUniforms?: Array<unknown>;
-  __copilot_glLogs?: Array<unknown>;
-  __copilot_star_forceOnTop?: boolean;
-  __copilot_forceStarOpaqueReset?: () => void;
-  __copilot_star_compile_dispose?: Array<() => void>;
-}
-
-export type StarDebugWindow = Window & StarDebugProperties;
-
-declare global {
-  interface Window extends StarDebugProperties {}
-}
-
-export const getStarDebugWindow = (): StarDebugWindow | undefined => {
-  if (typeof window === 'undefined') return undefined;
-  return window as StarDebugWindow;
-};
+export { getStarDebugWindow };
+export type { StarDebugWindow } from '../../../debug/starDebugWindow.js';
 
 const updateLocalStorageTimestamp = (key: string): void => {
   try {
