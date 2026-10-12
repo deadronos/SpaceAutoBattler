@@ -8,7 +8,11 @@ import {
 } from 'postprocessing';
 import { type WebGLRenderer, type Scene, type Camera, type WebGLRenderTarget } from 'three';
 import { useBloomContext } from '../renderer/bloom/index.js';
-import { POSTPROCESSING_CONFIG, type AmbientOcclusionConfig } from '../config/renderer.js';
+import {
+  POSTPROCESSING_CONFIG,
+  type AmbientOcclusionConfig,
+  type ColorPipelineConfig,
+} from '../config/renderer.js';
 import { useUiStore } from '../app/uiStore.js';
 import { resolveQualitySettings } from '../config/quality.js';
 import { createComposer, type ComposerSetupResult } from './postprocessing/createComposer.js';
@@ -22,6 +26,7 @@ type Props = {
 
 type DebugWindow = Window & {
   __copilot_forceAmbientOcclusion?: boolean;
+  __copilot_forceHdrPipeline?: boolean;
 };
 
 /**
@@ -66,6 +71,20 @@ export function Postprocessing({ enabled = false }: Props): null {
     }),
     [quality.ao.enabled, quality.ao.halfRes, quality.ao.quality],
   );
+
+  // Linear-HDR + tone-mapping pipeline (#645). The debug override is resolved
+  // once (at mount), mirroring `__copilot_forceAmbientOcclusion`:
+  // `undefined` → config; `true`/`false` → forced.
+  const colorPipeline = useMemo<ColorPipelineConfig>(() => {
+    const forced =
+      typeof window !== 'undefined'
+        ? (window as DebugWindow).__copilot_forceHdrPipeline
+        : undefined;
+    return {
+      ...POSTPROCESSING_CONFIG.colorPipeline,
+      enabled: forced === undefined ? POSTPROCESSING_CONFIG.colorPipeline.enabled : forced,
+    };
+  }, []);
 
   const cleanupComposer = useCallback(() => {
     const setup = composerSetupRef.current;
@@ -127,6 +146,7 @@ export function Postprocessing({ enabled = false }: Props): null {
         camera: camera as unknown as Camera,
         bloomContext,
         config: POSTPROCESSING_CONFIG,
+        colorPipeline,
       });
 
       // Debug override: tests/automation can force AO on or off regardless of
@@ -152,6 +172,7 @@ export function Postprocessing({ enabled = false }: Props): null {
         scene: scene as unknown as Scene,
         camera: camera as unknown as Camera,
         effectPass,
+        colorPipeline,
         aoPass,
       });
 
@@ -190,6 +211,7 @@ export function Postprocessing({ enabled = false }: Props): null {
     camera,
     cleanupComposer,
     aoConfig,
+    colorPipeline,
     quality.tier,
   ]);
 

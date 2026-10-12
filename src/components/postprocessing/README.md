@@ -20,6 +20,99 @@ The post-processing pipeline includes:
 - **Tone Mapping** - Color grading and exposure adjustment
 - **FXAA** - Fast approximate anti-aliasing
 
+## Linear-HDR + tone-mapping pipeline (#645)
+
+By default the composer renders the scene into a **linear** (`NoColorSpace`)
+HalfFloat target and applies a `ToneMappingEffect` as the **last effect before
+FXAA**. Emissive materials are authored in HDR (values `> 1`); keeping the
+target linear preserves those values so bloom samples them before the display
+transform, instead of flattening them to white.
+
+The final sRGB encode still happens on the renderer output
+(`renderer.outputColorSpace = SRGBColorSpace`). The renderer keeps
+`toneMapping = NoToneMapping`: tone mapping is the effect, not the renderer.
+Because the effect's operator reads three's built-in `toneMappingExposure`
+uniform (uploaded from `renderer.toneMappingExposure`), `createComposer` drives
+that value from `colorPipeline.exposure` when the pipeline is enabled, and pins
+it to `1` (today's value) on the legacy path.
+
+### Configuration
+
+All knobs live in `POSTPROCESSING_CONFIG.colorPipeline`
+(`src/config/postprocessing.ts`):
+
+| Knob          | Meaning                                                                                                      |
+| ------------- | ------------------------------------------------------------------------------------------------------------ |
+| `enabled`     | Master toggle. `false` reproduces the legacy sRGB / `NoToneMapping` pipeline exactly                         |
+| `toneMapping` | Operator applied before FXAA: `agx` (default) / `aces` / `neutral`                                           |
+| `exposure`    | Pre-tone-map exposure multiplier                                                                             |
+| `bloomScale`  | Multiplier applied to every bloom group intensity when the pipeline is on (`0.1`; see Bloom rebalance below) |
+| `vignette`    | Optional asset-free vignette: `{ enabled, offset, darkness }`                                                |
+
+Effect order when enabled: `[...bloomEffects, toneMapping, vignette?, fxaa]`.
+When disabled the effect list is exactly `[...bloomEffects, fxaa]` and the
+target keeps its historical `SRGBColorSpace` tag.
+
+> **Note:** `postprocessing@6.39.5`'s `ToneMappingEffect` exposes no `exposure`
+> accessor; its operator reads three's built-in `toneMappingExposure` uniform.
+> `colorPipeline.exposure` is therefore applied by `createComposer` through
+> `renderer.toneMappingExposure` (restored on teardown like the other renderer
+> state). The default `exposure: 1` keeps the current visual.
+
+Construction of the tone-mapping/vignette effects is wrapped in `try/catch` and
+reported through `reportWebGLError`; on failure the pipeline degrades to the
+legacy effect list (mirroring `buildAmbientOcclusion`), so headless
+(jsdom/happy-dom) unit tests stay safe.
+
+### Bloom rebalance (`bloomScale`)
+
+The linear (`NoColorSpace`) HalfFloat target preserves emissive values `> 1`
+that the legacy sRGB path flattened, so the same per-group bloom intensities
+glow far harder once the pipeline is on. `colorPipeline.bloomScale` is the
+**single knob** that compensates: `buildEffects` computes
+
+```
+intensity = (overrides.intensity ?? config.bloomIntensity ?? 1)
+          * (colorPipeline.enabled ? colorPipeline.bloomScale : 1)
+```
+
+The shipped value is `0.1` (≈10× reduction). Per-group
+`bloomGroups[*].intensity`/`threshold`/`smoothing` are left **unchanged**, so the
+rebalance is revertible by toggling the pipeline off (or by setting
+`bloomScale: 1`). The per-group `threshold`/`smoothing` values are the sign-off
+tuning surface for the linear-HDR look — values `> 1` are now preserved, so
+thresholds may need raising. Do not change them without an explicit sign-off
+request.
+
+> **Baseline regeneration is required after sign-off.** The pipeline changes the
+> target color space, applies tone mapping, and rescales bloom, so the affected
+> Playwright baselines (celestial, ao, quality-high, camera-rig, and possibly
+> shield/ship-hulls) must be regenerated in a real-GPU/CI environment **only
+> after** a human signs off on the before/after capture. Do not regenerate or
+> commit baselines as part of the rebalance change itself.
+
+### Before/after capture
+
+`test/playwright/hdr-tonemapping-visual-baseline.spec.ts` produces the matched
+sign-off pair (`hdr-tonemapping-off-<project>.png` /
+`hdr-tonemapping-on-<project>.png`) under `test/playwright/baselines/`. It forces
+the pipeline with `window.__copilot_forceHdrPipeline` via `page.addInitScript`,
+captures a duplicate off-state control to measure the star-shader animation-noise
+floor, and gates that the on-vs-off signal clears it by a wide margin. It also
+logs FPS off vs on for the PR perf note. The screenshots are **not** committed.
+
+### Debug override
+
+`Postprocessing` reads `window.__copilot_forceHdrPipeline` during mount
+(mirroring `__copilot_forceAmbientOcclusion`):
+
+- `true` — force the linear-HDR pipeline on regardless of the config
+- `false` — force the legacy sRGB / `NoToneMapping` pipeline
+- `undefined` — use `POSTPROCESSING_CONFIG.colorPipeline.enabled`
+
+Because the flag is read at mount time, set it with `page.addInitScript` before
+navigation; changing it at runtime does not rebuild the composer.
+
 ## Ambient Occlusion (N8AO)
 
 `buildAmbientOcclusion()` wraps `N8AOPostPass` from the `n8ao` package. When

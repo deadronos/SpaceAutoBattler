@@ -5,17 +5,25 @@ import {
   type Camera,
   WebGLRenderTarget,
   HalfFloatType,
+  NoColorSpace,
   RGBAFormat,
   SRGBColorSpace,
   NoToneMapping,
   Vector2,
 } from 'three';
+import type { ColorPipelineConfig } from '../../config/renderer.js';
 
 export interface CreateComposerOptions {
   renderer: WebGLRenderer;
   scene: Scene;
   camera: Camera;
   effectPass: EffectPass;
+  /**
+   * Linear-HDR + tone-mapping pipeline config. When `enabled`, the HalfFloat
+   * target is tagged `NoColorSpace` (linear HDR); when disabled it keeps the
+   * historical `SRGBColorSpace` tag.
+   */
+  colorPipeline: ColorPipelineConfig;
   /**
    * Optional ambient-occlusion pass inserted between the render pass and the
    * effect pass. Absent/`null` keeps the historical two-pass composer.
@@ -35,6 +43,7 @@ export function createComposer({
   scene,
   camera,
   effectPass,
+  colorPipeline,
   aoPass,
 }: CreateComposerOptions): ComposerSetupResult {
   const previousState = {
@@ -58,7 +67,11 @@ export function createComposer({
     renderer.autoClear = false;
     renderer.outputColorSpace = SRGBColorSpace;
     renderer.toneMapping = NoToneMapping;
-    renderer.toneMappingExposure = 1;
+    // The tone-mapping effect's operator reads three's built-in
+    // `toneMappingExposure` uniform, which the renderer uploads from this value.
+    // Driving it here is what makes `colorPipeline.exposure` take effect; the
+    // legacy path pins it to `1` (today's value) exactly as before.
+    renderer.toneMappingExposure = colorPipeline.enabled ? colorPipeline.exposure : 1;
 
     const size = renderer.getSize(new Vector2());
     const pixelRatio = renderer.getPixelRatio();
@@ -66,7 +79,10 @@ export function createComposer({
       format: RGBAFormat,
       type: HalfFloatType,
     });
-    renderTarget.texture.colorSpace = SRGBColorSpace;
+    // Linear-HDR pipeline: keep the HDR half-float values unencoded so the
+    // tone-mapping effect (not the target) performs the display transform. The
+    // legacy path keeps the historical sRGB tag.
+    renderTarget.texture.colorSpace = colorPipeline.enabled ? NoColorSpace : SRGBColorSpace;
 
     const composer = new EffectComposer(renderer, renderTarget);
     const renderPass = new RenderPass(scene, camera);
