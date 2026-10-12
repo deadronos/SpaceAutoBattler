@@ -106,9 +106,10 @@ export interface ParticleTrailsConfig {
   scaleJitter: number;
   /**
    * Radial softness exponent for the exhaust sprite. The fragment alpha is
-   * multiplied by `pow(smoothstep(0, 1, facing), spriteSoftness)`, so higher
-   * values fade the rim harder (softer particles). A low value (0) reproduces
-   * the previous hard-edged look.
+   * multiplied by `pow(smoothstep(0, 1, facing), max(spriteSoftness, 1e-4))`,
+   * so higher values fade the rim harder (softer particles). A low value (0)
+   * reproduces the previous hard-edged look; the exponent is clamped to avoid
+   * the undefined `pow(0.0, 0.0)` at the exact silhouette.
    */
   spriteSoftness: number;
 }

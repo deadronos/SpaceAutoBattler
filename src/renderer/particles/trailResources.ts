@@ -80,9 +80,11 @@ function createTrailMaterial(
       varying vec3 vNormalView;
 
       void main() {
-        // Facing term: 0 at the silhouette, 1 facing the camera.
+        // Facing term: 0 at the silhouette, 1 facing the camera. The exponent is
+        // clamped so spriteSoftness=0 behaves as documented instead of evaluating
+        // the undefined pow(0.0, 0.0) at the exact silhouette.
         float facing = abs(normalize(vNormalView).z);
-        float radial = pow(smoothstep(0.0, 1.0, facing), uSoftness);
+        float radial = pow(smoothstep(0.0, 1.0, facing), max(uSoftness, 1e-4));
         float alpha = uOpacity * vFade * radial;
         if (alpha <= 0.001) {
           discard;

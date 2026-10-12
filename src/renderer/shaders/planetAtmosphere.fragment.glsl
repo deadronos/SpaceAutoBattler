@@ -26,4 +26,3 @@
           float intensity = fresnel * forwardScatter * uAtmosphereStrength;
           gl_FragColor = vec4(uAtmosphereColor * intensity, intensity);
         }
-      

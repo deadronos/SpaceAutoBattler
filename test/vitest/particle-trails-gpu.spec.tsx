@@ -208,6 +208,7 @@ describe('ParticleTrails GPU buffers', () => {
     expect(resources.material.uniforms.uSoftness.value).toBe(PARTICLE_TRAILS_CONFIG.spriteSoftness);
     expect(resources.material.fragmentShader).toContain('uSoftness');
     expect(resources.material.fragmentShader).toContain('smoothstep');
+    expect(resources.material.fragmentShader).toContain('max(uSoftness, 1e-4)');
     expect(resources.material.vertexShader).toContain('vNormalView');
   });
 
