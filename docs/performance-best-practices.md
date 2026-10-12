@@ -181,6 +181,7 @@ For renderer code:
 
 ## References
 
+- [Performance Report (current)](./performance-report.md)
 - [R3F/Drei Performance Best Practices](./r3f-drei-webgl-performance-best-practices.md)
 - [Renderer Performance Report](./performance-report-v0.1.1.md)
 - [Tech Debt Report](./tech-debt-report.md)
