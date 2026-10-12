@@ -133,6 +133,14 @@ export interface ShieldTuning {
   minAlphaFloor: number;
   /** Interior color tint multiplier so fill isn't pitch black. */
   fillTintMul: number;
+  /**
+   * Occlusion toggle for shield materials. When true (default), the shield
+   * bubble participates in depth testing and is hidden behind nearer opaque
+   * geometry (ship hulls, other ships, planets). When false the bubble renders
+   * on top of everything (the legacy look). `depthWrite` stays disabled either
+   * way so transparent sorting is unaffected.
+   */
+  depthTest: boolean;
 }
 
 export const SHIELD_TUNING: ShieldTuning = {
@@ -144,6 +152,7 @@ export const SHIELD_TUNING: ShieldTuning = {
   fillAlphaMul: 0.2,
   minAlphaFloor: 0.1,
   fillTintMul: 1.05,
+  depthTest: true,
 };
 
 // Global shield ripple tuning (tweakable).

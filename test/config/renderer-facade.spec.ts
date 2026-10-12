@@ -8,6 +8,7 @@ describe('renderer config facade', () => {
       [
         "HULL_TINT",
         "PARTICLE_TRAILS_CONFIG",
+        "PARTICLE_TRAIL_DEFAULT_SOFTNESS",
         "POSTPROCESSING_CONFIG",
         "RENDERER_MOTION_DEFAULTS",
         "RENDERER_VISUAL_CONFIG",

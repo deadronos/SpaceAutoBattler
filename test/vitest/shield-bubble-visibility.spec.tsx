@@ -68,9 +68,9 @@ describe('ShieldBubble visibility behavior (static analysis)', () => {
     expect(txt.includes('renderOrder={SHIELD_RENDER_ORDER}')).toBe(true);
   });
 
-  it('disables depth testing on the shield hex material factory', () => {
+  it('enables depth testing on the shield hex material factory', () => {
     const mat = createShieldHexShaderMaterial('carrier', 'blue');
-    expect(mat.depthTest).toBe(false);
+    expect(mat.depthTest).toBe(true);
     expect(mat.depthWrite).toBe(false);
     mat.dispose();
   });

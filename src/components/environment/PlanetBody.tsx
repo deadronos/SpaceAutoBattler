@@ -6,9 +6,14 @@ import { useOptionalGameState } from '../../app/context.js';
 import { usePlanetTexture } from '../../hooks/usePlanetTexture.js';
 import { usePrefersReducedMotion } from '../../hooks/usePrefersReducedMotion.js';
 import type { PlanetBodyConfig } from '../../config/environment.js';
-import { PLANET_GEOMETRY_SEGMENTS, CELESTIAL_ENVIRONMENT } from '../../config/environment.js';
+import {
+  PLANET_GEOMETRY_SEGMENTS,
+  CELESTIAL_ENVIRONMENT,
+  PLANET_ATMOSPHERE_SHELL_SCALE,
+} from '../../config/environment.js';
 import { PlanetRings } from './PlanetRings.js';
 import { PlanetRimShell } from './PlanetRimShell.js';
+import { PlanetAtmosphere } from './PlanetAtmosphere.js';
 
 interface PlanetBodyProps {
   config: PlanetBodyConfig;
@@ -72,6 +77,11 @@ export const PlanetBody = memo(function PlanetBody({
   );
   const emissiveIntensity = config.emissiveBoost ?? 0.05;
   const useRimGlow = (config.rimStrength ?? 0) > 0;
+  // Atmosphere shell is gated by the global feature flag and the per-planet
+  // strength; strength 0 disables it for that planet only.
+  const useAtmosphere =
+    CELESTIAL_ENVIRONMENT.features?.planetAtmosphere !== false &&
+    (config.atmosphereStrength ?? 0) > 0;
 
   const hideRingsParam = false;
 
@@ -112,6 +122,23 @@ export const PlanetBody = memo(function PlanetBody({
             radius={config.radius * 1.015}
             rimStrength={config.rimStrength ?? 0}
             rimColor={config.rimColor ?? '#ffffff'}
+          />
+        </mesh>
+      )}
+      {useAtmosphere && (
+        <mesh castShadow={false} receiveShadow={false} renderOrder={4}>
+          <sphereGeometry
+            args={[
+              config.radius * PLANET_ATMOSPHERE_SHELL_SCALE,
+              PLANET_GEOMETRY_SEGMENTS.width,
+              PLANET_GEOMETRY_SEGMENTS.height,
+            ]}
+          />
+          <PlanetAtmosphere
+            strength={config.atmosphereStrength ?? 0}
+            color={config.atmosphereColor ?? '#7fb2ff'}
+            falloff={config.atmosphereFalloff ?? 3.0}
+            lightDir={CELESTIAL_ENVIRONMENT.starLight.direction}
           />
         </mesh>
       )}
