@@ -69,7 +69,7 @@ export function Hud(): React.ReactElement {
           </p>
         )}
         {selectedShipId != null ? (
-          <p className="hud-selection-status" role="status">
+          <p className="hud-selection-status">
             Selected ship #{selectedShipId} — enable “Follow Selected Ship” to track it.
           </p>
         ) : null}

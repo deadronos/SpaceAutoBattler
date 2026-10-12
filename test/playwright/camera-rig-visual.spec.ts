@@ -70,6 +70,11 @@ async function captureScene(
 
   await page.setViewportSize(VIEWPORT);
 
+  // Pin the capture environment so `prefers-reduced-motion` cannot silently
+  // suppress follow smoothing (which would make the follow-on frame a no-op and
+  // fail the self-calibrating gate). Mirrors a deterministic desktop default.
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+
   // Must run before `goto`: `<CameraRig />` reads these during mount.
   await page.addInitScript(
     (opts: { trauma: number; followId?: number }) => {
