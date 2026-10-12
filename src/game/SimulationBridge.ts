@@ -6,7 +6,6 @@ import type {
 } from '../worker/protocol.js';
 import { createTransformSoALayout, createTransformSoAViews } from '../worker/transformsLayout.js';
 import { reportLifecycleError } from '../utils/errorReporting.js';
-import { ErrorCategory, reportRecoverableGameError } from './errors.js';
 import { sampleShipMotion } from './workerSnapshotSampler.js';
 
 export {
@@ -70,11 +69,11 @@ export class SimulationBridge {
       if (message.type === 'ready') {
         this.isReady = true;
         if (this.debugEnabled) {
-          reportRecoverableGameError(ErrorCategory.Lifecycle, 'SimulationBridge worker ready', {
-            source: 'SimulationBridge',
-            code: 'worker-ready',
-            context: { message },
-          });
+          try {
+            globalThis.console?.log?.('[SimulationBridge] worker ready', message);
+          } catch (error) {
+            reportLifecycleError('update', 'SimulationBridge', undefined, error);
+          }
         }
         this.readyResolve?.();
         this.readyResolve = null;
@@ -91,26 +90,21 @@ export class SimulationBridge {
         this.readyResolve = null;
         this.readyReject = null;
         if (this.debugEnabled) {
-          reportRecoverableGameError(
-            ErrorCategory.Lifecycle,
-            'SimulationBridge worker error',
-            {
-              source: 'SimulationBridge',
-              code: 'worker-error',
-              context: { message: this.lastError.message },
-            },
-            error,
-          );
+          try {
+            globalThis.console?.error?.('[SimulationBridge] worker error', error);
+          } catch (error) {
+            reportLifecycleError('update', 'SimulationBridge', undefined, error);
+          }
         }
         return;
       }
 
       if (this.debugEnabled && message.type === 'pong') {
-        reportRecoverableGameError(ErrorCategory.Lifecycle, 'SimulationBridge pong', {
-          source: 'SimulationBridge',
-          code: 'worker-pong',
-          context: { message },
-        });
+        try {
+          globalThis.console?.log?.('[SimulationBridge] pong', message);
+        } catch (error) {
+          reportLifecycleError('update', 'SimulationBridge', undefined, error);
+        }
       }
 
       if (message.type === 'snapshot') {
@@ -132,18 +126,18 @@ export class SimulationBridge {
           this.latestTransferBuffer = message.buffer;
           this.latestTransferViews = createTransformSoAViews(this.layout, message.buffer);
           if (this.debugEnabled) {
-            const x = this.latestTransferViews.positions[0] ?? 0;
-            reportRecoverableGameError(ErrorCategory.Lifecycle, 'SimulationBridge snapshot', {
-              source: 'SimulationBridge',
-              code: 'worker-snapshot',
-              context: {
+            try {
+              const x = this.latestTransferViews.positions[0] ?? 0;
+              globalThis.console?.log?.('[SimulationBridge] snapshot', {
                 tick: message.tick,
                 ships: message.shipCount,
                 firstX: x,
                 created: message.created.length,
                 destroyed: message.destroyed.length,
-              },
-            });
+              });
+            } catch (error) {
+              reportLifecycleError('update', 'SimulationBridge', undefined, error);
+            }
           }
         }
 
@@ -167,16 +161,11 @@ export class SimulationBridge {
       this.readyReject = null;
 
       if (this.debugEnabled) {
-        reportRecoverableGameError(
-          ErrorCategory.Lifecycle,
-          'SimulationBridge worker.onerror',
-          {
-            source: 'SimulationBridge',
-            code: 'worker-onerror',
-            context: { message: this.lastError.message, stack: this.lastError.stack },
-          },
-          error,
-        );
+        try {
+          globalThis.console?.error?.('[SimulationBridge] worker.onerror', event);
+        } catch (error) {
+          reportLifecycleError('update', 'SimulationBridge', undefined, error);
+        }
       }
     };
 
