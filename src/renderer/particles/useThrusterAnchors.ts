@@ -3,6 +3,7 @@ import { Box3, Vector3 } from 'three';
 import { useGLTF } from '@react-three/drei';
 import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { SHIP_MODEL_PATHS } from '../../assets/ships.js';
+import { extendShipGltfLoader } from '../loaders/gltfDecoders.js';
 import type { ShipEntity, ShipHull } from '../../types/index.js';
 import { THRUSTER_GLOW_CONFIG } from '../../config/effects.js';
 
@@ -34,11 +35,16 @@ function extractAnchorsFromGltf(gltf: GLTF | null, hull: ShipHull): Vector3[] {
 }
 
 export function useThrusterAnchors(): ThrusterAnchorLocals {
-  const gltfFighter = useGLTF(SHIP_MODEL_PATHS.fighter) as GLTF;
-  const gltfCorvette = useGLTF(SHIP_MODEL_PATHS.corvette) as GLTF;
-  const gltfFrigate = useGLTF(SHIP_MODEL_PATHS.frigate) as GLTF;
-  const gltfDestroyer = useGLTF(SHIP_MODEL_PATHS.destroyer) as GLTF;
-  const gltfCarrier = useGLTF(SHIP_MODEL_PATHS.carrier) as GLTF;
+  const gltfFighter = useGLTF(SHIP_MODEL_PATHS.fighter, true, true, extendShipGltfLoader) as GLTF;
+  const gltfCorvette = useGLTF(SHIP_MODEL_PATHS.corvette, true, true, extendShipGltfLoader) as GLTF;
+  const gltfFrigate = useGLTF(SHIP_MODEL_PATHS.frigate, true, true, extendShipGltfLoader) as GLTF;
+  const gltfDestroyer = useGLTF(
+    SHIP_MODEL_PATHS.destroyer,
+    true,
+    true,
+    extendShipGltfLoader,
+  ) as GLTF;
+  const gltfCarrier = useGLTF(SHIP_MODEL_PATHS.carrier, true, true, extendShipGltfLoader) as GLTF;
 
   return useMemo(
     () =>

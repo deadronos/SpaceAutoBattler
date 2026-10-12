@@ -22,6 +22,7 @@ import { TurretsLayer } from './layers/TurretsLayer.js';
 import { StarsField } from './layers/StarsField.js';
 import { WorkerShipsLayer } from './layers/WorkerShipsLayer.js';
 import { installWebGLDebugHooks } from '../renderer/webglDebugWrapper.js';
+import { configureGltfDecoders } from '../renderer/loaders/gltfDecoders.js';
 import { shouldRenderWorkerShips, shouldRenderWorkerShipsOnly } from '../game/SimulationBridge.js';
 import { reportWebGLError } from '../utils/errorReporting.js';
 import { isCopilotDebugEnabled } from '../utils/copilotDebug.js';
@@ -165,4 +166,6 @@ export function configureBattlefieldRenderer(gl: WebGLRenderer): void {
   } catch (error) {
     reportWebGLError('installWebGLDebugHooks', error);
   }
+  // Register self-hosted glTF decoders (Draco/Meshopt/KTX2) once the real renderer exists.
+  configureGltfDecoders(gl);
 }

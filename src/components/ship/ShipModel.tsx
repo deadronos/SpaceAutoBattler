@@ -5,6 +5,7 @@ import { useGLTF } from '@react-three/drei';
 import type { ShipHull } from '../../types/index.js';
 import type { MaterialWithUserData } from '../../types/renderer.js';
 import { SHIP_MODEL_PATHS } from '../../assets/ships.js';
+import { extendShipGltfLoader } from '../../renderer/loaders/gltfDecoders.js';
 
 /** Interface for materials that have color properties */
 interface ColoredMaterial extends Material {
@@ -45,7 +46,7 @@ export function useShipModel(modelKey?: string): {
   const modelPath = resolveModelPath(modelKey);
   const hasValidPath = typeof modelPath === 'string' && modelPath.length > 0;
 
-  const gltf = hasValidPath ? (useGLTF(modelPath) as GLTF) : null;
+  const gltf = hasValidPath ? (useGLTF(modelPath, true, true, extendShipGltfLoader) as GLTF) : null;
   const scene = useMemo(() => (gltf ? gltf.scene.clone(true) : null), [gltf]);
 
   return { scene, hasValidPath };

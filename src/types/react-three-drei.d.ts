@@ -13,7 +13,15 @@ declare module '@react-three/drei' {
   export function useTexture<T extends Record<string, string>>(
     urls: T,
   ): { [K in keyof T]: Texture };
-  export function useGLTF(path: string): unknown;
+  export function useGLTF(
+    path: string | string[],
+    useDraco?: boolean | string,
+    useMeshopt?: boolean,
+    extendLoader?: (loader: import('three-stdlib').GLTFLoader) => void,
+  ): unknown;
+  export namespace useGLTF {
+    export function setDecoderPath(path: string): void;
+  }
   // Material component from drei: https://drei.docs.pmnd.rs/shaders/mesh-transmission-material
   export const MeshTransmissionMaterial: React.FC<Record<string, unknown>>;
   export const Html: React.FC<GroupProps & { center?: boolean }>;

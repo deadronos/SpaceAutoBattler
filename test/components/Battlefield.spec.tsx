@@ -25,6 +25,7 @@ vi.mock('@react-three/fiber', () => ({
 vi.mock('@react-three/drei', () => ({
   OrbitControls: () => null,
   Grid: vi.fn(() => null),
+  useGLTF: Object.assign(vi.fn(), { setDecoderPath: vi.fn() }),
 }));
 
 vi.mock('../../src/app/context.js', () => ({
