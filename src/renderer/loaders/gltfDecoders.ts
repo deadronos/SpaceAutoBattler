@@ -48,31 +48,40 @@ export function getDecoderDirs(): { draco: string; basis: string } {
 // so the runtime no longer depends on the gstatic CDN.
 useGLTF.setDecoderPath(getDecoderDirs().draco);
 
+// Construct the KTX2 loader at module scope so it exists before any render-phase
+// `useGLTF(...)` call runs `extendShipGltfLoader`. `useLoader` creates the glTF loader and
+// invokes `extendLoader` during render (then caches it), while `configureGltfDecoders(gl)`
+// runs later in `Canvas onCreated`; the loader must therefore be attachable before that.
+// Construction is guarded: a failure leaves `ktx2Loader` unset (fallback), never throwing.
 let ktx2Loader: KTX2Loader | null = null;
-let ktx2InitAttempted = false;
+try {
+  ktx2Loader = new KTX2Loader().setTranscoderPath(getDecoderDirs().basis);
+} catch (error) {
+  console.warn('[gltfDecoders] KTX2 loader construction failed; continuing without KTX2.', error);
+}
+
+let ktx2SupportChecked = false;
 
 /**
- * Configure glTF decoders for the live renderer. Idempotent: initialisation is attempted at
- * most once, on both the success and failure paths. The whole KTX2 init (construction,
- * transcoder path, support detection) is guarded — any throw is logged and leaves the loader
- * unset, so uncompressed assets keep loading through the normal fallback path.
+ * Configure glTF decoders for the live renderer. Idempotent and non-throwing: support
+ * detection is attempted at most once, and any throw is logged. Detection is synchronous
+ * and runs in `Canvas onCreated` (before the async GLB fetch/parse completes), so the
+ * module-scope loader is already attached to the glTF loaders by then.
  */
 export function configureGltfDecoders(gl: WebGLRenderer): void {
-  if (ktx2InitAttempted) return;
-  ktx2InitAttempted = true;
+  if (ktx2SupportChecked || !ktx2Loader) return;
+  ktx2SupportChecked = true;
 
   try {
-    const ktx2 = new KTX2Loader().setTranscoderPath(getDecoderDirs().basis);
-    ktx2.detectSupport(gl);
-    ktx2Loader = ktx2;
+    ktx2Loader.detectSupport(gl);
   } catch (error) {
-    console.warn('[gltfDecoders] KTX2 init failed; continuing without KTX2.', error);
+    console.warn('[gltfDecoders] KTX2 support detection failed; continuing without KTX2.', error);
   }
 }
 
 /**
- * drei `extendLoader` hook: attaches the shared KTX2 loader when it initialised successfully.
- * Draco and Meshopt are configured by drei itself.
+ * drei `extendLoader` hook: attaches the shared KTX2 loader unconditionally (when it could be
+ * constructed). Draco and Meshopt are configured by drei itself.
  */
 export function extendShipGltfLoader(loader: GLTFLoader): void {
   if (ktx2Loader) loader.setKTX2Loader(ktx2Loader);

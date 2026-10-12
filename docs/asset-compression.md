@@ -32,19 +32,23 @@ before the generic hashed `.wasm` rule. Draco no longer points at the gstatic CD
 1. **Import time** (`src/renderer/loaders/gltfDecoders.ts`): `useGLTF.setDecoderPath(dir)`
    registers the Draco decoder directory once, with no renderer required. drei keeps its own
    `DRACOLoader` and fetches `draco_decoder.wasm` / `draco_decoder.js` from that directory.
-2. **Renderer creation** (`Battlefield.tsx` → `configureBattlefieldRenderer`, called from
-   `Canvas onCreated`): `configureGltfDecoders(gl)` constructs a single `KTX2Loader`, sets the
-   Basis transcoder path, and runs `detectSupport(gl)`.
-3. **Per-loader extension**: `extendShipGltfLoader` is passed to `useGLTF(...)` as drei's
-   `extendLoader`. It attaches the shared KTX2 loader when available. Draco and Meshopt are
-   already configured by drei.
+   The shared `KTX2Loader` is also constructed here (with the Basis transcoder path) so it
+   exists before any glTF loader is created.
+2. **Render phase** (`useGLTF` → `useLoader`): drei invokes `extendShipGltfLoader`, which
+   attaches the shared KTX2 loader to the glTF loader. This must happen before the loader is
+   cached, so the loader is constructed at import time rather than in `onCreated`.
+3. **Renderer creation** (`Battlefield.tsx` → `configureBattlefieldRenderer`, called from
+   `Canvas onCreated`): `configureGltfDecoders(gl)` runs `ktx2Loader.detectSupport(gl)` once
+   on the shared instance. Detection is synchronous and completes before the asynchronous GLB
+   fetch/parse, so the loader is already attached and supported by the time textures decode.
+   Draco and Meshopt are configured by drei itself.
 
 ## Fallback behaviour
 
-- `configureGltfDecoders` is idempotent: the KTX2 loader is created at most once.
-- If `detectSupport(gl)` throws, the error is logged and the KTX2 loader is left unset.
-  `extendShipGltfLoader` then becomes a no-op. Uncompressed assets continue to load through
-  the normal glTF path — nothing throws.
+- `configureGltfDecoders` is idempotent: support detection runs at most once and never throws.
+- The KTX2 loader is constructed at module scope inside a guard; if construction fails, the
+  loader stays unset and `extendShipGltfLoader` becomes a no-op. Uncompressed assets continue
+  to load through the normal glTF path — nothing throws.
 - Assets currently ship **uncompressed**. To keep the runtime uncompressed, restore the `.glb`
   files from git; no loader changes are required.
 

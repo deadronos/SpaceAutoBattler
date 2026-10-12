@@ -83,34 +83,46 @@ describe('gltfDecoders', () => {
     expect(h.ktx2Instances[0]?.setTranscoderPath).toHaveBeenCalledWith('./decoders/');
   });
 
-  it('falls back without throwing when KTX2 support detection fails', async () => {
+  it('does not throw when KTX2 support detection fails, and only checks once', async () => {
     h.failDetectSupport = true;
     const mod = await loadModule();
     const gl = {} as never;
 
     expect(() => mod.configureGltfDecoders(gl)).not.toThrow();
+    expect(() => mod.configureGltfDecoders(gl)).not.toThrow();
 
-    const loader = { setKTX2Loader: vi.fn() };
-    mod.extendShipGltfLoader(loader as never);
-    expect(loader.setKTX2Loader).not.toHaveBeenCalled();
+    const instance = h.ktx2Instances[0] as { detectSupport: ReturnType<typeof vi.fn> };
+    expect(instance.detectSupport).toHaveBeenCalledTimes(1);
   });
 
-  it('falls back without throwing when KTX2 construction/init throws', async () => {
+  it('falls back without throwing when KTX2 construction fails', async () => {
     h.failSetTranscoderPath = true;
     const mod = await loadModule();
     const gl = {} as never;
 
     expect(() => mod.configureGltfDecoders(gl)).not.toThrow();
-    // Idempotent on the failure path too: a second call does not retry construction.
     expect(() => mod.configureGltfDecoders(gl)).not.toThrow();
-    expect(h.ktx2Instances).toHaveLength(1);
 
     const loader = { setKTX2Loader: vi.fn() };
     mod.extendShipGltfLoader(loader as never);
     expect(loader.setKTX2Loader).not.toHaveBeenCalled();
   });
 
-  it('attaches the KTX2 loader to the glTF loader when configured', async () => {
+  it('attaches KTX2 to the loader before configureGltfDecoders runs (render-phase timing)', async () => {
+    const mod = await loadModule();
+    const loader = { setKTX2Loader: vi.fn() };
+
+    // `useGLTF` -> `useLoader` runs `extendLoader` during render, before `onCreated`.
+    mod.extendShipGltfLoader(loader as never);
+
+    expect(loader.setKTX2Loader).toHaveBeenCalledTimes(1);
+    expect(loader.setKTX2Loader).toHaveBeenCalledWith(h.ktx2Instances[0]);
+
+    // Detection still runs afterwards on the same instance, without throwing.
+    expect(() => mod.configureGltfDecoders({} as never)).not.toThrow();
+  });
+
+  it('attaches the KTX2 loader to the glTF loader after configuration', async () => {
     const mod = await loadModule();
     mod.configureGltfDecoders({} as never);
 
