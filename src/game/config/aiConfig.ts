@@ -3,6 +3,7 @@ import { ErrorCategory, reportRecoverableGameError } from '../errors.js';
 import { readBooleanEnv, readStringEnv } from '../../utils/env.js';
 import { readBooleanParam, readQueryParam, readStringParam } from '../../utils/queryParams.js';
 import { getAiOverrideProvider, type AiOverrideSlice } from './aiOverrides.js';
+import { sanitizeAiOverrides, validateAiConfig } from './aiConfigValidation.js';
 
 // AI configuration.
 // Env/query readers live in ../../utils/env.js and ../../utils/queryParams.js.
@@ -132,6 +133,15 @@ export const AI_CONFIG = {
   },
 };
 
+// Guard future edits to the constants: invalid values warn (never throw) at
+// module load so a mis-tuned flag cannot silently change simulation behaviour.
+for (const issue of validateAiConfig(AI_CONFIG)) {
+  reportRecoverableGameError(ErrorCategory.Config, issue, {
+    source: 'aiConfig',
+    code: 'ai-config-invalid',
+  });
+}
+
 /**
  * Runtime AI Configuration Helpers
  *
@@ -145,15 +155,16 @@ export const AI_CONFIG = {
  * @returns {typeof AI_CONFIG} The effective AI configuration.
  */
 function computeEffectiveAIConfig(uiState: AiOverrideSlice) {
+  const overrides = sanitizeAiOverrides(uiState);
   return {
     ...AI_CONFIG,
-    verticalEnabled: uiState.aiVerticalEnabled ?? AI_CONFIG.verticalEnabled,
-    engagementBoostEnabled: uiState.aiEngagementBoostEnabled ?? AI_CONFIG.engagementBoostEnabled,
-    smoothingEnabled: uiState.aiSmoothingEnabled ?? AI_CONFIG.smoothingEnabled,
-    hysteresisEnabled: uiState.aiHysteresisEnabled ?? AI_CONFIG.hysteresisEnabled,
-    verticalDampingEnabled: uiState.aiVerticalDampingEnabled ?? AI_CONFIG.verticalDampingEnabled,
-    tickRateHzExperiment: uiState.aiTickRateExperimentEnabled ?? AI_CONFIG.tickRateHzExperiment,
-    rangePolicy: uiState.aiRangePolicy ?? AI_CONFIG.rangePolicy,
+    verticalEnabled: overrides.aiVerticalEnabled ?? AI_CONFIG.verticalEnabled,
+    engagementBoostEnabled: overrides.aiEngagementBoostEnabled ?? AI_CONFIG.engagementBoostEnabled,
+    smoothingEnabled: overrides.aiSmoothingEnabled ?? AI_CONFIG.smoothingEnabled,
+    hysteresisEnabled: overrides.aiHysteresisEnabled ?? AI_CONFIG.hysteresisEnabled,
+    verticalDampingEnabled: overrides.aiVerticalDampingEnabled ?? AI_CONFIG.verticalDampingEnabled,
+    tickRateHzExperiment: overrides.aiTickRateExperimentEnabled ?? AI_CONFIG.tickRateHzExperiment,
+    rangePolicy: overrides.aiRangePolicy ?? AI_CONFIG.rangePolicy,
   };
 }
 

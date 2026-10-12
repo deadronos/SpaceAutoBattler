@@ -2,23 +2,13 @@
  * AI Experiment Configuration
  *
  * This file documents the available AI experiment flags and their configuration.
- * Actual flag values are computed in src/game/config.ts based on environment variables
- * and URL query parameters.
+ * `AI_CONFIG` in `src/game/config/aiConfig.ts` is the single source of truth for
+ * the flag values; they are computed there from environment variables and URL
+ * query parameters.
+ *
+ * (The former `AIExperimentFlags` interface was removed: it had no importers and
+ * duplicated a subset of `AI_CONFIG`, so it could silently drift.)
  */
-
-export interface AIExperimentFlags {
-  /** Enable 3D vertical maneuvering for AI ships */
-  verticalEnabled: boolean;
-
-  /** Enable engagement boost behavior during opening salvo */
-  engagementBoostEnabled: boolean;
-
-  /** Enable experimental higher tick rate (15Hz vs 12Hz) */
-  tickRateHzExperiment: boolean;
-
-  /** Range calculation policy: 'v0.1.1-exp' for experimental, other values for stable */
-  rangePolicy: string;
-}
 
 /**
  * Environment Variable Configuration
@@ -76,3 +66,8 @@ export interface AIExperimentFlags {
  * Emergency rollback: Clear all environment variables and URL parameters
  * to return to safe defaults.
  */
+
+// Documentation-only module: no runtime exports. The empty export keeps this a
+// valid ES module so the "empty file" lint rule does not flag the comment-only
+// file.
+export {};
