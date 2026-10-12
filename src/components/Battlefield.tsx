@@ -24,6 +24,7 @@ import { WorkerShipsLayer } from './layers/WorkerShipsLayer.js';
 import { installWebGLDebugHooks } from '../renderer/webglDebugWrapper.js';
 import { shouldRenderWorkerShips, shouldRenderWorkerShipsOnly } from '../game/SimulationBridge.js';
 import { reportWebGLError } from '../utils/errorReporting.js';
+import { isCopilotDebugEnabled } from '../utils/copilotDebug.js';
 
 interface BattleSceneContentProps {
   ppEnabled: boolean;
@@ -35,14 +36,17 @@ type DebugWindow = Window & {
 
 function BattleSceneContent({ ppEnabled }: BattleSceneContentProps): React.ReactElement {
   const state = useOptionalGameState();
-  const axesHelper = useMemo(() => new AxesHelper(200), []);
-  useEffect(() => () => axesHelper.dispose(), [axesHelper]);
 
   if (!state) return <></>;
   const renderWorkerShipsOnly = shouldRenderWorkerShipsOnly();
   const renderWorkerShips = shouldRenderWorkerShips();
   // Expose a local `ships` binding to make particle integration explicit for static checks
   const ships = state.queries.ships;
+  // Dev grid/axes are opt-in: only in Copilot debug mode, and still suppressed when
+  // `?copilot_hide_planets=1` is present (used by star-disk luminance metrics).
+  const showDevGrid =
+    isCopilotDebugEnabled() &&
+    !(typeof window !== 'undefined' && window.location.search.includes('copilot_hide_planets=1'));
 
   const sceneContent = (
     <>
@@ -73,28 +77,39 @@ function BattleSceneContent({ ppEnabled }: BattleSceneContentProps): React.React
         maxDistance={WORLD_SIZE * 2}
         minDistance={10}
       />
-      {!(
-        typeof window !== 'undefined' && window.location.search.includes('copilot_hide_planets=1')
-      ) && (
-        <>
-          <Grid
-            args={[WORLD_SIZE, WORLD_SIZE]}
-            cellSize={50}
-            sectionSize={500}
-            cellColor="#203050"
-            sectionColor="#101725"
-            position={[0, -5, 0]}
-            fadeDistance={ppEnabled ? WORLD_SIZE : undefined}
-            transparent
-            opacity={ppEnabled ? undefined : 0.1}
-          />
-          <primitive object={axesHelper} position={[0, 0, 0]} />
-        </>
-      )}
+      {showDevGrid && <DevGridAndAxes ppEnabled={ppEnabled} />}
     </>
   );
 
   return ppEnabled ? <BloomProvider enabled>{sceneContent}</BloomProvider> : sceneContent;
+}
+
+/**
+ * Opt-in debug overlay: the battlefield grid and world axes.
+ * Mounted only when Copilot debug mode is enabled (see `showDevGrid` in
+ * `BattleSceneContent`); the `AxesHelper` instance lifecycle is kept here so it is
+ * created and disposed only while the overlay is mounted.
+ */
+function DevGridAndAxes({ ppEnabled }: BattleSceneContentProps): React.ReactElement {
+  const axesHelper = useMemo(() => new AxesHelper(200), []);
+  useEffect(() => () => axesHelper.dispose(), [axesHelper]);
+
+  return (
+    <>
+      <Grid
+        args={[WORLD_SIZE, WORLD_SIZE]}
+        cellSize={50}
+        sectionSize={500}
+        cellColor="#203050"
+        sectionColor="#101725"
+        position={[0, -5, 0]}
+        fadeDistance={ppEnabled ? WORLD_SIZE : undefined}
+        transparent
+        opacity={ppEnabled ? undefined : 0.1}
+      />
+      <primitive object={axesHelper} position={[0, 0, 0]} />
+    </>
+  );
 }
 
 /**
