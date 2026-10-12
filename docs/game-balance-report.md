@@ -108,13 +108,19 @@ factory or derived from `PROJECTILE_CONFIG[bulletType].category` in
 | `createHeavyTurret`        | 10     | 1.4      | 7.14  | 580   | `bullet:plasma`    | bullet   | antiCapital    | none (destroyer uses defaults)                                                                 |
 | `createTorpedoTurret`      | 42     | 5.0      | 8.40  | 680   | `torpedo:standard` | torpedo  | antiCapital    | fighter torpedo is defined inline in `fighter.ts`, not via this factory: `26/4.5`, range `380` |
 
-Two structural notes:
+Three structural notes:
 
 - Only `createPointDefenseTurret` sets `priority: 'antiProjectile'`; all other
   factories use `any`, `antiFighter`, or `antiCapital`. This is what makes PD
   the only weapon that fires at projectiles (`src/game/systems/turrets.ts:54-61`).
 - The fighter torpedo bypasses the factory (`src/data/ships/fighter.ts:20-34`),
   so the factory default of `42/5.0` does **not** apply to the fighter.
+- The `Per-hull overrides` column only enumerates **damage/fireRate** changes.
+  Several hulls also override **`range`**, which is not tabulated: e.g. corvette
+  PD range `240` (factory `280`, `src/data/ships/corvette.ts:79`), corvette
+  missile `520` (factory `560`, `corvette.ts:87`), and carrier missile `660`
+  (factory `560`, `carrier.ts:103`). Read the `range` column as factory defaults,
+  not effective per-hull values.
 
 ## Damage-type effectiveness & progression scaling
 
@@ -132,8 +138,9 @@ applied to hull / shield / armor):
 
 Hull default damage types come from `HULL_DAMAGE_TYPES`
 (`src/config/progression.ts:147-153`): fighter/corvette kinetic, frigate/
-destroyer plasma, carrier ion. Explosive is defined but not assigned to any
-player hull's primary; it is used by torpedo/explosive effects.
+destroyer plasma, carrier ion. `explosive` is currently **unused** in the
+codebase: it exists only in the `DamageType` union and the effectiveness table
+and is never assigned to a hull, turret override, or projectile.
 
 ### Level bonuses
 
