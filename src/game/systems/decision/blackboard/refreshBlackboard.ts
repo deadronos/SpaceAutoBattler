@@ -6,8 +6,28 @@ import {
   getDoctrineSquadDirectives,
   getDoctrineThreatModifiers,
 } from '../../../aiDoctrine.js';
+import { getSensorBroadphaseGrid } from '../../sensors.js';
 import { ensureInterruptState, queueInterrupt } from '../interrupts.js';
 import { resolvePosture } from './posture.js';
+
+interface NearestEnemyScratch {
+  idToIndex: Map<number, number>;
+}
+
+// Per-state scratch for the nearest-enemy broad-phase query. Keyed off GameState
+// so two states stepped in the same process cannot share scratch data. The
+// id->index map is cleared and repopulated each refresh (index in `ships` order)
+// to preserve the double-loop tie-break without reallocating every tick.
+const nearestEnemyScratchByState = new WeakMap<GameState, NearestEnemyScratch>();
+
+function getNearestEnemyScratch(state: GameState): NearestEnemyScratch {
+  let scratch = nearestEnemyScratchByState.get(state);
+  if (!scratch) {
+    scratch = { idToIndex: new Map() };
+    nearestEnemyScratchByState.set(state, scratch);
+  }
+  return scratch;
+}
 
 /**
  * Recomputes the shared blackboard state for the current frame.
@@ -87,23 +107,48 @@ export const refreshBlackboard = (
   if (blueCount > 0) centroid.blue.multiplyScalar(1 / blueCount);
   if (redCount > 0) centroid.red.multiplyScalar(1 / redCount);
 
+  const sensorGrid = getSensorBroadphaseGrid(state);
+  const { idToIndex } = getNearestEnemyScratch(state);
+  idToIndex.clear();
+  for (let i = 0; i < shipsLength; i += 1) {
+    const ship = ships[i];
+    if (ship) idToIndex.set(ship.id, i);
+  }
+
   for (let i = 0; i < shipsLength; i += 1) {
     const ship = ships[i];
     if (!ship) continue;
     const visibleMap = visibleEnemies[ship.ship.team];
     if (!visibleMap) continue;
     const requireVisibility = visibleMap.size > 0;
-    let bestDist = Number.POSITIVE_INFINITY;
     let bestId: number | undefined;
-    for (let j = 0; j < shipsLength; j += 1) {
-      if (i === j) continue;
-      const other = ships[j];
-      if (!other || other.ship.team === ship.ship.team) continue;
-      if (requireVisibility && !visibleMap.has(other.id)) continue;
-      const distSq = ship.transform.position.distanceToSquared(other.transform.position);
-      if (distSq < bestDist) {
-        bestDist = distSq;
-        bestId = other.id;
+    if (sensorGrid) {
+      // Reuse the sensor broad-phase grid instead of scanning every ship pair.
+      // The grid is populated from the same `ships` array by `updateSensorSystem`
+      // on this tick, so it enumerates the exact same candidate set as the
+      // fallback loop; ties resolve to the earliest `ships` index via `rank`.
+      const team = ship.ship.team;
+      const nearest = sensorGrid.queryNearest(
+        ship.transform.position,
+        (other) =>
+          other !== ship &&
+          other.ship.team !== team &&
+          (!requireVisibility || visibleMap.has(other.id)),
+        (other) => idToIndex.get(other.id) ?? Number.POSITIVE_INFINITY,
+      );
+      bestId = nearest?.id;
+    } else {
+      let bestDist = Number.POSITIVE_INFINITY;
+      for (let j = 0; j < shipsLength; j += 1) {
+        if (i === j) continue;
+        const other = ships[j];
+        if (!other || other.ship.team === ship.ship.team) continue;
+        if (requireVisibility && !visibleMap.has(other.id)) continue;
+        const distSq = ship.transform.position.distanceToSquared(other.transform.position);
+        if (distSq < bestDist) {
+          bestDist = distSq;
+          bestId = other.id;
+        }
       }
     }
     if (bestId != null) {

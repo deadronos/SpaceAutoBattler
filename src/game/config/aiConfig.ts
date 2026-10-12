@@ -191,20 +191,27 @@ function computeEffectiveAIConfig(uiState: UiStoreSlice) {
 
 // Memoize on the resolved flag tuple. The object is read-only to callers, so a
 // stable reference avoids re-allocating it on every AI decision (thousands of
-// times per tick at scale).
+// times per tick at scale). The cached object itself holds the resolved values
+// of the seven UI-overridable fields, so steady-state calls compare primitives
+// instead of allocating a key array and joined string.
 let cachedEffectiveAIConfig: ReturnType<typeof computeEffectiveAIConfig> | null = null;
-let cachedEffectiveAIConfigKey = '';
 
-function effectiveAIConfigKey(uiState: UiStoreSlice): string {
-  return [
-    uiState.aiVerticalEnabled,
-    uiState.aiEngagementBoostEnabled,
-    uiState.aiTickRateExperimentEnabled,
-    uiState.aiRangePolicy,
-    uiState.aiSmoothingEnabled,
-    uiState.aiHysteresisEnabled,
-    uiState.aiVerticalDampingEnabled,
-  ].join('|');
+function matchesCachedEffectiveAIConfig(
+  cached: ReturnType<typeof computeEffectiveAIConfig>,
+  uiState: UiStoreSlice,
+): boolean {
+  return (
+    cached.verticalEnabled === (uiState.aiVerticalEnabled ?? AI_CONFIG.verticalEnabled) &&
+    cached.engagementBoostEnabled ===
+      (uiState.aiEngagementBoostEnabled ?? AI_CONFIG.engagementBoostEnabled) &&
+    cached.smoothingEnabled === (uiState.aiSmoothingEnabled ?? AI_CONFIG.smoothingEnabled) &&
+    cached.hysteresisEnabled === (uiState.aiHysteresisEnabled ?? AI_CONFIG.hysteresisEnabled) &&
+    cached.verticalDampingEnabled ===
+      (uiState.aiVerticalDampingEnabled ?? AI_CONFIG.verticalDampingEnabled) &&
+    cached.tickRateHzExperiment ===
+      (uiState.aiTickRateExperimentEnabled ?? AI_CONFIG.tickRateHzExperiment) &&
+    cached.rangePolicy === (uiState.aiRangePolicy ?? AI_CONFIG.rangePolicy)
+  );
 }
 
 export function getEffectiveAIConfig() {
@@ -215,13 +222,14 @@ export function getEffectiveAIConfig() {
 
   try {
     const uiState = uiStore.getState();
-    const key = effectiveAIConfigKey(uiState);
-    if (cachedEffectiveAIConfig && key === cachedEffectiveAIConfigKey) {
+    if (
+      cachedEffectiveAIConfig &&
+      matchesCachedEffectiveAIConfig(cachedEffectiveAIConfig, uiState)
+    ) {
       return cachedEffectiveAIConfig;
     }
     const next = computeEffectiveAIConfig(uiState);
     cachedEffectiveAIConfig = next;
-    cachedEffectiveAIConfigKey = key;
     return next;
   } catch (error) {
     reportConfigError('uiStore.getState', error);
