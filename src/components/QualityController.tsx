@@ -6,23 +6,32 @@ import { RENDERER_VISUAL_CONFIG } from '../config/renderer.js';
 import { detectInitialQualityTier, resolveQualitySettings } from '../config/quality.js';
 
 /**
- * Returns true only when a WebGL context can actually be created. Inert under
- * vitest/happy-dom and any headless environment so the auto-tier monitor never
- * mounts there.
+ * Probes for a WebGL context and, when present, reads the coarse capability we
+ * forward to `detectInitialQualityTier`. Inert under vitest/happy-dom and any
+ * headless environment so the auto-tier monitor never mounts there.
  */
-function hasWebGLContext(): boolean {
+function detectWebGLInfo(): { available: boolean; maxTextureSize?: number } {
   if (typeof window === 'undefined' || typeof document === 'undefined') {
-    return false;
+    return { available: false };
   }
   try {
     const canvas = document.createElement('canvas');
-    const gl =
-      canvas.getContext('webgl2') ??
+    const gl = (canvas.getContext('webgl2') ??
       canvas.getContext('webgl') ??
-      canvas.getContext('experimental-webgl');
-    return gl != null;
+      canvas.getContext('experimental-webgl')) as
+      | WebGLRenderingContext
+      | WebGL2RenderingContext
+      | null;
+    if (!gl) {
+      return { available: false };
+    }
+    const maxTextureSize = gl.getParameter(gl.MAX_TEXTURE_SIZE) as number;
+    return {
+      available: true,
+      maxTextureSize: Number.isFinite(maxTextureSize) ? maxTextureSize : undefined,
+    };
   } catch {
-    return false;
+    return { available: false };
   }
 }
 
@@ -50,7 +59,8 @@ export function QualityController(): React.ReactElement | null {
     RENDERER_VISUAL_CONFIG.performanceTier = quality.tier;
   }, [quality.tier]);
 
-  const gpuAvailable = useMemo(() => hasWebGLContext(), []);
+  const webgl = useMemo(() => detectWebGLInfo(), []);
+  const gpuAvailable = webgl.available;
   const seededRef = useRef(false);
 
   useEffect(() => {
@@ -59,11 +69,12 @@ export function QualityController(): React.ReactElement | null {
     const nav = typeof navigator !== 'undefined' ? navigator : undefined;
     setDetectedQualityTier(
       detectInitialQualityTier({
+        maxTextureSize: webgl.maxTextureSize,
         hardwareConcurrency: nav?.hardwareConcurrency,
         deviceMemory: (nav as (Navigator & { deviceMemory?: number }) | undefined)?.deviceMemory,
       }),
     );
-  }, [qualityPreset, gpuAvailable, setDetectedQualityTier]);
+  }, [qualityPreset, gpuAvailable, setDetectedQualityTier, webgl.maxTextureSize]);
 
   if (qualityPreset !== 'auto' || !gpuAvailable) {
     return null;

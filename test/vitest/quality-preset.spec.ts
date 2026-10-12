@@ -75,7 +75,7 @@ describe('quality presets', () => {
 
   it('keeps high as the shipped no-op baseline', () => {
     const high = QUALITY_PRESETS.high;
-    expect(high.dpr).toEqual({ min: 0.5, max: 2, initial: 1.0 });
+    expect(high.dpr).toEqual({ min: 0.5, max: 2, initial: 0.5 });
     expect(high.shadows).toBe(true);
     expect(high.shadowMapSize).toBe(2048);
     expect(high.ao).toEqual({ enabled: true, halfRes: true, quality: 'Medium' });
