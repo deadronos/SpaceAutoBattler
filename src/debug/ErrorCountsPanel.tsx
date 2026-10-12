@@ -57,7 +57,13 @@ export function ErrorCountsPanel({
         onClick={() => setExpanded(!expanded)}
         role="button"
         tabIndex={0}
-        onKeyDown={(e) => e.key === 'Enter' && setExpanded(!expanded)}
+        aria-expanded={expanded}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            setExpanded((v) => !v);
+          }
+        }}
       >
         <span className="error-counts-title">⚠️ Suppressed Errors: {total}</span>
         <span className="error-counts-toggle">{expanded ? '▼' : '▶'}</span>

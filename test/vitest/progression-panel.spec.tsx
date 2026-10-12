@@ -239,6 +239,33 @@ describe('ProgressionPanel', () => {
     expect(screen.getByText('Level 1 → 2')).to.exist;
   });
 
+  it('toggles events via Enter and Space on the card header', () => {
+    const mockState = createMockGameState();
+    __injectedGameState = mockState;
+    useUiStore.getState().setProgressionPanelEnabled(true);
+
+    render(
+      <GameProvider>
+        <ProgressionPanel />
+      </GameProvider>,
+    );
+
+    // Exactly one button role per ship card (the header), named for the ship.
+    const headers = screen.getAllByRole('button', { name: /Expand events/i });
+    expect(headers).toHaveLength(2);
+
+    const header = headers[0] as HTMLElement;
+    expect(header.getAttribute('aria-expanded')).toBe('false');
+
+    fireEvent.keyDown(header, { key: 'Enter' });
+    expect(header.getAttribute('aria-expanded')).toBe('true');
+    expect(screen.getByText('+10.0 XP')).to.exist;
+
+    fireEvent.keyDown(header, { key: ' ' });
+    expect(header.getAttribute('aria-expanded')).toBe('false');
+    expect(screen.queryByText('+10.0 XP')).toBeNull();
+  });
+
   it('does not change hooks order when toggling enabled without unmount', () => {
     const mockState = createMockGameState();
     __injectedGameState = mockState;
