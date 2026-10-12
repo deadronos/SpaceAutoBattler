@@ -48,3 +48,12 @@ jobs:
             echo "Check the test block in vite.config.ts."
             exit 1
           fi
+
+      - name: Build and verify precompressed assets
+        run: |
+          vp build
+          BR_COUNT=$(find dist -name '*.br' | wc -l | xargs)
+          GZ_COUNT=$(find dist -name '*.gz' | wc -l | xargs)
+          echo "br=$BR_COUNT gz=$GZ_COUNT"
+          test "$BR_COUNT" -gt 0 || { echo "No .br assets emitted"; exit 1; }
+          test "$GZ_COUNT" -gt 0 || { echo "No .gz assets emitted"; exit 1; }

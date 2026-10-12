@@ -1,13 +1,12 @@
 import fs from 'fs';
 import path from 'path';
+import { brotliCompress, constants, gzip } from 'node:zlib';
+import { promisify } from 'node:util';
 import globals from 'globals';
 import { defineConfig, type Plugin, type UserConfig } from 'vite-plus';
 import react from '@vitejs/plugin-react';
 import babel from '@rolldown/plugin-babel';
 import reactCompiler from 'babel-plugin-react-compiler';
-import compressionPlugin from 'vite-plugin-compression';
-
-const compression = compressionPlugin as unknown as (options: Record<string, unknown>) => Plugin;
 
 function createJsToTsResolvePlugin(): Plugin {
   const srcDir = path.resolve(process.cwd(), 'src');
@@ -111,6 +110,59 @@ function createOutputConfig(isProd: boolean): UserConfig['build'] {
         },
         manualChunks: createManualChunks,
       },
+    },
+  };
+}
+
+const gzipAsync = promisify(gzip);
+const brotliCompressAsync = promisify(brotliCompress);
+
+function createPrecompressPlugin(): Plugin {
+  const compressibleFilePattern = /\.(js|mjs|css|html|svg|wasm)$/i;
+  const sizeThreshold = 10 * 1024;
+
+  async function collectFiles(dir: string): Promise<string[]> {
+    const entries = await fs.promises.readdir(dir, { withFileTypes: true });
+    const nested = await Promise.all(
+      entries.map((entry) => {
+        const entryPath = path.join(dir, entry.name);
+        if (entry.isDirectory()) return collectFiles(entryPath);
+        return Promise.resolve(entry.isFile() ? [entryPath] : []);
+      }),
+    );
+
+    return nested.flat();
+  }
+
+  return {
+    name: 'spaceautobattler:precompress-assets',
+    apply: 'build',
+    enforce: 'post',
+    async closeBundle() {
+      const distDir = path.resolve(projectRoot, 'dist');
+      if (!fs.existsSync(distDir)) return;
+
+      const files = await collectFiles(distDir);
+      await Promise.all(
+        files
+          .filter((file) => compressibleFilePattern.test(file))
+          .map(async (file) => {
+            const source = await fs.promises.readFile(file);
+            if (source.byteLength < sizeThreshold) return;
+
+            const [gzipped, brotlied] = await Promise.all([
+              gzipAsync(source),
+              brotliCompressAsync(source, {
+                params: { [constants.BROTLI_PARAM_QUALITY]: constants.BROTLI_MAX_QUALITY },
+              }),
+            ]);
+
+            await Promise.all([
+              fs.promises.writeFile(`${file}.gz`, gzipped),
+              fs.promises.writeFile(`${file}.br`, brotlied),
+            ]);
+          }),
+      );
     },
   };
 }
@@ -335,20 +387,7 @@ export default defineConfig({
         [reactCompiler, { compilationMode: 'annotation', sources: shouldApplyReactCompiler }],
       ],
     }),
-    compression({
-      algorithm: 'gzip',
-      ext: '.gz',
-      threshold: 10 * 1024,
-      deleteOriginFile: false,
-      filter: /\.(js|mjs|css|html|svg|wasm)$/i,
-    }),
-    compression({
-      algorithm: 'brotliCompress',
-      ext: '.br',
-      threshold: 10 * 1024,
-      deleteOriginFile: false,
-      filter: /\.(js|mjs|css|html|svg|wasm)$/i,
-    }),
+    createPrecompressPlugin(),
   ],
   resolve: {
     alias: {
