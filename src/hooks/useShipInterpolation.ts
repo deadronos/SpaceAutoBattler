@@ -12,6 +12,10 @@ import {
   type InterpolationState,
 } from './interpolation/state.js';
 import { updateInterpolation } from './interpolation/updateInterpolation.js';
+import {
+  resolveEntityDetailLevelFromParts,
+  resolveInterpolationPolicy,
+} from './interpolation/detailPolicy.js';
 
 export { kToAlpha } from './interpolation/math.js';
 export type { InterpolationState } from './interpolation/state.js';
@@ -30,6 +34,15 @@ export function useShipInterpolation(
   const lastTickIndex = state?.simulation.lastTickIndex ?? 0;
 
   const smoothing = useMemo(() => createSmoothingConfig(entity.ship.motion), [entity.ship.motion]);
+
+  const entityDetail = useMemo(
+    () => resolveEntityDetailLevelFromParts(entity.ship.visualDetailLevel, entity.ai?.lod),
+    [entity.ship.visualDetailLevel, entity.ai?.lod],
+  );
+  const policy = useMemo(
+    () => resolveInterpolationPolicy(entity.ship.motion?.visual, entityDetail),
+    [entity.ship.motion, entityDetail],
+  );
 
   const bankValueRef = useRef(0);
   const bankVelocityRef = useRef(0);
@@ -79,6 +92,7 @@ export function useShipInterpolation(
       bankValueRef,
       bankVelocityRef,
       lastTickIndexRef,
+      policy,
     );
 
     root.position.copy(interpolationState.interpPosition);
