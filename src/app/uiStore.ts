@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { GameState } from '../types/index.js';
+import type { QualityPreset, QualityTier } from '../config/quality.js';
 import { AI_CONFIG, setAiOverrideProvider } from '../game/config.js';
 import { ErrorCategory, reportRecoverableGameError } from '../game/errors.js';
 import { reportConfigError } from '../utils/errorReporting.js';
@@ -98,6 +99,11 @@ export type UiState = {
   toggleSimEnableSubsystemGuards: () => void;
   /** Set the guard flag explicitly. */
   setSimEnableSubsystemGuards: (value: boolean) => void;
+  // Graphics quality preset (render-only; never mirrored into GameState).
+  qualityPreset: QualityPreset;
+  setQualityPreset: (v: QualityPreset) => void;
+  detectedQualityTier: QualityTier;
+  setDetectedQualityTier: (v: QualityTier) => void;
 };
 
 /**
@@ -221,6 +227,10 @@ export const useUiStore = create<UiState>((set) => ({
   toggleSimEnableSubsystemGuards: () =>
     set((s) => ({ simEnableSubsystemGuards: !s.simEnableSubsystemGuards })),
   setSimEnableSubsystemGuards: (value: boolean) => set({ simEnableSubsystemGuards: value }),
+  qualityPreset: 'high',
+  setQualityPreset: (v: QualityPreset) => set({ qualityPreset: v }),
+  detectedQualityTier: 'high',
+  setDetectedQualityTier: (v: QualityTier) => set({ detectedQualityTier: v }),
 }));
 
 // Register the live UI store as the AI-override provider. The closure reads

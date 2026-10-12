@@ -16,6 +16,7 @@ Configuration parameters and constants for various game systems and features.
 | **postprocessing.ts** | Post-processing effects configuration (bloom strength, tone mapping) |
 | **progression.ts**    | Progression system configuration (XP requirements, leveling)         |
 | **projectiles.ts**    | Projectile configuration (bullet types, speeds, damage)              |
+| **quality.ts**        | Render-only graphics quality presets (DPR, shadows, AO, particles)   |
 | **renderer.ts**       | Renderer configuration (LOD distances, instancing limits)            |
 | **shields.ts**        | Shield system configuration (recharge rates, strength, visuals)      |
 | **starDiskDebug.ts**  | Star disk debug and tuning configuration                             |

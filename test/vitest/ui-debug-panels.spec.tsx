@@ -26,6 +26,8 @@ const DEFAULT_FLAGS = (() => {
     explosionDebugEnabled: snapshot.explosionDebugEnabled,
     perfMonitorEnabled: snapshot.perfMonitorEnabled,
     perfMonitorPosition: { ...snapshot.perfMonitorPosition },
+    qualityPreset: snapshot.qualityPreset,
+    detectedQualityTier: snapshot.detectedQualityTier,
   };
 })();
 

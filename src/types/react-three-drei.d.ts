@@ -28,6 +28,30 @@ declare module '@react-three/drei' {
   // Common helpers used in this project
   export const OrbitControls: React.ComponentType<Record<string, unknown>>;
   export const Grid: React.ComponentType<Record<string, unknown>>;
+  // FPS-driven quality monitor used by QualityController (auto quality preset).
+  export interface PerformanceMonitorApi {
+    fps: number;
+    factor: number;
+    refreshrate: number;
+    frames: number[];
+    averages: number[];
+    index: number;
+    flipped: number;
+    fallback: boolean;
+  }
+  export const PerformanceMonitor: React.ComponentType<{
+    ms?: number;
+    iterations?: number;
+    threshold?: number;
+    flipflops?: number;
+    factor?: number;
+    step?: number;
+    onIncline?: (api: PerformanceMonitorApi) => void;
+    onDecline?: (api: PerformanceMonitorApi) => void;
+    onChange?: (api: PerformanceMonitorApi) => void;
+    onFallback?: (api: PerformanceMonitorApi) => void;
+    children?: React.ReactNode;
+  }>;
   // Add other lightweight stubs here as needed by components.
   const _default: unknown;
   export default _default;

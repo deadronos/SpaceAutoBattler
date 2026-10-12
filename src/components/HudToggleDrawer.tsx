@@ -1,6 +1,7 @@
 import { useId, useState, useCallback } from 'react';
 import type React from 'react';
 import { useUiStore } from '../app/uiStore.js';
+import type { QualityPreset } from '../config/quality.js';
 import { DEBUG_TOGGLES, SETTINGS_TOGGLES, type HudToggleDefinition } from './hudToggleConfig.js';
 
 export function SettingsDrawer(): React.ReactElement {
@@ -10,6 +11,7 @@ export function SettingsDrawer(): React.ReactElement {
       icon={<GearIcon />}
       toggles={SETTINGS_TOGGLES}
       triggerClassName="hud-toggle-drawer__trigger--primary"
+      extra={<GraphicsQualitySettings />}
     />
   );
 }
@@ -128,6 +130,51 @@ function ToggleRow({ definition }: { definition: HudToggleDefinition }): React.R
 }
 
 const SIMULATION_SAMPLE_RATES = [1, 2, 3, 4, 5];
+
+const QUALITY_PRESET_OPTIONS: ReadonlyArray<{ value: QualityPreset; label: string }> = [
+  { value: 'low', label: 'Low' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'high', label: 'High' },
+  { value: 'auto', label: 'Auto' },
+];
+
+/**
+ * Segmented graphics-quality control for the settings drawer. A single preset
+ * (reusing the existing segmented-button pattern) replaces four separate
+ * switches; selecting one re-resolves all renderer knobs.
+ */
+function GraphicsQualitySettings(): React.ReactElement {
+  const qualityPreset = useUiStore((state) => state.qualityPreset);
+  const setQualityPreset = useUiStore((state) => state.setQualityPreset);
+
+  return (
+    <div className="hud-toggle-drawer__simulation-settings">
+      <p className="hud-toggle-drawer__simulation-settings-title">Graphics quality</p>
+      <div
+        className="hud-toggle-drawer__simulation-settings-grid"
+        role="group"
+        aria-label="Graphics quality"
+      >
+        {QUALITY_PRESET_OPTIONS.map(({ value, label }) => (
+          <button
+            key={value}
+            type="button"
+            className={`hud-toggle-drawer__rate-button${
+              value === qualityPreset ? ' hud-toggle-drawer__rate-button--active' : ''
+            }`}
+            aria-pressed={value === qualityPreset}
+            onClick={() => setQualityPreset(value)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      <p className="hud-toggle-drawer__simulation-settings-note">
+        Caps renderer detail; the toggles above can still reduce it further.
+      </p>
+    </div>
+  );
+}
 
 function SimulationDebugSettings(): React.ReactElement {
   const sampleRate = useUiStore((state) => state.simProfileSampleRate);

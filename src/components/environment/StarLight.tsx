@@ -3,6 +3,8 @@ import type { DirectionalLight } from 'three';
 import { Object3D, Vector3 } from 'three';
 import type { StarLightConfig } from '../../config/environment.js';
 import { computeShadowCameraParams } from '../../renderer/shadowCamera.js';
+import { useUiStore } from '../../app/uiStore.js';
+import { resolveQualitySettings } from '../../config/quality.js';
 import { reportLifecycleError } from '../../utils/errorReporting.js';
 
 interface StarLightProps {
@@ -19,6 +21,14 @@ export function StarLight({
 }: StarLightProps): React.ReactElement {
   const internalLightRef = useRef<DirectionalLight>(null);
   const target = useMemo(() => new Object3D(), []);
+
+  // Resolved quality knobs (render-only). `high` keeps the shipped 2048 map and
+  // shadows on, so this is a no-op by default.
+  const qualityPreset = useUiStore((s) => s.qualityPreset);
+  const detectedQualityTier = useUiStore((s) => s.detectedQualityTier);
+  const quality = resolveQualitySettings(qualityPreset, detectedQualityTier);
+  const shadowsEnabled = quality.shadows;
+  const shadowMapSize = quality.shadowMapSize;
 
   const position = useMemo(() => {
     const direction = new Vector3(
@@ -37,9 +47,10 @@ export function StarLight({
     }
     target.position.set(0, 0, 0);
     light.target = target;
-    light.castShadow = true;
+    light.castShadow = shadowsEnabled;
     const shadow = light.shadow;
-    shadow.mapSize.set(2048, 2048);
+    shadow.mapSize.set(shadowMapSize, shadowMapSize);
+    shadow.needsUpdate = true;
     shadow.bias = -0.0002;
     shadow.normalBias = 0.02;
     const camera = shadow.camera;
@@ -60,7 +71,7 @@ export function StarLight({
         reportLifecycleError('update', 'StarLightRef', undefined, error);
       }
     }
-  }, [target, externalLightRef, config.distance]);
+  }, [target, externalLightRef, config.distance, shadowsEnabled, shadowMapSize]);
 
   return (
     <>
@@ -75,7 +86,7 @@ export function StarLight({
           position={[0, 0, 0]}
           intensity={config.intensity}
           color={config.color}
-          castShadow={true}
+          castShadow={shadowsEnabled}
         />
         {children}
       </group>

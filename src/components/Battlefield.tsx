@@ -6,6 +6,7 @@ import type React from 'react';
 import { useOptionalGameState } from '../app/context.js';
 import { CAMERA_DEFAULTS, FOG_DEFAULTS, WORLD_SIZE } from '../game/config.js';
 import { useUiStore } from '../app/uiStore.js';
+import { resolveQualitySettings, type QualityTier } from '../config/quality.js';
 import { BloomProvider } from '../renderer/bloom/index.js';
 import PostprocessingLazy from './PostprocessingLazy.js';
 import { ParticleTrails } from './ParticleTrails.js';
@@ -16,6 +17,7 @@ import DynamicResScaler from './DynamicResScaler.js';
 import { CelestialEnvironment } from './environment/CelestialEnvironment.js';
 import { BattlefieldSystems } from './BattlefieldSystems.js';
 import { CameraRig } from './CameraRig.js';
+import { QualityController } from './QualityController.js';
 import { ShipsLayer } from './layers/ShipsLayer.js';
 import { ProjectilesLayer } from './layers/ProjectilesLayer.js';
 import { MuzzleFlashInstancedLayer } from './layers/MuzzleFlashInstancedLayer.js';
@@ -30,13 +32,17 @@ import { isCopilotDebugEnabled } from '../utils/copilotDebug.js';
 
 interface BattleSceneContentProps {
   ppEnabled: boolean;
+  qualityTier: QualityTier;
 }
 
 type DebugWindow = Window & {
   __copilot_forcePostprocessingMount?: boolean;
 };
 
-function BattleSceneContent({ ppEnabled }: BattleSceneContentProps): React.ReactElement {
+function BattleSceneContent({
+  ppEnabled,
+  qualityTier,
+}: BattleSceneContentProps): React.ReactElement {
   const state = useOptionalGameState();
 
   if (!state) return <></>;
@@ -53,7 +59,8 @@ function BattleSceneContent({ ppEnabled }: BattleSceneContentProps): React.React
   const sceneContent = (
     <>
       <fog attach="fog" args={FOG_DEFAULTS} />
-      <CelestialEnvironment />
+      {/* Tier-keyed so star/shield materials rebuild when the preset changes. */}
+      <CelestialEnvironment key={`environment-${qualityTier}`} />
       <Suspense fallback={null}>
         {renderWorkerShips && <WorkerShipsLayer />}
         {!renderWorkerShipsOnly && <ShipsLayer archetype={state.queries.ships} />}
@@ -61,7 +68,12 @@ function BattleSceneContent({ ppEnabled }: BattleSceneContentProps): React.React
         {!renderWorkerShipsOnly && <MuzzleFlashInstancedLayer archetype={state.queries.turrets} />}
         {!renderWorkerShipsOnly && <ProjectilesLayer archetype={state.queries.projectiles} />}
         {!renderWorkerShipsOnly && <ExplosionsLayer />}
-        {!renderWorkerShipsOnly && <ParticleTrails ships={ships} />}
+        {/* Tier-keyed group so the particle pool is re-sized when the preset changes. */}
+        {!renderWorkerShipsOnly && (
+          <group key={`trails-${qualityTier}`}>
+            <ParticleTrails ships={ships} />
+          </group>
+        )}
       </Suspense>
       {ppEnabled && <PostprocessingLazy />}
       <BattlefieldSystems />
@@ -93,7 +105,7 @@ function BattleSceneContent({ ppEnabled }: BattleSceneContentProps): React.React
  * `BattleSceneContent`); the `AxesHelper` instance lifecycle is kept here so it is
  * created and disposed only while the overlay is mounted.
  */
-function DevGridAndAxes({ ppEnabled }: BattleSceneContentProps): React.ReactElement {
+function DevGridAndAxes({ ppEnabled }: { ppEnabled: boolean }): React.ReactElement {
   const axesHelper = useMemo(() => new AxesHelper(200), []);
   useEffect(() => () => axesHelper.dispose(), [axesHelper]);
 
@@ -123,15 +135,20 @@ function DevGridAndAxes({ ppEnabled }: BattleSceneContentProps): React.ReactElem
  */
 export function Battlefield(): React.ReactElement {
   const state = useOptionalGameState();
+  const qualityPreset = useUiStore((s) => s.qualityPreset);
+  const detectedQualityTier = useUiStore((s) => s.detectedQualityTier);
+  const quality = resolveQualitySettings(qualityPreset, detectedQualityTier);
   // Respect UI toggle, but allow a debug override for automation tests so we
   // can force the Postprocessing component to mount even when the UI
   // setting is off. Tests can set `window.__copilot_forcePostprocessingMount = true`.
   const uiPost = useUiStore((s) => s.postprocessingEnabled);
+  // The preset is a ceiling: bloom can still be turned off by the UI toggle,
+  // but the debug override keeps forcing a mount for automation.
   const ppEnabled =
     typeof window !== 'undefined' &&
     (window as DebugWindow).__copilot_forcePostprocessingMount === true
       ? true
-      : uiPost;
+      : uiPost && quality.bloom;
 
   if (!state) {
     return <div className="loading-overlay">Preparing simulation…</div>;
@@ -148,12 +165,17 @@ export function Battlefield(): React.ReactElement {
         near: CAMERA_DEFAULTS.near,
         far: CAMERA_DEFAULTS.far,
       }}
-      dpr={[0.5, 2]}
+      dpr={[quality.dpr.min, quality.dpr.max]}
       onCreated={({ gl }) => configureBattlefieldRenderer(gl as unknown as WebGLRenderer)}
     >
       <StarsField />
-      <BattleSceneContent ppEnabled={ppEnabled} />
-      <DynamicResScaler />
+      <QualityController />
+      <BattleSceneContent ppEnabled={ppEnabled} qualityTier={quality.tier} />
+      <DynamicResScaler
+        minDpr={quality.dpr.min}
+        maxDpr={quality.dpr.max}
+        initialDpr={quality.dpr.initial}
+      />
       <PerfMonitorOverlay />
     </Canvas>
   );
