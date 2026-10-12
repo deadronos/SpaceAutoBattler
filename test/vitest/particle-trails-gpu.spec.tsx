@@ -193,6 +193,37 @@ describe('ParticleTrails GPU buffers', () => {
     ]);
   });
 
+  it('exposes a radial softness uniform and fragment falloff', () => {
+    const resources = createParticleTrailResources(4, {
+      size: PARTICLE_TRAILS_CONFIG.size,
+      color: PARTICLE_TRAILS_CONFIG.color,
+      opacity: PARTICLE_TRAILS_CONFIG.opacity,
+      additiveBlending: PARTICLE_TRAILS_CONFIG.additiveBlending,
+      depthTest: PARTICLE_TRAILS_CONFIG.depthTest,
+      depthWrite: PARTICLE_TRAILS_CONFIG.depthWrite,
+      spriteSoftness: PARTICLE_TRAILS_CONFIG.spriteSoftness,
+    });
+
+    expect(resources.material.uniforms.uSoftness).toBeDefined();
+    expect(resources.material.uniforms.uSoftness.value).toBe(PARTICLE_TRAILS_CONFIG.spriteSoftness);
+    expect(resources.material.fragmentShader).toContain('uSoftness');
+    expect(resources.material.fragmentShader).toContain('smoothstep');
+    expect(resources.material.vertexShader).toContain('vNormalView');
+  });
+
+  it('falls back to the documented default softness when omitted', () => {
+    const resources = createParticleTrailResources(4, {
+      size: PARTICLE_TRAILS_CONFIG.size,
+      color: PARTICLE_TRAILS_CONFIG.color,
+      opacity: PARTICLE_TRAILS_CONFIG.opacity,
+      additiveBlending: PARTICLE_TRAILS_CONFIG.additiveBlending,
+      depthTest: PARTICLE_TRAILS_CONFIG.depthTest,
+      depthWrite: PARTICLE_TRAILS_CONFIG.depthWrite,
+    });
+
+    expect(resources.material.uniforms.uSoftness.value).toBe(PARTICLE_TRAILS_CONFIG.spriteSoftness);
+  });
+
   it('updates shader time uniform every frame', () => {
     const resources = createParticleTrailResources(4, {
       size: PARTICLE_TRAILS_CONFIG.size,

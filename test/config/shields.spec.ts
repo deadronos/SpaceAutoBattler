@@ -1,14 +1,18 @@
 import { describe, expect, it, afterEach } from 'vite-plus/test';
 import {
   getShieldVisuals,
+  SHIELD_TUNING,
   SHIELD_VISUALS,
   SHIELD_VISUAL_DEFAULTS,
 } from '../../src/config/shields.js';
+import { createShieldHexShaderMaterial } from '../../src/renderer/materialRegistry.js';
 
 const originalFighter = structuredClone(SHIELD_VISUALS.fighter);
+const originalDepthTest = SHIELD_TUNING.depthTest;
 
 afterEach(() => {
   SHIELD_VISUALS.fighter = structuredClone(originalFighter);
+  SHIELD_TUNING.depthTest = originalDepthTest;
 });
 
 describe('getShieldVisuals', () => {
@@ -39,5 +43,25 @@ describe('getShieldVisuals', () => {
     expect(visuals.meshtransmission.clearcoat).toBe(
       SHIELD_VISUAL_DEFAULTS.meshtransmission.clearcoat,
     );
+  });
+});
+
+describe('SHIELD_TUNING.depthTest occlusion toggle', () => {
+  it('defaults to enabled so shields are occluded by nearer opaque geometry', () => {
+    expect(SHIELD_TUNING.depthTest).toBe(true);
+  });
+
+  it('drives the shield hex material depthTest without code changes', () => {
+    SHIELD_TUNING.depthTest = true;
+    const enabled = createShieldHexShaderMaterial('fighter', 'blue');
+    expect(enabled.depthTest).toBe(true);
+    expect(enabled.depthWrite).toBe(false);
+    enabled.dispose();
+
+    SHIELD_TUNING.depthTest = false;
+    const disabled = createShieldHexShaderMaterial('fighter', 'blue');
+    expect(disabled.depthTest).toBe(false);
+    expect(disabled.depthWrite).toBe(false);
+    disabled.dispose();
   });
 });

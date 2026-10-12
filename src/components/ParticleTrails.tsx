@@ -34,6 +34,7 @@ export function ParticleTrails({ ships, resources }: ParticleTrailProps): React.
       additiveBlending: PARTICLE_TRAILS_CONFIG.additiveBlending,
       depthTest: PARTICLE_TRAILS_CONFIG.depthTest,
       depthWrite: PARTICLE_TRAILS_CONFIG.depthWrite,
+      spriteSoftness: PARTICLE_TRAILS_CONFIG.spriteSoftness,
     });
   }, [resources]);
 

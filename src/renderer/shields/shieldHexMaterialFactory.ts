@@ -36,7 +36,7 @@ export function createShieldHexShaderMaterial(hull: ShipHull, team: Team): Shade
   const mat = new ShaderMaterial({
     transparent: true,
     depthWrite: false,
-    depthTest: false,
+    depthTest: SHIELD_TUNING.depthTest,
     uniforms: {
       uTime: { value: 0 },
       uTint: { value: colorFromConfig(team === 'blue' ? TEAM_COLORS.blue : SHIELD_TUNING.redTint) },

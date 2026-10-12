@@ -25,6 +25,12 @@ export interface PlanetBodyConfig {
   rimStrength?: number;
   /** Optional rim glow color for fresnel effect. */
   rimColor?: string;
+  /** Optional atmosphere shell strength (0 disables the atmosphere for this planet). */
+  atmosphereStrength?: number;
+  /** Optional atmosphere glow color. */
+  atmosphereColor?: string;
+  /** Optional fresnel falloff exponent for the atmosphere limb glow. */
+  atmosphereFalloff?: number;
   /** Optional ring system configuration. */
   rings?: {
     innerRadius: number;
@@ -136,6 +142,7 @@ export interface CelestialEnvironmentConfig {
     starDisk?: boolean;
     planetRims?: boolean;
     planetRings?: boolean;
+    planetAtmosphere?: boolean;
     parallaxBillboards?: boolean;
   };
 }
@@ -169,6 +176,9 @@ export const CELESTIAL_ENVIRONMENT: CelestialEnvironmentConfig = {
       emissiveBoost: 0.005,
       rimStrength: 0.3,
       rimColor: '#ffaa44',
+      atmosphereStrength: 0.55,
+      atmosphereColor: '#ffb066',
+      atmosphereFalloff: 2.6,
       rings: {
         innerRadius: 2200,
         outerRadius: 3800,
@@ -217,6 +227,9 @@ export const CELESTIAL_ENVIRONMENT: CelestialEnvironmentConfig = {
       emissiveBoost: 0.0005,
       rimStrength: 0.2,
       rimColor: '#aaccff',
+      atmosphereStrength: 0.4,
+      atmosphereColor: '#9fd0ff',
+      atmosphereFalloff: 3.2,
     },
   ],
   parallaxBillboards: [
@@ -262,6 +275,7 @@ export const CELESTIAL_ENVIRONMENT: CelestialEnvironmentConfig = {
     starDisk: true,
     planetRims: true,
     planetRings: true,
+    planetAtmosphere: true,
     parallaxBillboards: false,
   },
 };
@@ -270,3 +284,10 @@ export const PLANET_GEOMETRY_SEGMENTS = {
   width: 64,
   height: 32,
 } as const;
+
+/**
+ * Radial scale of the planet atmosphere shell relative to the planet radius.
+ * Kept in the 1.03–1.06 range so the shell hugs the surface without reading as
+ * a separate body.
+ */
+export const PLANET_ATMOSPHERE_SHELL_SCALE = 1.045;

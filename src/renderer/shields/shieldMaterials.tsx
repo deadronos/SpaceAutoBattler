@@ -31,7 +31,7 @@ export const ShieldTransmissionMaterial: React.FC<ShieldTransmissionMaterialProp
       userData={{ __copilot_forceColorWrite: true }}
       transparent
       depthWrite={false}
-      depthTest={false}
+      depthTest={SHIELD_TUNING.depthTest}
       color={tint}
       resolution={256}
       attenuationColor={tint}

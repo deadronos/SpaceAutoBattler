@@ -8,7 +8,7 @@ import {
   Color,
 } from 'three';
 import type { ParticleTrailsConfig } from '../../config/effects.js';
-import { THRUSTER_GLOW_CONFIG } from '../../config/effects.js';
+import { PARTICLE_TRAIL_DEFAULT_SOFTNESS, THRUSTER_GLOW_CONFIG } from '../../config/effects.js';
 
 export interface ParticleTrailResources {
   geometry: InstancedBufferGeometry;
@@ -33,7 +33,7 @@ function createTrailMaterial(
   config: Pick<
     ParticleTrailsConfig,
     'color' | 'opacity' | 'additiveBlending' | 'depthTest' | 'depthWrite'
-  >,
+  > & { spriteSoftness?: number },
 ): ShaderMaterial {
   const color = new Color(config.color || THRUSTER_GLOW_CONFIG.defaultEmissiveColor);
 
@@ -42,6 +42,7 @@ function createTrailMaterial(
       uTime: { value: 0 },
       uColor: { value: color },
       uOpacity: { value: config.opacity },
+      uSoftness: { value: config.spriteSoftness ?? PARTICLE_TRAIL_DEFAULT_SOFTNESS },
     },
     transparent: true,
     depthTest: config.depthTest,
@@ -56,6 +57,7 @@ function createTrailMaterial(
       uniform float uTime;
 
       varying float vFade;
+      varying vec3 vNormalView;
 
       void main() {
         float age = max(uTime - instanceSpawnTime, 0.0);
@@ -63,17 +65,25 @@ function createTrailMaterial(
         float scale = instanceScale * lifeRatio;
         vec3 worldPosition = instanceSpawnPosition + instanceVelocity * age + position * scale;
         vFade = lifeRatio;
+        // View-space normal drives a radial falloff so the low-poly sphere
+        // reads as a soft particle instead of a hard blob (avoids UV pinching).
+        vNormalView = normalize(normalMatrix * normal);
         gl_Position = projectionMatrix * modelViewMatrix * vec4(worldPosition, 1.0);
       }
     `,
     fragmentShader: /* glsl */ `
       uniform vec3 uColor;
       uniform float uOpacity;
+      uniform float uSoftness;
 
       varying float vFade;
+      varying vec3 vNormalView;
 
       void main() {
-        float alpha = uOpacity * vFade;
+        // Facing term: 0 at the silhouette, 1 facing the camera.
+        float facing = abs(normalize(vNormalView).z);
+        float radial = pow(smoothstep(0.0, 1.0, facing), uSoftness);
+        float alpha = uOpacity * vFade * radial;
         if (alpha <= 0.001) {
           discard;
         }
@@ -94,7 +104,7 @@ export function createParticleTrailResources(
   config: Pick<
     ParticleTrailsConfig,
     'size' | 'color' | 'opacity' | 'additiveBlending' | 'depthTest' | 'depthWrite'
-  >,
+  > & { spriteSoftness?: number },
 ): ParticleTrailResources {
   const baseGeometry = new SphereGeometry(config.size, 6, 4);
   const geometry = new InstancedBufferGeometry();

@@ -104,7 +104,17 @@ export interface ParticleTrailsConfig {
   longitudinalJitter: number;
   /** Per-particle scale range multiplier around 1.0, e.g., 0.8..1.2 => ±20%. */
   scaleJitter: number;
+  /**
+   * Radial softness exponent for the exhaust sprite. The fragment alpha is
+   * multiplied by `pow(smoothstep(0, 1, facing), spriteSoftness)`, so higher
+   * values fade the rim harder (softer particles). A low value (0) reproduces
+   * the previous hard-edged look.
+   */
+  spriteSoftness: number;
 }
+
+/** Conservative default radial softness for exhaust sprites (0 = hard edge). */
+export const PARTICLE_TRAIL_DEFAULT_SOFTNESS = 2.0;
 
 /**
  * Configuration for particle trail effects (engine exhaust).
@@ -126,4 +136,5 @@ export const PARTICLE_TRAILS_CONFIG: ParticleTrailsConfig = {
   lateralJitter: 0.45,
   longitudinalJitter: 0.15,
   scaleJitter: 0.25,
+  spriteSoftness: PARTICLE_TRAIL_DEFAULT_SOFTNESS,
 };
