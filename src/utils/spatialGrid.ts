@@ -185,11 +185,24 @@ export class SpatialGrid<T> {
    * `r + 1` can tie the incumbent on distance and win on rank, or once every
    * populated cell has been visited.
    *
-   * Allocation-free: only a single incumbent is retained.
+   * Enumerating empty shells is only worthwhile while the search is close to the
+   * query point: once the shell has probed more cells than the grid actually
+   * populates, an exact linear scan of those cells is cheaper than continuing to
+   * walk rings. That linear finish computes the same global minimum of
+   * `(distanceSq, rank)` (the shell's early-out is provably optimal), so the
+   * cutoff is a pure performance knob and cannot change the result for any
+   * injective `rank` (every caller ranks by a unique id -> index).
+   *
+   * No per-item allocation: only a single incumbent is retained. (The linear
+   * finish does allocate one `Map` iterator per bailed query.)
    *
    * @param {Vector3} position - Query centre.
    * @param {Function} isCandidate - Predicate selecting eligible items.
-   * @param {Function} rank - Deterministic tie-break; smaller wins.
+   * @param {Function} rank - Deterministic tie-break; smaller wins. Must be
+   *   **injective** for stable results: when two candidates tie on both distance
+   *   and rank, the shell path and the linear finish may pick different items
+   *   (same `(distanceSq, rank)` key, different item). The only caller ranks by a
+   *   unique id -> index, so this cannot occur today.
    * @returns {T | null}
    */
   queryNearest(
@@ -209,6 +222,7 @@ export class SpatialGrid<T> {
     const centerY = Math.floor(position.y / this.cellSize);
     const centerZ = Math.floor(position.z / this.cellSize);
     const cellSizeSq = this.cellSize * this.cellSize;
+    const cellCount = this.cells.size;
 
     for (let r = 0; remaining > 0; r++) {
       for (let dx = -r; dx <= r; dx++) {
@@ -249,6 +263,40 @@ export class SpatialGrid<T> {
       // distance must still be resolved by rank and cannot be skipped.
       if (best !== null && bestDistSq < r * r * cellSizeSq) {
         return best;
+      }
+
+      // Cells probed so far is `(2r + 1)^3` (the number of shell cells summed
+      // over rings 0..r). Once that exceeds the populated cell count, finishing
+      // with the linear scan below is cheaper than probing another ring.
+      const probed = (2 * r + 1) * (2 * r + 1) * (2 * r + 1);
+      if (probed > cellCount) {
+        break;
+      }
+    }
+
+    // Every populated cell was visited, so the shell already holds the exact
+    // global minimum.
+    if (remaining === 0) {
+      return best;
+    }
+
+    // Exact linear finish: the global minimum of `(distanceSq, rank)` over every
+    // candidate in every populated cell.
+    for (const cell of this.cells.values()) {
+      for (const item of cell) {
+        if (!isCandidate(item)) {
+          continue;
+        }
+        const pos = this.getPosition(item);
+        const ox = pos.x - position.x;
+        const oy = pos.y - position.y;
+        const oz = pos.z - position.z;
+        const distSq = ox * ox + oy * oy + oz * oz;
+        if (distSq < bestDistSq || (distSq === bestDistSq && rank(item) < bestRank)) {
+          best = item;
+          bestDistSq = distSq;
+          bestRank = rank(item);
+        }
       }
     }
 
