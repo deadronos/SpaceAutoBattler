@@ -9,7 +9,7 @@
 
 ## 2025-10-29 — Debug History Capping Unification (TASK415)
 
-1. **WHEN** a debug, telemetry, or metrics buffer records a new entry, **THE SYSTEM SHALL** append via a shared capped-buffer helper that enforces the configured maximum length. _(Acceptance: `test/utils/cappedArray.spec.ts` appends beyond the cap and asserts the tail length equals the limit.)_
+1. **WHEN** a debug, telemetry, or metrics buffer records a new entry, **THE SYSTEM SHALL** append via a shared capped-buffer helper that enforces the configured maximum length. _(Acceptance: `test/utils/cappedBuffer.spec.ts` appends beyond the cap and asserts the tail length equals the limit.)_
 2. **WHEN** capped-buffer trimming occurs, **THE SYSTEM SHALL** discard the oldest entries while preserving FIFO ordering of the remaining records. _(Acceptance: the same unit test verifies the retained elements match the most recent inputs in order.)_
 3. **WHEN** progression event histories are updated, **THE SYSTEM SHALL** return a fresh array instance so callers relying on immutability do not observe in-place mutation. _(Acceptance: unit coverage asserts the helper returns a new reference while carrying through capped contents.)_
 4. **WHEN** the capped-buffer helper receives a non-positive capacity, **THE SYSTEM SHALL** return an empty history without throwing to keep debug tooling resilient. _(Acceptance: unit coverage drives a zero-capacity call and checks the empty result.)_
@@ -50,7 +50,7 @@
 
 ## 2025-10-03 — Star Disk Debug Animation Restoration (TASK234)
 
-1. **WHEN** the StarDisk component renders with the `copilot_debug=1` query flag and no forced basic-material override is registered, **THE SYSTEM SHALL** attach the production `MainSequenceStarMaterial` so the animated shader remains visible during debug sessions. _(Acceptance: Vitest component spec mounts `StarDisk` with the query flag and asserts the mesh material remains a `ShaderMaterial` instance after a render frame.)_
+1. **WHEN** the `StarSphere` component renders with the `copilot_debug=1` query flag and no forced basic-material override is registered, **THE SYSTEM SHALL** attach the production main-sequence star material (from `createMainSequenceStarMaterial` in `src/renderer/starDisk/materialFactory.ts`) so the animated shader remains visible during debug sessions. _(Acceptance: Vitest component spec mounts `StarSphere` with the query flag and asserts the mesh material remains a `ShaderMaterial` instance after a render frame.)_
 2. **WHEN** the StarDisk render loop executes, **THE SYSTEM SHALL** advance the shader uniform time monotonically so the `iTime` uniform increases on each frame. _(Acceptance: Vitest spec spies on `updateMainSequenceStarUniforms`, advances multiple frames, and verifies successive calls receive strictly increasing `time` values.)_
 
 ## 2025-10-03 — Star Disk Simulation Fallback (TASK235)
@@ -72,7 +72,7 @@
 3. **WHEN** a new GameState initialises and advances its first frame, **THE SYSTEM SHALL** guarantee the deferred mutation queue runs exactly once per tick in deterministic insertion order so cold-start fleet spawns succeed without duplicate executions. _(Acceptance: regression inspects the queue order across repeated cold-start ticks and matches captured snapshots from stable seeds.)_
 4. **WHEN** the physics step completes, **THE SYSTEM SHALL** clear deferred mutation queues before the next frame so stale operations cannot re-run on subsequent ticks. _(Acceptance: regression enqueues dummy operations, steps twice, and confirms the operation executes once and the queue is empty before the second tick.)_
 
-**Validation 2025-09-30:** Covered by `test/vitest/simulation-queue.spec.ts`, `test/vitest/carrier-launch.spec.ts`, `test/vitest/safe-kinematics.spec.ts`, and the full Vitest suite (`npm test`). Manual verification confirmed no Rapier panics during cold-start carrier spawns.
+**Validation 2025-09-30:** Covered by `test/vitest/simulation-queue.spec.ts`, `test/vitest/carrier-launch.spec.ts`, `test/vitest/safe-kinematics.spec.ts`, and the full Vitest suite (`pnpm test`). Manual verification confirmed no Rapier panics during cold-start carrier spawns.
 
 ## 2025-09-30 — Rapier Queue Extensions (TASK230 follow-up)
 
@@ -117,7 +117,7 @@
 
 1. **WHEN** the AI scores multiple intent candidates for a ship within the same tick, **THE SYSTEM SHALL** deterministically select the winner using quantised scores, intent priority ordering, threat rank, distance, and candidate index before falling back to seeded randomness only when all tiebreakers match. _(Acceptance: `test/vitest/ai-determinism.spec.ts` asserts identical command streams across seeded runs and verifies the tie-usage ratio stays ≤5%.)_
 2. **WHEN** a ship experiences a critical event (≥10% HP loss in a single tick, target destruction, or a VIP gaining a new attacker), **THE SYSTEM SHALL** trigger an interrupt that forces the ship’s `nextThinkAt` to the current tick and records decision latency ≤1 tick. _(Acceptance: `test/vitest/ai-interrupts.spec.ts` simulates each trigger, checks `nextThinkAt` snapping, and confirms latency histogram updates.)_
-3. **WHEN** the blackboard rebuilds target priorities each decision tick, **THE SYSTEM SHALL** calculate threat weights that incorporate hull class, remaining HP, VIP protection, and active focus-fire counts, exposing the selected target’s focus ratio via diagnostics. _(Acceptance: `test/vitest/ai-target-priority.spec.ts` seeds contrived fleets, validates ordering, and inspects logged focus ratios.)_
+3. **WHEN** the blackboard rebuilds target priorities each decision tick, **THE SYSTEM SHALL** calculate threat weights that incorporate hull class, remaining HP, VIP protection, and active focus-fire counts, exposing the selected target’s focus ratio via diagnostics. _(Acceptance: no dedicated spec exists — the referenced `test/vitest/ai-target-priority.spec.ts` was never created; threat/VIP targeting is exercised indirectly by `test/vitest/ai-scorer.spec.ts` and `test/vitest/ai-interrupts.spec.ts`.)_
 4. **WHEN** heading commands apply vertical perturbations, **THE SYSTEM SHALL** clamp the resulting Y component using role-based limits scaled by range band error so agile profiles reach up to 0.6 while heavy hulls stay ≤0.35. _(Acceptance: `test/vitest/ai-vertical.spec.ts` verifies clamp selection and band-error scaling across fighter, corvette, and destroyer profiles.)_
 5. **WHEN** AI metrics aggregate after a scenario run, **THE SYSTEM SHALL** include tie counts, tie fallback counts, decision latency histograms, focus-fire ratios, and vertical amplitude distributions in both runtime metrics and exported scenario logs. _(Acceptance: `test/vitest/ai-metrics.spec.ts` and `test/vitest/ai-scenario-harness.spec.ts` read the enriched metrics payload and assert the new fields match expected values.)_
 
@@ -167,13 +167,13 @@
 1. **WHEN** the celestial environment renders with the star disk feature enabled, **THE SYSTEM SHALL** instantiate the `mainsequencestar` fragment shader (adapted from Shadertoy) without requiring runtime parameter overrides. _(Acceptance: `test/vitest/star-disk-material.spec.ts` asserts the created `ShaderMaterial.fragmentShader` matches the imported GLSL and seeded uniforms align with expectations.)_
 2. **WHEN** the star disk shader updates each frame, **THE SYSTEM SHALL** drive the `iTime` and `iResolution` uniforms from deterministic simulation time and the current renderer pixel dimensions. _(Acceptance: `test/vitest/star-disk-material.spec.ts` updates uniforms and verifies deterministic time advances and resolution clamping.)_
 3. **WHEN** the shader samples its channels, **THE SYSTEM SHALL** bind the organic texture asset to `iChannel0` and the noise texture asset to `iChannel1`, falling back to deterministic generated textures if loading fails. _(Acceptance: `test/vitest/star-disk-material.spec.ts` validates both provided textures and generated fallback textures.)_
-4. **WHEN** shader allocation fails, **THE SYSTEM SHALL** fall back to a basic emissive mesh material and emit a warning without crashing the scene graph. _(Acceptance: `test/vitest/star-disk.component.spec.tsx` mocks the factory failure and asserts the component renders `<meshBasicMaterial>` while logging the warning.)_
+4. **WHEN** shader allocation fails, **THE SYSTEM SHALL** fall back to a basic emissive mesh material and emit a warning without crashing the scene graph. _(Acceptance: formerly `test/vitest/star-disk.component.spec.tsx`; no current component-level fallback spec exists, so this behaviour is presently uncovered — track as a follow-up.)_
 
 ## 2025-09-27 — Build/Test Resilience
 
 1. **WHEN** the Vitest smoke import suite enumerates project modules, **THE SYSTEM SHALL** load each module through bundled dynamic imports so TypeScript sources resolve without runtime extension errors. _(Validation: `test/vitest/smoke/import_all.spec.ts` passes with all modules imported.)_
 2. **WHEN** `ProjectileObject` renders for any projectile entity, **THE SYSTEM SHALL** derive the sphere geometry radius from that entity’s projectile configuration or the default fallback. _(Validation: projectile geometry specs capture the configured radius for laser and heavy projectiles.)_
-3. **WHEN** webpack’s TypeScript loader evaluates Vitest specs during `npm run build`, **THE SYSTEM SHALL** narrow error objects before reading their properties so compilation completes without type errors. _(Validation: `npm run build` finishes without TypeScript diagnostics.)_
+3. **WHEN** webpack’s TypeScript loader evaluates Vitest specs during `pnpm run build`, **THE SYSTEM SHALL** narrow error objects before reading their properties so compilation completes without type errors. _(Validation: `pnpm run build` finishes without TypeScript diagnostics.)_
 4. **WHEN** projectile geometry tests exercise React hooks, **THE SYSTEM SHALL** provide stable mocked hooks that avoid invalid dispatcher access. _(Validation: projectile geometry specs run without `Invalid hook call` failures.)_
 
 ## 2025-09-27 — Star Disk View Compensation
@@ -185,9 +185,9 @@
 ## 2025-09-27 — Ship Kill Explosion Effects
 
 1. **WHEN** `resolveProjectiles` reduces a ship’s hull to zero or below, **THE SYSTEM SHALL** append a deterministic explosion event containing the world-space position, radius, faction variant, and seeded timeline within the same simulation tick. _(Acceptance: Vitest suite `test/vitest/explosions-event.spec.ts` instantiates a mock state, applies lethal damage, and asserts the emitted event payload matches expectations.)_
-2. **WHEN** the renderer evaluates active explosion events each frame, **THE SYSTEM SHALL** drive the flash, shockwave, fireball, debris, and smoke stages according to the event’s seeded timeline and configuration values. _(Acceptance: renderer unit `test/vitest/explosions-renderer.spec.tsx` feeds a seeded event into the explosion renderer and asserts staged outputs and bloom registration.)_
-3. **WHEN** an explosion occurs within the dynamic lighting falloff radius of nearby ships, **THE SYSTEM SHALL** emit a transient point light pulse scaled by distance while leaving camera transforms unchanged (i.e., no screen shake). _(Acceptance: component test `test/vitest/explosions-lighting.spec.tsx` verifies emitted light intensity, falloff clamps, and asserts camera state remains untouched.)_
-4. **WHEN** an explosion event reaches the end of its configured duration, **THE SYSTEM SHALL** unregister all bloom selections, dispose transient lights, and recycle the event for reuse within the same frame. _(Acceptance: unit test `test/vitest/explosions-lifecycle.spec.ts` advances simulated time beyond the event lifetime and confirms cleanup hooks run exactly once.)_
+2. **WHEN** the renderer evaluates active explosion events each frame, **THE SYSTEM SHALL** drive the flash, shockwave, fireball, debris, and smoke stages according to the event’s seeded timeline and configuration values. _(Acceptance: covered by the component-level effectUpdater specs under `test/components/explosions/effectUpdaters/` (`flashUpdater`, `shockwaveUpdater`, `fireballUpdater`, `debrisUpdater`, `smokeUpdater`, `plasmaUpdater`, `sparksUpdater`); the named `test/vitest/explosions-renderer.spec.tsx` was never created.)_
+3. **WHEN** an explosion occurs within the dynamic lighting falloff radius of nearby ships, **THE SYSTEM SHALL** emit a transient point light pulse scaled by distance while leaving camera transforms unchanged (i.e., no screen shake). _(Acceptance: no current automated spec — the referenced `test/vitest/explosions-lighting.spec.tsx` was never created.)_
+4. **WHEN** an explosion event reaches the end of its configured duration, **THE SYSTEM SHALL** unregister all bloom selections, dispose transient lights, and recycle the event for reuse within the same frame. _(Acceptance: lifecycle behaviour is exercised via `test/components/explosions/instancedManager.spec.ts`; the named `test/vitest/explosions-lifecycle.spec.ts` was never created.)_
 
 ## 2025-09-28 — AI Scenario Determinism Refresh
 
@@ -216,7 +216,7 @@ These historical requirements described behaviors tied to the deprecated `StarDi
 
 ## 2025-09-27 — HUD Health Overlay Enhancements
 
-1. **WHEN** the HUD health-bar toggle in the top menu is set to `on`, **THE SYSTEM SHALL** render per-ship overlay widgets for all visible player and AI vessels within the next render frame. _(Acceptance: planned Playwright flow in `test/playwright/hud-healthbars.spec.ts` activates the toggle and asserts overlays appear for each tracked entity.)_
+1. **WHEN** the HUD health-bar toggle in the top menu is set to `on`, **THE SYSTEM SHALL** render per-ship overlay widgets for all visible player and AI vessels within the next render frame. _(Acceptance: planned Playwright flow in `test/playwright/hud-healthbars.spec.ts`; that spec does not exist yet — the overlay is currently covered by Vitest component specs instead.)_
 2. **WHEN** a ship overlay renders, **THE SYSTEM SHALL** display stacked shield and health bars using the configuration colors (default: blue shield, green health) with proportions reflecting the entity’s current normalized shield/health values. _(Acceptance: Vitest snapshot in `test/vitest/hud-overlay-layout.spec.ts` mounts the component and verifies bar lengths and color tokens for seeded states.)_
 3. **WHEN** a tracked ship’s shield or health value changes by ≥1% of max, **THE SYSTEM SHALL** animate the corresponding bar width to the new value within 150ms while preserving deterministic easing from the seeded RNG utilities. _(Acceptance: unit test in `test/vitest/hud-overlay-animation.spec.ts` simulates value deltas and checks transition timing and easing seeded outputs.)_
 4. **WHEN** status effects (e.g., jammed, shield-down, engine-disrupted) are active on a ship, **THE SYSTEM SHALL** surface iconography and tooltip text adjacent to the overlay with contrast ratios meeting WCAG 2.1 AA (≥4.5:1) against the in-scene background. _(Acceptance: visual assertion in `test/vitest/hud-status-icons.spec.ts` measures computed contrast and presence of localized tooltip strings.)_
@@ -225,7 +225,7 @@ These historical requirements described behaviors tied to the deprecated `StarDi
 ## Implementation mapping (authoritative file references)
 
 - Rapier step panic diagnostics: implemented in `src/game/simulationQueue.ts` and recorded on `state.simulation.rapierDiagnostics` (maps to requirements in TASK236/TASK230).
-- StarDisk shader and debug lockdown/fallbacks: implemented in `src/components/environment/StarDisk.tsx`, `src/renderer/MainSequenceStarMaterial` and related uniforms; harness and visual baselines live under `test/playwright/`.
+- StarDisk/StarSphere shader and debug wiring: the main-sequence star is rendered by `src/components/environment/StarSphere.tsx` using `createMainSequenceStarMaterial` / `updateMainSequenceStarUniforms` from `src/renderer/starDisk/materialFactory.ts`; harness and visual baselines live under `test/playwright/`.
 - Progression and captain systems: implemented in `src/game/progression.ts` with configuration in `src/config/progression.ts` (maps to progression requirements and tests).
 
 ## 2025-10-03 — Motion PD Tuning (TASK241)

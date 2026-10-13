@@ -20,25 +20,25 @@ Searched text for `Rapier|rapier|Ammo|physics|legacy physics|useRapier` (`**/src
 
 Searched text for `@deprecated` (`**/src/**`), 2 results
 
-Read [](file:///d%3A/GitHub/SpaceAutoBattler/src/game/aiScenarioHarness/stateBuilder.ts)
+Read `src/game/aiScenarioHarness/stateBuilder.ts` _(harness moved to `test/support/aiScenarioHarness.ts`)_
 
-Read [](file:///d%3A/GitHub/SpaceAutoBattler/src/components/ExplosionRenderer.tsx)
+Read `src/components/ExplosionRenderer.tsx` _(now `src/components/explosions/ExplosionRendererCore.tsx`)_
 
-Read [](file:///d%3A/GitHub/SpaceAutoBattler/src/renderer/starDiskMaterial.ts)
+Read `src/renderer/starDiskMaterial.ts`
 
-Read [](file:///d%3A/GitHub/SpaceAutoBattler/src/types/jsx-compat.d.ts)
+Read `src/types/jsx-compat.d.ts` _(file removed)_
 
 Searched text for `patch|workaround|shim|polyfill|compat|fallback|legacy` (`**/src/**`), 200 results
 
-Read [](file:///d%3A/GitHub/SpaceAutoBattler/src/game/aiScenarioHarness/rapierShim.ts)
+Read `src/game/aiScenarioHarness/rapierShim.ts` _(harness moved to `test/support/aiScenarioHarness.ts`)_
 
 Searched for files matching `**/src/game/aiScenarioHarness/**`, 10 matches
 
-Read [](file:///d%3A/GitHub/SpaceAutoBattler/src/game/state.ts)
+Read `src/game/state.ts`
 
 Starting (2/4) _Identify candidate legacy codepaths (top 10)_
 
-Read [](file:///d%3A/GitHub/SpaceAutoBattler/src/game/systems/combat.ts)
+Read `src/game/systems/combat.ts`
 
 Starting (3/4) _Analyze and prioritize top 3 for removal/refactor_
 
@@ -64,7 +64,7 @@ I'll scan the codebase and recommend the three largest legacy code‑paths in sr
      2. Replace usages with the current Miniplex API (`world.add`, `world.remove`, `world.with`, canonical query handling). Prefer automated codemods where possible (search + replace with verified patterns).
      3. Remove the shims from `createGameState()` only after all call sites are updated (remove in a separate commit/PR).
      4. Add unit tests exercising entity lifecycle and ensure no runtime regressions.
-     5. Run `npx tsc --noEmit` and full test suite (`npm test`) between steps.
+     5. Run `pnpm exec tsc --noEmit` and full test suite (`pnpm test`) between steps.
    - Effort & risk:
      - Effort: medium → large depending on how many old call sites exist across the codebase and tests.
      - Risk: high (touches core runtime). Do in small, validated steps: update code, run tests, remove shim.
@@ -118,7 +118,7 @@ I'll scan the codebase and recommend the three largest legacy code‑paths in sr
      - Effort: small → medium (mostly compile/time fixes).
      - Risk: low → medium (type-only, but can reveal many places needing small edits).
    - Migration checklist:
-     - Run `npx tsc --noEmit` with the shim removed to get the list of type errors.
+     - Run `pnpm exec tsc --noEmit` with the shim removed to get the list of type errors.
      - Fix errors incrementally; add small PRs to avoid huge monolithic type churn.
      - Add `tsc` to CI for incremental enforcement.
 
@@ -159,8 +159,8 @@ These are useful follow-ups after the top 3 are addressed:
     - Typecheck & run tests:
 
       ```bash
-      npx tsc --noEmit
-      npm test
+      pnpm exec tsc --noEmit
+      pnpm test
       ```
 
     - Find all usages:
@@ -176,7 +176,7 @@ These are useful follow-ups after the top 3 are addressed:
   - Remove harness from production build by ensuring no src import remains.
 
 - Types:
-  - Temporarily remove jsx-compat.d.ts, run `npx tsc --noEmit` to get errors and fix them incrementally.
+  - Temporarily remove jsx-compat.d.ts, run `pnpm exec tsc --noEmit` to get errors and fix them incrementally.
   - Prefer explicitly typed components (return `React.ReactElement` or `JSX.Element` per updated types) and add missing props type definitions.
 
 ---
@@ -186,7 +186,7 @@ These are useful follow-ups after the top 3 are addressed:
 - Core shim removal (state.ts) is highest risk — cover with:
   - Unit tests for entity lifecycle, turret registration/unregistration.
   - Integration tests that spawn/destroy ships and confirm no memory leaks or orphaned turrets.
-  - CI runs: `npx tsc --noEmit` and `npm test` on each PR.
+  - CI runs: `pnpm exec tsc --noEmit` and `pnpm test` on each PR.
 
 - Moving harness & removing deprecated re-exports:
   - Search for runtime imports before final removal.
@@ -200,7 +200,7 @@ These are useful follow-ups after the top 3 are addressed:
 
 ## Short actionable plan (next steps)
 
-- Step A (quick, low-risk): Move aiScenarioHarness to `test/aiScenarioHarness` or `tools/ai-harness`. Update tests and import paths. Verify `npm test` passes.
+- Step A (quick, low-risk): Move aiScenarioHarness to `test/aiScenarioHarness` or `tools/ai-harness`. Update tests and import paths. Verify `pnpm test` passes.
 - Step B (small PRs): Replace facades like combat.ts and ExplosionRenderer.tsx usages with direct imports from new modules; remove wrapper files when done.
 - Step C (types): Remove jsx-compat.d.ts in a branch, fix TypeScript errors, iterate until clean.
 - Step D (big PRs, last): Replace old Miniplex API call sites, update tests, then remove the shims in `createGameState()`.

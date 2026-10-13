@@ -13,30 +13,29 @@ Modular particle effect updaters for different explosion visual components. Each
 | **sparksUpdater.ts**    | Updates fast-moving spark particles scattering outward; camera-facing for visibility                      |
 | **plasmaUpdater.ts**    | Updates rotating billboard plumes simulating energetic electrical discharge effect                        |
 | **smokeUpdater.ts**     | Updates drifting smoke wisps that linger; camera-facing and gradually dissipate                           |
-| **types.ts**            | Shared TypeScript types and interfaces for effect updaters (EffectUpdateContext, configuration)           |
+| **types.ts**            | Shared types: `EffectUpdateContext`, `EffectUpdater`, `EffectUpdateResult`, `EMPTY_EFFECT_RESULT`         |
 | **index.ts**            | Exports all updater functions for easy importing                                                          |
 
 ## Updater Pattern
 
-Each updater follows this interface:
+Each updater follows the `EffectUpdater` type (`types.ts`):
 
 ```typescript
-function updateEffectType(
+type EffectUpdater = (
   ctx: EffectUpdateContext,
-  mesh: InstancedMesh,
-  startIndex: number,
-  capacity: number,
-): number;
+  manager: InstancedLayerManager<number>,
+  eventId: number,
+) => EffectUpdateResult; // { count: number; saturated: boolean }
 ```
 
 **Parameters:**
 
 - `ctx` - Update context with explosion data, timing, and particle cache
-- `mesh` - Three.js InstancedMesh to update with particle data
-- `startIndex` - Where in the mesh to start placing instances
-- `capacity` - Maximum number of instances available
+- `manager` - Shared `InstancedLayerManager` used to allocate/write instances
+- `eventId` - Identifier for the explosion event being updated
 
-**Returns:** Number of active instances used
+**Returns:** `EffectUpdateResult` with the number of active instances used
+(`count`) and whether the layer's capacity was saturated (`saturated`).
 
 ## Shared Context
 

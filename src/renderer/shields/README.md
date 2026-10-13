@@ -4,11 +4,14 @@ Specialized materials and shaders for rendering ship energy shields with impact 
 
 ## Shield Files
 
-| File                    | Purpose                                                    |
-| ----------------------- | ---------------------------------------------------------- |
-| **index.ts**            | Main shield renderer export                                |
-| **shieldMaterials.tsx** | React component for creating and managing shield materials |
-| **shieldHexShader.tsx** | Hexagonal shield geometry and shader implementation        |
+| File                            | Purpose                                                                           |
+| ------------------------------- | --------------------------------------------------------------------------------- |
+| **index.ts**                    | Shield renderer export barrel (`ShieldHexMaterial`, `ShieldTransmissionMaterial`) |
+| **shieldMaterials.tsx**         | `ShieldTransmissionMaterial` React component                                      |
+| **shieldHexShader.tsx**         | `ShieldHexMaterial` React component; delegates uniform updates                    |
+| **shieldHexMaterialFactory.ts** | Pure `createShieldHexShaderMaterial` factory (no React)                           |
+| **shieldHexShaders.ts**         | Builds hex vertex/fragment shader source (ripple capacity)                        |
+| **useShieldHexUniforms.ts**     | Per-frame hex uniform driver (time, opacity, tint, ripple data)                   |
 
 ## Shield System
 

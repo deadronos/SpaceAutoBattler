@@ -1,15 +1,17 @@
 # components/environment/ - Celestial Environment Rendering
 
-Components for rendering the space environment: planets, moons, stars, star disks, and atmospheric elements.
+Components for rendering the space environment: planets, moons, the central star, and atmospheric elements.
 
 ## Star Components
 
-| File                 | Purpose                                                                  |
-| -------------------- | ------------------------------------------------------------------------ |
-| **StarDisk.tsx**     | Main star disk component; manages star disk rendering and material setup |
-| **StarDiskMesh.tsx** | Low-level star disk mesh rendering with custom shader material           |
-| **StarSphere.tsx**   | Renders background star sphere (distant stars)                           |
-| **StarLight.tsx**    | Provides dynamic lighting from star source                               |
+| File               | Purpose                                                                             |
+| ------------------ | ----------------------------------------------------------------------------------- |
+| **StarSphere.tsx** | Central star billboard (replaces the old star disk); depth + additive shader passes |
+| **StarLight.tsx**  | Provides dynamic lighting from star source                                          |
+
+`StarSphere.tsx` renders the central star using `starSphere.vertex.glsl`,
+`mainsequencestar.glsl`, `starDiskDepthMaterial`, and `starDiskOrientation`. The
+distant background star field is a separate layer (`src/components/layers/StarsField.tsx`).
 
 ## Celestial Body Components
 
@@ -19,20 +21,21 @@ Components for rendering the space environment: planets, moons, stars, star disk
 | **PlanetBody.tsx**           | Renders a single planet with procedural texture and rotation        |
 | **PlanetRings.tsx**          | Renders planetary ring systems around gas giants                    |
 | **PlanetRimShell.tsx**       | Creates atmospheric rim/glow effect around planets                  |
+| **PlanetAtmosphere.tsx**     | Light-dependent additive atmosphere shell around a planet           |
 | **Skysphere.tsx**            | Renders the background skysphere (nebula texture)                   |
 | **ParallaxBillboard.tsx**    | Utility component for parallax scrolling billboard effects          |
 
 ## Environment Features
 
 - **Procedural Textures**: Planets use procedurally generated textures
-- **Star Disk Rendering**: Custom shader-based star disk with Gooch-style non-photorealistic rendering
-- **Atmospheric Effects**: Planet rim shells create depth and atmosphere
+- **Star Rendering**: Custom shader-based central star with Gooch-style non-photorealistic rendering
+- **Atmospheric Effects**: Planet rim shells and atmosphere shells create depth and atmosphere
 - **Parallax Layers**: Billboard-based parallax effects for depth perception
 - **Performance**: Uses LOD and billboard techniques to maintain performance
 
 ## Integration Notes
 
 - CelestialEnvironment is orchestrated by Battlefield component
-- Star disk uses custom GLSL shaders (see `src/renderer/shaders/`)
+- The central star uses custom GLSL shaders (see `src/renderer/shaders/`)
 - Materials are managed via material registry
 - Textures are cached using Drei's `useTexture` hook

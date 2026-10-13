@@ -34,7 +34,7 @@ Homing + point defense (TASK161)
 Damage integration
 
 - Hit resolution is funnelled through `calculateEffectiveDamage` / `applyDamageResultToShip` in `src/game/combat/damage.ts` (see `core-damage` memory if/when added). XP awards use `awardDamageXp` / `awardKillXp` from `src/game/progression/xp.ts`.
-- Spatial-hash acceleration lives in `src/game/utils/spatialHash.ts` (`SHIP_GRID_CELL_SIZE = 12`); rebuilt per damage pass.
+- Spatial-hash acceleration lives in `src/game/systems/projectileCollisions.ts` (`SHIP_GRID_CELL_SIZE = 12`); rebuilt per damage pass.
 
 References
 

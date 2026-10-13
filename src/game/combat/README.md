@@ -4,9 +4,12 @@ Core damage calculation and combat-related utilities.
 
 ## Combat Files
 
-| File          | Purpose                                                                   |
-| ------------- | ------------------------------------------------------------------------- |
-| **damage.ts** | Damage calculation system including armor, shields, and armor penetration |
+| File                     | Purpose                                                             |
+| ------------------------ | ------------------------------------------------------------------- |
+| **damage.ts**            | Damage calculation including armor, shields, and armor penetration  |
+| **damageMath.ts**        | Pure per-component damage math (breaks results down by component)   |
+| **damageApplication.ts** | Applies calculated damage to a ship entity and invokes callbacks    |
+| **aiming.ts**            | Aiming/targeting helpers (ship velocity extraction, intercept math) |
 
 ## Damage System
 
@@ -37,8 +40,7 @@ Apply damage:
   ↓
 Trigger effects:
   ├─ Explosion (if destroyed)
-  ├─ Screen flash (if hit)
-  └─ Sound effects
+  └─ Screen flash (if hit)
 ```
 
 ## Integration

@@ -21,7 +21,7 @@ Success signals
 
 Notes
 
-- The AI v2 system exists and is feature-flagged; configurations and tuner knobs are present in `src/game/config.ts` and `AI_CONFIG` exports.
+- AI v2 is mandatory: the legacy fallback was removed and `ensureAiEnabled` (`src/game/systems/shipControl/aiSafety.ts`) forces `state.ai.enabled = true`; `src/app/uiStore.ts` ignores disable requests and logs a config warning. Tuner knobs remain in `src/game/config.ts` and `AI_CONFIG` exports.
 - The memory bank (`memory/`) contains per-file summaries and design notes to help contributors locate authoritative code and integration points quickly.
 
 Generated: 2025-10-03

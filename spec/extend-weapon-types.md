@@ -2,7 +2,13 @@
 
 Author: GitHub Copilot
 Date: 2025-10-13
-Status: Draft
+Status: Implemented (historical spec)
+
+> **Status note:** The weapon categories, homing guidance, torpedo AoE warheads,
+> arming timers, hitscan beams, and point-defense targeting described below are
+> now implemented in `src/game/systems/projectiles/*` and
+> `src/game/systems/turrets.ts`. This document is retained as the original
+> design spec; the phased plan below is historical rather than pending work.
 
 ## Summary
 
@@ -70,7 +76,7 @@ The repository currently couples visual/material keys and some behavior through 
 ### Data & balancing
 
 - Use `DamageType` and `DAMAGE_EFFECTIVENESS` in `src/config/progression.ts` — `explosive` already exists and maps well to torpedo warheads; adjust as needed.
-- Update `src/data/shipStats.ts` to assign `missile:*` or `beam:*` keys to hulls and tune `damage`, `range`, `projectileSpeed` and `fireRate` appropriately.
+- Update `src/data/ships/*.ts` to assign `missile:*` or `beam:*` keys to hulls and tune `damage`, `range`, `projectileSpeed` and `fireRate` appropriately.
   - Ensure all projectile spawns track their `ownerId`/`sourceId` so AoE, torpedoes, and missiles can attribute damage/XP to the correct source. This ownership field should be carried through simulation and into damage resolution.
 
 ### Ship loadouts (recommended)
@@ -100,7 +106,7 @@ The repository currently couples visual/material keys and some behavior through 
   - Torpedo turrets should use `aoeRadius` warheads and be balanced for broadsides (frontal arcs and guidance/arming tuned accordingly).
   - Missile turrets should use homing guidance with tunable `turnRate` and optional leading behaviour.
 
-## Implementation plan (phased)
+## Implementation plan (historical — delivered)
 
 Phase 1 — schema + config (non-breaking)
 
@@ -110,7 +116,7 @@ Phase 1 — schema + config (non-breaking)
 
 - Replace brittle string checks (e.g., `includes('laser')`) with explicit category-based branches in `fireProjectile` and `advanceProjectiles`.
 
-  Estimated effort: small. Run `npm run typecheck` and unit tests.
+  Estimated effort: small. Run `pnpm run typecheck` and unit tests.
 
 Phase 2 — AoE & arming
 
@@ -162,12 +168,13 @@ Phase 5 — AI & PD
   - `src/game/systems/decision/*` (turret intent changes for PD)
 
 - Data
-  - `src/data/shipStats.ts` (assign missile/beam weapons)
+  - `src/data/ships/*.ts` (assign missile/beam weapons)
 
 - Tests
-  - `test/systems/missile.spec.ts`
-  - `test/systems/beam.spec.ts`
-  - `test/systems/aoe.spec.ts`
+  - The originally planned `test/systems/{missile,beam,aoe}.spec.ts` files were
+    never created under that path. Current coverage lives in
+    `test/vitest/projectile-extended.spec.ts` (homing, AoE, arming, beam) and
+    `test/vitest/turret-point-defense.spec.ts` (PD targeting).
 
 ## Acceptance tests (minimal)
 

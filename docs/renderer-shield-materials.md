@@ -3,14 +3,14 @@
 This project now supports two shield materials:
 
 - hex (default): Custom hex-grid shader with ripple effects.
-- transmission: Drei's MeshTransmissionMaterial for glass-like shields.
+- meshtransmission: Drei's MeshTransmissionMaterial for glass-like shields.
 
 ## Configure per hull
 
-Edit `src/config/renderer.ts` `SHIELD_VISUALS` entries per hull and set:
+Edit `src/config/shields.ts` `SHIELD_VISUALS` entries per hull and set:
 
 ```ts
-materialKind: 'transmission';
+materialKind: 'meshtransmission';
 ```
 
 Optional transmission parameters (with defaults):
@@ -23,9 +23,9 @@ Example:
 ```ts
 export const SHIELD_VISUALS = {
   fighter: {
-    materialKind: 'transmission',
+    materialKind: 'meshtransmission',
     maxAlpha: 0.4,
-    transmission: { ior: 1.25, roughness: 0.08 },
+    meshtransmission: { ior: 1.25, roughness: 0.08 },
   },
   // ...
 };
@@ -34,8 +34,8 @@ export const SHIELD_VISUALS = {
 You can also programmatically override for all hulls via:
 
 ```ts
-import { setGlobalShieldMaterial } from '../config/renderer.js';
-setGlobalShieldMaterial('transmission');
+import { setGlobalShieldMaterial } from '../config/shields.js';
+setGlobalShieldMaterial('meshtransmission');
 ```
 
 Notes:
@@ -46,7 +46,7 @@ Notes:
 
 ## Ellipsoidal shields (mesh scaling)
 
-Shields can be non-uniformly scaled to form an ellipsoid. Configure per hull via `src/config/renderer.ts`:
+Shields can be non-uniformly scaled to form an ellipsoid. Configure per hull via `src/config/shields.ts`:
 
 ```ts
 export const SHIELD_VISUALS = {
@@ -66,7 +66,7 @@ This change is visual-only. Physics and gameplay collision radii remain unchange
 
 Materials are resolved from `src/renderer/materialRegistry.tsx` using namespaced keys. Built-ins include:
 
-- `shield:hex`, `shield:transmission`
+- `shield:hex`, `shield:meshtransmission`
 - `bullet:laser`
 - `explosion:smoke`
 

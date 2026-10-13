@@ -2,7 +2,9 @@
 
 The rewrite branch uses a small, explicit configuration surface focused on world scale and rendering defaults. Most gameplay values live in code (with TypeScript types) to keep behavior deterministic and discoverable.
 
-## World configuration (`src/game/config.ts`)
+## World configuration (`src/game/config/world.ts`)
+
+These values are defined in `src/game/config/world.ts` and re-exported through the `src/game/config.ts` barrel (which also re-exports `aiConfig`, `spawn`, and validation modules).
 
 - `WORLD_SIZE` — length of the cubic world edge (default: 8000). The world is centered at the origin.
 - `WORLD_HALF` — `WORLD_SIZE / 2` (±4000 with defaults).
@@ -26,7 +28,7 @@ clampToWorld(pos);
 `src/components/Battlefield.tsx` integrates `@react-three/drei`:
 
 - `OrbitControls` — orbit/pan/zoom around origin with sensible min/max distances.
-- `Grid` — infinite grid sized around `WORLD_SIZE` for spatial context.
+- `Grid` — debug-only: the dev grid/axes overlay is `DevGridAndAxes` in `src/components/Battlefield.tsx`, mounted only when `showDevGrid` is enabled (sized around `WORLD_SIZE`). It is not part of the default scene.
 
 These can be tuned directly in `Battlefield.tsx` if the world size is changed.
 

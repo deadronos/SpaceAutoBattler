@@ -4,9 +4,11 @@ Manages Level of Detail (LOD) switching for distant objects to optimize renderin
 
 ## Files
 
-| File                   | Purpose                                                                   |
-| ---------------------- | ------------------------------------------------------------------------- |
-| **ShipLODManager.tsx** | React component managing LOD switching for ships based on camera distance |
+| File                      | Purpose                                                                   |
+| ------------------------- | ------------------------------------------------------------------------- |
+| **ShipLODManager.tsx**    | React component managing LOD switching for ships based on camera distance |
+| **ShipImpostorLayer.tsx** | Instanced layer that renders far ships as billboard impostors             |
+| **shipLodPartition.ts**   | Deterministic near/far partitioning with hysteresis (distance thresholds) |
 
 ## Overview
 

@@ -1,4 +1,4 @@
-npm# Progressive Texture Loading
+# Progressive Texture Loading
 
 ## Overview
 
@@ -102,8 +102,8 @@ Tests are located in `test/vitest/progressive-texture.spec.ts`:
 
 To test with network throttling:
 
-1. Build the project: `npm run build`
-2. Serve the dist folder: `npm run serve`
+1. Build the project: `pnpm run build`
+2. Serve the dist folder: `pnpm run serve`
 3. Open Chrome DevTools → Network tab
 4. Select "Slow 3G" or "Fast 3G" throttling
 5. Reload the page and observe:
@@ -124,6 +124,8 @@ To add progressive loading for new textures:
 2. **Update asset registry**:
 
    ```typescript
+   // Illustrative placeholder — replace with your actual asset registry module
+   // (e.g. the pattern used by `src/assets/skysphere.ts`).
    // In src/assets/yourTextures.ts
    export const YOUR_TEXTURE_PATHS = {
      myTexture: highResUrl,

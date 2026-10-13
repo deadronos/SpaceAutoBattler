@@ -7,14 +7,14 @@
 
 ## Before pushing
 
-- Run `npm run typecheck` and `npm test`.
+- Run `pnpm run typecheck` and `pnpm test`.
 
 ## Releases and version sync
 
 - Keep `package.json` `"version"` in sync with release tags: tag `vX.Y.Z` ⇔
   `"version": "X.Y.Z"`.
 - Bump `"version"` in the same commit/PR that is about to be tagged, then verify with
-  `npm run version:check vX.Y.Z` before pushing the tag.
+  `pnpm run version:check vX.Y.Z` before pushing the tag.
 - The "Deploy to GitHub Pages" workflow enforces this for tag refs; it is a no-op on
   branches and `workflow_dispatch`.
 - See `test/deployment-validation.md` for the full manual procedure and the `v2.2.0`

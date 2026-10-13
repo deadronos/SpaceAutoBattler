@@ -13,14 +13,14 @@ The compression is configured in `vite.config.ts` using a local `node:zlib` plug
 - **Gzip compression**: Generates `.gz` files alongside original assets
 - **Brotli compression**: Generates `.br` files alongside original assets
 - **Threshold**: Only files of at least 10KB are compressed
-- **File types**: JavaScript (`.js`, `.mjs`), CSS (`.css`), HTML (`.html`), SVG (`.svg`), and WebAssembly (`.wasm`) files
+- **File types**: JavaScript (`.js`, `.mjs`), CSS (`.css`), HTML (`.html`), SVG (`.svg`), WebAssembly (`.wasm`), and pre-binary assets (`.glb`, `.gltf`, `.bin`) — GLB/GLTF/BIN models are compressed as well
 - **Originals**: Kept in place (compressed files are written alongside them)
 
 The plugin walks the `dist` output directory recursively, so nested chunks and assets are compressed too. It replaces the previous two `vite-plugin-compression` instances: those shared a module-level `mtimeCache`, which caused the brotli instance to skip files the gzip instance had already processed, so no `.br` assets were emitted.
 
 ### Build Process
 
-During production builds (`npm run build`), the compression plugin automatically:
+During production builds (`pnpm run build`), the compression plugin automatically:
 
 1. Process all eligible files in the output directory
 2. Generate compressed versions with `.gz` and `.br` extensions
@@ -46,7 +46,13 @@ These headers are set in `vite.config.ts` for both `server` (dev) and `preview`,
 
 ## Compression Results
 
-### Measured Compression Ratios (v0.1.0)
+### Measured Compression Ratios (v0.1.0) — historical
+
+> **Historical snapshot.** These figures were captured for the v0.1.0 build and
+> the bundle layout has changed since (see
+> [`performance-report.md`](./performance-report.md) for the current chunk sizes).
+> Treat the ratios as illustrative of the plugin's behavior rather than current
+> numbers.
 
 **Main Bundle:**
 
@@ -108,7 +114,7 @@ To verify compression is working in production:
 
 1. Open DevTools Network tab
 2. Navigate to the deployed site
-3. Select a JavaScript file (e.g., `main.[hash].js`)
+3. Select a JavaScript file (e.g., `spaceautobattler.[hash].js`)
 4. Check the Response Headers for `content-encoding: br` or `content-encoding: gzip`
 5. Compare the "Size" column (transferred) with "Content" column (uncompressed)
 
@@ -118,14 +124,14 @@ To test compression locally:
 
 ```bash
 # Build with compression
-npm run build
+pnpm run build
 
 # Check for compressed files
 ls -lh dist/*.js.gz
 ls -lh dist/*.js.br
 
 # Serve locally
-npm run preview
+pnpm run preview
 ```
 
 ## Maintenance
@@ -135,7 +141,7 @@ npm run preview
 The compression configuration is in `vite.config.ts`. Key settings live in `createPrecompressPlugin()`:
 
 ```javascript
-const compressibleFilePattern = /\.(js|mjs|css|html|svg|wasm)$/i;
+const compressibleFilePattern = /\.(js|mjs|css|html|svg|wasm|glb|gltf|bin)$/i;
 const sizeThreshold = 10 * 1024;
 ```
 

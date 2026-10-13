@@ -17,7 +17,7 @@ This summarizes the public surface of the rewrite’s core modules to help navig
   - `updateGame(state, dt): void` — main deterministic tick; runs subsystems, flushes mutation queues, steps Rapier, syncs transforms, resolves damage, updates explosions.
   - `runDecisionTick(state, dt): void` — alias for `updateDecisionSystem` for test compatibility.
   - Re-exports: `updateDecisionSystem`, `fireProjectile`, `findNearestEnemy`.
-  - `__aiTestHooks` — exposes internal decision/ship-control functions for tests.
+  - There is no `__aiTestHooks` export here; the test-only hooks live in `test/support/aiTestHooks.ts` and are imported by specs directly.
 
 - `ships.ts`
   - `SHIP_STATS` — per-hull stats (defined in `src/data/shipStats.ts`, re-exported here).
@@ -45,7 +45,7 @@ This summarizes the public surface of the rewrite’s core modules to help navig
 - `Battlefield.tsx` — sets up R3F `<Canvas>`, lights, fog, stars, and mounts `BattlefieldSystems`.
 - `BattlefieldSystems.tsx` — fixed-step simulation integration (main thread), plus worker-render-only mode support.
 - `Ship.tsx` — renders GLTF models via `useGLTF`, syncs transform from entity each frame.
-- `Projectile.tsx` — simple visual mesh.
+- `src/components/layers/ProjectilesLayer.tsx` / `ProjectilesInstancedLayer.tsx` — instanced projectile rendering (no standalone `Projectile.tsx` exists).
 - `Hud.tsx` — UI overlay with fleet stats.
 
 ## Assets and utilities

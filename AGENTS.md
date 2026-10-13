@@ -5,11 +5,11 @@ SpaceAutoBattler is a deterministic, browser-based space auto-battler built in T
 ## Essentials (read this first)
 
 - Commands
-  - Build: `npm run build`
-  - Typecheck: `npm run typecheck`
-  - Unit tests: `npm test`
-  - E2E tests: `npm run test:e2e` (or `npm run test:playwright`)
-  - Single unit spec: `npx vitest test/<path>.spec.ts`
+  - Build: `pnpm run build`
+  - Typecheck: `pnpm run typecheck`
+  - Unit tests: `pnpm test`
+  - E2E tests: `pnpm run test:e2e` (or `pnpm run test:playwright`)
+  - Single unit spec: `pnpm exec vitest run test/<path>.spec.ts` (or `vp test test/<path>.spec.ts`)
 
 - Don’t edit generated output: never modify `dist/` unless explicitly asked.
 

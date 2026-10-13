@@ -7,7 +7,8 @@ Specialized instanced rendering layers for efficient batch rendering of game obj
 | File                              | Purpose                                                                                    |
 | --------------------------------- | ------------------------------------------------------------------------------------------ |
 | **ShipsLayer.tsx**                | Renders all ships in scene using instanced geometry; optimized for multiple ship rendering |
-| **ProjectilesLayer.tsx**          | Legacy projectile rendering layer (non-instanced)                                          |
+| **WorkerShipsLayer.tsx**          | Instanced ship layer fed by worker-simulated transforms via the simulation bridge          |
+| **ProjectilesLayer.tsx**          | Thin wrapper delegating to `ProjectilesInstancedLayer` (instanced)                         |
 | **ProjectilesInstancedLayer.tsx** | Instanced projectile rendering layer; efficient for thousands of projectiles               |
 | **TurretsLayer.tsx**              | Renders turret objects across all ships                                                    |
 | **MuzzleFlashInstancedLayer.tsx** | Instanced rendering of muzzle flash effects when weapons fire                              |

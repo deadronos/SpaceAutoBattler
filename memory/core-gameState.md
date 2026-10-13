@@ -11,11 +11,11 @@ Summary:
 
 Primary exports and responsibilities:
 
-- `createGameState(): Promise<GameState>`
-  - Initializes Rapier (`await Rapier.init({})`), constructs the Rapier `World` and `EventQueue` (created with `{ auto: true }`), a Miniplex ECS world, and returns a fully-formed `GameState` object ready for use.
+- `createGameState(options: CreateGameStateOptions = {}): Promise<GameState>`
+  - Initializes Rapier (`await Rapier.init()`), constructs the Rapier `World` (`new Rapier.World({ x: 0, y: 0, z: 0 })`) and `EventQueue` (created with `new Rapier.EventQueue(true)`), a Miniplex ECS world, and returns a fully-formed `GameState` object ready for use.
   - Instantiates a deterministic RNG on the state: `state.rng = new SeededRng(1337)` by default.
   - Creates `state.queries` (ships, shipsWithCommands, projectiles, turrets) and the `simulation` bookkeeping used for fixed-step integration.
-  - Notes on Rapier stepping: `EventQueue({ auto: true })` is owned by Rapier and the main loop calls `state.physicsWorld.step()` (no explicit `eventQueue` argument) to avoid recursive-use errors.
+  - Notes on Rapier stepping: `EventQueue(true)` is owned by Rapier and the main loop calls `state.physicsWorld.step()` (no explicit `eventQueue` argument) to avoid recursive-use errors.
 
 - `disposeGameState(state: GameState): void`
   - Safely tears down the Rapier world, disposes resources and destroys ECS entities via `destroyEntity` to avoid leaking physical bodies or render resources.

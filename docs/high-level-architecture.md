@@ -355,7 +355,7 @@ Battlefield.tsx (Canvas)
 | Instanced Rendering | `ProjectilesInstancedLayer`, `ShipImpostorLayer` | Batch similar geometries       |
 | LOD System          | `ShipLODManager`                                 | Distance-based detail levels   |
 | Material Registry   | `materialRegistry.tsx`                           | Shared material caching        |
-| Selective Bloom     | `BloomProvider.tsx`                              | Layer-based bloom registration |
+| Selective Bloom     | `renderer/bloom/BloomProvider.tsx`               | Layer-based bloom registration |
 
 **Rating: B**  
 **Strengths:**
@@ -366,7 +366,7 @@ Battlefield.tsx (Canvas)
 
 **Areas to Improve:**
 
-- `BloomProvider.tsx` is 350+ lines with complex colorWrite management
+- `BloomProvider` (`src/renderer/bloom/BloomProvider.tsx`, ~187 lines) still uses colorWrite management, but the component has since been split into `types.ts`, `constants.ts`, `layerAllocator.ts`, `layerMaskManager.ts`, `materialManager.ts`, and `selectionManager.ts` under `src/renderer/bloom/`
 - Postprocessing toggle logic has defensive try-catch blocks suggesting edge cases
 - Material disposal patterns unclear in some components
 - `__copilot_` prefixed userData flags suggest ad-hoc solutions
@@ -545,10 +545,10 @@ if (!state?.ai) return;
    - Consider using Rapier's built-in entity removal callbacks
    - Add entity lifecycle tests for edge cases
 
-3. **BloomProvider Complexity**
-   - Refactor 350+ line component into smaller, focused modules
-   - Extract colorWrite management into separate utility
-   - Document the layer allocation strategy
+3. **BloomProvider Complexity** _(resolved)_
+   - The component was split into smaller modules under `src/renderer/bloom/` (`layerAllocator`, `layerMaskManager`, `materialManager`, `selectionManager`, `types`, `constants`); `BloomProvider.tsx` is now ~187 lines.
+   - colorWrite / layer-mask management lives in the extracted managers
+   - The layer allocation strategy is documented in the module JSDoc
 
 ### Medium Priority
 
@@ -595,7 +595,7 @@ if (!state?.ai) return;
 
 ### Medium Effort (1-2 days each)
 
-1. Refactor `BloomProvider.tsx` into smaller modules
+1. ~~Refactor `BloomProvider.tsx` into smaller modules~~ _(done — split into `src/renderer/bloom/` modules)_
 2. Implement entity pooling for projectiles
 3. Add comprehensive lifecycle tests
 

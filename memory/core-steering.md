@@ -42,8 +42,8 @@ Where it is used
 
 Tests
 
-- `test/vitest/steering.spec.ts` covers safe normalisation, lead scaling, arrive `speedScale`, intercept success/failure, and evade direction.
-- `test/vitest/turret-priority.spec.ts` and `test/vitest/point-defense-turret.spec.ts` cover the projectile-side consumers of these helpers.
+- `test/vitest/steering-utils.spec.ts` covers safe normalisation, lead scaling, arrive `speedScale`, intercept success/failure, and evade direction.
+- `test/vitest/turret-priority.spec.ts` and `test/vitest/turret-point-defense.spec.ts` cover the projectile-side consumers of these helpers.
 
 References
 

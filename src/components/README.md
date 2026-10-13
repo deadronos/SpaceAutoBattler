@@ -8,6 +8,7 @@ React components that render the game scene and visual elements. All components 
 | -------------------------- | ----------------------------------------------------------------------------------------------------- |
 | **Battlefield.tsx**        | Main scene container that initializes Canvas, camera, lighting, and orchestrates all scene components |
 | **BattlefieldSystems.tsx** | Hooks up game systems (physics stepping, AI, combat) that run every frame                             |
+| **CameraRig.tsx**          | Positions/orients the active camera and applies shake/trauma effects                                  |
 | **Ship.tsx**               | Renders a single ship entity with model, shields, health, and thruster effects                        |
 | **Turret.tsx**             | Renders turret on a ship with rotation and muzzle flash effects                                       |
 
@@ -20,6 +21,7 @@ React components that render the game scene and visual elements. All components 
 | **HudOverlayCollector.tsx** | Collects and manages all overlay layers for the HUD           |
 | **ShipHudOverlay.tsx**      | Ship-specific HUD information and indicators                  |
 | **ProgressionPanel.tsx**    | Displays ship progression and leveling information            |
+| **progressionPanelData.ts** | Derives the view-model rows rendered by the progression panel |
 | **Controls.tsx**            | Manages player input and control scheme                       |
 | **hudToggleConfig.ts**      | Configuration for which HUD elements are visible              |
 | **HudToggleDrawer.tsx**     | UI drawer for toggling HUD elements on/off                    |
@@ -33,6 +35,13 @@ React components that render the game scene and visual elements. All components 
 | **ParticleTrails.tsx**        | Renders particle trails following moving objects                   |
 | **Postprocessing.tsx**        | Sets up post-processing effects pipeline                           |
 | **PostprocessingLazy.tsx**    | Lazy-loaded version of postprocessing for performance optimization |
+
+## Performance & Quality
+
+| File                      | Purpose                                                             |
+| ------------------------- | ------------------------------------------------------------------- |
+| **DynamicResScaler.tsx**  | Adjusts renderer DPR based on frame timings to balance perf/quality |
+| **QualityController.tsx** | Probes WebGL capability and selects the automatic quality tier      |
 
 ## Debug & Monitoring
 

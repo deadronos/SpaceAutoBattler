@@ -1,5 +1,10 @@
 # Renderer Instancing Audit
 
+> **Historical / completed.** The recommended `ProjectilesInstancedLayer` now
+> exists at `src/components/layers/ProjectilesInstancedLayer.tsx`. This audit
+> references `src/components/Projectile.tsx`, which has since been removed.
+> Retained for context; see the current components under `src/components/layers/`.
+
 Date: 2025-10-04
 Author: GitHub Copilot (automated audit)
 

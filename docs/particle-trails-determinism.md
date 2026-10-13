@@ -2,49 +2,49 @@
 
 ## Overview
 
-The `ParticleTrails` component maintains full determinism for replay consistency and testing purposes.
+The particle-trail simulation (owned by the `useParticleTrailSimulation` hook and rendered by the thin `ParticleTrails` component) maintains full determinism for replay consistency and testing purposes.
 
 ## Implementation
 
 ### Seeded Random Number Generator
 
-- **Location**: `src/components/ParticleTrails.tsx:38`
+- **Location**: `src/hooks/useParticleTrailSimulation.ts:16` (`TRAIL_RNG_SEED`) and `:36` (the `SeededRng` ref)
 - **Seed**: `TRAIL_RNG_SEED = 0x54524149` ('TRAI' in ASCII)
 - **Instance**: `rngRef = useRef(new SeededRng(TRAIL_RNG_SEED))`
 
-The component uses a dedicated `SeededRng` instance that ensures all random behavior is deterministic and reproducible across multiple runs.
+The simulation uses a dedicated `SeededRng` instance that ensures all random behavior is deterministic and reproducible across multiple runs.
 
 ### Deterministic Properties
 
-All particle properties that use randomness are generated using the seeded RNG:
+All particle properties that use randomness are generated using the seeded RNG (`src/hooks/useParticleTrailSimulation.ts`):
 
-1. **Backward Speed** (line 148)
+1. **Backward Speed** (`useParticleTrailSimulation.ts:183`)
 
    ```typescript
    const speed = backwardMin + rngRef.current.next() * (backwardMax - backwardMin);
    ```
 
-2. **Lateral Jitter** (lines 149-150)
+2. **Lateral Jitter** (`useParticleTrailSimulation.ts:184-185`)
 
    ```typescript
    const jitterX = (rngRef.current.next() - 0.5) * 2 * lateralJitter;
    const jitterY = (rngRef.current.next() - 0.5) * 2 * lateralJitter;
    ```
 
-3. **Longitudinal Jitter** (line 151)
+3. **Longitudinal Jitter** (`useParticleTrailSimulation.ts:186`)
 
    ```typescript
    const jitterZ = (rngRef.current.next() - 0.5) * 2 * longitudinalJitter;
    ```
 
-4. **Lifetime Variation** (line 157)
+4. **Lifetime Variation** (`useParticleTrailSimulation.ts:192-193`)
 
    ```typescript
    const lifetimeJitter = 1 - scaleJitter + rngRef.current.next() * 2 * scaleJitter;
    trailResources.arrays.lifetime[idx] = lifetimeBase * lifetimeJitter;
    ```
 
-5. **Scale Variation** (line 160-161)
+5. **Scale Variation** (`useParticleTrailSimulation.ts:195-196`)
    ```typescript
    trailResources.arrays.scale[idx] = 1 - scaleJitter + rngRef.current.next() * 2 * scaleJitter;
    // Produces values in range [1 - scaleJitter, 1 + scaleJitter]
@@ -53,10 +53,10 @@ All particle properties that use randomness are generated using the seeded RNG:
 
 ### Memory Efficiency
 
-The component follows performance best practices:
+The simulation follows performance best practices:
 
 1. **Preallocated Temp Vectors**
-   - `backward` vector (line 41) is created once and reused
+   - `backward` vector (`useParticleTrailSimulation.ts:40`) is created once and reused
    - No `clone()` calls in hot paths
    - Anchor cache reuses Vector3 instances
 
@@ -80,7 +80,7 @@ Determinism is validated in `test/vitest/particle-trails-determinism.spec.tsx`:
 ### Running Tests
 
 ```bash
-npm test -- particle-trails-determinism.spec.tsx
+pnpm exec vitest run test/vitest/particle-trails-determinism.spec.tsx
 ```
 
 ## Guarantees
@@ -105,7 +105,7 @@ npm test -- particle-trails-determinism.spec.tsx
 
 ## Configuration
 
-Particle behavior can be tuned via `PARTICLE_TRAILS_CONFIG` in `src/config/effects.js`:
+Particle behavior can be tuned via `PARTICLE_TRAILS_CONFIG` in `src/config/effects.ts`:
 
 - `spawnRatePerAnchor`: Particles per second per thruster
 - `backwardSpeed.min/max`: Velocity range
@@ -130,7 +130,7 @@ Particle behavior can be tuned via `PARTICLE_TRAILS_CONFIG` in `src/config/effec
 
 ## Maintenance Notes
 
-When modifying `ParticleTrails.tsx`:
+When modifying `useParticleTrailSimulation.ts` (or the `ParticleTrails` component that renders it):
 
 1. ✅ Always use `rngRef.current.next()` for random values
 2. ✅ Never use `Math.random()`
@@ -143,4 +143,4 @@ When modifying `ParticleTrails.tsx`:
 - Performance Review: `docs/performance-review-v2.0.5g.md`
 - Task: `memory/tasks/TASK160-particle-trail-determinism.md`
 - RNG Implementation: `src/utils/rng.ts`
-- Config: `src/config/effects.js`
+- Config: `src/config/effects.ts`

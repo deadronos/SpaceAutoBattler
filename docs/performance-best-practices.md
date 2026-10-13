@@ -107,24 +107,24 @@ for (const source of ships) {
 
 ## Performance Metrics
 
-### Current Performance (as of 2025-10-31, v0.1.x)
+### Current Performance (as of 2026-10-13)
 
-- **AI Decision System**: ~1.5ms average per tick (300 ships, budget: 2.500ms)
-- **Improvement from optimizations**: ~5% reduction from baseline
+- **AI Decision System**: `0.642–0.689 ms` average per tick (300 ships; median `0.669 ms`, budget `2.500 ms`). Canonical numbers live in [`performance-report.md`](./performance-report.md).
+- Before the `queryNearest` optimization (#184) the same harness measured `3.098–3.259 ms` (FAIL, ~125.9% of budget); the optimization brought it to the current PASS figures.
 
 ### Testing Performance
 
 Run the AI budget test to validate optimizations:
 
 ```bash
-npm run perf:ai-budget
+pnpm run perf:ai-budget
 ```
 
-Expected output (values will vary):
+Expected output (values vary with machine load):
 
 ```
-[ai-budget] ships=300 ticks=160 avgTick=~1.5ms budget=2.500ms
-[ai-budget] PASS: average AI tick ~1.5ms within budget 2.500ms
+[ai-budget] ships=300 ticks=160 avgTick=~0.67ms budget=2.500ms
+[ai-budget] PASS: average AI tick ~0.67ms within budget 2.500ms
 ```
 
 ## Common Pitfalls
@@ -187,10 +187,9 @@ For renderer code:
 ## References
 
 - [R3F/Drei Performance Best Practices](./r3f-drei-webgl-performance-best-practices.md)
-- [Renderer Performance Report](./performance-report-v0.1.1.md)
 - [Tech Debt Report](./tech-debt-report.md)
 
 ---
 
 **Last Updated**: 2026-10-13  
-**Validation**: All optimizations tested with `npm run typecheck && npm test && npm run perf:ai-budget`
+**Validation**: All optimizations tested with `pnpm run typecheck && pnpm test && pnpm run perf:ai-budget`

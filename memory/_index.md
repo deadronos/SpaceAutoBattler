@@ -23,7 +23,7 @@ This index lists the short searchable memory summaries generated for the `src/` 
 ### Renderer and assets
 
 - [core-assets.md](./core-assets.md) — `src/utils/patchGltfLoader.ts` and `src/assets/ships.ts` (GLTF loader guard and model asset mappings used by renderer; `patchGltfLoader` imported in `main.tsx`).
-- [core-celestialEnvironment.md](./core-celestialEnvironment.md) — `src/components/environment/Skysphere.tsx` and star-disk providers (procedural celestial environment rendering).
+- [core-celestialEnvironment.md](./core-celestialEnvironment.md) — `src/components/environment/Skysphere.tsx` and the `StarSphere`/star-light/planet components (procedural celestial environment rendering).
 - [dynamic-res-scaler.md](./dynamic-res-scaler.md) — `src/components/DynamicResScaler.tsx` (DPR auto-scaling component; exports `computeNextDpr()` and includes integration tests at `test/vitest/dynamic-res-scaler.spec.ts`).
 
 ### Utilities and tooling
@@ -41,7 +41,7 @@ This index lists the short searchable memory summaries generated for the `src/` 
 ### Design and review
 
 - [design-ship-progression-system.md](./design-ship-progression-system.md) — Design doc for the ship progression / leveling system.
-- [review-2026-01.md](./review-2026-01.md) — Project review Jan 2026 summary and prioritized recommendations (performance/HUD, worker simulation, missile/torpedo recommendations; actionable items referenced in tasks & designs).
+- [review-2026-01.md](../docs/review-2026-01.md) — Project review Jan 2026 summary and prioritized recommendations (performance/HUD, worker simulation, missile/torpedo recommendations; actionable items referenced in tasks & designs).
 
 ### Root context
 

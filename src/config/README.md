@@ -19,7 +19,16 @@ Configuration parameters and constants for various game systems and features.
 | **quality.ts**        | Render-only graphics quality presets (DPR, shadows, AO, particles)   |
 | **renderer.ts**       | Renderer configuration (LOD distances, instancing limits)            |
 | **shields.ts**        | Shield system configuration (recharge rates, strength, visuals)      |
-| **starDiskDebug.ts**  | Star disk debug and tuning configuration                             |
+
+## Subdirectories
+
+### [explosions/](./explosions/) - Faction Explosion Presets
+
+Per-faction explosion tuning:
+
+- **alliance.ts** - Alliance explosion tuning
+- **common.ts** - Shared explosion defaults
+- **reavers.ts** - Reavers explosion tuning
 
 ## Configuration Pattern
 

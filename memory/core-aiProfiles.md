@@ -31,6 +31,5 @@ References
 - `src/game/aiProfiles.ts` (active profile definitions)
 - `src/game/aiState.ts` (AI state type)
 - `src/game/systems/decision` (decision system that uses profiles)
-- `guides/AI_DEPRECATION_GUIDE.md` (removed features and profile name changes) — **note:** the `guides/` directory was never created in the repo; consult TASK251 / DESIGN005 / `docs/agents/coding-conventions.md` for the canonical migration notes.
 - TASK251: Remove legacy AI fallback path
 - DESIGN005: AI v2 enforcement and guard behavior

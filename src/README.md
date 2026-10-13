@@ -25,6 +25,7 @@ This directory contains the complete TypeScript/React source code for SpaceAutoB
 | **assets/**     | Game assets (3D models, textures, planets, skysphere)                                          |
 | **styles/**     | CSS styling for the application                                                                |
 | **debug/**      | Debug UI components and panels                                                                 |
+| **worker/**     | Web-worker simulation (snapshot protocol, ship slot/transform buffers)                         |
 
 ## Architecture Overview
 
@@ -72,9 +73,9 @@ This directory contains the complete TypeScript/React source code for SpaceAutoB
 
 ### Testing & Validation
 
-- Run `npm run typecheck` to validate types
-- Run `npm test` to execute unit tests (Vitest)
-- Use `npm run build` to compile to dist/
+- Run `pnpm run typecheck` to validate types (or `pnpm exec vp run typecheck`)
+- Run `pnpm test` to execute unit tests (Vitest, via `vp`)
+- Use `pnpm run build` to compile to dist/
 - Tests are in `test/` directory with `.spec.ts` extension
 
 ### Asset Management

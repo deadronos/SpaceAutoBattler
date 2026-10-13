@@ -4,7 +4,7 @@
 
 - Use ES modules.
 - Prefer clear, self-explanatory names; comment for intent (why), not mechanics (what).
-- Code formatting (indentation, semicolons) is managed automatically by `npm run format` / `npm run lint`.
+- Code formatting (indentation, semicolons) is managed automatically by `pnpm run format` / `pnpm run lint` (oxfmt/oxlint via vite-plus).
 
 ## Types and public APIs
 
@@ -20,11 +20,12 @@
 
 - Throw or return error values; avoid silent failures.
 
-## Event name stability
+## Visual event state stability
 
-These event names are expected to remain stable:
+There is no event bus or `state.events` collection. Renderer-visible events are held on `GameState` as plain collections and consumed by the renderer:
 
-- `bullets`
-- `explosions`
-- `shieldHits`
-- `healthHits`
+- `state.explosions` — pooled `ExplosionEvent[]` managed in `src/game/explosions.ts` (`src/types/simulation.ts`).
+- `shieldRipples` — per-ship `ShieldRipple[]` on `ShipComponent` (`src/types/ship.ts`), renderer-only consumption.
+- `muzzleFlashes` — per-ship `MuzzleFlash[]` on `ShipComponent` (`src/types/ship.ts`).
+
+Keep these field/type names stable; they are the contract between simulation and rendering.

@@ -21,6 +21,6 @@ Testing & build notes
 
 References
 
-- `src/utils/patchGltfLoader.ts`, `src/assets/ships.ts`, `src/renderer/materialRegistry.tsx`, `src/components/ShipModel.tsx`
+- `src/utils/patchGltfLoader.ts`, `src/assets/ships.ts`, `src/renderer/materialRegistry.tsx`, `src/components/ship/ShipModel.tsx`
 
 Updated: 2025-09-30

@@ -8,13 +8,13 @@ Before creating a release tag, verify locally:
 
 ```bash
 # Run the complete deployment build process
-npm run build:deploy
+pnpm run build:deploy
 
 # Verify both files exist
 ls -la dist/index.html dist/spaceautobattler.html
 
 # Optional: Test locally with static server
-npm run serve
+pnpm run serve
 ```
 
 ## GitHub Pages Configuration
@@ -36,7 +36,7 @@ tagging. The manual procedure is:
 2. Verify the version matches the tag you are about to create:
 
 ```bash
-GITHUB_REF_TYPE=tag GITHUB_REF_NAME=v2.3.0 npm run version:check
+GITHUB_REF_TYPE=tag GITHUB_REF_NAME=v2.3.0 pnpm run version:check
 ```
 
 3. Create and push an annotated tag:
@@ -65,7 +65,7 @@ git push origin v2.3.0
 `"version": "X.Y.Z"`. The `version:check` guard (`scripts/check-version.mjs`) enforces this
 in the "Deploy to GitHub Pages" workflow, but **only for tag refs** (`if:
 github.ref_type == 'tag'`); it is a no-op on `workflow_dispatch` and branch refs. Run it
-locally with `npm run version:check <tag>` (or by setting `GITHUB_REF_TYPE` /
+locally with `pnpm run version:check <tag>` (or by setting `GITHUB_REF_TYPE` /
 `GITHUB_REF_NAME`).
 
 > **Historical caveat:** the `v2.2.0` tag predates this guard, so its tree still has

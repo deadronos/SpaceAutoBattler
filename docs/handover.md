@@ -1,3 +1,16 @@
+> # ⚠️ Historical raw agent transcript — not maintained
+>
+> This file is a raw, unedited chat transcript captured during development. It is
+> **not documentation** and is **not maintained**. It contains 67
+> `file:///d%3A/Github/...` Windows-absolute links, none of which resolve on this
+> machine or in this repository; do not treat any link or path here as valid.
+>
+> The design documents it refers to were subsequently renamed to the canonical
+> `memory/designs/DESIGN0xx-*` set. Refer to those files (and the current
+> `docs/`) instead. The body below is preserved verbatim for historical context.
+
+---
+
 deadronos: reorder and rename all files in /memory designs so every has a uniqe name DESIGN'number'-'design topic'
 right now some files dont have numbers or "IDs" assigned at all and some are not unique and there are "jumps"
 100, 101, 102, 200, ...
