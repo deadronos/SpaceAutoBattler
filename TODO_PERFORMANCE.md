@@ -14,7 +14,7 @@ Targeting `[Violation] 'requestAnimationFrame' handler took Xms` issues.
 
 ## 2. ~~Optimize Spatial Hash Rebuilding~~ ✅ DONE
 
-**Location:** `src/game/systems/damage.ts` -> `resolveProjectiles`
+**Location:** `src/game/systems/projectileCollisions.ts` -> `resolveProjectiles` (re-exported by `src/game/systems/damage.ts`)
 
 - **Issue:** `buildSpatialHash` is called every frame, allocating new Maps and Arrays for all ships (O(N)).
 - **Action:**
@@ -27,14 +27,12 @@ Targeting `[Violation] 'requestAnimationFrame' handler took Xms` issues.
 **Location:** `src/game/systems/decision/manager.ts`
 
 - **Issue:** While decision-making (`runShipDecisions`) is time-sliced, the setup phases (`updateSensorSystem`, `refreshBlackboard`, `assignTeamRoles`) often run for ALL ships every single tick.
-- **Action:**
-  - Apply time-slicing to `updateSensorSystem`.
-  - Only update sensors for the specific batch of ships being processed that tick.
-  - Cache blackboard metrics and update them incrementally or at a lower frequency (e.g., 10Hz instead of 60Hz).
+- **Action (as implemented):** rather than per-batch slicing, the setup phases are throttled to run every `SENSOR_UPDATE_INTERVAL` ticks over all ships — `if (manager.tickIndex % SENSOR_UPDATE_INTERVAL === 0) { updateSensorSystem(...); refreshBlackboard(...) }` (`src/game/systems/decision/manager.ts`). The AI base tick is 12 Hz (`src/game/config/aiConfig.ts`), not 60 Hz.
+  - Superseded sub-ideas (not implemented): per-batch sensor slicing; incremental blackboard caching.
 
 ## 4. ~~Optimize Particle Trails~~ ✅ DONE
 
-**Location:** `src/components/ParticleTrails.tsx`
+**Location:** `src/hooks/useParticleTrailSimulation.ts` (rendered by `src/components/ParticleTrails.tsx`)
 
 - **Issue:** Iterates over every single ship and calculates thruster positions in world space on the CPU every frame.
 - **Action:**
@@ -44,7 +42,7 @@ Targeting `[Violation] 'requestAnimationFrame' handler took Xms` issues.
 
 ## 5. ~~Production Optimizations & Debug Stripping~~ ✅ DONE
 
-**Location:** `src/components/environment/starDisk/useStarDiskFrameLoop.ts` & others
+**Location:** `src/renderer/starDisk/*` and `src/components/environment/StarSphere.tsx` (the old `starDisk/useStarDiskFrameLoop.ts` was removed with the StarDisk→StarSphere migration)
 
 - **Issue:** Excessive object allocation (`new Vector3`, `new Map`) and debug checks running in the hot loop.
 - **Action:**
