@@ -1,11 +1,9 @@
 import { Vector3 } from 'three';
 import { resolveBehaviorProfile } from '../src/game/aiProfiles.js';
-import { __aiTestHooks } from '../src/game/systems.js';
+import { writeCommand } from '../src/game/systems/decision/command-writer.js';
 import { useUiStore } from '../src/app/uiStore.js';
 import { createDefaultMetrics } from '../src/game/metrics.js';
 import { getEffectiveAIConfig } from '../src/game/config.js';
-
-const { writeCommand } = __aiTestHooks;
 
 function createState() {
   return {
