@@ -31,19 +31,19 @@ Releases are driven by Git tags, so `package.json` `"version"` must be bumped **
 tagging. The manual procedure is:
 
 1. Bump `"version"` in `package.json` to the release version (no `v` prefix) — e.g. set
-   `"version": "2.2.0"` for a `v2.2.0` tag.
+   `"version": "2.3.0"` for a `v2.3.0` tag.
 
 2. Verify the version matches the tag you are about to create:
 
 ```bash
-GITHUB_REF_TYPE=tag GITHUB_REF_NAME=v2.2.0 npm run version:check
+GITHUB_REF_TYPE=tag GITHUB_REF_NAME=v2.3.0 npm run version:check
 ```
 
 3. Create and push an annotated tag:
 
 ```bash
-git tag -a v2.2.0 -m "Release v2.2.0"
-git push origin v2.2.0
+git tag -a v2.3.0 -m "Release v2.3.0"
+git push origin v2.3.0
 ```
 
 > Any `v*` tag is treated as a release tag and must equal `v` + `package.json` `"version"`.
