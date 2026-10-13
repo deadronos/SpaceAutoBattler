@@ -30,11 +30,8 @@ Ensure your GitHub repository has GitHub Pages configured:
 Releases are driven by Git tags, so `package.json` `"version"` must be bumped **before**
 tagging. The manual procedure is:
 
-1. Bump `"version"` in `package.json` to the release version (no `v` prefix):
-
-```bash
-# e.g. 2.2.0
-```
+1. Bump `"version"` in `package.json` to the release version (no `v` prefix) — e.g. set
+   `"version": "2.2.0"` for a `v2.2.0` tag.
 
 2. Verify the version matches the tag you are about to create:
 
@@ -48,6 +45,10 @@ GITHUB_REF_TYPE=tag GITHUB_REF_NAME=v2.2.0 npm run version:check
 git tag -a v2.2.0 -m "Release v2.2.0"
 git push origin v2.2.0
 ```
+
+> Any `v*` tag is treated as a release tag and must equal `v` + `package.json` `"version"`.
+> For a prerelease (e.g. `v2.3.0-rc.1`), put the same string in `package.json`
+> (`"2.3.0-rc.1"`) — the guard has no prerelease exemption.
 
 4. Monitor the deployment:
    - Check Actions tab for "Deploy to GitHub Pages" workflow
