@@ -9,7 +9,7 @@ This file lists instructions currently repeated across repo docs and agent guide
   - Suggested action: delete from guides unless you have frequent regressions.
 
 - “Use semicolons; two-space indentation.”
-  - Rationale: formatting is already enforced by tooling (Prettier/ESLint).
+  - Rationale: formatting is already enforced by tooling (oxfmt/oxlint via vite-plus).
   - Suggested action: keep only if contributors routinely fight the formatter.
 
 - “Use Playwright docs at [playwright.dev/docs/codegen](https://playwright.dev/docs/codegen).”

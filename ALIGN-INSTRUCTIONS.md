@@ -8,7 +8,7 @@ This document tracks the review and optimization of the `.github/instructions/` 
 | -------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | `markdown.instructions.md`                         | Standards for Markdown content (headings, lists, frontmatter).                                           | Pending       |                                                                                                                                    |
 | `memory-bank.instructions.md`                      | Defines the Memory Bank structure (`projectbrief.md`, `activeContext.md`, `tasks/`, etc.) and workflows. | **Aligned**   | Verified task naming convention (`TASKID-taskname.md`) matches observed `scripts/` regex.                                          |
-| `nodejs-javascript-vitest.instructions.md`         | Guidelines for Node.js/JS code and Vitest testing.                                                       | **Aligned**   | Guidelines match repo practices (Vitest, `npm run typecheck`, `npm test`).                                                         |
+| `nodejs-javascript-vitest.instructions.md`         | Guidelines for Node.js/JS code and Vitest testing.                                                       | **Aligned**   | Guidelines match repo practices (Vitest, `pnpm run typecheck`, `pnpm test`).                                                       |
 | `playwright-typescript.instructions.md`            | Guidelines for writing Playwright tests in TypeScript.                                                   | **Optimized** | Fixed formatting issues, clarified directory structure (`test/playwright/` vs `tests/`), and cleaned up the "Short Guide" section. |
 | `powershell.instructions.md`                       | Best practices for PowerShell scripts.                                                                   | Pending       |                                                                                                                                    |
 | `reactjs.instructions.md`                          | React development standards (hooks, component design, etc.).                                             | **Optimized** | Updated testing section to specify Vitest instead of Jest, matching `package.json`.                                                |
@@ -34,7 +34,7 @@ This document tracks the review and optimization of the `.github/instructions/` 
 
 ### `nodejs-javascript-vitest.instructions.md`
 
-- **Reviewed**: Confirmed `npm run typecheck` and `npm test` are the correct commands. Confirmed Vitest is the runner.
+- **Reviewed**: Confirmed `pnpm run typecheck` and `pnpm test` are the correct commands. Confirmed Vitest is the runner.
 - **Result**: No changes needed.
 
 ### `reactjs.instructions.md`
