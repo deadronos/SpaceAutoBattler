@@ -179,14 +179,18 @@ For renderer code:
 3. **Instanced rendering**: Batch ships by hull type for GPU efficiency
 4. **ECS improvements**: Leverage Miniplex query caching more extensively
 
+## See also
+
+- [Performance Report (current)](./performance-report.md) — canonical measured
+  snapshot, including the `queryNearest` AI-budget optimization (#184).
+
 ## References
 
-- [Performance Report (current)](./performance-report.md)
 - [R3F/Drei Performance Best Practices](./r3f-drei-webgl-performance-best-practices.md)
 - [Renderer Performance Report](./performance-report-v0.1.1.md)
 - [Tech Debt Report](./tech-debt-report.md)
 
 ---
 
-**Last Updated**: 2025-10-31  
+**Last Updated**: 2026-10-13  
 **Validation**: All optimizations tested with `npm run typecheck && npm test && npm run perf:ai-budget`

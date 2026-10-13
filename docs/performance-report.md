@@ -14,7 +14,7 @@ Where a number is **assumed** rather than **measured**, it is marked as such.
 | ----------------- | ------------------------------------------ | ----------------------------------------------------- |
 | Date              | 2026-10-13                                 | —                                                     |
 | Branch            | `perf/performance-report-184`              | `git branch --show-current`                           |
-| Commit            | `4c218f862cdcd529aa045f557e2ed691e950a52e` | `git rev-parse HEAD`                                  |
+| Commit            | `4c218f862cdcd529aa045f557e2ed691e950a52e` | `git rev-parse HEAD` — the **measured revision**      |
 | Node (measured)   | `v24.21.0`                                 | `node -v`                                             |
 | pnpm              | `10.33.0`                                  | `pnpm -v`                                             |
 | OS / arch         | `Darwin arm64`                             | `uname -sm`                                           |
@@ -23,7 +23,9 @@ Where a number is **assumed** rather than **measured**, it is marked as such.
 | Node 22           | **not available**                          | no `nvm`/`fnm`/`volta`; only Node 24 and 26 installed |
 
 The measured Node (`v24.21.0`) is the one on `PATH` via `~/.vite-plus/bin/node`,
-which is what `pnpm run …` resolves to. The historical figures in
+which is what `pnpm run …` resolves to. The recorded `Commit` is the **measured
+revision** — the tree the numbers below were captured on — not this document's own
+HEAD. The historical figures in
 `docs/performance-review-v2.0.6b.md` (2025-12-29) record **no Node version**, so the
 historical runtime is unknown (see [Drift vs regression](#drift-vs-regression)).
 
@@ -80,7 +82,7 @@ Command:
 AI_BUDGET_SHIPS=450 AI_BUDGET_TICKS=200 AI_BUDGET_MS=3.5 pnpm run perf:ai-budget
 ```
 
-Three consecutive runs:
+Three consecutive runs (Task 2, commit `0f8eaf33`):
 
 ```
 [ai-budget] ships=450 ticks=200 avgTick=14.416ms budget=3.500ms
@@ -91,14 +93,32 @@ Three consecutive runs:
 [ai-budget] FAIL: average AI tick 14.820ms exceeds budget 3.500ms
 ```
 
-| Metric               | Value                             |
-| -------------------- | --------------------------------- |
-| min / median / max   | `14.416` / `14.461` / `14.820` ms |
-| budget               | 3.500 ms                          |
-| utilization (median) | **413.2%**                        |
-| verdict              | **FAIL** (exit code 1)            |
+**Load-sensitive / indicative.** This configuration is CPU-bound and sensitive to
+background load and thermal state, so its absolute values are less reproducible
+than the default gate. Five fresh runs on the same machine and Node
+(`4c218f86`):
 
-The extended run fails far worse (4.1× over budget) than the default run (1.26×),
+```
+[ai-budget] ships=450 ticks=200 avgTick=14.649ms budget=3.500ms
+[ai-budget] ships=450 ticks=200 avgTick=14.836ms budget=3.500ms
+[ai-budget] ships=450 ticks=200 avgTick=14.911ms budget=3.500ms
+[ai-budget] ships=450 ticks=200 avgTick=14.740ms budget=3.500ms
+[ai-budget] ships=450 ticks=200 avgTick=14.813ms budget=3.500ms
+```
+
+An independent reviewer machine measured `16.97 / 17.67 / 17.93` ms for the same
+configuration, i.e. ~15–20% higher — consistent with load sensitivity, not a code
+difference. Treat these absolute values as **indicative**; the default 300/160
+configuration is the stable gate.
+
+| Metric               | Task 2 (3 runs)                   | Re-run (5 runs)                   |
+| -------------------- | --------------------------------- | --------------------------------- |
+| min / median / max   | `14.416` / `14.461` / `14.820` ms | `14.649` / `14.813` / `14.911` ms |
+| budget               | 3.500 ms                          | 3.500 ms                          |
+| utilization (median) | **413.2%**                        | **423.2%**                        |
+| verdict              | **FAIL** (exit code 1)            | **FAIL** (exit code 1)            |
+
+The extended run fails far worse (≈4.2× over budget) than the default run (1.26×),
 i.e. cost grows **super-linearly** with ship count: 300 → 450 ships is +50% ships
 but ≈ +4.6× wall time. This is a scaling signal for Task 3 (budget/planner), not a
 budget change here.
@@ -126,7 +146,9 @@ Interpretation: the instanced path collapses 1000/5000/10000 draw calls to 4, an
 the per-frame instancing bookkeeping stays sub-millisecond at 10 000 projectiles
 (0.452 ms) with no allocator saturation. The `legacy ms` column is a raw
 array-iteration proxy, not a GPU draw-call measurement — treat it as an
-**indicative** CPU cost only. This harness is unchanged since the v2.0.6b review.
+**indicative** CPU cost only. This harness is functionally unchanged since the
+v2.0.6b review; its only later edit (`8f68b013`, the Vite-Plus migration) was a
+formatting change with no effect on the measured paths.
 
 ### Build
 
@@ -179,7 +201,7 @@ Task 2 left the gate red and asked Task 3 to pick between re-baselining
 **Branch decision: B — one targeted optimization. Branch A was invalidated by
 Task 2's evidence.** Re-baselining is only justified when the gap is environment
 drift; Task 2's same-machine/same-Node A/B (old code `≈0.46 ms` vs current
-`≈3.15 ms` for an identical 3200-decision workload) shows the extra cost is in
+`≈3.2 ms` for an identical 3200-decision workload) shows the extra cost is in
 the measured AI workload, not the environment. Raising the budget would therefore
 have masked a real regression, so the budget was **left at 2.5 ms** and no
 `|| echo` swallow was added or removed.
@@ -197,9 +219,11 @@ probed more cells than the grid populates (`(2r+1)^3 > cells.size`), finishes
 with an **exact linear scan** over the populated cells from the current
 incumbent. Both paths minimise the same global `(distanceSq, rank)` key, and the
 shell's early-out is provably optimal, so the cutoff is a **pure performance
-knob**: it cannot change the result. The change is allocation-free (a single
-incumbent is retained; no new arrays/objects) and does not touch the decision
-system, RNG, or `GameState`.
+knob**: it cannot change the result. The change adds **no result buffers and no
+per-item allocation** — a single incumbent is retained; the only new allocation is
+the `Map` iterator created by the linear finish's `cells.values()` (one per bailed
+query, not per item) — and it does not touch the decision system, RNG, or
+`GameState`.
 
 Correctness scope note: for a _non-injective_ `rank` the `(distanceSq, rank)`
 minimum is not unique and the two paths could pick different items; every real
@@ -218,52 +242,69 @@ Default harness (300 ships / 160 ticks / 2.5 ms):
 [ai-budget] ships=300 ticks=160 avgTick=3.098ms budget=2.500ms  FAIL
 [ai-budget] ships=300 ticks=160 avgTick=3.259ms budget=2.500ms  FAIL
 
-# after — Task 3 (5 runs)
-[ai-budget] ships=300 ticks=160 avgTick=0.780ms budget=2.500ms  PASS
-[ai-budget] ships=300 ticks=160 avgTick=0.812ms budget=2.500ms  PASS
-[ai-budget] ships=300 ticks=160 avgTick=0.771ms budget=2.500ms  PASS
-[ai-budget] ships=300 ticks=160 avgTick=0.791ms budget=2.500ms  PASS
-[ai-budget] ships=300 ticks=160 avgTick=0.781ms budget=2.500ms  PASS
+# after — Task 3 (5 runs, same machine)
+[ai-budget] ships=300 ticks=160 avgTick=0.668ms budget=2.500ms  PASS
+[ai-budget] ships=300 ticks=160 avgTick=0.689ms budget=2.500ms  PASS
+[ai-budget] ships=300 ticks=160 avgTick=0.669ms budget=2.500ms  PASS
+[ai-budget] ships=300 ticks=160 avgTick=0.642ms budget=2.500ms  PASS
+[ai-budget] ships=300 ticks=160 avgTick=0.670ms budget=2.500ms  PASS
 ```
 
 | Metric               | Before (Task 2)                | After (Task 3)                 |
 | -------------------- | ------------------------------ | ------------------------------ |
-| min / median / max   | `3.098` / `3.148` / `3.259` ms | `0.771` / `0.781` / `0.812` ms |
+| min / median / max   | `3.098` / `3.148` / `3.259` ms | `0.642` / `0.669` / `0.689` ms |
 | budget               | 2.500 ms                       | 2.500 ms                       |
-| utilization (median) | **125.9%**                     | **31.2%**                      |
+| utilization (median) | **125.9%**                     | **26.8%**                      |
 | verdict              | **FAIL** (exit 1)              | **PASS** (exit 0)              |
-| speed-up (median)    | —                              | **≈4.0×**                      |
+| speed-up (median)    | —                              | **≈4.7×**                      |
 
-Extended load (450 ships / 200 ticks / 3.5 ms):
+(An earlier, busier-machine run of the same "after" code measured
+`0.771–0.812 ms`; the verdict is stable, only the absolute value drifts with
+load.)
+
+Extended load (450 ships / 200 ticks / 3.5 ms) — **load-sensitive / indicative**
+(see the extended-load note above; a reviewer machine measured `~17–18 ms` for the
+same "before" configuration):
 
 ```
-# before — Task 2 (3 runs): 14.416 / 14.461 / 14.820 ms  FAIL
-# after  — Task 3 (1 run):  1.914 ms                     PASS
+# before — Task 2 (3 runs): 14.416 / 14.461 / 14.820 ms                          FAIL
+# before — re-run (5 runs): 14.649 / 14.836 / 14.911 / 14.740 / 14.813 ms       FAIL
+# after  — Task 3 (5 runs): 1.198 / 1.206 / 1.321 / 1.194 / 1.203 ms             PASS
 ```
 
-| Metric      | Before (Task 2) | After (Task 3) |
-| ----------- | --------------- | -------------- |
-| median      | `14.461` ms     | `1.914` ms     |
-| utilization | **413.2%**      | **54.7%**      |
-| verdict     | FAIL            | PASS           |
-| speed-up    | —               | **≈7.6×**      |
+| Metric      | Before (re-run, 5) | After (Task 3, 5) |
+| ----------- | ------------------ | ----------------- |
+| median      | `14.813` ms        | `1.203` ms        |
+| utilization | **423.2%**         | **34.4%**         |
+| verdict     | FAIL               | PASS              |
+| speed-up    | —                  | **≈12.3×**        |
 
 The extended run improves the most, which is expected: its far tail is where the
 shell enumeration dominated.
 
 ### Determinism evidence
 
-The optimization changes no simulation result. Verified by:
+The optimization changes no simulation result. The **behavioural evidence is the
+equivalence specs**, which compare the new path against the old/independent
+reference:
 
-- `pnpm test` — includes `test/vitest/ai-determinism.spec.ts` (exact per-ship
-  command/intent snapshots over 40 ticks) and
-  `test/vitest/sim-state-isolation.spec.ts` — **green**.
-- `test/vitest/nearest-enemy-grid.spec.ts` (grid path ≡ legacy O(N²) fallback)
-  and `test/utils/spatial-grid.spec.ts` (`queryNearest` ≡ brute force across a
-  5×5×3 query sweep) — **green**.
+- `test/vitest/nearest-enemy-grid.spec.ts` — the sensor-grid `queryNearest` path
+  must produce byte-identical `nearestEnemy` maps to the legacy O(N²) double-loop
+  fallback, including cross-cell exact-distance ties resolved by `ships` index.
+  **green.**
+- `test/utils/spatial-grid.spec.ts` — `queryNearest` must match a brute-force
+  nearest over a 5×5×3 query sweep, including exact ties resolved by `rank`.
+  **green.**
 - A temporary probe compared the new method against the previous shell algorithm
   for all 300 harness ships: identical winners (`sink` hash identical), then the
   probe was deleted.
+
+Run-to-run **reproducibility** is covered separately by `pnpm test`, which includes
+`test/vitest/ai-determinism.spec.ts` (exact per-ship command/intent snapshots over
+40 ticks) and `test/vitest/sim-state-isolation.spec.ts` — both **green**. Note that
+`ai-determinism.spec.ts` runs the same (new) code twice and compares, so it proves
+deterministic reproducibility, **not** old-vs-new equivalence; the two specs above
+are the equivalence evidence.
 
 ### Commands run (Task 3)
 
@@ -272,8 +313,8 @@ The optimization changes no simulation result. Verified by:
 | `pnpm run typecheck`      | PASS (no output)                                                                |
 | `pnpm exec vp check`      | PASS — 0 errors, 46 pre-existing warnings (360 files)                           |
 | `pnpm test`               | PASS — 193 passed + 1 skipped (194 files); 1184 passed + 1 skipped (1185 tests) |
-| `pnpm run perf:ai-budget` | **PASS** — `0.771–0.812 ms` (was FAIL)                                          |
-| `AI_BUDGET_SHIPS=450 …`   | **PASS** — `1.914 ms` (was FAIL)                                                |
+| `pnpm run perf:ai-budget` | **PASS** — `0.642–0.689 ms` (was FAIL)                                          |
+| `AI_BUDGET_SHIPS=450 …`   | **PASS** — `1.203 ms` median of 5 (was FAIL)                                    |
 | `pnpm run build`          | PASS — `built in 945ms`, `real 9.06 s`                                          |
 
 No new spec file → CI floor stays at 194 files. No `dist/` edit.
@@ -301,7 +342,7 @@ This is a read-only audit. Concrete anchors:
   `performance.now() - loopStart > SIMULATION_TIME_BUDGET_MS` (line 84,
   `SIMULATION_TIME_BUDGET_MS = 12`, line 15). This is a correct death-spiral guard.
 - **Instancing / geometry reuse** — `src/utils/projectileGeometries.ts` caches
-  `BufferGeometry` in a module-level `geometryCache` Map (line 8) and attaches
+  `BufferGeometry` in a module-level `geometryCache` Map (line 10) and attaches
   render metadata to `geometry.userData`, so geometry is created once per
   bullet type. `scripts/bench/projectile-stress.mjs` exercises the instanced
   allocator; `docs/renderer-instancing-audit.md` documents the draw-call reduction
@@ -321,15 +362,19 @@ This is a read-only audit. Concrete anchors:
 
 **Gaps found (source-level):**
 
-1. **`SpatialGrid.queryNearest` is the dominant AI cost.** A CPU profile of the
-   default harness attributes **64.2% of self samples** to
-   `queryNearest` (`src/utils/spatialGrid.ts:195-256`). The method expands
-   Chebyshev cell shells `r = 0, 1, 2, …` and decrements `remaining` per populated
-   cell; for two far-apart fleets (this harness places blue/red ~640 units apart)
-   the nearest-enemy search walks many shells, and the early-out
-   `bestDistSq < r*r*cellSizeSq` is only reachable after several rings. It is
-   called per ship from `src/game/systems/decision/blackboard/refreshBlackboard.ts:131`
-   with the sensor grid (`cellSize` up to 300, `src/game/systems/sensors.ts:19-21`).
+1. **`SpatialGrid.queryNearest` is the dominant AI cost.** CPU profiles of the
+   default harness attribute the dominant share of self samples to
+   `queryNearest` (`src/utils/spatialGrid.ts:195-256`) — **≈64%** in Task 2's
+   profile and **≈59%** in an independent reviewer profile, so the exact figure is
+   **indicative**. The method expands Chebyshev cell shells `r = 0, 1, 2, …` and
+   decrements `remaining` per populated cell. In this harness the blue and red
+   grids are interleaved over a wide span (they overlap on X) and the adaptive
+   `cellSize` resolves to 40, so most ships find a nearest enemy within one cell —
+   but a tail sits 3–9 cells away, where the shell walks thousands of empty cells
+   and the early-out `bestDistSq < r*r*cellSizeSq` is only reachable after several
+   rings. It is called per ship from
+   `src/game/systems/decision/blackboard/refreshBlackboard.ts:131`
+   with the sensor grid (`cellSize` 40–300, `src/game/systems/sensors.ts:19-21`).
    This is the concrete hot path behind the AI budget failure.
 2. **Super-linear scaling with ship count** — 300 → 450 ships costs ≈4.6×
    (see extended-load table). Consistent with (1): more ships → more populated
@@ -347,15 +392,15 @@ This is a read-only audit. Concrete anchors:
    v2.0.6b decision code measures `≈0.46 ms` on **this same machine and Node**, so
    the current code is **≈6.6× slower** for an identical workload. Severity: high.
    **Resolved in Task 3** (Branch B): one `queryNearest` optimization brings the
-   default run to `0.771–0.812 ms` (**31.2% utilization, PASS**) — see
+   default run to `0.642–0.689 ms` (**26.8% utilization, PASS**) — see
    [Task 3 resolution](#task-3-resolution--branch-b-one-targeted-querynearest-optimization).
-2. **`queryNearest` dominates the AI tick** (64.2% of profile self-time,
+2. **`queryNearest` dominates the AI tick** (≈59–64% of profile self-time,
    `src/utils/spatialGrid.ts:195-256`). Severity: high — this is the actionable
    cause. **Resolved in Task 3** by bailing from empty-shell enumeration to an
    exact linear scan once the shell probes more cells than the grid populates.
-3. **AI cost scales super-linearly**: 450 ships ≈ 14.5 ms/tick (413% of the 3.5 ms
+3. **AI cost scales super-linearly**: 450 ships ≈ 14.8 ms/tick (423% of the 3.5 ms
    extended budget). Severity: medium. **Resolved in Task 3**: the extended run is
-   now `1.914 ms` (54.7% of the 3.5 ms extended budget).
+   now `1.203 ms` (34.4% of the 3.5 ms extended budget; load-sensitive).
 4. **The AI harness was broken from PR #640 (2026-10-09) until Task 1**
    (`35461c72` removed `__aiTestHooks`; `4c218f86` restored the harness on the
    public `updateDecisionSystem` export). Any CI "green" for `perf:ai-budget`
@@ -383,8 +428,8 @@ regression?
    ```
 
    Node 26 is **slower** (~4.88 ms median) than Node 24 (~3.15 ms) for this
-   workload, while a generic arithmetic benchmark is equal on both (~52 ms), so the
-   harness is workload-specifically Node-sensitive. Crucially, **Node 22 is not
+   workload — a measured ratio of **≈1.55×** — so the harness is
+   workload-specifically Node-sensitive. Crucially, **Node 22 is not
    available** (no `nvm`/`fnm`/`volta`; only Node 24 and 26 are installed), so the
    _older_ runtime used for the historical `1.493 ms` **cannot be reproduced here**.
    This confound is therefore **unresolved** — but see (3).
@@ -396,17 +441,54 @@ regression?
    both v2.0.6b and current code process `totalDecisions=3200`,
    `totalSkipped=0`, `tickIndex=160`, `lastSliceSize=20` (20 ships/tick × 160
    ticks) with the same fixture config (`tickInterval: 0.1`, `maxPerTick: 20`).
-3. **Direct A/B on identical hardware/Node** — the decisive experiment. A detached
-   worktree at the v2.0.6b review commit (`6b96fcae`) was run with the _same_
-   Node 24 binary, the _same_ `tsx`, and the _same_ shared `node_modules`:
+3. **Direct A/B on identical hardware/Node** — the decisive experiment. Both sides
+   are detached worktrees sharing this repo's `node_modules`, run with the _same_
+   Node 24 binary (`v24.21.0`) and the _same_ `tsx` shim. Exact commands and raw
+   output:
+
+   ```
+   # v2.0.6b side — scripts/perf/assert-ai-budget.ts @ 6b96fcae,
+   # which imports `__aiTestHooks.updateDecisionSystem` (the pre-Task-1 form).
+   $ WT=/private/var/folders/mn/p9h8gvw12zgbk49ydw6qjgy80000gq/T/opencode
+   $ git worktree add --detach "$WT/sab-ab-6b96fcae" 6b96fcae
+   $ ln -s "$PWD/node_modules" "$WT/sab-ab-6b96fcae/node_modules"
+   $ cd "$WT/sab-ab-6b96fcae"
+   $ ./node_modules/.bin/tsx scripts/perf/assert-ai-budget.ts
+   [ai-budget] booting harness
+   [ai-budget] ships=300 ticks=160 avgTick=0.450ms budget=2.500ms
+   [ai-budget] PASS: average AI tick 0.450ms within budget 2.500ms
+   [ai-budget] ships=300 ticks=160 avgTick=0.458ms budget=2.500ms
+   [ai-budget] PASS: average AI tick 0.458ms within budget 2.500ms
+   [ai-budget] ships=300 ticks=160 avgTick=0.458ms budget=2.500ms
+   [ai-budget] PASS: average AI tick 0.458ms within budget 2.500ms
+
+   # current side — scripts/perf/assert-ai-budget.ts @ 4c218f86 (Task 1 repair,
+   # public `updateDecisionSystem` export).
+   $ git worktree add --detach "$WT/sab-ab-4c218f86" 4c218f86
+   $ ln -s "$PWD/node_modules" "$WT/sab-ab-4c218f86/node_modules"
+   $ cd "$WT/sab-ab-4c218f86"
+   $ ./node_modules/.bin/tsx scripts/perf/assert-ai-budget.ts
+   [ai-budget] booting harness
+   [ai-budget] ships=300 ticks=160 avgTick=3.294ms budget=2.500ms
+   [ai-budget] FAIL: average AI tick 3.294ms exceeds budget 2.500ms
+   [ai-budget] ships=300 ticks=160 avgTick=3.223ms budget=2.500ms
+   [ai-budget] FAIL: average AI tick 3.223ms exceeds budget 2.500ms
+   [ai-budget] ships=300 ticks=160 avgTick=3.398ms budget=2.500ms
+   [ai-budget] FAIL: average AI tick 3.398ms exceeds budget 2.500ms
+   [ai-budget] ships=300 ticks=160 avgTick=3.170ms budget=2.500ms
+   [ai-budget] FAIL: average AI tick 3.170ms exceeds budget 2.500ms
+   [ai-budget] ships=300 ticks=160 avgTick=3.180ms budget=2.500ms
+   [ai-budget] FAIL: average AI tick 3.180ms exceeds budget 2.500ms
+   ```
 
    | Code                 | Runs (ms)                                   | min / median / max          |
    | -------------------- | ------------------------------------------- | --------------------------- |
-   | v2.0.6b (`6b96fcae`) | `0.460`, `0.478`, `0.459`                   | `0.459` / `0.460` / `0.478` |
-   | current (`4c218f86`) | `3.148`, `3.250`, `3.116`, `3.098`, `3.259` | `3.098` / `3.148` / `3.259` |
+   | v2.0.6b (`6b96fcae`) | `0.450`, `0.458`, `0.458`                   | `0.450` / `0.458` / `0.458` |
+   | current (`4c218f86`) | `3.294`, `3.223`, `3.398`, `3.170`, `3.180` | `3.170` / `3.223` / `3.398` |
 
    Both process the same 3200 decisions. So the **current decision workload is
-   ≈6.6× more expensive per identical unit of work** on the same machine.
+   ≈7× more expensive per identical unit of work** on the same machine (median
+   `3.223 / 0.458 = 7.0×`; Task 2's earlier runs gave ≈6.6×).
 
 4. **The historical `1.493 ms` was measured on a _slower_ environment than this
    one.** The v2.0.6b code runs at `≈0.46 ms` here, ~3.2× faster than its own
@@ -465,9 +547,10 @@ seeded RNG paths, `GameState` shapes, or system behaviour are modified. The
 Task 3 changes one method (`SpatialGrid.queryNearest`) for speed only. Its linear
 finish minimises the same `(distanceSq, rank)` key as the shell walk it replaces,
 and every caller ranks by a unique id → index, so the selected item is identical.
-No `GameState`, budget, threshold, or RNG path is touched. The determinism specs
-(`ai-determinism.spec.ts`, `sim-state-isolation.spec.ts`) and the two grid
-equivalence specs pass unchanged.
+No `GameState`, budget, threshold, or RNG path is touched. The grid **equivalence**
+specs (`nearest-enemy-grid.spec.ts`, `spatial-grid.spec.ts`) pin old-vs-new
+behaviour and pass unchanged; `ai-determinism.spec.ts` and
+`sim-state-isolation.spec.ts` pin run-to-run reproducibility and also pass.
 
 ## See also
 
