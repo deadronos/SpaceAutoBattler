@@ -38,6 +38,10 @@ jobs:
           cache: false
           run-install: false
 
+      - name: Verify package.json version matches release tag
+        if: github.ref_type == 'tag'
+        run: node scripts/check-version.mjs
+
       - name: Install deps
         run: vp install --frozen-lockfile
 
