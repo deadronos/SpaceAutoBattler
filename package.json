@@ -1,6 +1,6 @@
 {
   "name": "space-autobattler",
-  "version": "0.1.0",
+  "version": "2.2.0",
   "type": "module",
   "private": true,
   "repository": {
@@ -32,6 +32,7 @@
     "perf:ai-budget": "tsx ./scripts/perf/assert-ai-budget.ts",
     "bench:projectiles": "node scripts/bench/projectile-stress.mjs",
     "build:deploy": "vp run typecheck && vp test && vp build && cp dist/spaceautobattler.html dist/index.html",
+    "version:check": "node ./scripts/check-version.mjs",
     "assets:compress": "node ./scripts/assets/compress-gltf.mjs",
     "assets:compress:check": "node ./scripts/assets/compress-gltf.mjs --check",
     "prepare": "node -e \"if (!process.env.CI) try { require('child_process').execSync('vp config', { stdio: 'inherit' }); } catch {}\""

@@ -27,21 +27,52 @@ Ensure your GitHub repository has GitHub Pages configured:
 
 ## Release Process
 
-1. Create and push a tag:
+Releases are driven by Git tags, so `package.json` `"version"` must be bumped **before**
+tagging. The manual procedure is:
+
+1. Bump `"version"` in `package.json` to the release version (no `v` prefix) — e.g. set
+   `"version": "2.3.0"` for a `v2.3.0` tag.
+
+2. Verify the version matches the tag you are about to create:
 
 ```bash
-git tag v1.0.0
-git push origin v1.0.0
+GITHUB_REF_TYPE=tag GITHUB_REF_NAME=v2.3.0 npm run version:check
 ```
 
-2. Monitor the deployment:
-   - Check Actions tab for "Deploy to GitHub Pages" workflow
-   - Verify all steps pass: typecheck → test → build → deploy
+3. Create and push an annotated tag:
 
-3. Test the deployed site:
+```bash
+git tag -a v2.3.0 -m "Release v2.3.0"
+git push origin v2.3.0
+```
+
+> Any `v*` tag is treated as a release tag and must equal `v` + `package.json` `"version"`.
+> For a prerelease (e.g. `v2.3.0-rc.1`), put the same string in `package.json`
+> (`"2.3.0-rc.1"`) — the guard has no prerelease exemption.
+
+4. Monitor the deployment:
+   - Check Actions tab for "Deploy to GitHub Pages" workflow
+   - Verify all steps pass: version check → typecheck → test → build → deploy
+
+5. Test the deployed site:
    - Visit `https://[username].github.io/SpaceAutoBattler/`
    - Verify the game loads correctly
    - Check browser console for any 404 errors on assets
+
+## Version invariant
+
+`package.json` `"version"` must equal the release tag: a tag `vX.Y.Z` requires
+`"version": "X.Y.Z"`. The `version:check` guard (`scripts/check-version.mjs`) enforces this
+in the "Deploy to GitHub Pages" workflow, but **only for tag refs** (`if:
+github.ref_type == 'tag'`); it is a no-op on `workflow_dispatch` and branch refs. Run it
+locally with `npm run version:check <tag>` (or by setting `GITHUB_REF_TYPE` /
+`GITHUB_REF_NAME`).
+
+> **Historical caveat:** the `v2.2.0` tag predates this guard, so its tree still has
+> `"version": "0.1.0"`. Re-running that tag's deploy through the tag-triggered path will
+> fail the version check; this is expected and benign. `v2.2.0` is intentionally **not**
+> force-updated, because it is a published, annotated release. All tags created after the
+> version-sync change are covered by the guard.
 
 ## Troubleshooting
 
