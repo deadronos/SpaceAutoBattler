@@ -203,8 +203,14 @@ Task 2's evidence.** Re-baselining is only justified when the gap is environment
 drift; Task 2's same-machine/same-Node A/B (old code `≈0.46 ms` vs current
 `≈3.2 ms` for an identical 3200-decision workload) shows the extra cost is in
 the measured AI workload, not the environment. Raising the budget would therefore
-have masked a real regression, so the budget was **left at 2.5 ms** and no
-`|| echo` swallow was added or removed.
+have masked a real regression, so the budget was **left at 2.5 ms**.
+
+With the gate green again (see below), the stale `|| echo "…known issue with test
+harness"` swallow was removed from `.github/workflows/experiment-metrics.yml`
+(its "known issue" no longer exists). That workflow's `push`/`pull_request`
+triggers remain commented out — it runs on `workflow_dispatch` only — because the
+absolute budget is machine-specific; enforce it deliberately rather than on every
+push.
 
 ### The optimization
 

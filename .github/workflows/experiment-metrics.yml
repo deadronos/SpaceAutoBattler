@@ -88,7 +88,7 @@ jobs:
           AI_RANGE_POLICY: ${{ matrix.experiment.env.AI_RANGE_POLICY }}
 
       - name: Run AI performance budget test
-        run: vp run perf:ai-budget || echo "⚠️  Performance test failed - known issue with test harness"
+        run: vp run perf:ai-budget
         env:
           AI_VERTICAL_EXPERIMENT_OFF: ${{ matrix.experiment.env.AI_VERTICAL_EXPERIMENT_OFF }}
           AI_VERTICAL_EXPERIMENT_ON: ${{ matrix.experiment.env.AI_VERTICAL_EXPERIMENT_ON }}
@@ -107,7 +107,7 @@ jobs:
           AI_TICKRATE_EXPERIMENT_OFF: ${{ matrix.experiment.env.AI_TICKRATE_EXPERIMENT_OFF }}
           AI_TICKRATE_EXPERIMENT_ON: ${{ matrix.experiment.env.AI_TICKRATE_EXPERIMENT_ON }}
           AI_RANGE_POLICY: ${{ matrix.experiment.env.AI_RANGE_POLICY }}
-        run: AI_BUDGET_SHIPS=450 AI_BUDGET_TICKS=200 AI_BUDGET_MS=3.5 vp run perf:ai-budget || echo "⚠️  Extended performance test failed - known issue with test harness"
+        run: AI_BUDGET_SHIPS=450 AI_BUDGET_TICKS=200 AI_BUDGET_MS=3.5 vp run perf:ai-budget
 
   experiment-summary:
     name: Experiment Results Summary
