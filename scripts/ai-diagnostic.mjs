@@ -3,7 +3,22 @@ import { Vector3, Quaternion } from 'three';
 import { SeededRng } from '../src/utils/rng.js';
 import { generateTraitsFromSeed } from '../src/game/aiTraits.js';
 import { resolveBehaviorProfile } from '../src/game/aiProfiles.js';
-import { __aiTestHooks } from '../src/game/systems.js';
+import { refreshBlackboard } from '../src/game/systems/decision/blackboard/refreshBlackboard.js';
+import { assignTeamRoles } from '../src/game/systems/decision/blackboard/teamRoles.js';
+import {
+  scoreAttackIntent,
+  scoreKiteIntent,
+  scoreFleeIntent,
+} from '../src/game/systems/decision/combat-intents.js';
+import {
+  scoreRegroupIntent,
+  scoreEscortIntent,
+} from '../src/game/systems/decision/formation-intents.js';
+import {
+  scoreInterceptIntent,
+  scoreRepositionIntent,
+} from '../src/game/systems/decision/tactical-intents.js';
+import { selectIntent } from '../src/game/systems/decision/select-intent.js';
 
 fs.mkdirSync('tmp', { recursive: true });
 fs.writeFileSync('tmp/ai-diagnostic.log', '');
@@ -248,8 +263,8 @@ for (const config of configs) {
     world: { entities: ships },
   };
 
-  __aiTestHooks.refreshBlackboard(state, ships);
-  __aiTestHooks.assignTeamRoles(state, ships);
+  refreshBlackboard(state, ships);
+  assignTeamRoles(state, ships);
 
   for (const ship of ships) {
     const ai = ship.ai;
@@ -261,14 +276,15 @@ for (const config of configs) {
       ? (ships.find((s) => s.id === escortAssignment.vipId) ?? null)
       : null;
 
-    const attack = __aiTestHooks.scoreAttackIntent(
+    const attack = scoreAttackIntent(
+      state,
       ship,
       profile,
       primary,
       state.blackboard.teamPosture[ship.ship.team],
       ai.traits,
     );
-    const kite = __aiTestHooks.scoreKiteIntent(
+    const kite = scoreKiteIntent(
       ship,
       profile,
       primary,
@@ -276,10 +292,10 @@ for (const config of configs) {
       ai.traits,
     );
     const escortScore = escort
-      ? __aiTestHooks.scoreEscortIntent(ship, profile, escort, state, ai.traits, escortAssignment)
+      ? scoreEscortIntent(ship, profile, escort, state, ai.traits, escortAssignment)
       : 0;
     const intercept = primary
-      ? __aiTestHooks.scoreInterceptIntent(
+      ? scoreInterceptIntent(
           state,
           ship,
           profile,
@@ -290,7 +306,7 @@ for (const config of configs) {
           escortAssignment,
         )
       : 0;
-    const reposition = __aiTestHooks.scoreRepositionIntent(
+    const reposition = scoreRepositionIntent(
       state,
       ship,
       profile,
@@ -298,14 +314,14 @@ for (const config of configs) {
       ai.traits,
       state.blackboard.teamPosture[ship.ship.team],
     );
-    const regroup = __aiTestHooks.scoreRegroupIntent(
+    const regroup = scoreRegroupIntent(
       state,
       ship,
       profile,
       state.blackboard.teamPosture[ship.ship.team],
       ai.traits,
     );
-    const flee = __aiTestHooks.scoreFleeIntent(
+    const flee = scoreFleeIntent(
       ship,
       profile,
       primary,
@@ -314,15 +330,7 @@ for (const config of configs) {
     );
 
     const line = `Ship ${ship.id} (${ship.ship.hull}) primary:${primary?.id ?? 'none'} escort:${escort?.id ?? 'none'} -> attack:${attack} intercept:${intercept} escort:${escortScore} kite:${kite} reposition:${reposition} regroup:${regroup} flee:${flee}\n`;
-    const chosen = __aiTestHooks.selectIntent(
-      state,
-      ship,
-      ai,
-      profile,
-      primary,
-      escort,
-      escortAssignment,
-    );
+    const chosen = selectIntent(state, ship, ai, profile, primary, escort, escortAssignment);
     const chosenLine = `  selected -> ${chosen.intent} ${chosen.score}\n`;
     fs.appendFileSync('tmp/ai-diagnostic.log', line + chosenLine);
     console.log(line + chosenLine);
