@@ -10,17 +10,17 @@ Where a number is **assumed** rather than **measured**, it is marked as such.
 
 ## Header / environment
 
-| Item              | Value                                      | How obtained                                          |
-| ----------------- | ------------------------------------------ | ----------------------------------------------------- |
-| Date              | 2026-10-13                                 | —                                                     |
-| Branch            | `perf/performance-report-184`              | `git branch --show-current`                           |
-| Commit            | `4c218f862cdcd529aa045f557e2ed691e950a52e` | `git rev-parse HEAD` — the **measured revision**      |
-| Node (measured)   | `v24.21.0`                                 | `node -v`                                             |
-| pnpm              | `10.33.0`                                  | `pnpm -v`                                             |
-| OS / arch         | `Darwin arm64`                             | `uname -sm`                                           |
-| CPU               | `Apple M4`                                 | `sysctl -n machdep.cpu.brand_string`                  |
-| Second Node major | `v26.10.0`                                 | `/opt/homebrew/bin/node --version`                    |
-| Node 22           | **not available**                          | no `nvm`/`fnm`/`volta`; only Node 24 and 26 installed |
+| Item              | Value                                      | How obtained                                               |
+| ----------------- | ------------------------------------------ | ---------------------------------------------------------- |
+| Date              | 2026-10-13                                 | —                                                          |
+| Branch            | `perf/performance-report-184`              | `git branch --show-current`                                |
+| Measured base     | `4c218f862cdcd529aa045f557e2ed691e950a52e` | Task-1 HEAD; before/after numbers are labelled per section |
+| Node (measured)   | `v24.21.0`                                 | `node -v`                                                  |
+| pnpm              | `10.33.0`                                  | `pnpm -v`                                                  |
+| OS / arch         | `Darwin arm64`                             | `uname -sm`                                                |
+| CPU               | `Apple M4`                                 | `sysctl -n machdep.cpu.brand_string`                       |
+| Second Node major | `v26.10.0`                                 | `/opt/homebrew/bin/node --version`                         |
+| Node 22           | **not available**                          | no `nvm`/`fnm`/`volta`; only Node 24 and 26 installed      |
 
 The measured Node (`v24.21.0`) is the one on `PATH` via `~/.vite-plus/bin/node`,
 which is what `pnpm run …` resolves to. The recorded `Commit` is the **measured
@@ -370,7 +370,7 @@ This is a read-only audit. Concrete anchors:
 
 1. **`SpatialGrid.queryNearest` is the dominant AI cost.** CPU profiles of the
    default harness attribute the dominant share of self samples to
-   `queryNearest` (`src/utils/spatialGrid.ts:195-256`) — **≈64%** in Task 2's
+   `queryNearest` (`src/utils/spatialGrid.ts:178-299`) — **≈59–64%** in Task 2's
    profile and **≈59%** in an independent reviewer profile, so the exact figure is
    **indicative**. The method expands Chebyshev cell shells `r = 0, 1, 2, …` and
    decrements `remaining` per populated cell. In this harness the blue and red
@@ -401,7 +401,7 @@ This is a read-only audit. Concrete anchors:
    default run to `0.642–0.689 ms` (**26.8% utilization, PASS**) — see
    [Task 3 resolution](#task-3-resolution--branch-b-one-targeted-querynearest-optimization).
 2. **`queryNearest` dominates the AI tick** (≈59–64% of profile self-time,
-   `src/utils/spatialGrid.ts:195-256`). Severity: high — this is the actionable
+   `src/utils/spatialGrid.ts:178-299`). Severity: high — this is the actionable
    cause. **Resolved in Task 3** by bailing from empty-shell enumeration to an
    exact linear scan once the shell probes more cells than the grid populates.
 3. **AI cost scales super-linearly**: 450 ships ≈ 14.8 ms/tick (423% of the 3.5 ms

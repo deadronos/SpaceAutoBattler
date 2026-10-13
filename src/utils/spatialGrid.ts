@@ -193,11 +193,16 @@ export class SpatialGrid<T> {
    * cutoff is a pure performance knob and cannot change the result for any
    * injective `rank` (every caller ranks by a unique id -> index).
    *
-   * Allocation-free: only a single incumbent is retained.
+   * No per-item allocation: only a single incumbent is retained. (The linear
+   * finish does allocate one `Map` iterator per bailed query.)
    *
    * @param {Vector3} position - Query centre.
    * @param {Function} isCandidate - Predicate selecting eligible items.
-   * @param {Function} rank - Deterministic tie-break; smaller wins.
+   * @param {Function} rank - Deterministic tie-break; smaller wins. Must be
+   *   **injective** for stable results: when two candidates tie on both distance
+   *   and rank, the shell path and the linear finish may pick different items
+   *   (same `(distanceSq, rank)` key, different item). The only caller ranks by a
+   *   unique id -> index, so this cannot occur today.
    * @returns {T | null}
    */
   queryNearest(

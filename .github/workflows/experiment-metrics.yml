@@ -88,6 +88,9 @@ jobs:
           AI_RANGE_POLICY: ${{ matrix.experiment.env.AI_RANGE_POLICY }}
 
       - name: Run AI performance budget test
+        # Gate is enforced (the harness is fixed, #184). Measured on Apple M4 / Node 24:
+        # default ~0.7 ms vs the 2.5 ms budget (~3.5x headroom); extended ~1.2 ms vs 3.5 ms.
+        # This job runs on ubuntu-latest / Node 22 (unmeasured here) — see docs/performance-report.md.
         run: vp run perf:ai-budget
         env:
           AI_VERTICAL_EXPERIMENT_OFF: ${{ matrix.experiment.env.AI_VERTICAL_EXPERIMENT_OFF }}
