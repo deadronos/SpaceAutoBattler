@@ -13,7 +13,7 @@ Overview
 Common patterns
 
 - GameState lifecycle via barrel exports: `src/game/state.ts` re-exports `createGameState`, `disposeGameState`, `destroyEntity`, `spawnInitialFleets`, and reset helpers. Implementations live in `src/game/createGameState.ts`, `src/game/entityLifecycle.ts`, `src/game/spawnFleets.ts`, and `src/game/resetGame.ts`.
-- GameState init defaults: `createGameState()` calls `Rapier.init({})`, constructs `physicsWorld` and an `eventQueue` with `{ auto: true }`, creates `state.turretsByShip = new Map()`, and initialises `state.rng = new SeededRng(1337)` and `state.simulation` (fixed step `1/20`, `maxSubSteps = 5`, plus profiling/guard flags and `subsystemTimings`).
+- GameState init defaults: `createGameState()` calls `Rapier.init()`, constructs `physicsWorld = new Rapier.World({ x: 0, y: 0, z: 0 })` and an `eventQueue` via `new Rapier.EventQueue(true)`, creates `state.turretsByShip = new Map()`, and initialises `state.rng = new SeededRng(1337)` and `state.simulation` (fixed step `1/20`, `maxSubSteps = 5`, plus profiling/guard flags and `subsystemTimings`).
 - Systems composition: `src/game/systems.ts` composes small, focused functions (prepareShips, advanceProjectiles, syncTransforms, resolveProjectiles) executed each tick via `updateGame(state, delta)`.
 - Safe mutation pattern: Use `state.simulation.deferredMutations` and `state.simulation.postStepMutations` and the helpers in `src/game/simulationQueue.ts` to schedule Rapier-sensitive operations and avoid in-step mutations.
 - Seeded RNG: The `SeededRng` (see `src/utils/rng.ts`) is a Lehmer-style generator. Use the provided helpers (`reset(seed)`, `next()`, `range(min,max)`, `int(min,max)`, `pick(values)`, `normal(mean, stdDev)`) for all simulation randomness to ensure replay determinism.
@@ -30,7 +30,7 @@ Testing & CI
 
 Memory Bank & Decisions
 
-- Record design decisions, requirement EARS statements, and task mappings inside `memory/` (e.g., `memory/requirements.md`, `memory/design.md`, `memory/tasks/`). Use these files to preserve context for future work and PRs.
+- Record design decisions, requirement EARS statements, and task mappings inside `memory/` (e.g., `memory/requirements.md`, `memory/tasks/`). Use these files to preserve context for future work and PRs.
 - When renaming or remapping task IDs (for example TASK102→TASK136), update cross-references across memory files and `memory/tasks/_index.md` and run markdown/link linting to avoid stale links.
 
 Last updated: 2025-09-29

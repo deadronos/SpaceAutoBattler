@@ -5,7 +5,7 @@ Related: DESIGN055, TASK106
 
 Summary
 
-- Single source of truth for FIFO-trimmed diagnostic/history buffers. Eliminates the duplicate `push`/`shift` loops that previously lived in `simulationQueue`, `damage`, `metrics/recorders`, the star-disk debug hook, and `progression/events.appendCappedHistory`.
+- Single source of truth for FIFO-trimmed diagnostic/history buffers. Eliminates the duplicate `push`/`shift` loops that previously lived in `simulationQueue`, `damage`, `metrics/recorders`, the star-disk/debug hooks, and `progression/events.appendCappedHistory`.
 - All capped history appends in the runtime should funnel through this module so trimming semantics, cap normalization, and test coverage stay in sync.
 
 Primary exports
@@ -22,18 +22,17 @@ Cap normalization
 Call sites (verified during the 2026-06 audit)
 
 - `src/game/simulationQueue.ts` — Rapier panic snapshots (`__copilot_rapierPanics`), subsystem failure logs, deferred/post-physics mutation diagnostics.
-- `src/game/combat/damage.ts` — shield ripple ring buffer, per-frame damage breakdown history.
-- `src/renderer/metrics/recorders.ts` — frame-time, draw-call, and particle histograms.
-- `src/components/environment/StarDiskProvider.tsx` (star-disk debug hook) — texture swap / orientation diagnostics.
-- `src/game/progression/events.ts` — `appendCappedHistory` delegates here to keep its return-new-array contract.
+- `src/game/systems/projectileDamage.ts` — shield ripple ring buffer (per-frame damage breakdown history).
+- `src/game/metrics/recorders.ts` — frame-time, draw-call, and particle histograms.
+- `src/game/progression/events.ts` — `appendCappedHistory` delegates here to keep its return-new-array contract. (The former star-disk debug-hook consumer was removed with the StarDisk component; see core-celestialEnvironment.)
 
 Tests
 
-- `test/vitest/utils/cappedBuffer.spec.ts` covers: cap trimming order, `cap = 0` clearing, NaN/Infinity handling, immutable clone semantics, and TypeError on non-array input.
+- `test/utils/cappedBuffer.spec.ts` covers: cap trimming order, `cap = 0` clearing, NaN/Infinity handling, immutable clone semantics, and TypeError on non-array input.
 
 References
 
 - `src/utils/cappedBuffer.ts` (helper module)
-- `test/vitest/utils/cappedBuffer.spec.ts` (unit tests)
+- `test/utils/cappedBuffer.spec.ts` (unit tests)
 - DESIGN055: Unify capped history helpers
 - TASK106 / TASK415: implementation + refactor tracker

@@ -9,7 +9,7 @@ Summary
 Primary responsibilities
 
 - Rapier initialization
-  - `createGameState()` calls `await Rapier.init({})`, constructs a new `Rapier.World()`, and an `EventQueue` with `{ auto: true }`.
+  - `createGameState()` calls `await Rapier.init()`, constructs a new `Rapier.World({ x: 0, y: 0, z: 0 })`, and an `EventQueue` via `new Rapier.EventQueue(true)`.
   - The Rapier world instance (`state.physicsWorld`) and `state.eventQueue` are used by systems and are accessible for tests and debug tooling.
 
 - Safe mutation and deferred queues
@@ -24,7 +24,7 @@ Primary responsibilities
 
 - Diagnostics and guard recording
   - Rapier-related exceptional conditions (step panics, guard trips, deferred mutation failures) are recorded on `state.simulation.rapierDiagnostics` by helpers in `simulationQueue.ts`.
-  - `recordRapierStepPanic`, `recordRapierGuardTrip`, and `recordDeferredFailure` centralize diagnostic bookkeeping and are invoked wherever Rapier interactions are wrapped.
+  - `recordRapierStepPanic`, `recordRapierGuardTrip`, and the module-private `recordDeferredFailure` centralize diagnostic bookkeeping and are invoked wherever Rapier interactions are wrapped.
 
 Integration patterns
 

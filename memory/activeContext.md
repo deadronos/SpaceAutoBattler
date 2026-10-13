@@ -2,10 +2,10 @@
 
 Current focuses (short-term):
 
-- **Performance Review v2.0.6b (Completed - 100%)**: Comprehensive performance review completed with rating analysis across all critical metrics. Results show excellent improvements: AI system 13.8% faster (40% headroom), test suite 21.9% faster, overall rating ⭐⭐⭐⭐⭐ 4.6/5.0. Documentation in `docs/performance-review-v2.0.6b.md` and `PERFORMANCE_REVIEW_SUMMARY.md`.
+- **Performance Review v2.0.6b (Completed - 100%)**: Comprehensive performance review completed with rating analysis across all critical metrics. Results show excellent improvements: AI system 13.8% faster (40% headroom), test suite 21.9% faster, overall rating ⭐⭐⭐⭐⭐ 4.6/5.0. Documentation in `docs/performance-review-v2.0.6b.md`.
 - Land shared capped-buffer helpers (`appendCappedMutable`/`appendCappedImmutable`) across diagnostics, shield ripples, metrics, and progression events (TASK415); unblock Vitest run by addressing missing optional `@rollup` native binary.
-- Refine AI motion PD tuning (TASK241) to eliminate bobbing and document hull-specific gains (spec/motion-tuning.md).
-- Monitor StarDisk uniform telemetry (`window.__copilot_starDiskTelemetry`) alongside Rapier diagnostics to verify iTime progression after addressing WASM faults (TASK237 complete)
+- Refine AI motion PD tuning (TASK095 / formerly referenced as TASK241) to eliminate bobbing and document hull-specific gains (spec/motion-tuning.md).
+- **Star telemetry (removed)**: The former `window.__copilot_starDiskTelemetry` global and its `docs/star-disk-telemetry.md` documentation were removed with the StarDisk→StarSphere migration; Rapier diagnostics remain the runtime introspection surface.
 - **TASK156 (In Progress)**: Validate Playwright ship hull rendering tests with local `build + serve` cycle, generate representative baselines (fighter/frigate/carrier), and add CI job for PR-level subset; initial PoC files and baseline script are present.
 - **TASK157 (In Progress)**: Offload simulation to a Web Worker (Rapier + ECS + AI) with worker-driven ship snapshot streaming; maintain feature-flagged worker render debug modes and converge toward a proper RenderWorld mirror.
 - Harden renderer validation through Vitest config checks and Playwright screenshot baselines to keep the environment deterministic and regression-ready
@@ -14,24 +14,17 @@ Current focuses (short-term):
 Recent changes:
 
 - **2025-12-29**: Completed performance review for v2.0.6b — measured all performance metrics (AI budget, projectile stress, build time, test suite, bundle size) and calculated percentage improvements vs v2.0.5g. Key findings: AI system 1.493ms (40% headroom, ↑13.8%), test suite 37.8s (↑21.9%), projectiles ↑6.9%, build ↑2.1%. Overall rating: ⭐⭐⭐⭐⭐ 4.6/5.0 EXCELLENT. Created comprehensive 450-line review document with detailed analysis and ratings. Updated summary document and memory bank progress.
-- **2025-12-29**: Added `DynamicResScaler` component (`src/components/DynamicRescaler.tsx`) and unit tests (`test/vitest/dynamic-res-scaler.spec.ts`) to provide automatic DPR scaling for render performance. Next steps: tune defaults, add telemetry/HUD controls, add Playwright baseline cases for DPR transitions, and document final recommended defaults (tracked in TASK162).
-- **TASK119 (In Progress — 80%)**: Updated `test/vitest/flak-proximity.spec.ts` to pass `originPosition` through `FireProjectileOptions` (not `FireProjectileOverride`) and re-indented call sites; `npx tsc --noEmit` and `npx eslint` pass. Vitest run is currently blocked in this sandbox by esbuild `spawn EPERM` during config load.
+- **2025-12-29**: Added `DynamicResScaler` component (`src/components/DynamicResScaler.tsx`) and unit tests (`test/vitest/dynamic-res-scaler.spec.ts`) to provide automatic DPR scaling for render performance. Next steps: tune defaults, add telemetry/HUD controls, add Playwright baseline cases for DPR transitions, and document final recommended defaults (tracked in TASK162).
+- **TASK119 (In Progress — 80%)**: Updated `test/vitest/flak-proximity.spec.ts` to pass `originPosition` through `FireProjectileOptions` (not `FireProjectileOverride`) and re-indented call sites; `pnpm run typecheck` and `vp lint` pass. Vitest run is currently blocked in this sandbox by esbuild `spawn EPERM` during config load.
 - **TASK157 (In Progress)**: Landed worker simulation snapshot pipeline + worker-driven ship render MVP (cones) and a render-only flag to stop main-thread ticking; fixed production Webpack chunk loading for worker split chunks and added Playwright coverage (`worker-sim.spec.ts`).
-- **TASK237 (Completed - 100%)**: Implemented StarDisk uniform telemetry monitoring to track iTime progression and correlate with Rapier panics:
-  - Added `window.__copilot_starDiskTelemetry` debug global with 11 telemetry fields
-  - Tracks iTime, deltaTime, isProgressing, frameCount, time sources (sim/render/fallback)
-  - Correlates with Rapier diagnostics: panicCount, lastPanicTick, ticksSincePanic
-  - Gated behind `isCopilotDebugEnabled()` for zero overhead when disabled
-  - Created comprehensive documentation in `docs/star-disk-telemetry.md`
-  - Added Vitest test suite with 5 passing tests (`star-disk-telemetry.spec.ts`)
-  - Validation: `npm run typecheck`, `npm test -- star-disk-telemetry`
+- **StarDisk telemetry (removed, was TASK092 / historically cited as TASK237)**: The `window.__copilot_starDiskTelemetry` debug global, its documentation (`docs/star-disk-telemetry.md`), and the associated StarDisk debug wiring were removed when the `StarDisk` component was replaced by `StarSphere`. The remaining `test/vitest/star-disk-telemetry.spec.ts` is a placeholder shape test; it no longer exercises a live global.
 - Added HUD settings/debug drawers (TASK147), defaulting postprocessing + AI V2 to enabled and relocating overlay toggles from the top control bar.
 - **2025-12-12**: Minor UI, systems, and tests landed:
   - `src/components/Hud.tsx`: Added accessible attributes for HUD progress bars — `role="progressbar"`, `aria-label`, `aria-valuenow`, and `aria-valuemax`; grouped HUD controls with `role="group"`/`aria-label`. Validated via `test/components/Hud.spec.tsx`.
   - `src/components/ProgressionPanel.tsx`: Panel supports drag-to-reposition using `useUiStore` to persist `position`, and formats XP with decimal precision (`toFixed(1)`). Also exposed `aria-live="polite"` to announce updates. Validated via `test/components/ProgressionPanel.spec.tsx`.
   - `src/components/Postprocessing.tsx`: Added guard for missing `camera.layers` and safe camera layer mask restore to prevent composer errors if `camera.layers` is not present. Validated via `test/components/postprocessing/bug-undefined-camera-layers.spec.tsx`.
   - `src/game/systems/turrets.ts`: Adjusted turret target selection score to respect priority by applying a `bonusScale` so hull preference composes with squared distance consistently. Validated via `test/vitest/turret-priority.spec.ts`.
-- Migrated Vitest smoke importer to Vite glob loaders, rewrote projectile geometry specs to inspect JSX output, and revalidated `npm run typecheck`, `npm test`, and `npm run build` to stabilise the build/test pipeline post React 19 upgrade.
+- Migrated Vitest smoke importer to Vite glob loaders, rewrote projectile geometry specs to inspect JSX output, and revalidated `pnpm run typecheck`, `pnpm test`, and `pnpm run build` to stabilise the build/test pipeline post React 19 upgrade.
 - Replaced the rimmed planet shader with a stock `MeshStandardMaterial` surface plus additive rim shell, restoring lit/dark hemispheres while keeping glow; planets continue to cast/receive star light shadows with tuned shadow maps.
 - Captured requirements and design for an automated Playwright workflow that outputs before/after star disk screenshots using debug overrides.
 - Implemented the debug override helper, Playwright comparison spec, and generated before/after artifacts under `playwright-debug/` with passing validation gates.
@@ -42,14 +35,14 @@ Recent changes:
 - Raised star disk corona intensity and texture blend defaults, retuned fragment contributions for a hotter corona, and expanded Vitest coverage for fiery fallbacks.
 - Generated deterministic star disk texture assets, updated shader/material uniforms to sample them, and expanded Vitest coverage to capture texture handling.
 - Expanded star disk radial shaping with new uniforms (texture radial power, corona edge softness, base fill), updated GLSL to fill the disc organically, and extended Vitest coverage for defaults/clamping.
-- Finalised fiery fidelity tuning: warmer palette, stronger texture weighting, balanced brightness, refreshed environment overrides, and extended Vitest assertions to cover hue/lightness thresholds; validated via `npm run typecheck`, `npm test`, and `npm run build`.
+- Finalised fiery fidelity tuning: warmer palette, stronger texture weighting, balanced brightness, refreshed environment overrides, and extended Vitest assertions to cover hue/lightness thresholds; validated via `pnpm run typecheck`, `pnpm test`, and `pnpm run build`.
 - Landed `CelestialEnvironment`, `StarLight`, `PlanetBody`, `PlanetRings`, and `ParallaxBillboard` components wired to the new config and optional rim shader.
 - Added `usePlanetTexture` hook with SRGB/anisotropy handling, deterministic rotation based on simulation time, and feature toggles (star disk, billboards, rims).
 - Integrated solar-corona star disk shader with deterministic uniforms, GLSL asset pipeline, and Vitest coverage for material lifecycle.
 - Authored Vitest suites (`celestial-environment.spec.ts`, `planet-deterministic-rotation.spec.ts`, `planet-texture-fallback.spec.ts`) plus Playwright baselines (`celestial-visual-baseline.spec.ts`).
 - Documented new TASK139 plan for haze taper controls (requirements/design) ahead of implementation.
-- Implemented haze taper configuration + shader attenuation (TASK139) with deterministic clamps and new Vitest coverage (`star-disk-material`, `star-disk-haze-taper`), validated via `npm run typecheck`, `npm test`.
-- Delivered TASK140: added boundary feather config defaults (`CelestialEnvironment`), new `iBoundaryFeather` uniforms with `deriveBoundaryUniform`, GLSL attenuation, and Vitest/component coverage (`star-disk-boundary`, expanded material/component specs); validation via `npm run typecheck`, `npm test`.
+- Implemented haze taper configuration + shader attenuation (TASK139) with deterministic clamps and new Vitest coverage (`star-disk-material`, `star-disk-haze-taper`), validated via `pnpm run typecheck`, `pnpm test`.
+- Delivered TASK140: added boundary feather config defaults (`CelestialEnvironment`), new `iBoundaryFeather` uniforms with `deriveBoundaryUniform`, GLSL attenuation, and Vitest/component coverage (`star-disk-boundary`, expanded material/component specs); validation via `pnpm run typecheck`, `pnpm test`.
 
 Recent alignment notes (2025-10-03)
 
@@ -90,12 +83,11 @@ Recent quick maintenance (2025-10-18):
     - Wraps ambient + directional lighting and positions a directional light according to `StarLightConfig.direction` and `distance`.
     - Configures shadow camera extents, biases, and `castShadow`, and mirrors an internal ref to an optional external ref for parent/component coordination.
 
-  - `StarDisk` / `StarDiskMesh` / `StarSphere` (`src/components/environment/StarDisk.tsx`, `StarDiskMesh.tsx`, `StarSphere.tsx`)
-    - Implements the main-sequence star visual: a shader-driven halo/disk with an opaque depth core to guarantee occlusion.
-    - Uses a custom shader pipeline (material creation, uniform updates, time-wrapping, texture hooks) and exposes many debug hooks under `?copilot_debug=1` (telemetry, force-material, layer/opacity controls).
-    - `StarDisk` performs per-frame uniform/time selection (simulation time preferred, fallback to render clock) and publishes `window.__copilot_starDiskTelemetry` when debug is enabled.
-    - `StarDiskMesh` provides core + halo geometry and handles applying shader or fallback materials with explicit renderOrder constants to ensure correct layering.
-    - `StarSphere` is a sphere-based variant that writes depth with a separate depth-only pass (shader-backed depth pass) to create stable occlusion for the visible shader pass.
+  - `StarSphere` (`src/components/environment/StarSphere.tsx`)
+    - Implements the main-sequence star visual as a sphere with a shader-driven halo and an opaque depth core to guarantee occlusion. It replaces the former `StarDisk` / `StarDiskMesh` billboard components (both removed).
+    - Uses a custom shader pipeline (`useStarMaterial`, `useStarTextures`, `useStarSphereFrame`) for material creation, uniform updates, and time selection (simulation time preferred, accumulating delta as fallback for reduced-motion).
+    - Writes depth through a slightly smaller depth-only sphere (`createStarSphereDepthMaterial`) while the visible mesh performs depth testing without depth writes, so nearby planets/rings occlude the star consistently.
+    - Debug helpers referenced by automation live under `?copilot_debug=1` and are cleaned up via `useStarDebug` / `useDebugOverlayCleanup`; there is no live telemetry global (the old `window.__copilot_starDiskTelemetry` was removed).
 
   - `PlanetBody` (`src/components/environment/PlanetBody.tsx`)
     - Renders planet geometry using `usePlanetTexture` (texture loader + fallback color) and `meshStandardMaterial` for PBR shading. Supports tilt, deterministic rotation using `state.simulation` time, emissive boost, rim shell and optional rings.

@@ -8,16 +8,16 @@ This design document outlines the ship progression system; the implementation no
 
 The EARS requirements in this design map to implemented functions and constants:
 
-1. XP and Leveling — implemented in `src/game/progression.ts` using `XP_CONFIG` (from `src/config/progression.ts`) and helpers `awardDamageXp`, `awardKillXp`, and `checkLevelUp`.
-2. Level-up Progression — the `checkLevelUp` function recomputes and applies level bonuses using `LEVEL_BONUSES` and respects configured caps.
+1. XP and Leveling — implemented in `src/game/progression/xp.ts` (`awardDamageXp`, `awardKillXp`) and `src/game/progression/leveling.ts` (`checkLevelUp`) using `XP_CONFIG` (from `src/config/progression.ts`); `src/game/progression.ts` re-exports the public surface.
+2. Level-up Progression — the `checkLevelUp` function (`src/game/progression/leveling.ts`) recomputes and applies level bonuses using `LEVEL_BONUSES` and respects configured caps.
 3. Captain System — captain creation and ability management are implemented via `generateCaptain`, `updateCaptainAbilities`, and `activateMoraleAbility` inside `src/game/progression.ts` and driven by `CAPTAIN_CONFIG`.
-4. Damage Types — projectiles and weapons carry `damageType` and `resolveProjectiles` in `src/game/systems/projectiles.ts` applies `DAMAGE_EFFECTIVENESS` lookups imported from `src/config/progression.ts`.
-5. Subsystem Damage & Repair — `createSubsystems`, `repairSubsystems`, and `applySubsystemDamage` are implemented in `src/game/progression.ts` and integrated into `resolveProjectiles` so subsystem hits are recorded and repairs run during `prepareShips`/per-tick repair steps.
+4. Damage Types — projectiles and weapons carry `damageType`; damage resolution lives in `src/game/systems/damage.ts` (which re-exports `resolveProjectiles` from `src/game/systems/projectileCollisions.ts`) and applies `DAMAGE_EFFECTIVENESS` lookups imported from `src/config/progression.ts`.
+5. Subsystem Damage & Repair — `createSubsystems`, `repairSubsystems`, and `applySubsystemDamage` are implemented in `src/game/subsystems.ts` (re-exported by `src/game/progression.ts`) and integrated into damage resolution so subsystem hits are recorded and repairs run during `prepareShips`/per-tick repair steps.
 
 ## Implementation mapping
 
 - `src/config/progression.ts` — configuration knobs: `XP_CONFIG`, `LEVEL_BONUSES`, `CAPTAIN_CONFIG`, and `DAMAGE_EFFECTIVENESS`.
-- `src/game/progression.ts` — core logic: XP awarding, level-up handling, captain generation & abilities, subsystem creation & repair, and integration points for awarding XP during projectile resolution.
+- `src/game/progression.ts` — core logic: XP awarding (`progression/xp.ts`), level-up handling (`progression/leveling.ts`), captain generation & abilities, subsystem creation & repair (`src/game/subsystems.ts`), and re-exports for the public surface.
 - `src/game/ships.ts` — ship factory now calls `generateCaptain` and `createSubsystems` so newly spawned ships are progression-ready.
 - `test/vitest/*` — progression spec files exist for unit and integration coverage (see test suite names referenced across the repository).
 

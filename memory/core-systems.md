@@ -21,7 +21,7 @@ The current ordering (verified in source) is:
 
 **Pre-physics (`SIMULATION_PIPELINE`):**
 
-1. `updateDecisionSystem` / `runDecisionTick` — rebuilds the blackboard, assigns escorts/VIPs, and runs a round‑robin decision slice for AI v2 when enabled.
+1. `updateDecisionSystem` / `runDecisionTick` — rebuilds the blackboard, assigns escorts/VIPs, and runs a round‑robin decision slice for AI v2 (always on; the legacy fallback was removed and `ensureAiEnabled` forces `state.ai.enabled = true`).
 2. `prepareShips` — applies AI or legacy commands, prunes muzzle flashes, runs shield regen and progression-related per-ship accounting.
 3. `updateCarrierLaunchSystem` — schedules carrier fighter spawns via the deferred mutation queue so spawned fighters appear deterministically after the carrier loop.
 4. `updateTurrets` — updates turret ECS entities, aiming logic, and cooldowns; turret entity lifecycle is registered via `registerTurret`.

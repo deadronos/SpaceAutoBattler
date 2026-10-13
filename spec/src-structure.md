@@ -26,44 +26,40 @@ key exports, and any notable dependencies or behaviors.
   toggle drawers.
 - `hudToggleConfig.ts` — Defines toggle configurations for HUD settings and
   debug overlays.
-
-- Note: explosion rendering utilities live under `src/components/explosions/`.
-  See that folder for `derived.ts`, `constants.ts`, `DynamicLightManager.tsx`,
-  and `materials.ts`.
-
-- `Turret.tsx` — Renders turret entities with optional debug gizmos and muzzle
-  flashes.
-- `ShipHudOverlay.tsx` — Individual ship health bar overlay with status
-  effects.
-- `shieldUtils.ts` — Utilities for shield fraction computation and
-  validation.
-- `ExplosionRenderer.tsx` — Instanced rendering for explosion effects
-  (flash, shockwave, particles).
-- `ExplosionDebugOverlay.tsx` — Debug UI for explosion events and
-  configuration.
-- `Explosion.tsx` — Placeholder for single explosion mesh rendering.
-- `rippleUtils.ts` — Processes shield ripples for rendering (scaling,
-  coalescing).
-- `ShipShield.tsx` — Renders shield bubble with hex or transmission material.
-- `ShipModel.tsx` — Loads and manages ship GLTF models with material handling.
-- `Ship.tsx` — Higher-level ship render wrapper (uses `ShipModel.tsx`).
+- `HudToggleDrawer.tsx` — Reusable drawer for HUD toggles and settings.
 - `HudOverlayCollector.tsx` — Collects ship positions for HUD overlays.
 - `HudHealthLayer.tsx` — Manages layout and rendering of health overlays.
-- `PerfMonitorOverlay.tsx` — Draggable performance monitor using r3f-perf.
+- `ShipHudOverlay.tsx` — Individual ship health bar overlay with status
+  effects.
+- `Turret.tsx` — Renders turret entities with optional debug gizmos and muzzle
+  flashes.
+- `Explosion.tsx` — Placeholder for single explosion mesh rendering.
+- `ExplosionDebugOverlay.tsx` — Debug UI for explosion events and
+  configuration.
 - `ParticleTrails.tsx` — Instanced particle system for ship engine exhaust.
-- `HudToggleDrawer.tsx` — Reusable drawer for HUD toggles and settings.
-- `TurretsLayer.tsx` — Renders all turret entities.
-- `StarsField.tsx` — Renders static starfield points.
-- `ShipsLayer.tsx` — Renders all ship entities and particle trails.
-- `ProjectilesLayer.tsx` — Renders all projectile entities.
+- `PerfMonitorOverlay.tsx` — Draggable performance monitor using r3f-perf.
 - `PostprocessingLazy.tsx` — Lazy-loaded postprocessing component.
 - `Postprocessing.tsx` — Selective bloom and FXAA postprocessing setup.
 - `Controls.tsx` — UI controls for pause, reset, and spawning ships.
 - `BattlefieldSystems.tsx` — Fixed-step simulation integration.
 - `Battlefield.tsx` — Main Three.js canvas with scene, lights, and layers.
+- `CameraRig.tsx` — Camera framing and orbit controls.
+- `QualityController.tsx` — Applies quality presets and renderer DPR settings.
+- `DynamicResScaler.tsx` — Automatic renderer pixel-ratio scaling.
 - `AiDebugOverlay.tsx` — Developer overlay showing AI-related debug info.
-- `Projectile.tsx` — Single projectile mesh and helpers.
 - `ProgressionPanel.tsx` — Dev UI for progression/debug controls.
+- `progressionPanelData.ts` — Derived data feeding the progression panel.
+- `Ship.tsx` — Higher-level ship render wrapper (uses
+  `src/components/ship/ShipModel.tsx`).
+
+- Note: explosion rendering utilities live under `src/components/explosions/`.
+  See that folder for `derived.ts`, `constants.ts`, `DynamicLightManager.tsx`,
+  `ExplosionRendererCore.tsx`, `instancedManager.ts`, and `materials.ts`.
+- Note: instanced/aggregate entity layers (`ShipsLayer`, `ProjectilesLayer`,
+  `TurretsLayer`, `StarsField`, instanced variants) live under
+  `src/components/layers/`; ship rendering helpers (`ShipModel.tsx`,
+  `ShipShield.tsx`, `rippleUtils.ts`, `shieldUtils.ts`, `ShipView.tsx`) live
+  under `src/components/ship/`.
 
 ### `src/components/environment`
 
@@ -73,7 +69,8 @@ key exports, and any notable dependencies or behaviors.
 - `PlanetBody.tsx`, `PlanetRimShell.tsx`, `PlanetRings.tsx` — Planet body
   components and ring visuals.
 - `Skysphere.tsx` — Skysphere background loader.
-- `StarDisk.tsx`, `StarLight.tsx` — Star disk and light helpers.
+- `StarSphere.tsx`, `StarLight.tsx` — Main-sequence star sphere and light
+  helpers.
 
 ### `src/components/explosions`
 
@@ -81,6 +78,11 @@ key exports, and any notable dependencies or behaviors.
   explosion events.
 - `constants.ts` — Explosion rendering constants (capacities, lifetimes).
 - `DynamicLightManager.tsx` — Manages transient dynamic lights for explosions.
+- `ExplosionRendererCore.tsx` — Instanced rendering core for explosion effects
+  (flash, shockwave, particles).
+- `instancedManager.ts` — Manages instanced explosion meshes and pool reuse.
+- `effectUpdaters/` — Per-effect updaters (flash, shockwave, fireball, smoke,
+  debris, sparks, plasma).
 - `materials.ts` — Explosion-related material helpers and shader uniforms.
 
 ### `src/components/layers`
@@ -97,8 +99,8 @@ key exports, and any notable dependencies or behaviors.
 
 ### `src/components/ship`
 
-- `rippleUtils.ts`, `shieldUtils.ts`, `ShipModel.tsx`, `ShipShield.tsx` —
-  Ship rendering helpers and utilities.
+- `rippleUtils.ts`, `shieldUtils.ts`, `ShipModel.tsx`, `ShipShield.tsx`,
+  `ShipView.tsx` — Ship rendering helpers and utilities.
 
 ## `src/config`
 
@@ -110,7 +112,6 @@ key exports, and any notable dependencies or behaviors.
 - `carriers.ts` — Carrier launch system configuration.
 - `projectiles.ts` — Projectile visual and collider configurations.
 - `progression.ts` — Ship progression, XP, and damage type configs.
-- `starDiskDebug.ts` — Debug settings for star disk rendering.
 - `renderer.ts` — Renderer-related runtime options (postprocessing toggles,
   quality presets).
 
@@ -124,7 +125,6 @@ key exports, and any notable dependencies or behaviors.
 - `metrics.ts` — AI decision and performance metrics tracking.
 - `metrics/` — Metrics helpers and aggregation utilities.
 - `explosions.ts` — Explosion event management and pooling.
-- `context.tsx` — React context for `GameState` provider.
 - `config.ts` — World bounds, AI flags, and simulation parameters.
 - `ships.ts` — Ship creation/spawning; turret setup; re-exports `SHIP_STATS`.
 - `createGameState.ts` — Constructs the canonical `GameState` (Rapier init, ECS queries, RNG seed).
@@ -139,7 +139,6 @@ key exports, and any notable dependencies or behaviors.
 - `aiState.ts` — AI state helpers and initialization.
 - `state.ts` — Barrel exports for `GameState` lifecycle (create/dispose/spawn/reset); implementations live in the modules above.
 - `validation.ts` — Motion stats validation utilities.
-- `uiStore.ts` — Zustand store for UI state (pause, toggles).
 - `turretRegistry.ts` — Turret entity registration and cleanup.
 
 - `combat/` — Combat helpers and coordination utilities.
@@ -173,6 +172,12 @@ key exports, and any notable dependencies or behaviors.
   used by decision scoring and intent evaluation (clamping, smoothing,
   safe-divisions).
 
+## `src/app`
+
+- `AGENTS.md` — Agents guide for the React application layer.
+- `context.tsx` — React context for the `GameState` provider.
+- `uiStore.ts` — Zustand store for UI state (pause, toggles).
+
 ## `src/hooks`
 
 - `AGENTS.md` — Agents guide for custom React hooks.
@@ -185,11 +190,13 @@ key exports, and any notable dependencies or behaviors.
 ## `src/renderer`
 
 - `AGENTS.md` — Agents guide for rendering utilities.
-- `BloomProvider.tsx` — Selective bloom context and registration.
+- `bloom/BloomProvider.tsx` — Selective bloom context and registration.
 - `rippleDebug.ts` — Debug ripple count tracking (unused).
 - `materialRegistry.tsx` — Registers shader materials for entities.
 - `starDiskOrientation.ts` — Computes star disk view alignment.
-- `starDiskMaterial.ts` — Main sequence star shader material.
+- `starDiskMaterial.ts` — Main sequence star shader material barrel.
+- `starDisk/` — Main-sequence star material factory, uniform/texture helpers,
+  and dev tools.
 - `hudOverlayStore.ts` — Store for HUD overlay registrations and renderer/HUD
   sync (positions, visibility, z-order).
 
@@ -206,12 +213,11 @@ key exports, and any notable dependencies or behaviors.
 ## `src/types`
 
 - `AGENTS.md` — Agents guide for TypeScript declarations.
-- `jsx-compat.d.ts` — JSX compatibility shim for React 19.
 - `assets.d.ts` — Type declarations for asset modules.
 - `glsl.d.ts` — GLSL module declaration.
 - `index.ts` — Core types (`GameState`, entities, AI).
+- `n8ao.d.ts` — Ambient declaration for the `n8ao` postprocessing library.
 - `react-three-drei.d.ts` — Ambient declaration for `@react-three/drei`.
-- `jsx-shim.d.ts` — Small compatibility shim for JSX usage.
 - `three-stdlib-ambient.d.ts` — Ambient declarations for three-stdlib helpers.
 
 ## `src/utils`

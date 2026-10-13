@@ -5,10 +5,10 @@ Files: `src/config/environment.ts`, `src/components/environment/*`, `src/hooks/u
 ## Responsibilities & Flow
 
 - `CELESTIAL_ENVIRONMENT` defines renderer-only data for celestial bodies, star lighting, feature toggles, and parallax billboards. The config stays deterministic (no references to `GameState`).
-- `CelestialEnvironment` component materializes the config: mounts `StarLight`, planets (suspense-wrapped), optional parallax billboards, and star disk.
-- `StarDisk` consumes shader presets that now include radial shaping (`textureRadialPower`, `coronaEdgeSoftness`, `baseFillStrength`) to keep animation spread across the disc; defaults live in `CELESTIAL_ENVIRONMENT.starDisk.shader`.
-- `StarLight.direction` points toward the default camera target so the disk sits in-frame on boot while preserving the configured distance for lighting fidelity.
-- `StarLight` converts config direction/distance into a positioned directional light plus optional ambient fill; exposes children so `StarDisk` inherits transforms.
+- `CelestialEnvironment` component materializes the config: mounts `StarLight`, planets (suspense-wrapped), optional parallax billboards, and the `StarSphere` main-sequence star visual.
+- `StarSphere` (`src/components/environment/StarSphere.tsx`) consumes the star appearance settings from `CELESTIAL_ENVIRONMENT.starDisk` (`size`, `opacity`, `distanceMultiplier`, `haze`, `boundary`, `depthCoreRadius`) through the material factory in `src/renderer/starDisk/materialFactory.ts`; the old `StarDisk`/`StarDiskMesh` components were removed in favour of this single sphere-based implementation.
+- `StarLight.direction` points toward the default camera target so the star sits in-frame on boot while preserving the configured distance for lighting fidelity.
+- `StarLight` converts config direction/distance into a positioned directional light plus optional ambient fill; exposes children so `StarSphere` inherits transforms.
 - `PlanetBody` loads textures, applies optional tilt + deterministic rotation (based on `GameState.simulation.lastTickStart + alpha * step`), and now marks meshes to cast/receive shadows from the star light.
 - `PlanetRings` and `PlanetRimShell` provide optional visual polish elements controlled by config flags; rim glow renders as a thin additive shell so the primary `MeshStandardMaterial` keeps full lighting and shadow support.
 - `ParallaxBillboard` renders distant quads that move relative to camera position scaled by `parallaxFactor`; currently disabled by default via feature toggle pending perf capture.
