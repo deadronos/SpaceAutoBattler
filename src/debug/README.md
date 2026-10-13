@@ -4,10 +4,15 @@ Debug components and panels for visualizing and testing game systems during deve
 
 ## Debug Files
 
-| File                   | Purpose                                                      |
-| ---------------------- | ------------------------------------------------------------ |
-| **RingDebugPanel.tsx** | Debug panel for visualizing debug rings and collision shapes |
-| **debugPanel.css**     | Styling for debug panels                                     |
+| File                        | Purpose                                                      |
+| --------------------------- | ------------------------------------------------------------ |
+| **RingDebugPanel.tsx**      | Debug panel for visualizing debug rings and collision shapes |
+| **ErrorCountsPanel.tsx**    | Panel displaying error counts by category (dev only)         |
+| **debugPanel.css**          | Styling for debug panels                                     |
+| **copilotDebugRegistry.ts** | Registry for the dev-only `window.__copilot_*` debug hooks   |
+| **starDebugWindow.ts**      | Shared star debug-window surface/typing                      |
+| **starSphereDebug.ts**      | Per-frame `StarSphere` debug scaffolding                     |
+| **planetRingsDebug.ts**     | `PlanetRings` debug scaffolding                              |
 
 ## Purpose
 

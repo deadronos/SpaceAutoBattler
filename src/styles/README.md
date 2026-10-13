@@ -15,6 +15,7 @@ CSS stylesheets for the application UI and layout.
 | **controls.css**    | Controls bar and its controls                                |
 | **progression.css** | Progression panel and ship progression cards                 |
 | **responsive.css**  | Responsive adjustments for smaller screens (Mobile/Tablet)   |
+| **a11y.css**        | Keyboard focus rings and reduced-motion collapse             |
 
 `app.css` contains only `@import` statements; Vite inlines the local imports
 in order at build time, so the final cascade is unchanged.

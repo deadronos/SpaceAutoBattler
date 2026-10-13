@@ -7,6 +7,7 @@ Skysphere background images and configuration.
 | File                                  | Purpose                                         |
 | ------------------------------------- | ----------------------------------------------- |
 | **rich_blue_nebulae_2_8192_4096.png** | High-resolution nebula/space background texture |
+| **rich_blue_nebulae_2_2048_1024.png** | Lower-resolution fallback nebula texture        |
 
 ## File Structure
 

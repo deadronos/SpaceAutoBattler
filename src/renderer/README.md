@@ -10,14 +10,33 @@ Low-level Three.js rendering setup including materials, shaders, texture atlases
 | **textureAtlas.ts**             | Texture atlas management for efficient texture usage                  |
 | **sceneLayerOrder.ts**          | Defines rendering order and layer organization for scene objects      |
 | **hudOverlayStore.ts**          | HUD overlay state management                                          |
-| **starDiskMaterial.ts**         | Star disk material setup and uniforms                                 |
+| **starDiskMaterial.ts**         | Star disk material setup and uniforms (re-export barrel)              |
+| **starDiskDepthMaterial.ts**    | Depth-only material for the central star's occlusion pass             |
 | **starDiskOrientation.ts**      | Star disk orientation and rotation calculations                       |
-| **BloomProvider.tsx**           | React context provider for bloom effect configuration                 |
+| **projectileLod.ts**            | Distance/interval thresholds for projectile LOD updates               |
+| **shadowCamera.ts**             | Computes shadow camera frustum parameters for the directional light   |
+| **webglDebugHooks.ts**          | Captures deterministic WebGL program metadata for debug output        |
 | **webglDebugPrototypePatch.ts** | Early initialization patch for WebGL debug output                     |
 | **webglDebugWrapper.ts**        | WebGL debug utility wrapper for shader compilation logging            |
 | **rippleDebug.ts**              | Debug utilities for ripple effects                                    |
 
 ## Subdirectories
+
+### [bloom/](./bloom/) - Bloom Effect
+
+React context provider, layer allocation, and material management for selective bloom.
+
+### [cameraRig/](./cameraRig/) - Camera Effects
+
+Camera shake/trauma helpers used by the camera rig.
+
+### [environment/](./environment/) - Environment Geometries
+
+Procedural geometry and materials for celestial bodies (planet rings).
+
+### [loaders/](./loaders/) - Asset Loaders
+
+GLTF decoder configuration and ship loader extensions.
 
 ### [materials/](./materials/) - Material Definitions
 

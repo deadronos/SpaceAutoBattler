@@ -7,6 +7,7 @@ Resources and utilities for particle effects including trails and thruster ancho
 | File                      | Purpose                                                                 |
 | ------------------------- | ----------------------------------------------------------------------- |
 | **trailResources.ts**     | Resources for particle trail effects (geometries, materials)            |
+| **trailUpdateRanges.ts**  | Marks GPU update ranges for trail attributes (handles ring wraparound)  |
 | **useThrusterAnchors.ts** | React hook for managing thruster attachment points and anchor positions |
 
 ## Resources Provided

@@ -24,8 +24,10 @@ The physics system provides:
 
 ## World Configuration
 
-- **WORLD_SIZE**: Size of the simulation world (8000 default)
-- **WORLD_HALF**: Half-extent of world (±4000 default)
+Defined in `src/game/config/world.ts`:
+
+- **WORLD_SIZE**: Size of the simulation world (8000)
+- **WORLD_HALF**: Half-extent of world (±4000)
 - **Gravity**: Reduced gravity or disabled for space environment
 - **Colliders**: Different collision groups for ships, projectiles, debris
 

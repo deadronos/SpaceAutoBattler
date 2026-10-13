@@ -11,6 +11,12 @@ Star disk-specific materials, textures, and effect setup for the central star re
 | **uniforms.ts**        | Uniform variable definitions for star disk shaders          |
 | **devHelpers.ts**      | Development utilities for debugging star disk effects       |
 
+### [devtools/](./devtools/) - Star Debug Tooling
+
+Browser/devtools helpers that expose star material snapshots, program polling,
+and debug-window installation (`debugWindow.ts`, `materialSnapshot.ts`,
+`programPoller.ts`, `installDevHelpers.ts`, `shouldEnable.ts`, `domIndicators.ts`).
+
 ## Star Disk Rendering
 
 Provides:
@@ -22,7 +28,7 @@ Provides:
 
 ## Integration
 
-- Star disk rendered by StarDisk component
+- The central star is rendered by `src/components/environment/StarSphere.tsx`, which consumes these materials/textures
 - Materials created via this system's factory
 - Textures cached and managed here
 - Effects tuned through dev helper utilities

@@ -67,7 +67,7 @@ Systems typically run in this order each frame:
 
 ## Architecture Notes
 
-- All systems are pure functions that take and return GameState
+- Systems mutate the canonical `GameState` in place and return `void` (each is a `SubsystemFn = (state, delta) => void` declared in `pipeline.ts`)
 - Systems use seeded RNG for deterministic behavior
 - Each system focuses on a single responsibility
 - Subsystems module orchestrates which systems run each frame

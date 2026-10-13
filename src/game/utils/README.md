@@ -4,11 +4,14 @@ Helper functions and utilities for game logic calculations and AI behavior.
 
 ## Utility Files
 
-| File                  | Purpose                                                |
-| --------------------- | ------------------------------------------------------ |
-| **ai-vertical.ts**    | Vertical (3D) AI maneuvers and movement calculations   |
-| **physicsFactory.ts** | Factory for creating physics bodies and configurations |
-| **rangePolicy.ts**    | Range calculation and weapon distance policies         |
+| File                      | Purpose                                                                  |
+| ------------------------- | ------------------------------------------------------------------------ |
+| **ai-vertical.ts**        | Vertical (3D) AI maneuvers and movement calculations                     |
+| **physicsFactory.ts**     | Factory for creating physics bodies and configurations                   |
+| **physicsBodyManager.ts** | Creates kinematic body+collider pairs and tracks their lifecycle         |
+| **rangePolicy.ts**        | Range calculation and weapon distance policies                           |
+| **spatialHash.ts**        | Functional wrappers over the generic spatial grid for broadphase queries |
+| **targetSelection.ts**    | Nearest-enemy selection helpers                                          |
 
 ## Helper Functions
 

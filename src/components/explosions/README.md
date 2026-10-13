@@ -19,11 +19,15 @@ Top-level React component that:
 
 #### `instancedManager.ts`
 
-Utility module providing helper functions for:
+Module exporting the `ExplosionsInstancedManager` class (plus the `EffectKey`,
+`EffectCounts`, and `InstancedMeshRefs` types). Each effect type owns a pooled
+`InstancedLayerManager`; the class:
 
-- Setting instance counts
-- Marking matrices and colors as dirty
-- Batch finalizing all meshes
+- Binds the per-effect `InstancedMesh` refs (`attach`)
+- Resets per-frame counts/saturation (`beginFrame`)
+- Tracks per-effect write offsets (`getStartIndex`, `commit`)
+- Marks matrices/colors dirty and finalizes each mesh's instance count (`finalize`)
+- Reports saturation (`wasSaturated`, `anySaturated`, `snapshotCounts`)
 
 #### `effectUpdaters/`
 
@@ -37,13 +41,18 @@ Individual modules for each effect type:
 - **plasmaUpdater.ts** - Rotating billboard plumes
 - **smokeUpdater.ts** - Drifting camera-facing wisps
 
-Each updater exports a pure function with signature:
+Each updater exports a function matching the `EffectUpdater` type
+(`effectUpdaters/types.ts`):
 
 ```typescript
-(ctx: EffectUpdateContext, mesh: InstancedMesh, startIndex: number, capacity: number) => number;
+(ctx: EffectUpdateContext, manager: InstancedLayerManager<number>, eventId: number) => {
+  count: number;
+  saturated: boolean;
+};
 ```
 
-Returns the number of instances used.
+It writes instances through the shared `InstancedLayerManager` and returns the
+number of instances used plus whether capacity was saturated.
 
 ### Supporting Modules
 
@@ -54,7 +63,7 @@ Pure helper module providing:
 - `getDerived()` - Cached deterministic particle generation using seeded RNG
 - `getCachedColor()` - Color instance caching
 - `randomUnitVector()` - Unit vector generation
-- `easeOutQuad()`, `clamp01()` - Math utilities
+- `easeOutQuad()` - Easing utility (`clamp01` comes from `src/utils/math.ts`)
 
 #### `materials.ts`
 
@@ -115,7 +124,7 @@ Current coverage: >80% for new explosion modules
 ### Running Tests
 
 ```bash
-npm test -- test/components/explosions
+pnpm exec vp test test/components/explosions
 ```
 
 ## Performance Characteristics
