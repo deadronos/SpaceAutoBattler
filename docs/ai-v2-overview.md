@@ -4,28 +4,29 @@ _Updated: 2025-09-22_
 
 ## Goals
 
-- Provide deterministic, profile-driven ship behaviors with varied intents (attack, kite, escort, intercept, reposition, regroup, flee) behind a feature flag.
+- Provide deterministic, profile-driven ship behaviors with varied intents (attack, kite, escort, intercept, reposition, regroup, flee).
 - Share expensive queries via an AI blackboard so 300 ships can be processed within a fixed budget.
-- Preserve existing gameplay by keeping legacy AI active when the flag is disabled.
+- Serve as the only AI decision path: the previous fallback was removed, so there is no legacy on/off switch.
 
 ## Architecture
 
-- **AI Manager (`GameState.ai`)** — stores feature flag, tick interval (default 10 Hz), max ships per tick, accumulator, tick index, slice cursor, escort assignments, and live metrics (per-tick/total decisions, skipped ships, budget hits).
+- **AI Manager (`GameState.ai`)** — stores feature flag, tick interval (base 12 Hz; 15 Hz when the tick-rate experiment is on), max ships per tick, accumulator, tick index, slice cursor, escort assignments, and live metrics (per-tick/total decisions, skipped ships, budget hits).
 - **Blackboard (`GameState.blackboard`)** — caches ally centroids, team posture, nearest enemy per ship, and VIP threat mapping. Rebuilt each AI tick.
 - **Profiles (`src/game/aiProfiles.ts`)** — describe desired engagement bands, aggression/patience knobs, class biases, and gates. Ships pick defaults on spawn via hull → profile mapping.
 - **Traits (`src/game/aiTraits.ts`)** — deterministic per-ship modifiers (±10%) seeded at spawn to vary aggression, patience, and dodge behavior without breaking determinism.
 - **Decision System (`updateDecisionSystem`)** — round-robin scheduler evaluating intent utility scores; writes `AICommand` (heading, thrust, fire gating, targetId) into each ship’s `ai` component. Tie-breaking uses hashed `traitSeed` + tick index for determinism. Phase 8 extended the scorer/executor set with intercept, reposition, and regroup flows (lead pursuit, orbit spacing, posture-aware retreats).
-- **Execution (`prepareShips`)** — interprets `AICommand` each frame (orient, move, fire) or runs legacy nearest-target steering when AI V2 is disabled. Embedded turrets reuse the same target data.
+- **Execution (`prepareShips`)** — interprets `AICommand` each frame (orient, move, fire). Embedded turrets reuse the same target data.
 
 ## Feature Flag
 
-- `config.ai.v2Enabled` defaults to `false` but can be flipped in Node/CI via `AI_V2_DEFAULT=on`. Toggle at runtime (or via config/UI) to switch between legacy AI and the new decision system.
-- The HUD controls expose "AI V2" and "AI Debug" toggles so QA can exercise the system without rebuilding.
-- When disabled, AI blackboard still resets but no commands are written; legacy behavior remains untouched.
+- AI v2 is always on. `AI_CONFIG.v2Enabled` defaults to `true` (`src/game/config/aiConfig.ts`), and `AI_V2_DEFAULT=false` is **ignored** — the loader logs `AI v2 fallback has been removed; ignoring AI_V2_DEFAULT=false and forcing v2 on.` and proceeds with v2.
+- The UI store (`src/app/uiStore.ts`) likewise forces `aiV2Enabled` to `true`; an attempt to disable it warns and stays enabled.
+- The HUD exposes an "AI Debug" toggle so QA can inspect the system without rebuilding; there is no working "AI v2 off" control.
+- The AI blackboard still resets each AI tick; decisions always run through the v2 scorer/executor.
 
 ## Debug Overlay
 
-- `AiDebugOverlay` in `Hud.tsx` surfaces per-tick metrics (decisions, skipped ships, slice size, budget hits) and the top intent rows (intent, score, band error, LOD, target).
+- The `AiDebugOverlay` component (`src/components/AiDebugOverlay.tsx`, rendered by `Hud.tsx`) surfaces per-tick metrics (decisions, skipped ships, slice size, budget hits) and the top intent rows (intent, score, band error, LOD, target).
 - Overlay refreshes at ~4 Hz and stays opt-in via UI store flag to avoid production perf impact.
 - Team postures are displayed alongside budget warnings to speed up tuning.
 
@@ -34,9 +35,9 @@ _Updated: 2025-09-22_
 - **Determinism:** `test/vitest/ai-determinism.spec.ts` builds two seeded states and compares command histories over 40 ticks.
 - **Utility scoring:** `test/vitest/ai-scorer.spec.ts` snapshots attack/kite/escort/flee plus intercept/reposition/regroup scores across posture, HP, VIP threat, and distance cases.
 - **Executors:** `test/vitest/ai-executor.spec.ts` verifies band keeping, escort radius adherence, fire gating, intercept lead aiming, reposition spacing, and regroup thrust scaling.
-- **Legacy regression:** `test/vitest/ai-regression.spec.ts` ensures the flag-off path matches legacy steering.
+- **Executor regression:** `test/vitest/ai-regression.spec.ts` drives `prepareShips`/`executeAICommand` directly (via `test/support/aiTestHooks.ts`) to guard steering and fire-gating behavior; there is no legacy flag-off code path left to compare against.
 - **Scenario harness:** `test/vitest/ai-intercept.spec.ts` covers intent selection for intercept/regroup/escort precedence, while `test/vitest/ai-scenario-harness.spec.ts` now replays escort defense, heavy bomber intercept, and artillery retreat fixtures generated via `runAIScenario`.
-- **Perf guard:** `npm run perf:ai-budget` launches `scripts/perf/assert-ai-budget.mjs`, spawning 300 fighters and failing if the average AI tick exceeds the configurable budget. CI can run `npm run test:ci` to execute Vitest + perf budget together.
+- **Perf guard:** `pnpm run perf:ai-budget` launches `scripts/perf/assert-ai-budget.ts`, spawning 300 fighters and failing if the average AI tick exceeds the configurable budget. CI can run `pnpm run test:ci` to execute Vitest + perf budget together.
 
 ## Follow-ups
 

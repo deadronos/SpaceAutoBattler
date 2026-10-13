@@ -11,12 +11,12 @@ This document outlines the design assumptions and decisions made during the impl
 **Assumption**: Ships should gain XP primarily from active combat participation, not just kills.
 
 - **Rationale**: Encourages sustained engagement rather than kill-stealing
-- **Implementation**: XP awarded for damage dealt (0.1x damage) + kill bonus (0.5x target max HP)
+- **Implementation**: XP awarded for damage dealt (`XP_CONFIG.damageXpMultiplier = 0.5`, `src/config/progression.ts`) + kill bonus (`XP_CONFIG.killXpMultiplier = 0.5` × target max HP)
 
 **Assumption**: Level progression should be exponential to maintain long-term progression feel.
 
 - **Rationale**: Prevents rapid max-level achievement while maintaining meaningful early progression
-- **Implementation**: XP required = `100 * level^1.8`
+- **Implementation**: XP required = `floor(XP_CONFIG.baseXp * (level - 1)^XP_CONFIG.xpExponent)` = `floor(100 * (level - 1)^1.8)` (`calculateXpForLevel`, `src/config/progression.ts`)
 
 **Assumption**: Stat bonuses should be meaningful but capped to prevent game-breaking scenarios.
 

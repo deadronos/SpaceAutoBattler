@@ -131,4 +131,4 @@ The CI system runs metrics harness tests for each experiment branch. Tests autom
 
 - [AI V2 Rollout Playbook](./ai-v2-rollout.md)
 - [AI Tuning Guide](./ai-tuning.md)
-- [Performance Report](./performance-report-v0.1.1.md)
+- [Performance Report](./performance-report.md)

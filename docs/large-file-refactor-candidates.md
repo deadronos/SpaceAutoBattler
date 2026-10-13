@@ -1,20 +1,29 @@
-# Large `src/` files ready for decomposition
+# Large `src/` files: decomposition proposals (historical)
 
-Two source files currently exceed 500 lines of code. This note records their
-scope and proposes concrete seams for extracting smaller, easier-to-own
-modules.
+> **Historical / resolved.** As of 2026-10-13 no `.ts`/`.tsx` file under `src/`
+> exceeds 500 lines, so there is nothing currently ready for decomposition. The
+> proposals below are retained for context on how the split was planned. See
+> [`src-over500lines.md`](./src-over500lines.md) for the current snapshot.
+
+When this note was written, two source files exceeded 500 lines of code and it
+recorded their scope and proposed concrete seams for extracting smaller,
+easier-to-own modules. Both have since shrunk below the threshold
+(`StarSphere.tsx` ≈334 lines, `PlanetRings.tsx` ≈191 lines).
 
 Earlier candidates in this note — `StarDisk.tsx` (removed), `ShipLODManager.tsx`
 (split into `shipLodPartition.ts` + `ShipImpostorLayer.tsx`), and
 `src/types/ai.ts` (split into `src/types/ai/`) — are no longer oversized; see
 git history for the original analysis.
 
-## Summary snapshot
+## Summary snapshot (historical)
 
-| File                                         | Approx. LOC | Primary responsibilities                                                             | Suggested split points                                                                   |
-| -------------------------------------------- | ----------- | ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------- |
-| `src/components/environment/StarSphere.tsx`  | ~709        | Star material wiring, per-frame uniform updates, and inline `__copilot_*` debug code | Extract a uniform/timekeeping hook and a dev-only debug module                           |
-| `src/components/environment/PlanetRings.tsx` | ~525        | Ring geometry/material construction, per-frame animation, and debug hooks            | Move shader/material builders into `src/renderer/` and keep the component presentational |
+_The line counts below are the original (pre-refactor) figures; the files are now
+≈334 and ≈191 lines respectively._
+
+| File                                         | Approx. LOC (historical) | Primary responsibilities                                                             | Suggested split points                                                                   |
+| -------------------------------------------- | ------------------------ | ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------- |
+| `src/components/environment/StarSphere.tsx`  | ~709                     | Star material wiring, per-frame uniform updates, and inline `__copilot_*` debug code | Extract a uniform/timekeeping hook and a dev-only debug module                           |
+| `src/components/environment/PlanetRings.tsx` | ~525                     | Ring geometry/material construction, per-frame animation, and debug hooks            | Move shader/material builders into `src/renderer/` and keep the component presentational |
 
 ## `src/components/environment/StarSphere.tsx`
 

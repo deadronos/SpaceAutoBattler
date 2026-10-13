@@ -2,6 +2,11 @@
 
 This checklist should be completed after deploying a new version to GitHub Pages to verify compression is working correctly.
 
+> **Note:** specific byte sizes and ratios below (e.g. "main bundle 248 KiB")
+> were captured for an earlier (v0.1.0) build and are illustrative. The transfer
+> _mechanics_ — pre-compressed `.gz`/`.br` served with `content-encoding` — are
+> what this checklist verifies; use the current `dist/` output for exact sizes.
+
 ## Automated Verification
 
 Run the verification script:
@@ -25,10 +30,17 @@ Expected output should show `content-encoding: br` or `content-encoding: gzip` h
 
 Look for the main JavaScript bundles (usually the largest files):
 
-- `main.[hash].js`
+- `spaceautobattler.[hash].js`
 - `vendors.[hash].js`
 - `rapier.[hash].js`
-- `three.[hash].js`
+- `postprocessing.[hash].js`
+- `workers/simulation.worker.[hash].js`
+
+> The chunk names above are the current layout. Earlier revisions of this
+> checklist referenced `main.[hash].js` and `three.[hash].js`, which no longer
+> exist; `three` is bundled into `vendors` / `postprocessing`. See
+> [`performance-report.md`](./performance-report.md) for the current `dist/`
+> listing.
 
 For each bundle, click on it and check:
 
@@ -61,7 +73,7 @@ Example for main bundle:
 
 Verify CSS files are also compressed:
 
-- Look for `styles/main.[hash].css`
+- Look for `styles/[name].[hash].css` (e.g. `styles/index.[hash].css`)
 - Should show `content-encoding: br` or `gzip`
 - Expected size: ~3.8 KiB (brotli) or ~4.5 KiB (gzip) vs 22 KiB uncompressed
 

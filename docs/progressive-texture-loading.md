@@ -1,4 +1,4 @@
-npm# Progressive Texture Loading
+# Progressive Texture Loading
 
 ## Overview
 
@@ -124,6 +124,8 @@ To add progressive loading for new textures:
 2. **Update asset registry**:
 
    ```typescript
+   // Illustrative placeholder — replace with your actual asset registry module
+   // (e.g. the pattern used by `src/assets/skysphere.ts`).
    // In src/assets/yourTextures.ts
    export const YOUR_TEXTURE_PATHS = {
      myTexture: highResUrl,

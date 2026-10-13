@@ -20,25 +20,25 @@ Searched text for `Rapier|rapier|Ammo|physics|legacy physics|useRapier` (`**/src
 
 Searched text for `@deprecated` (`**/src/**`), 2 results
 
-Read [](file:///d%3A/GitHub/SpaceAutoBattler/src/game/aiScenarioHarness/stateBuilder.ts)
+Read `src/game/aiScenarioHarness/stateBuilder.ts` _(harness moved to `test/support/aiScenarioHarness.ts`)_
 
-Read [](file:///d%3A/GitHub/SpaceAutoBattler/src/components/ExplosionRenderer.tsx)
+Read `src/components/ExplosionRenderer.tsx` _(now `src/components/explosions/ExplosionRendererCore.tsx`)_
 
-Read [](file:///d%3A/GitHub/SpaceAutoBattler/src/renderer/starDiskMaterial.ts)
+Read `src/renderer/starDiskMaterial.ts`
 
-Read [](file:///d%3A/GitHub/SpaceAutoBattler/src/types/jsx-compat.d.ts)
+Read `src/types/jsx-compat.d.ts` _(file removed)_
 
 Searched text for `patch|workaround|shim|polyfill|compat|fallback|legacy` (`**/src/**`), 200 results
 
-Read [](file:///d%3A/GitHub/SpaceAutoBattler/src/game/aiScenarioHarness/rapierShim.ts)
+Read `src/game/aiScenarioHarness/rapierShim.ts` _(harness moved to `test/support/aiScenarioHarness.ts`)_
 
 Searched for files matching `**/src/game/aiScenarioHarness/**`, 10 matches
 
-Read [](file:///d%3A/GitHub/SpaceAutoBattler/src/game/state.ts)
+Read `src/game/state.ts`
 
 Starting (2/4) _Identify candidate legacy codepaths (top 10)_
 
-Read [](file:///d%3A/GitHub/SpaceAutoBattler/src/game/systems/combat.ts)
+Read `src/game/systems/combat.ts`
 
 Starting (3/4) _Analyze and prioritize top 3 for removal/refactor_
 

@@ -119,9 +119,9 @@ Focus tuning on these key scenarios:
 The explosion system integrates with selective bloom via the `explosions` bloom group:
 
 ```typescript
-// Current bloom settings (src/config/renderer.ts)
+// Current bloom settings (src/config/postprocessing.ts, `bloomGroups.explosions`)
 explosions: {
-  intensity: 1.6,     // Bloom intensity multiplier
+  intensity: 3.6,     // Bloom intensity multiplier
   smoothing: 0.035,   // Bloom edge smoothing
   threshold: 1.0,     // Minimum brightness for bloom
 }
@@ -193,4 +193,4 @@ Current implementation provides the foundation for these features while maintain
 
 ## Reference Implementation
 
-See `memory/design-explosionfx.md` for complete system architecture and visual stage specifications.
+See `memory/designs/DESIGN009-explosionfx.md` for complete system architecture and visual stage specifications.
