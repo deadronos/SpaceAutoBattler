@@ -20,7 +20,7 @@ The plugin walks the `dist` output directory recursively, so nested chunks and a
 
 ### Build Process
 
-During production builds (`npm run build`), the compression plugin automatically:
+During production builds (`pnpm run build`), the compression plugin automatically:
 
 1. Process all eligible files in the output directory
 2. Generate compressed versions with `.gz` and `.br` extensions
@@ -124,14 +124,14 @@ To test compression locally:
 
 ```bash
 # Build with compression
-npm run build
+pnpm run build
 
 # Check for compressed files
 ls -lh dist/*.js.gz
 ls -lh dist/*.js.br
 
 # Serve locally
-npm run preview
+pnpm run preview
 ```
 
 ## Maintenance

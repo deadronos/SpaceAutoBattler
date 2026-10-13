@@ -30,6 +30,6 @@ All values live under `ShipStats.motion` in `src/data/ships/*.ts`. Validation fo
 3. Raise `turnKd` in 0.05 increments if you observe oscillation or "bobbing" near alignment.
 4. Adjust `angularSettlingRate` downward until the ship stops drifting within 0.5 s of alignment.
 5. Expand `angularSettleToleranceDeg` (up to 10°) when cinematic smoothing is visible but minor snap-back remains.
-6. Re-run motion tests (`npm test -- motion.system`) to confirm convergence and coverage.
+6. Re-run motion tests (`pnpm test -- motion.system`) to confirm convergence and coverage.
 
 Settling logic automatically disables render-time `rotationSlerp` when the hull is within tolerance, ensuring the physics solution stays authoritative.

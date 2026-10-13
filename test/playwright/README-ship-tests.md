@@ -25,19 +25,19 @@ The test suite uses a **two-tier verification approach**:
 ### Run all ship hull tests
 
 ```bash
-npm run test:playwright:ship
+pnpm run test:playwright:ship
 ```
 
 ### Run in headed mode (for debugging)
 
 ```bash
-npx playwright test ship-hulls.spec.ts --headed
+pnpm exec playwright test ship-hulls.spec.ts --headed
 ```
 
 ### Run for specific browser
 
 ```bash
-npx playwright test ship-hulls.spec.ts --project=chromium
+pnpm exec playwright test ship-hulls.spec.ts --project=chromium
 ```
 
 ## Baseline Management
@@ -48,11 +48,11 @@ When you need to create or update baseline screenshots:
 
 ```bash
 # Generate baselines for all hulls
-npm run generate-baselines
+pnpm run generate-baselines
 
 # Generate baseline for specific hull
-npm run build && npm run serve &
-npx tsx scripts/generate-playwright-baselines.ts -- --hull=fighter
+pnpm run build && pnpm run serve &
+pnpm exec tsx scripts/generate-playwright-baselines.ts -- --hull=fighter
 ```
 
 **Important:** Always review generated baselines visually before committing!
@@ -69,7 +69,7 @@ Update baselines when:
 ### Baseline Update Workflow
 
 1. Make your changes to ships/renderer
-2. Run `npm run generate-baselines`
+2. Run `pnpm run generate-baselines`
 3. Review the generated images in `test/playwright/baselines/`
 4. Compare with previous baselines to confirm changes are intentional
 5. Commit the updated baselines with a descriptive message:
@@ -174,8 +174,8 @@ If screenshots differ across runs:
 If GLTF models fail to load:
 
 1. Verify model paths in `test/playwright/pages/ship-renderer.js`
-2. Check that `npm run build` completed successfully
-3. Ensure `npm run serve` is running on port 8080
+2. Check that `pnpm run build` completed successfully
+3. Ensure `pnpm run serve` is running on port 8080
 4. Review browser console in headed mode
 
 ### Scene Introspection Issues

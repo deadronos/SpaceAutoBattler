@@ -25,7 +25,7 @@ Common patterns
 Testing & CI
 
 - Tests should seed the RNG for deterministic behavior and create small `GameState` instances for integration tests.
-- Typecheck (`npm run typecheck`) and unit tests (`npm test`) are required before commits.
+- Typecheck (`pnpm run typecheck`) and unit tests (`pnpm test`) are required before commits.
 - Playwright visual baselines: Visual regression captures (Playwright) are automated via `test/playwright/` and use the same deterministic debug overrides and seed values as unit determinism suites. These baselines are part of the verification story and should be updated when shader presets or renderer defaults change.
 
 Memory Bank & Decisions

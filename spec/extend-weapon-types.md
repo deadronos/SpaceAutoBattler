@@ -116,7 +116,7 @@ Phase 1 — schema + config (non-breaking)
 
 - Replace brittle string checks (e.g., `includes('laser')`) with explicit category-based branches in `fireProjectile` and `advanceProjectiles`.
 
-  Estimated effort: small. Run `npm run typecheck` and unit tests.
+  Estimated effort: small. Run `pnpm run typecheck` and unit tests.
 
 Phase 2 — AoE & arming
 

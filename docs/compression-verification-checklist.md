@@ -32,13 +32,15 @@ Look for the main JavaScript bundles (usually the largest files):
 
 - `spaceautobattler.[hash].js`
 - `vendors.[hash].js`
+- `three.[hash].js`
 - `rapier.[hash].js`
 - `postprocessing.[hash].js`
 - `workers/simulation.worker.[hash].js`
 
 > The chunk names above are the current layout. Earlier revisions of this
-> checklist referenced `main.[hash].js` and `three.[hash].js`, which no longer
-> exist; `three` is bundled into `vendors` / `postprocessing`. See
+> checklist referenced `main.[hash].js`, which is now emitted as
+> `spaceautobattler.[hash].js`. The `three` chunk still emits separately (see
+> `createManualChunks` in `vite.config.ts`). See
 > [`performance-report.md`](./performance-report.md) for the current `dist/`
 > listing.
 
@@ -73,7 +75,7 @@ Example for main bundle:
 
 Verify CSS files are also compressed:
 
-- Look for `styles/[name].[hash].css` (e.g. `styles/index.[hash].css`)
+- Look for `dist/styles/spaceautobattler.[hash].css`
 - Should show `content-encoding: br` or `gzip`
 - Expected size: ~3.8 KiB (brotli) or ~4.5 KiB (gzip) vs 22 KiB uncompressed
 

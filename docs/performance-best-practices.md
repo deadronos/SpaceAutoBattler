@@ -192,4 +192,4 @@ For renderer code:
 ---
 
 **Last Updated**: 2026-10-13  
-**Validation**: All optimizations tested with `npm run typecheck && npm test && npm run perf:ai-budget`
+**Validation**: All optimizations tested with `pnpm run typecheck && pnpm test && pnpm run perf:ai-budget`

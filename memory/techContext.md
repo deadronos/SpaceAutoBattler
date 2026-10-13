@@ -22,7 +22,7 @@ Developer workflow notes:
   - Main thread: `src/components/BattlefieldSystems.tsx` advances fixed-step ticks inside R3F `useFrame`.
   - Worker (feature-flagged): `src/game/SimulationBridge.ts` can run ticks in a Web Worker and stream snapshots; when render-only mode is active, the main-thread tick is skipped.
 - E2E/visual tests can be run via `pnpm run test:playwright` (see `playwright.config.cjs` for configuration).
-- Use `src/game/ships.ts` and `src/config/renderer.ts` for tuning ship stats and shield visuals.
+- Use `src/game/ships.ts` and `src/config/shields.ts` for tuning ship stats and shield visuals.
 - Keep all runtime state on `GameState` (`src/types/index.ts`).
 
 Implementation notes & small facts from source:

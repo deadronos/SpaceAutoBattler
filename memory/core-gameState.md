@@ -11,7 +11,7 @@ Summary:
 
 Primary exports and responsibilities:
 
-- `createGameState(): Promise<GameState>`
+- `createGameState(options: CreateGameStateOptions = {}): Promise<GameState>`
   - Initializes Rapier (`await Rapier.init()`), constructs the Rapier `World` (`new Rapier.World({ x: 0, y: 0, z: 0 })`) and `EventQueue` (created with `new Rapier.EventQueue(true)`), a Miniplex ECS world, and returns a fully-formed `GameState` object ready for use.
   - Instantiates a deterministic RNG on the state: `state.rng = new SeededRng(1337)` by default.
   - Creates `state.queries` (ships, shipsWithCommands, projectiles, turrets) and the `simulation` bookkeeping used for fixed-step integration.

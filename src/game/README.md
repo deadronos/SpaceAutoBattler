@@ -8,8 +8,8 @@ The heart of the game engine. Contains game state management, AI systems, physic
 | ----------------- | ----------------------------------------------------------------------- |
 | **state.ts**      | Re-export barrel over `createGameState.ts` and entity lifecycle helpers |
 | **config.ts**     | Game configuration parameters and constants                             |
-| **subsystems.ts** | Coordinates all game subsystems and their update order                  |
-| **systems.ts**    | Main system orchestration; determines which systems run each frame      |
+| **subsystems.ts** | Ship subsystem damage/repair helpers                                    |
+| **systems.ts**    | Determines system update order (see `systems/pipeline.ts`)              |
 
 ## Game Data & Profiles
 

@@ -72,7 +72,7 @@
 3. **WHEN** a new GameState initialises and advances its first frame, **THE SYSTEM SHALL** guarantee the deferred mutation queue runs exactly once per tick in deterministic insertion order so cold-start fleet spawns succeed without duplicate executions. _(Acceptance: regression inspects the queue order across repeated cold-start ticks and matches captured snapshots from stable seeds.)_
 4. **WHEN** the physics step completes, **THE SYSTEM SHALL** clear deferred mutation queues before the next frame so stale operations cannot re-run on subsequent ticks. _(Acceptance: regression enqueues dummy operations, steps twice, and confirms the operation executes once and the queue is empty before the second tick.)_
 
-**Validation 2025-09-30:** Covered by `test/vitest/simulation-queue.spec.ts`, `test/vitest/carrier-launch.spec.ts`, `test/vitest/safe-kinematics.spec.ts`, and the full Vitest suite (`npm test`). Manual verification confirmed no Rapier panics during cold-start carrier spawns.
+**Validation 2025-09-30:** Covered by `test/vitest/simulation-queue.spec.ts`, `test/vitest/carrier-launch.spec.ts`, `test/vitest/safe-kinematics.spec.ts`, and the full Vitest suite (`pnpm test`). Manual verification confirmed no Rapier panics during cold-start carrier spawns.
 
 ## 2025-09-30 — Rapier Queue Extensions (TASK230 follow-up)
 
@@ -173,7 +173,7 @@
 
 1. **WHEN** the Vitest smoke import suite enumerates project modules, **THE SYSTEM SHALL** load each module through bundled dynamic imports so TypeScript sources resolve without runtime extension errors. _(Validation: `test/vitest/smoke/import_all.spec.ts` passes with all modules imported.)_
 2. **WHEN** `ProjectileObject` renders for any projectile entity, **THE SYSTEM SHALL** derive the sphere geometry radius from that entity’s projectile configuration or the default fallback. _(Validation: projectile geometry specs capture the configured radius for laser and heavy projectiles.)_
-3. **WHEN** webpack’s TypeScript loader evaluates Vitest specs during `npm run build`, **THE SYSTEM SHALL** narrow error objects before reading their properties so compilation completes without type errors. _(Validation: `npm run build` finishes without TypeScript diagnostics.)_
+3. **WHEN** webpack’s TypeScript loader evaluates Vitest specs during `pnpm run build`, **THE SYSTEM SHALL** narrow error objects before reading their properties so compilation completes without type errors. _(Validation: `pnpm run build` finishes without TypeScript diagnostics.)_
 4. **WHEN** projectile geometry tests exercise React hooks, **THE SYSTEM SHALL** provide stable mocked hooks that avoid invalid dispatcher access. _(Validation: projectile geometry specs run without `Invalid hook call` failures.)_
 
 ## 2025-09-27 — Star Disk View Compensation
