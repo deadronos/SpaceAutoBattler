@@ -67,16 +67,14 @@ export function emitSnapshot(
     return;
   }
 
-  const buffer = ws.transferBuffers[ws.transferIndex];
-  if (!buffer) return;
-
-  // Copy from the live buffer into a staging buffer, then transfer that staging buffer.
+  // Copy from the live buffer into a staging buffer, then transfer that staging buffer. Staging
+  // buffers come back from the main thread via `returnTransferBuffer`; allocate only when none
+  // has been returned yet.
+  const buffer = ws.transferBuffers.pop() ?? new ArrayBuffer(ws.layout.totalBytes);
   const stagingViews = createTransformSoAViews(ws.layout, buffer);
   if (ws.views) {
     copyTransformViews(ws.views, stagingViews);
   }
-
-  ws.transferIndex = (ws.transferIndex + 1) % ws.transferBuffers.length;
 
   postWithTransfer(
     {
@@ -90,9 +88,17 @@ export function emitSnapshot(
     },
     [buffer],
   );
+}
 
-  // Replace the detached buffer slot with a fresh staging buffer.
-  const detachedIndex =
-    (ws.transferIndex + ws.transferBuffers.length - 1) % ws.transferBuffers.length;
-  ws.transferBuffers[detachedIndex] = new ArrayBuffer(ws.layout.totalBytes);
+/** Upper bound on idle staging buffers kept for reuse. */
+const MAX_POOLED_TRANSFER_BUFFERS = 4;
+
+/**
+ * Takes back a staging buffer the main thread has finished reading so the next snapshot can
+ * reuse it. Buffers that no longer match the layout (or exceed the pool cap) are dropped.
+ */
+export function returnTransferBuffer(ws: WorkerState, buffer: ArrayBuffer): void {
+  if (!ws.layout || buffer.byteLength !== ws.layout.totalBytes) return;
+  if (ws.transferBuffers.length >= MAX_POOLED_TRANSFER_BUFFERS) return;
+  ws.transferBuffers.push(buffer);
 }

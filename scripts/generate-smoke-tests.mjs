@@ -62,8 +62,6 @@ function generate() {
     'puppeteer',
     'playwright',
     '@dimforge/rapier3d-compat',
-    'gsap',
-    'idb-keyval',
   ];
 
   const imports = files.map((f) => toImportPath(f));

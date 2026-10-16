@@ -13,12 +13,16 @@ export interface ProgressiveTextureResult {
  * and progressively upgrades to high-res texture in the background.
  *
  * @param lowResUrl URL to low-resolution texture
- * @param highResUrl URL to high-resolution texture
+ * @param highResUrl URL to high-resolution texture, or null to keep the low-res one
+ * @param configure Applied to each texture before it is exposed, so sampler/colour settings
+ *   are in place for the first GPU upload instead of forcing a second one. Must be stable
+ *   (e.g. module-level): a new function identity restarts the loading effect.
  * @returns Current texture, loading state, and progress
  */
 export function useProgressiveTexture(
   lowResUrl: string,
-  highResUrl: string,
+  highResUrl: string | null,
+  configure?: (texture: Texture) => void,
 ): ProgressiveTextureResult {
   const [currentTexture, setCurrentTexture] = useState<Texture | null>(null);
   const [isHighResLoaded, setIsHighResLoaded] = useState(false);
@@ -34,10 +38,14 @@ export function useProgressiveTexture(
 
     // Set low-res texture immediately
     if (lowResTexture && !isDisposed.current) {
+      configure?.(lowResTexture);
       lowResTextureRef.current = lowResTexture;
       setCurrentTexture(lowResTexture);
-      setProgress(50); // 50% progress when low-res is loaded
+      setIsHighResLoaded(false);
+      setProgress(highResUrl ? 50 : 100); // 50% progress when low-res is loaded
     }
+
+    if (!highResUrl) return;
 
     // Load high-res texture asynchronously
     const loader = new TextureLoader();
@@ -51,6 +59,7 @@ export function useProgressiveTexture(
           return;
         }
 
+        configure?.(texture);
         highResTexture = texture;
         setCurrentTexture(texture);
         setIsHighResLoaded(true);
@@ -85,7 +94,7 @@ export function useProgressiveTexture(
         highResTexture.dispose();
       }
     };
-  }, [lowResTexture, highResUrl]);
+  }, [lowResTexture, highResUrl, configure]);
 
   return {
     texture: currentTexture,

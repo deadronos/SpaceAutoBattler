@@ -109,3 +109,7 @@ test-output/
 
 .gemini/
 gha-creds-*.json
+
+# Local debug captures (Playwright MCP / ad-hoc screenshots)
+.playwright-mcp/
+playwright-debug/

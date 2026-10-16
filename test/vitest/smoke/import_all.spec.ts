@@ -10,8 +10,6 @@ vi.mock('postprocessing', () => ({}));
 vi.mock('puppeteer', () => ({}));
 vi.mock('playwright', () => ({}));
 vi.mock('@dimforge/rapier3d-compat', () => ({}));
-vi.mock('gsap', () => ({}));
-vi.mock('idb-keyval', () => ({}));
 
 const moduleLoaders = import.meta.glob<unknown>('../../../src/**/*.{ts,tsx}', { eager: false });
 

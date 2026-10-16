@@ -72,6 +72,29 @@ describe('gltfDecoders', () => {
     expect(mod.getDecoderDirs()).toEqual({ draco: './decoders/', basis: './decoders/' });
   });
 
+  it('derives decoder dirs from .wasm URLs when dev pre-bundling turns .js?url into a function', async () => {
+    // Vite's dev dependency optimizer pre-bundles `*.js?url`, so the import resolves to the
+    // decoder factory function rather than a URL string. `.wasm?url` stays a string.
+    vi.doMock('three/examples/jsm/libs/basis/basis_transcoder.js?url', () => ({
+      default: function basisTranscoderFactory() {},
+    }));
+    vi.doMock('three/examples/jsm/libs/draco/draco_decoder.js?url', () => ({
+      default: function dracoDecoderFactory() {},
+    }));
+
+    try {
+      const mod = await loadModule();
+      expect(mod.getDecoderDirs()).toEqual({ draco: './decoders/', basis: './decoders/' });
+    } finally {
+      vi.doMock('three/examples/jsm/libs/basis/basis_transcoder.js?url', () => ({
+        default: './decoders/basis_transcoder.js',
+      }));
+      vi.doMock('three/examples/jsm/libs/draco/draco_decoder.js?url', () => ({
+        default: './decoders/draco_decoder.js',
+      }));
+    }
+  });
+
   it('initialises the KTX2 loader at most once (idempotent)', async () => {
     const mod = await loadModule();
     const gl = {} as never;

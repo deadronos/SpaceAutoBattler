@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vite-plus/test';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import React from 'react';
 import { cleanup, fireEvent, render, screen, act } from '@testing-library/react';
 import {
@@ -135,6 +135,26 @@ describe('quality presets', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Low' }));
     expect(useUiStore.getState().qualityPreset).toBe('low');
+  });
+
+  it('releases the WebGL capability-probe context after reading it', () => {
+    const loseContext = vi.fn();
+    const fakeGl = {
+      MAX_TEXTURE_SIZE: 0x0d33,
+      getParameter: () => 8192,
+      getExtension: (name: string) => (name === 'WEBGL_lose_context' ? { loseContext } : null),
+    };
+    const getContext = vi
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockReturnValue(fakeGl as never);
+    try {
+      useUiStore.setState({ qualityPreset: 'low' });
+      render(React.createElement(QualityController));
+      expect(getContext).toHaveBeenCalled();
+      expect(loseContext).toHaveBeenCalledTimes(getContext.mock.results.length);
+    } finally {
+      getContext.mockRestore();
+    }
   });
 
   it('mirrors the resolved tier and stays inert headless under auto', async () => {

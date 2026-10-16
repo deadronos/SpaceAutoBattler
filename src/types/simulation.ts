@@ -95,6 +95,16 @@ export interface SimulationClock {
   rapierDiagnostics: RapierDiagnostics;
   /** Per-subsystem timing diagnostics captured each tick. */
   subsystemTimings: SubsystemTimings;
+  /** De-duplication for AI safety warnings; created lazily by `aiSafety`. */
+  aiSafetyWarnings?: AiSafetyWarnings;
+}
+
+/** Which AI safety fallbacks have already been reported for this game. */
+export interface AiSafetyWarnings {
+  /** Whether the forced AI enable has been reported. */
+  aiForceEnable: boolean;
+  /** Ship ids already reported as missing an AI component. */
+  missingAiShipIds: Set<number>;
 }
 
 /**

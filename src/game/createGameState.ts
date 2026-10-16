@@ -7,6 +7,7 @@ import { createDefaultMetrics } from './metrics.js';
 import { AI_CONFIG } from './config.js';
 import { createDefaultDoctrineState } from './aiDoctrine.js';
 import { createRenderOnlyPhysics } from './physics/index.js';
+import { ensureRapierInitialized } from './physics/rapierInit.js';
 
 interface CreateGameStateOptions {
   renderOnly?: boolean;
@@ -30,7 +31,7 @@ export async function createGameState(options: CreateGameStateOptions = {}): Pro
     eventQueue = stub.eventQueue;
     rapierModule = stub.rapier;
   } else {
-    await Rapier.init();
+    await ensureRapierInitialized();
     physicsWorld = new Rapier.World({ x: 0, y: 0, z: 0 });
     eventQueue = new Rapier.EventQueue(true);
     rapierModule = Rapier;

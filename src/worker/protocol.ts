@@ -33,6 +33,11 @@ export type MainToWorkerMessage =
       paused: boolean;
     }
   | {
+      /** Hands a read snapshot buffer back to the worker for reuse (transfer mode only). */
+      type: 'returnBuffer';
+      buffer: ArrayBuffer;
+    }
+  | {
       type: 'ping';
       nonce: number;
     }

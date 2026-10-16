@@ -2,7 +2,6 @@ import fs from 'fs';
 import path from 'path';
 import { brotliCompress, constants, gzip } from 'node:zlib';
 import { promisify } from 'node:util';
-import globals from 'globals';
 import { defineConfig, type Plugin, type UserConfig } from 'vite-plus';
 import react from '@vitejs/plugin-react';
 import babel from '@rolldown/plugin-babel';
@@ -180,12 +179,14 @@ const sharedIgnorePatterns = [
   'playwright-report/**',
   'tmp/**',
   '.vite-hooks/**',
+  // Not linted yet: enabling these surfaces ~35 type errors and ~100 warnings to clean up first.
+  // The `scripts/**` and `test/**` overrides below take effect once they are removed from here.
   'scripts/**',
   'test/**',
   'src/types/**/*.d.ts',
 ];
 
-const fmtConfig = {
+const fmtConfig: UserConfig['fmt'] = {
   printWidth: 100,
   tabWidth: 2,
   useTabs: false,
@@ -213,7 +214,7 @@ const fmtConfig = {
   ],
 };
 
-const lintConfig = {
+const lintConfig: UserConfig['lint'] = {
   plugins: ['oxc', 'typescript', 'unicorn', 'react'],
   categories: {
     correctness: 'warn',
@@ -237,80 +238,19 @@ const lintConfig = {
       },
     },
     {
-      files: ['src/core/**/*.{ts,tsx,js,jsx}'],
-      rules: {
-        'no-empty': ['error', { allowEmptyCatch: true }],
-        'no-useless-catch': 'off',
-        'no-redeclare': 'off',
-      },
+      files: ['src/renderer/**', 'src/worker/**'],
+      env: { browser: true, worker: true },
     },
     {
-      files: [
-        'src/renderer/**',
-        'src/**/workers/**',
-        'src/**/worker*.ts',
-        'src/**/worker*.js',
-        'src/**/svgRasterWorker*.ts',
-        'src/**/svgRasterWorker*.js',
-        'src/simWorker.ts',
-        'src/simWorker.js',
-      ],
-      globals: {
-        ...globals.browser,
-        self: 'readonly',
-        postMessage: 'readonly',
-        structuredClone: 'readonly',
-        require: 'readonly',
-        process: 'readonly',
-      },
-    },
-    {
-      files: [
-        'scripts/**',
-        'tools/**',
-        'src/utils/env.ts',
-        'src/utils/env.js',
-        'src/**/build-*.ts',
-        'src/**/build-*.js',
-        'src/**/bundler-*.ts',
-        'src/**/bundler-*.js',
-        'src/utils/**',
-      ],
-      globals: {
-        ...globals.node,
-      },
+      files: ['scripts/**'],
+      env: { node: true },
       rules: {
         '@typescript-eslint/no-require-imports': 'off',
       },
     },
     {
-      files: ['src/core/**'],
-      globals: {
-        ...globals.node,
-        process: 'readonly',
-        require: 'readonly',
-      },
-    },
-    {
-      files: ['src/config/**/*Config.{ts,tsx,js,jsx}'],
-      rules: {
-        'no-redeclare': 'off',
-      },
-    },
-    {
       files: ['test/**/*.{ts,tsx,js,jsx}'],
-      globals: {
-        ...globals.node,
-        describe: 'readonly',
-        test: 'readonly',
-        it: 'readonly',
-        expect: 'readonly',
-        vi: 'readonly',
-        beforeEach: 'readonly',
-        afterEach: 'readonly',
-        beforeAll: 'readonly',
-        afterAll: 'readonly',
-      },
+      env: { node: true, vitest: true },
       rules: {
         '@typescript-eslint/no-explicit-any': 'off',
         'no-case-declarations': 'off',
@@ -322,7 +262,7 @@ const lintConfig = {
   ],
 };
 
-const stagedConfig = {
+const stagedConfig: UserConfig['staged'] = {
   'src/**/*.{ts,tsx,js,jsx,css}': ['vp fmt', 'vp lint --fix'],
   'test/**/*.{ts,tsx,js,jsx}': ['vp fmt'],
   '*.{ts,tsx,js,jsx,mjs,cjs}': ['vp fmt'],
@@ -336,8 +276,6 @@ const isBuildCommand = process.argv.includes('build');
 const isDevelopmentBuild = process.argv.some(
   (value, index, values) => value === '--mode' && values[index + 1] === 'development',
 );
-console.log('[Vite Config] process.argv:', process.argv);
-console.log('[Vite Config] isDevelopmentBuild:', isDevelopmentBuild);
 const isProdBuild = isBuildCommand && !isDevelopmentBuild;
 
 const defaultExcluded = [
@@ -447,8 +385,4 @@ export default defineConfig({
     },
   },
   build: createOutputConfig(isProdBuild),
-} as UserConfig & {
-  fmt: typeof fmtConfig;
-  lint: typeof lintConfig;
-  staged: typeof stagedConfig;
 });

@@ -26,6 +26,9 @@ function detectWebGLInfo(): { available: boolean; maxTextureSize?: number } {
       return { available: false };
     }
     const maxTextureSize = gl.getParameter(gl.MAX_TEXTURE_SIZE) as number;
+    // Release the probe context now: browsers cap live WebGL contexts (~16 in Chrome) and
+    // evict the oldest when the cap is hit, which can be the game renderer's own context.
+    gl.getExtension('WEBGL_lose_context')?.loseContext();
     return {
       available: true,
       maxTextureSize: Number.isFinite(maxTextureSize) ? maxTextureSize : undefined,
