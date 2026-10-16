@@ -4,10 +4,15 @@ Skysphere background images and configuration.
 
 ## Skysphere Files
 
-| File                                  | Purpose                                         |
-| ------------------------------------- | ----------------------------------------------- |
-| **rich_blue_nebulae_2_8192_4096.png** | High-resolution nebula/space background texture |
-| **rich_blue_nebulae_2_2048_1024.png** | Lower-resolution fallback nebula texture        |
+| File                                   | Purpose                                                   |
+| -------------------------------------- | --------------------------------------------------------- |
+| **rich_blue_nebulae_2_2048_1024.webp** | Low-res texture, loaded first on every quality tier       |
+| **rich_blue_nebulae_2_4096_2048.webp** | High-res upgrade for the `medium` tier                    |
+| **rich_blue_nebulae_2_8192_4096.webp** | High-res upgrade for the `high` tier (GPU limit allowing) |
+
+The upgrade is chosen by `selectSkysphereHighResUrl` in `../skysphere.ts` from the tier's
+`skysphereMaxSize` (`src/config/quality.ts`). The WebPs are lossy q92 encodes of the original
+PNGs (PSNR ≈ 47 dB); the PNG sources remain in git history.
 
 ## File Structure
 

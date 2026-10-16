@@ -42,6 +42,11 @@ export interface QualitySettings {
    * therefore matches `high` (3 evaluations).
    */
   shieldChromatic: boolean;
+  /**
+   * Widest skysphere texture to upgrade to after the 2048px low-res one, further capped by
+   * the GPU's `maxTextureSize`. 2048 means no upgrade.
+   */
+  skysphereMaxSize: number;
 }
 
 /**
@@ -64,6 +69,7 @@ export const QUALITY_PRESETS: Record<QualityTier, QualitySettings> = {
     particles: { maxParticles: 5000, spawnRatePerAnchor: 12 },
     starShaderOctaves: 7,
     shieldChromatic: true,
+    skysphereMaxSize: 8192,
   },
   medium: {
     tier: 'medium',
@@ -77,6 +83,7 @@ export const QUALITY_PRESETS: Record<QualityTier, QualitySettings> = {
     // is distinguished from high via DPR/shadow/AO/particle knobs instead.
     starShaderOctaves: 7,
     shieldChromatic: true,
+    skysphereMaxSize: 4096,
   },
   low: {
     tier: 'low',
@@ -88,6 +95,7 @@ export const QUALITY_PRESETS: Record<QualityTier, QualitySettings> = {
     particles: { maxParticles: 1200, spawnRatePerAnchor: 4 },
     starShaderOctaves: 2,
     shieldChromatic: false,
+    skysphereMaxSize: 2048,
   },
 };
 

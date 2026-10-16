@@ -1,12 +1,32 @@
-import { memo, useEffect } from 'react';
-import { BackSide, LinearFilter, LinearMipmapLinearFilter, SRGBColorSpace } from 'three';
+import { memo } from 'react';
+import { useThree } from '@react-three/fiber';
 import {
-  SKYSPHERE_TEXTURE_PATHS,
+  BackSide,
+  LinearFilter,
+  LinearMipmapLinearFilter,
+  SRGBColorSpace,
+  type Texture,
+} from 'three';
+import {
   SKYSPHERE_LOWRES_TEXTURE_PATHS,
+  selectSkysphereHighResUrl,
   type SkyspherTextureKey,
 } from '../../assets/skysphere.js';
+import { useUiStore } from '../../app/uiStore.js';
+import { resolveQualitySettings } from '../../config/quality.js';
 import { useProgressiveTexture } from '../../hooks/useProgressiveTexture.js';
 import { applyTextureSettings } from '../../utils/textureUtils.js';
+
+/** Configure a skysphere texture before its first GPU upload. */
+function configureSkysphereTexture(texture: Texture): void {
+  applyTextureSettings(texture, {
+    colorSpace: SRGBColorSpace,
+    minFilter: LinearMipmapLinearFilter,
+    magFilter: LinearFilter,
+    flipY: false,
+    needsUpdate: true,
+  });
+}
 
 interface SkysphereProps {
   /** Key to select skysphere texture */
@@ -22,24 +42,17 @@ export const Skysphere = memo(function Skysphere({
   radius = 50000,
   opacity = 1.0,
 }: SkysphereProps): React.ReactElement {
-  // Load the skysphere texture progressively (low-res first, then high-res)
+  const qualityPreset = useUiStore((s) => s.qualityPreset);
+  const detectedQualityTier = useUiStore((s) => s.detectedQualityTier);
+  const maxTextureSize = useThree((s) => s.gl.capabilities?.maxTextureSize);
+  const { skysphereMaxSize } = resolveQualitySettings(qualityPreset, detectedQualityTier);
+
+  // Load the skysphere texture progressively (low-res first, then the tier's high-res variant)
   const { texture } = useProgressiveTexture(
     SKYSPHERE_LOWRES_TEXTURE_PATHS[textureKey],
-    SKYSPHERE_TEXTURE_PATHS[textureKey],
+    selectSkysphereHighResUrl(textureKey, skysphereMaxSize, maxTextureSize),
+    configureSkysphereTexture,
   );
-
-  // Configure texture for optimal skysphere rendering
-  useEffect(() => {
-    if (texture) {
-      applyTextureSettings(texture, {
-        colorSpace: SRGBColorSpace,
-        minFilter: LinearMipmapLinearFilter,
-        magFilter: LinearFilter,
-        flipY: false,
-        needsUpdate: true,
-      });
-    }
-  }, [texture]);
 
   return (
     <mesh scale={[radius, radius, radius]} frustumCulled={false}>
