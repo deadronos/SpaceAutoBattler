@@ -35,11 +35,14 @@ const dirOf = (u: string): string => u.slice(0, u.lastIndexOf('/') + 1);
 /**
  * Stable directory URLs for the self-hosted decoder assets. Exported so tests can assert
  * path derivation without constructing a renderer.
+ *
+ * Both are derived from the `.wasm` URLs: in dev, Vite's dependency optimizer pre-bundles
+ * the `.js?url` imports, so those resolve to the decoder factory function, not a URL.
  */
 export function getDecoderDirs(): { draco: string; basis: string } {
   return {
     draco: dirOf(DECODER_ASSETS.dracoDecoderWasm),
-    basis: dirOf(DECODER_ASSETS.basisTranscoderJs),
+    basis: dirOf(DECODER_ASSETS.basisTranscoderWasm),
   };
 }
 
