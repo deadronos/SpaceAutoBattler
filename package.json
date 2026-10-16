@@ -20,6 +20,7 @@
     "build": "vp build",
     "build:dev": "vp build --mode development",
     "check-no-sync-reads": "node ./scripts/check-no-sync-reads.mjs",
+    "smoke:dev": "node ./scripts/smoke-dev.mjs",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
     "test:playwright": "playwright test -c playwright.config.cjs",
