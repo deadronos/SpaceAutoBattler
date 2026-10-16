@@ -7,8 +7,12 @@ import {
 import { findNearestEnemy } from '../../utils/targetSelection.js';
 import { ErrorCategory, reportRecoverableGameError } from '../../errors.js';
 
-const missingAiShips = new Set<number>();
-let warnedAiDisableInShips = false;
+function getWarnings(state: GameState): NonNullable<GameState['simulation']['aiSafetyWarnings']> {
+  return (state.simulation.aiSafetyWarnings ??= {
+    aiForceEnable: false,
+    missingAiShipIds: new Set<number>(),
+  });
+}
 
 /**
  * Ensures that the AI system is enabled in the game state.
@@ -18,8 +22,9 @@ let warnedAiDisableInShips = false;
  */
 export function ensureAiEnabled(state: GameState): void {
   if (state.ai) state.ai.enabled = true;
-  if (warnedAiDisableInShips) return;
-  warnedAiDisableInShips = true;
+  const warnings = getWarnings(state);
+  if (warnings.aiForceEnable) return;
+  warnings.aiForceEnable = true;
   reportRecoverableGameError(
     ErrorCategory.Config,
     'AI v2 fallback removed: forcing AI enabled for all ships.',
@@ -63,8 +68,9 @@ export function keepShipStationary(state: GameState, ship: ShipEntity): void {
  * @returns {ShipEntity | null} A fallback target (nearest enemy), or null.
  */
 export function handleMissingAi(state: GameState, ship: ShipEntity): ShipEntity | null {
-  if (!missingAiShips.has(ship.id)) {
-    missingAiShips.add(ship.id);
+  const { missingAiShipIds } = getWarnings(state);
+  if (!missingAiShipIds.has(ship.id)) {
+    missingAiShipIds.add(ship.id);
     reportRecoverableGameError(
       ErrorCategory.Config,
       `Ship ${ship.id} is missing an AI component; keeping it stationary.`,
