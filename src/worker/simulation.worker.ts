@@ -6,7 +6,7 @@ import { SlotAllocator } from './slotAllocator.js';
 import { createTransformSoAViews } from './transformsLayout.js';
 import { createWorkerState } from './workerState.js';
 import { writeShipTransforms } from './shipTransformWriter.js';
-import { emitSnapshot } from './snapshotEmitter.js';
+import { emitSnapshot, returnTransferBuffer } from './snapshotEmitter.js';
 import { setAiOverrideProvider } from '../game/config.js';
 
 type WorkerScope = {
@@ -97,7 +97,6 @@ workerScope.onmessage = (event: MessageEvent) => {
               new ArrayBuffer(initLayout.totalBytes),
               new ArrayBuffer(initLayout.totalBytes),
             ];
-            ws.transferIndex = 0;
           }
 
           // Initialize the ship ID set before the first snapshot.
@@ -117,6 +116,11 @@ workerScope.onmessage = (event: MessageEvent) => {
 
         case 'setAiOverrides': {
           ws.aiOverrides = message.aiOverrides;
+          return;
+        }
+
+        case 'returnBuffer': {
+          returnTransferBuffer(ws, message.buffer);
           return;
         }
 

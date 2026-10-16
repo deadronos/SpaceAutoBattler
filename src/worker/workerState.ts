@@ -14,8 +14,8 @@ export interface WorkerState {
   usingShared: boolean;
   sharedBuffer: SharedArrayBuffer | null;
   liveBuffer: ArrayBuffer | null;
+  /** Idle staging buffers for transfer-mode snapshots (refilled by the main thread). */
   transferBuffers: ArrayBuffer[];
-  transferIndex: number;
   views: ReturnType<typeof createTransformSoAViews> | null;
   slots: SlotAllocator | null;
   slotByEntityId: Map<number, number>;
@@ -43,7 +43,6 @@ export function createWorkerState(): WorkerState {
     sharedBuffer: null,
     liveBuffer: null,
     transferBuffers: [],
-    transferIndex: 0,
     views: null,
     slots: null,
     slotByEntityId: new Map<number, number>(),

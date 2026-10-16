@@ -123,6 +123,12 @@ export class SimulationBridge {
         }
 
         if (message.buffer) {
+          // Consumers re-read `getLatestViews()` every frame, so the previous snapshot buffer is
+          // no longer referenced once a newer one arrives: hand it back for reuse.
+          const previous = this.latestTransferBuffer;
+          if (previous) {
+            this.post({ type: 'returnBuffer', buffer: previous }, [previous]);
+          }
           this.latestTransferBuffer = message.buffer;
           this.latestTransferViews = createTransformSoAViews(this.layout, message.buffer);
           if (this.debugEnabled) {
@@ -267,7 +273,7 @@ export class SimulationBridge {
     this.worker.terminate();
   }
 
-  private post(message: MainToWorkerMessage): void {
-    this.worker.postMessage(message);
+  private post(message: MainToWorkerMessage, transfer: Transferable[] = []): void {
+    this.worker.postMessage(message, transfer);
   }
 }
