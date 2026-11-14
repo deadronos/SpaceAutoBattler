@@ -19,7 +19,6 @@ Custom React hooks for game logic integration with React Three Fiber components.
 | **useShipInterpolation.ts**         | Hook for smooth interpolation between physics frames              |
 | **useShipThrusters.ts**             | Hook for managing thruster attachment points and animations       |
 | **useSimulationBridge.ts**          | Owns the worker `SimulationBridge` lifecycle                      |
-| **useStarBloom.ts**                 | Hook for managing bloom effects on stars                          |
 | **useStarDebug.ts**                 | Hook for star debug visualization                                 |
 | **useStarMaterial.ts**              | Hook for creating and managing star material instances            |
 | **useStarSphereUniforms.ts**        | `StarSphere` per-frame uniform updates (time, camera, textures)   |

@@ -73,7 +73,10 @@ export function StarSphere({
     .__CELESTIAL__;
   const defaultSize = size ?? env?.starDisk?.size ?? 800;
   const defaultOpacity = opacity ?? env?.starDisk?.opacity ?? 0.12;
-  const defaultDistanceMultiplier = distanceMultiplier ?? env?.starDisk?.distanceMultiplier ?? 0.8;
+  const rawDistanceMultiplier = distanceMultiplier ?? env?.starDisk?.distanceMultiplier ?? 1;
+  const defaultDistanceMultiplier = Number.isFinite(rawDistanceMultiplier)
+    ? Math.max(rawDistanceMultiplier, 0)
+    : 1;
   const fallbackHaze = env?.starDisk?.haze;
   const fallbackBoundary = env?.starDisk?.boundary;
   const radius = defaultSize;
@@ -118,14 +121,18 @@ export function StarSphere({
   // special-case rendering). Otherwise use the created shader material.
   const appliedMaterial = materialOverride ?? createdMaterial;
 
-  // Compute local offset from parent StarLight group to position the sphere
-  // away from the origin along the configured star direction. Mirror the
-  // logic from StarDisk so transitions between the two are consistent.
-  const localOffset = useMemo(() => {
-    if (!config) return [0, 0, 0] as [number, number, number];
-    const dir = new Vector3(config.direction.x, config.direction.y, config.direction.z).normalize();
-    const distance = Math.max(config.distance * defaultDistanceMultiplier, 8000);
-    return dir.multiplyScalar(-distance).toArray() as [number, number, number];
+  // StarLight already positions its child group at `-dir * config.distance`.
+  // Keep localOffset at [0, 0, 0] when distanceMultiplier is 1 so we do not
+  // double-offset the star beyond Skysphere and camera.far; only apply a
+  // relative delta when distanceMultiplier differs from 1.
+  const localOffset = useMemo<[number, number, number]>(() => {
+    if (!config || defaultDistanceMultiplier === 1) return [0, 0, 0];
+    const dir = new Vector3(config.direction.x, config.direction.y, config.direction.z);
+    if (dir.lengthSq() === 0) return [0, 0, 0];
+    dir.normalize();
+    const parentDistance = Math.max(config.distance, 1);
+    const deltaDistance = parentDistance * (defaultDistanceMultiplier - 1);
+    return dir.multiplyScalar(-deltaDistance).toArray() as [number, number, number];
   }, [config, defaultDistanceMultiplier]);
 
   const baseQuaternion = useMemo(() => {
