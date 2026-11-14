@@ -7,3 +7,10 @@
 @import './progression.css';
 @import './responsive.css';
 @import './a11y.css';
+
+.hud,
+.controls-bar,
+.progression-panel,
+.ai-debug-overlay {
+  font-variant-numeric: tabular-nums;
+}
