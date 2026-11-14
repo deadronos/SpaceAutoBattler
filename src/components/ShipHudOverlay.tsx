@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { memo, useMemo, useState } from 'react';
 import type React from 'react';
 import type { HudHealthOverlayConfig } from '../config/hudHealth.js';
 import { lerpBySeed } from '../utils/deterministicLerp.js';
@@ -11,10 +11,9 @@ interface ShipHudOverlayProps {
   config: HudHealthOverlayConfig;
 }
 
-export function ShipHudOverlay({
-  overlay,
-  config,
-}: ShipHudOverlayProps): React.ReactElement | null {
+export const ShipHudOverlay = memo(ShipHudOverlayView, haveEqualOverlayProps);
+
+function ShipHudOverlayView({ overlay, config }: ShipHudOverlayProps): React.ReactElement | null {
   const reducedMotion = usePrefersReducedMotion();
   const hasShield = Number.isFinite(overlay.ratios.shield);
   const targetHealth = clampRatio(overlay.ratios.health);
@@ -115,6 +114,28 @@ export function ShipHudOverlay({
         <StatusEffectStrip effects={effects} overflowCount={overlay.overflowCount} />
       </div>
     </div>
+  );
+}
+
+function haveEqualOverlayProps(previous: ShipHudOverlayProps, next: ShipHudOverlayProps): boolean {
+  if (previous.config !== next.config) return false;
+  const a = previous.overlay;
+  const b = next.overlay;
+  return (
+    a.team === b.team &&
+    a.hull === b.hull &&
+    a.seed === b.seed &&
+    a.screen.hidden === b.screen.hidden &&
+    a.screen.x === b.screen.x &&
+    a.screen.y === b.screen.y &&
+    a.ratios.health === b.ratios.health &&
+    Object.is(a.ratios.shield, b.ratios.shield) &&
+    a.overflowCount === b.overflowCount &&
+    a.effects.length === b.effects.length &&
+    a.effects.every((effect, index) => {
+      const nextEffect = b.effects[index];
+      return effect.tag === nextEffect?.tag && effect.definition === nextEffect.definition;
+    })
   );
 }
 

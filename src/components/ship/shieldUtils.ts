@@ -10,6 +10,14 @@ export interface ShieldFractionResult {
   warnings: string[];
 }
 
+/** Return shield HP as an allocation-free, bounded fraction for render updates. */
+export function normalizedShieldFraction(shield: number, maxShield: number): number {
+  const ratio = shield / maxShield;
+  return Number.isFinite(maxShield) && maxShield > 0 && Number.isFinite(ratio)
+    ? MathUtils.clamp(ratio, 0, 1)
+    : 0;
+}
+
 /**
  * Computes the normalized shield fraction (0..1) safely.
  * Handles edge cases like zero max shield or invalid values.
@@ -50,7 +58,7 @@ export function computeShieldFraction(
     return { fraction: 0, shouldDisplay: false, warnings };
   }
 
-  const fraction = MathUtils.clamp(ratio, 0, 1);
+  const fraction = normalizedShieldFraction(shield, maxShield);
   const shouldDisplay = fraction >= minThreshold;
 
   return { fraction, shouldDisplay, warnings };

@@ -31,6 +31,8 @@
   - `?sim_worker_render_only` — Renders worker ships only (disables local simulation).
   - `?sim_worker_debug` — Enables worker debug logging.
 - Keep simulation state and rendering decoupled via ECS (Miniplex) and `GameState`.
+- Shield bubbles stay mounted and update visibility, opacity, ripple uniforms, and hull tint directly from simulation data. Ripple uniforms are repacked when the queue or shader material changes.
+- The HUD health collector projects ships and publishes DOM overlay snapshots at up to 30 Hz while enabled. Individual overlays skip React renders when their displayed inputs match.
 
 ## Assets, Decoders & Rendering Subsystems
 

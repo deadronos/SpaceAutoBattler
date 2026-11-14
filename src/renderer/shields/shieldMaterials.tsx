@@ -10,12 +10,14 @@ export type ShieldTransmissionMaterialProps = {
   hull: ShipHull;
   team: Team;
   opacity: number;
+  visible?: boolean;
 };
 
 export const ShieldTransmissionMaterial: React.FC<ShieldTransmissionMaterialProps> = ({
   hull,
   team,
   opacity,
+  visible = true,
 }) => {
   const cfg = getShieldVisuals(hull);
   const tint = useMemo(
@@ -46,6 +48,7 @@ export const ShieldTransmissionMaterial: React.FC<ShieldTransmissionMaterialProp
       clearcoat={cfg.meshtransmission.clearcoat}
       ior={cfg.meshtransmission.ior}
       opacity={alpha}
+      visible={visible}
     />
   );
 };

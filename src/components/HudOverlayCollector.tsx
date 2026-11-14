@@ -7,10 +7,11 @@ import { clamp01 } from '../utils/math.js';
 import { TEMP_HUD_POSITION } from '../utils/tempVectors.js';
 import { useHudOverlayStore, type ShipHudOverlaySnapshot } from '../renderer/hudOverlayStore.js';
 
-let frameCounter = 0;
+const HUD_UPDATE_INTERVAL = 1 / 30;
 
 export function HudOverlayCollector(): null {
   const state = useGameState();
+  const lastSnapshotTime = useRef(-Infinity);
   const hudEnabledRef = useRef(useUiStore.getState().hudHealthBarsEnabled);
 
   useEffect(() => {
@@ -18,6 +19,7 @@ export function HudOverlayCollector(): null {
       const enabled = state.hudHealthBarsEnabled;
       hudEnabledRef.current = enabled;
       if (!enabled) {
+        lastSnapshotTime.current = -Infinity;
         useHudOverlayStore.getState().clear();
       }
     });
@@ -30,8 +32,11 @@ export function HudOverlayCollector(): null {
     };
   }, []);
 
-  useFrame(({ camera, size }) => {
+  useFrame(({ camera, size, clock }) => {
     if (!hudEnabledRef.current) return;
+    const now = clock.elapsedTime;
+    if (now - lastSnapshotTime.current < HUD_UPDATE_INTERVAL) return;
+    lastSnapshotTime.current = now;
 
     const overlays: ShipHudOverlaySnapshot[] = [];
     const ships = state.queries.ships.entities as ShipEntity[];
@@ -67,9 +72,11 @@ export function HudOverlayCollector(): null {
       });
     }
 
-    useHudOverlayStore
-      .getState()
-      .setSnapshot(++frameCounter, overlays, { width: size.width, height: size.height });
+    const overlayStore = useHudOverlayStore.getState();
+    overlayStore.setSnapshot(overlayStore.frame + 1, overlays, {
+      width: size.width,
+      height: size.height,
+    });
   });
 
   return null;
@@ -83,16 +90,14 @@ function safeRatio(value: number, max: number): number {
 }
 
 function resolveStatusEffects(ship: ShipEntity, shieldRatio: number): StatusEffectTag[] {
-  const effects: StatusEffectTag[] = Array.isArray(ship.ship.effects) ? [...ship.ship.effects] : [];
-  if (Number.isFinite(shieldRatio) && shieldRatio <= 0 && ship.ship.maxShield > 0) {
+  const effects: StatusEffectTag[] = [];
+  if (Array.isArray(ship.ship.effects)) {
+    for (const effect of ship.ship.effects) {
+      if (!effects.includes(effect)) effects.push(effect);
+    }
+  }
+  if (shieldRatio === 0 && ship.ship.maxShield > 0 && !effects.includes('shield-down')) {
     effects.push('shield-down');
   }
-  const seen = new Set<StatusEffectTag>();
-  const deduped: StatusEffectTag[] = [];
-  for (const effect of effects) {
-    if (seen.has(effect)) continue;
-    seen.add(effect);
-    deduped.push(effect);
-  }
-  return deduped;
+  return effects;
 }
