@@ -16,21 +16,12 @@ interface ParticleTrailProps {
   resources?: ParticleTrailResources;
 }
 
-/**
- * Simple particle trail system for ship thrusters.
- * Spawns small particles from ship thruster anchors that fade out over time.
- *
- * @param {ParticleTrailProps} props - Component properties.
- * @returns {React.ReactElement} The rendered particle system mesh.
- */
-export function ParticleTrails({ ships, resources }: ParticleTrailProps): React.ReactElement {
+function ParticleTrailsInner({ ships, resources }: ParticleTrailProps): React.ReactElement {
   // Resolved quality knobs (render-only). `high` keeps the shipped pool/spawn
   // rate from PARTICLE_TRAILS_CONFIG, so this is a no-op by default.
   const qualityPreset = useUiStore((s) => s.qualityPreset);
   const detectedQualityTier = useUiStore((s) => s.detectedQualityTier);
   const quality = resolveQualitySettings(qualityPreset, detectedQualityTier);
-
-  if (!PARTICLE_TRAILS_CONFIG.enabled) return <></>;
 
   const ownsResources = resources == null;
   const trailResources = useMemo(() => {
@@ -67,4 +58,16 @@ export function ParticleTrails({ ships, resources }: ParticleTrailProps): React.
       frustumCulled={false}
     />
   );
+}
+
+/**
+ * Simple particle trail system for ship thrusters.
+ * Spawns small particles from ship thruster anchors that fade out over time.
+ *
+ * @param {ParticleTrailProps} props - Component properties.
+ * @returns {React.ReactElement} The rendered particle system mesh.
+ */
+export function ParticleTrails({ ships, resources }: ParticleTrailProps): React.ReactElement {
+  if (!PARTICLE_TRAILS_CONFIG.enabled) return <></>;
+  return <ParticleTrailsInner ships={ships} resources={resources} />;
 }
