@@ -16,12 +16,12 @@ describe('ShieldBubble anchoring (static check)', () => {
     expect(ok).toBe(true);
   });
 
-  it('includes conditional rendering for low shield levels', () => {
+  it('toggles mesh visibility without React state', () => {
     const file = path.resolve(__dirname, '../../src/components/ship/ShipShield.tsx');
     const txt = fs.readFileSync(file, 'utf-8');
-    // Ensure shield bubble is conditionally rendered when shields are very low
+    // Keep the mesh mounted and update visibility directly.
     expect(txt).toContain('minShieldThreshold');
-    expect(txt).toContain('if (shieldFraction < minShieldThreshold)');
-    expect(txt).toContain('return <></>;');
+    expect(txt).toContain('mesh.visible =');
+    expect(txt).not.toContain('useState');
   });
 });

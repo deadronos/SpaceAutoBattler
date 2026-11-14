@@ -130,11 +130,10 @@ export function applyHullTint(
     if (!m || !m.color) continue;
 
     if (applyTint) {
-      const target = entry.originalColor.clone().lerp(teamColor, tintStrength);
-      m.color.copy(target);
+      m.color.copy(entry.originalColor).lerp(teamColor, tintStrength);
 
       if (m.emissive && typeof m.emissive.copy === 'function') {
-        m.emissive.copy(target).multiplyScalar(0.08);
+        m.emissive.copy(m.color).multiplyScalar(0.08);
       }
     } else {
       m.color.copy(entry.originalColor);

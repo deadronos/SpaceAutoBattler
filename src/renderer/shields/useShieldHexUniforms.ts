@@ -1,5 +1,5 @@
 import { useCallback, useEffect } from 'react';
-import { Vector3, Vector4, type ShaderMaterial } from 'three';
+import { Vector3, type ShaderMaterial } from 'three';
 import { useFrame } from '@react-three/fiber';
 import type { ShieldRipple, Team } from '../../types/index.js';
 import type { ShieldHexUniforms } from '../../types/renderer.js';
@@ -52,38 +52,35 @@ export function useShieldHexUniforms(
   }, [team, uniforms]);
 
   useEffect(() => {
-    const maxRipples = Math.min(SHIELD_RIPPLE_TUNING.maxRipples ?? 3, SHADER_MAX_RIPPLES);
-    uniforms.uRippleData.value =
-      uniforms.uRippleData.value ??
-      Array.from({ length: SHADER_MAX_RIPPLES }, () => new Vector4(0, 0, 1, 0));
-    uniforms.uRippleT0s.value =
-      uniforms.uRippleT0s.value ?? Array.from({ length: SHADER_MAX_RIPPLES }, () => -999);
-    for (let i = 0; i < SHADER_MAX_RIPPLES; i++) {
-      const v = uniforms.uRippleData.value[i] as Vector4;
-      v.set(0, 0, 1, 0);
-      uniforms.uRippleT0s.value[i] = -999;
-    }
-    uniforms.uRippleCount.value = 0;
-
-    const list: ShieldRipple[] = ripple ? (Array.isArray(ripple) ? ripple : [ripple]) : [];
-    const bias = (uniforms.uTime?.value ?? 0) - (simTime ?? 0);
-    const take = Math.min(list.length, maxRipples);
-    for (let i = 0; i < take; i++) {
-      const entry = list[list.length - take + i];
-      if (!entry) continue;
-      const amp = Math.min(1.6, 0.25 + (entry.amp ?? 0) * (SHIELD_RIPPLE_TUNING.ampScale ?? 1.9));
-      const dir = entry.dir ?? DEFAULT_RIPPLE_DIR;
-      (uniforms.uRippleData.value[i] as Vector4).set(dir.x, dir.y, dir.z, amp);
-      uniforms.uRippleT0s.value[i] = bias + (entry.t0 ?? 0);
-    }
-    uniforms.uRippleCount.value = take;
-    uniforms.uRippleSpeed.value = SHIELD_RIPPLE_TUNING.defaultSpeed;
-    uniforms.uRippleWidthBase.value = SHIELD_RIPPLE_TUNING.baseWidth;
-    uniforms.uRippleBlendMode.value = SHIELD_RIPPLE_TUNING.blendMode;
-    uniforms.uRippleIgnoreMaxAlpha.value = SHIELD_RIPPLE_TUNING.ignoreMaxAlpha ? 1.0 : 0.0;
-    uniforms.uRippleColorMul.value = SHIELD_RIPPLE_TUNING.colorMul;
-    uniforms.uRippleStrength.value = SHIELD_RIPPLE_TUNING.strength;
-    uniforms.uDisplacementScale.value = SHIELD_RIPPLE_TUNING.displacementScale;
-    uniforms.uRippleTintMix.value = SHIELD_RIPPLE_TUNING.tintMix;
+    const list = !ripple ? [] : 'dir' in ripple ? [ripple] : ripple;
+    updateShieldHexRipples(uniforms, list, simTime ?? 0);
   }, [ripple, simTime, uniforms]);
+}
+
+/** Pack the active ripple queue into the material's preallocated uniform arrays. */
+export function updateShieldHexRipples(
+  uniforms: ShieldHexUniforms,
+  list: readonly ShieldRipple[],
+  simTime: number,
+): void {
+  const maxRipples = Math.min(SHIELD_RIPPLE_TUNING.maxRipples ?? 3, SHADER_MAX_RIPPLES);
+  const bias = uniforms.uTime.value - simTime;
+  const take = Math.min(list.length, maxRipples);
+  for (let i = 0; i < take; i++) {
+    const entry = list[list.length - take + i];
+    if (!entry) continue;
+    const amp = Math.min(1.6, 0.25 + (entry.amp ?? 0) * (SHIELD_RIPPLE_TUNING.ampScale ?? 1.9));
+    const dir = entry.dir ?? DEFAULT_RIPPLE_DIR;
+    uniforms.uRippleData.value[i]?.set(dir.x, dir.y, dir.z, amp);
+    uniforms.uRippleT0s.value[i] = bias + (entry.t0 ?? 0);
+  }
+  uniforms.uRippleCount.value = take;
+  uniforms.uRippleSpeed.value = SHIELD_RIPPLE_TUNING.defaultSpeed;
+  uniforms.uRippleWidthBase.value = SHIELD_RIPPLE_TUNING.baseWidth;
+  uniforms.uRippleBlendMode.value = SHIELD_RIPPLE_TUNING.blendMode;
+  uniforms.uRippleIgnoreMaxAlpha.value = SHIELD_RIPPLE_TUNING.ignoreMaxAlpha ? 1.0 : 0.0;
+  uniforms.uRippleColorMul.value = SHIELD_RIPPLE_TUNING.colorMul;
+  uniforms.uRippleStrength.value = SHIELD_RIPPLE_TUNING.strength;
+  uniforms.uDisplacementScale.value = SHIELD_RIPPLE_TUNING.displacementScale;
+  uniforms.uRippleTintMix.value = SHIELD_RIPPLE_TUNING.tintMix;
 }

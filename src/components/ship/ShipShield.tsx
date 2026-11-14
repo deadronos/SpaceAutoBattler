@@ -1,8 +1,8 @@
 import type React from 'react';
-import { useRef, useState, useEffect, useMemo } from 'react';
-import { Color, type Mesh, MathUtils } from 'three';
+import { useRef, useMemo } from 'react';
+import { Color, type Mesh, type ShaderMaterial } from 'three';
 import { useFrame } from '@react-three/fiber';
-import type { ShipEntity } from '../../types/index.js';
+import type { ShipEntity, ShieldRipple } from '../../types/index.js';
 import {
   getShieldVisuals,
   SHIELD_RIPPLE_TUNING,
@@ -11,15 +11,23 @@ import {
 } from '../../config/renderer.js';
 import { getMaterial } from '../../renderer/materialRegistry.js';
 import { useOptionalGameState } from '../../app/context.js';
-import { useBloomRegistration } from '../../renderer/bloom/index.js';
+import { useBloomRegistration, type BloomRegistrationOptions } from '../../renderer/bloom/index.js';
 import type { HullMaterial } from './ShipModel.js';
 import { applyHullTint } from './ShipModel.js';
-import { computeShieldFraction, validateShieldVisibility } from './shieldUtils.js';
+import { normalizedShieldFraction } from './shieldUtils.js';
 import { processRipplesForRendering } from './rippleUtils.js';
-import type {
-  ShieldHexMaterialProps,
-  ShieldTransmissionMaterialProps,
-} from '../../renderer/shields/index.js';
+import type { ShieldHexMaterialProps } from '../../renderer/shields/index.js';
+import type { ShieldHexUniforms } from '../../types/renderer.js';
+import { updateShieldHexRipples } from '../../renderer/shields/useShieldHexUniforms.js';
+
+const SHIELD_BLOOM_OPTIONS: BloomRegistrationOptions = { group: 'shields' };
+const EMPTY_RIPPLES: readonly ShieldRipple[] = [];
+const TEAM_TINTS = { blue: new Color(TEAM_COLORS.blue), red: new Color(TEAM_COLORS.red) };
+const minShieldThreshold = 0.01;
+
+function clampScaleMultiplier(value: number): number {
+  return Math.max(0.05, Math.min(Number.isFinite(value) ? value : 0.05, 8));
+}
 
 /** Render order for the transparent shield bubble. */
 export const SHIELD_RENDER_ORDER = 20;
@@ -51,197 +59,93 @@ export function ShieldBubble({
   hullMaterialsRef,
 }: ShieldBubbleProps): React.ReactElement {
   const meshRef = useRef<Mesh>(null);
-  useBloomRegistration(meshRef, { group: 'shields' });
+  useBloomRegistration(meshRef, SHIELD_BLOOM_OPTIONS);
   const state = useOptionalGameState();
-  const [, setRippleTick] = useState(0);
-  const lastCountRef = useRef<number>(0);
-  const lastT0Ref = useRef<number>(-Infinity);
-  const minShieldThreshold = 0.01;
-
-  const [shieldFraction, setShieldFraction] = useState(() => {
-    const result = computeShieldFraction(
-      entity.ship.shield,
-      entity.ship.maxShield,
-      entity.id,
-      entity.ship.hull,
-      minShieldThreshold,
-    );
-    return result.fraction;
+  const rippleCache = useRef({
+    material: null as ShaderMaterial | null,
+    list: EMPTY_RIPPLES,
+    count: 0,
+    latest: undefined as ShieldRipple | undefined,
   });
-
-  const shieldFractionRef = useRef(shieldFraction);
-  const shieldVisibleRef = useRef(shieldFraction >= minShieldThreshold);
-
-  useEffect(() => {
-    shieldFractionRef.current = shieldFraction;
-    shieldVisibleRef.current = shieldFraction >= minShieldThreshold;
-  }, [shieldFraction, minShieldThreshold]);
-
-  useFrame(() => {
-    const mesh = meshRef.current;
-    const mats = hullMaterialsRef?.current;
-
-    // Static-analysis helper: explicit ratio computation and clamp for shield visibility checks.
-    // This block is intentionally non-invasive but ensures the source contains the expected
-    // identifiers for linting and static tests.
-    {
-      const shield = entity.ship.shield;
-      const maxShield = entity.ship.maxShield;
-      const ratio = shield / maxShield;
-      MathUtils.clamp(ratio, 0, 1);
-    }
-
-    const result = computeShieldFraction(
-      entity.ship.shield,
-      entity.ship.maxShield,
-      entity.id,
-      entity.ship.hull,
-      minShieldThreshold,
-    );
-
-    if (result.warnings.length > 0) {
-      result.warnings.forEach((warning) => console.warn(`[ShieldBubble] ${warning}`));
-    }
-
-    let finalFraction = result.fraction;
-    const prevFraction = shieldFractionRef.current;
-    const fractionDelta = Math.abs(finalFraction - prevFraction);
-
-    if (finalFraction === 0 && entity.ship.shield > 0 && entity.ship.maxShield > 0) {
-      const backupFraction = Math.max(0, Math.min(1, entity.ship.shield / entity.ship.maxShield));
-      if (Number.isFinite(backupFraction) && backupFraction > 0) {
-        console.warn(
-          `[ShieldBubble] Using backup calculation for ship ${entity.id} (${entity.ship.hull}):`,
-          {
-            computed: finalFraction,
-            backup: backupFraction,
-            shield: entity.ship.shield,
-            maxShield: entity.ship.maxShield,
-          },
-        );
-        finalFraction = backupFraction;
-      }
-    }
-
-    const finalVisible = finalFraction >= minShieldThreshold;
-
-    if (fractionDelta > 0.0005 || finalVisible !== shieldVisibleRef.current) {
-      shieldFractionRef.current = finalFraction;
-      shieldVisibleRef.current = finalVisible;
-      setShieldFraction(finalFraction);
-    }
-
-    if (mesh) {
-      mesh.position.set(0, 0, 0);
-      mesh.quaternion.identity();
-
-      // Defensive clamp: prevent accidental enormous shield scales by
-      // limiting the per-axis multiplier to a conservative maximum.
-      const r = radius ?? FALLBACK_SHIELD_RADIUS_BY_HULL[entity.ship.hull] ?? 2.0;
-      const vs = getShieldVisuals(entity.ship.hull);
-      const MIN_MULT = 0.05;
-      const MAX_MULT = 8.0; // allow up to 8x the model radius as a guard
-      const origMult = { x: vs.shieldScale.x, y: vs.shieldScale.y, z: vs.shieldScale.z };
-      const clampMult = (v: number) =>
-        Math.max(
-          MIN_MULT,
-          Math.min(typeof v === 'number' && Number.isFinite(v) ? v : MIN_MULT, MAX_MULT),
-        );
-      const mx = clampMult(origMult.x);
-      const my = clampMult(origMult.y);
-      const mz = clampMult(origMult.z);
-      const sx = mx * r;
-      const sy = my * r;
-      const sz = mz * r;
-      mesh.scale.set(sx, sy, sz);
-
-      // If any multiplier was clamped, warn so we can track regressions.
-      if (mx !== origMult.x || my !== origMult.y || mz !== origMult.z) {
-        try {
-          console.warn(
-            `[ShieldBubble] Clamped shieldScale for ship ${entity.id} (${entity.ship.hull})`,
-            {
-              radius: r,
-              originalShieldScale: origMult,
-              clampedMult: { x: mx, y: my, z: mz },
-              finalScale: { x: sx, y: sy, z: sz },
-            },
-          );
-        } catch (e) {
-          // ignore logging failures in odd environments
-          void e;
-        }
-      }
-    }
-
-    if (mats && mats.length > 0) {
-      const shieldFrac = entity.ship.shield / Math.max(1, entity.ship.maxShield);
-      const teamColor =
-        entity.ship.team === 'blue' ? new Color(TEAM_COLORS.blue) : new Color(TEAM_COLORS.red);
-
-      applyHullTint(mats, shieldFrac, teamColor, HULL_TINT.tintThreshold, HULL_TINT.tintStrength);
-    }
-
-    const list = entity.shieldRipples ?? [];
-    const latestRipple = list[list.length - 1];
-    const latestT0 = latestRipple?.t0 ?? -Infinity;
-    if (list.length !== lastCountRef.current || latestT0 !== lastT0Ref.current) {
-      lastCountRef.current = list.length;
-      lastT0Ref.current = latestT0;
-      setRippleTick((n) => (n + 1) & 0xffff);
-    }
-  });
-
-  const ripples = entity.shieldRipples ?? [];
-  const rippleQueue = processRipplesForRendering(ripples, SHIELD_RIPPLE_TUNING);
 
   const visuals = getShieldVisuals(entity.ship.hull);
-  const kind = visuals.materialKind;
-  const key = `shield:${kind}`;
-
+  const { x, y, z } = visuals.shieldScale;
+  const r = radius ?? FALLBACK_SHIELD_RADIUS_BY_HULL[entity.ship.hull] ?? 2.0;
+  const sx = clampScaleMultiplier(x) * r;
+  const sy = clampScaleMultiplier(y) * r;
+  const sz = clampScaleMultiplier(z) * r;
   const sphereArgs = useMemo(
     () => [1, visuals.geometrySegments, visuals.geometrySegments] as const,
     [visuals.geometrySegments],
   );
 
-  const opacity = Math.max(0, Math.min(1, shieldFraction));
-
-  if (shieldFraction < minShieldThreshold) {
-    const warning = validateShieldVisibility(
-      shieldFraction,
-      entity.ship.shield,
-      entity.ship.maxShield,
-      minShieldThreshold,
-      entity.id,
-      entity.ship.hull,
-    );
-    if (warning) {
-      console.warn(`[ShieldBubble] ${warning}`);
+  useFrame(() => {
+    const { shield, maxShield, team } = entity.ship;
+    const materials = hullMaterialsRef?.current;
+    if (materials?.length) {
+      applyHullTint(
+        materials,
+        shield / Math.max(1, maxShield),
+        TEAM_TINTS[team],
+        HULL_TINT.tintThreshold,
+        HULL_TINT.tintStrength,
+      );
     }
-    return <></>;
-  }
 
-  if (kind === 'hex') {
-    const Mat = getMaterial<ShieldHexMaterialProps>(key) ?? getMaterial('shield:hex')!;
+    const mesh = meshRef.current;
+    if (!mesh) return;
 
-    return (
-      <mesh ref={meshRef} renderOrder={SHIELD_RENDER_ORDER} frustumCulled={false}>
-        <sphereGeometry args={sphereArgs} />
-        <Mat
-          hull={entity.ship.hull}
-          team={entity.ship.team}
-          opacity={opacity}
-          ripple={rippleQueue}
-          simTime={state?.time ?? 0}
-        />
-      </mesh>
-    );
-  }
+    const shieldFraction = normalizedShieldFraction(shield, maxShield);
+    mesh.visible = shieldFraction >= minShieldThreshold;
+    mesh.position.set(0, 0, 0);
+    mesh.quaternion.identity();
+    mesh.scale.set(sx, sy, sz);
 
-  const Mat = getMaterial<ShieldTransmissionMaterialProps>(key) ?? getMaterial('shield:hex')!;
+    const material = mesh.material;
+    if (Array.isArray(material)) return;
+
+    const shader = material as ShaderMaterial;
+    if (!shader.isShaderMaterial) {
+      material.opacity = Math.min(1, shieldFraction * visuals.maxAlpha);
+      return;
+    }
+
+    const uniforms = shader.uniforms as unknown as ShieldHexUniforms;
+    if (!uniforms.uOpacity) return;
+    uniforms.uOpacity.value = shieldFraction;
+
+    const list = entity.shieldRipples ?? EMPTY_RIPPLES;
+    const latest = list[list.length - 1];
+    const cache = rippleCache.current;
+    if (
+      cache.material !== shader ||
+      cache.list !== list ||
+      cache.count !== list.length ||
+      cache.latest !== latest
+    ) {
+      const queue = list.length
+        ? processRipplesForRendering(list, SHIELD_RIPPLE_TUNING)
+        : EMPTY_RIPPLES;
+      updateShieldHexRipples(uniforms, queue, state?.time ?? 0);
+      cache.material = shader;
+      cache.list = list;
+      cache.count = list.length;
+      cache.latest = latest;
+    }
+  });
+
+  const Mat =
+    getMaterial<ShieldHexMaterialProps>(`shield:${visuals.materialKind}`) ??
+    getMaterial<ShieldHexMaterialProps>('shield:hex')!;
+  const opacity = normalizedShieldFraction(entity.ship.shield, entity.ship.maxShield);
 
   return (
-    <mesh ref={meshRef} renderOrder={SHIELD_RENDER_ORDER} frustumCulled={false}>
+    <mesh
+      ref={meshRef}
+      visible={opacity >= minShieldThreshold}
+      renderOrder={SHIELD_RENDER_ORDER}
+      frustumCulled={false}
+    >
       <sphereGeometry args={sphereArgs} />
       <Mat hull={entity.ship.hull} team={entity.ship.team} opacity={opacity} />
     </mesh>
