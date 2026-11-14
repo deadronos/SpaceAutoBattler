@@ -1,6 +1,6 @@
 .ai-debug-overlay {
   position: absolute;
-  top: 48px;
+  top: 84px;
   left: 16px;
   pointer-events: auto;
   background: rgba(6, 14, 32, 0.82);

@@ -1,15 +1,17 @@
 /* Progression Panel Styles */
 .progression-panel {
-  position: absolute;
-  top: 48px;
-  right: 16px;
+  position: fixed;
+  top: 272px;
+  left: 436px;
+  z-index: 30;
   pointer-events: auto;
-  background: rgba(6, 14, 32, 0.82);
-  border: 1px solid rgba(90, 184, 255, 0.28);
+  box-sizing: border-box;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
   border-radius: 12px;
   padding: 16px 20px;
   width: 380px;
-  max-height: 600px;
+  max-height: min(420px, 55vh);
   overflow: hidden;
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
   color: #e3f1ff;
@@ -18,9 +20,13 @@
 
 .progression-panel__header {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
   margin-bottom: 12px;
+  cursor: grab;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .progression-panel__title {
@@ -36,8 +42,15 @@
   font-size: 0.8rem;
 }
 
+.progression-panel__empty {
+  margin: 4px 0 0;
+  font-size: 0.8rem;
+  opacity: 0.78;
+  font-style: italic;
+}
+
 .progression-panel__ships {
-  max-height: 520px;
+  max-height: 340px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -53,11 +66,11 @@
 }
 
 .ship-progression-card--blue {
-  border-left: 3px solid #4a9eff;
+  border-left: 3px solid var(--blue);
 }
 
 .ship-progression-card--red {
-  border-left: 3px solid #ff6b6b;
+  border-left: 3px solid var(--red);
 }
 
 .ship-progression-card__header {
@@ -85,8 +98,8 @@
 
 .ship-progression-card__level {
   font-size: 0.75rem;
-  opacity: 0.8;
-  color: #4a9eff;
+  opacity: 0.9;
+  color: var(--blue);
   font-weight: 600;
 }
 
@@ -112,7 +125,7 @@
 
 .ship-progression-card__progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #4a9eff, #6bb6ff);
+  background: linear-gradient(90deg, var(--blue), #8dd0ff);
   transition: width 0.3s ease;
 }
 
@@ -153,7 +166,7 @@
 
 .progression-events--empty {
   font-size: 0.8rem;
-  opacity: 0.6;
+  opacity: 0.78;
   font-style: italic;
   margin: 0;
 }
@@ -177,7 +190,7 @@
 }
 
 .progression-event__icon--kill {
-  color: #ff6b6b;
+  color: var(--red);
 }
 
 .progression-event__icon--levelup {
@@ -186,18 +199,18 @@
 
 .progression-event__time {
   font-size: 0.75rem;
-  opacity: 0.7;
+  opacity: 0.78;
   min-width: 32px;
 }
 
 .progression-event__delta {
   font-weight: 500;
-  color: #4a9eff;
+  color: var(--blue);
   min-width: 60px;
 }
 
 .progression-event__details {
-  opacity: 0.8;
+  opacity: 0.85;
   font-size: 0.75rem;
   overflow: hidden;
   text-overflow: ellipsis;

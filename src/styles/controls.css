@@ -45,7 +45,6 @@
 }
 
 .controls-bar button:hover,
-.controls-bar button:hover,
 .controls-bar select:hover {
   background: rgba(255, 255, 255, 0.12);
 }
@@ -89,10 +88,4 @@
 .controls-bar select option:active {
   background: linear-gradient(90deg, rgba(74, 158, 255, 0.14), rgba(106, 182, 255, 0.14));
   color: #eaf4ff;
-}
-
-.controls-bar .speed {
-  display: flex;
-  align-items: center;
-  gap: 6px;
 }
