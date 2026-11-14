@@ -5,8 +5,6 @@ import { ErrorCategory, reportRecoverableGameError } from './errors.js';
 
 const MAX_EXPLOSIONS = 48;
 
-let overflowWarned = false;
-
 function obtainExplosion(state: GameState): ExplosionEvent {
   const pooled = state.explosionPool.pop();
   if (pooled) {
@@ -80,8 +78,8 @@ export function emitShipKillExplosion(
     }
     const [evicted] = state.explosions.splice(oldestIndex, 1);
     if (evicted) recycleExplosion(state, evicted);
-    if (!overflowWarned) {
-      overflowWarned = true;
+    if (!state.explosionOverflowWarned) {
+      state.explosionOverflowWarned = true;
       reportRecoverableGameError(
         ErrorCategory.Physics,
         'Explosion pool exhausted; evicting oldest event',
@@ -140,6 +138,12 @@ export function updateExplosions(state: GameState, delta: number): void {
   }
 }
 
-export function resetExplosionOverflowWarning(): void {
-  overflowWarned = false;
+/**
+ * Resets the per-game explosion pool overflow warning flag so subsequent
+ * overflows in a new match can be reported once.
+ *
+ * @param {GameState} state - The game state whose warning flag should be cleared.
+ */
+export function resetExplosionOverflowWarning(state: GameState): void {
+  state.explosionOverflowWarned = false;
 }

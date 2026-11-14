@@ -4,6 +4,7 @@ import { enqueuePostPhysicsMutation } from './simulationQueue.js';
 import { destroyEntity } from './entityLifecycle.js';
 import { spawnInitialFleets } from './spawnFleets.js';
 import { DEFAULT_GAME_SEED } from './createGameState.js';
+import { resetExplosionOverflowWarning } from './explosions.js';
 
 /**
  * Resets the game state completely.
@@ -51,6 +52,7 @@ export function resetGame(state: GameState): void {
   state.turretsByShip?.clear();
   state.progressionEvents.clear();
   state.explosions.length = 0;
+  resetExplosionOverflowWarning(state);
 }
 
 /**

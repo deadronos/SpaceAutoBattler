@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vite-plus/test';
+import { describe, it, expect, vi, beforeEach } from 'vite-plus/test';
 import { Quaternion, Vector3 } from 'three';
 import type { GameState, ShipEntity, ProjectileEntity } from '../../src/types/index.js';
 import {
@@ -6,6 +6,8 @@ import {
   updateExplosions,
   resetExplosionOverflowWarning,
 } from '../../src/game/explosions.js';
+import { createGameState, disposeGameState, resetGame } from '../../src/game/state.js';
+import * as errors from '../../src/game/errors.js';
 import { getExplosionConfig, DEFAULT_EXPLOSION_CONFIG } from '../../src/config/explosions.js';
 import { createDefaultMotionStats } from '../../src/game/ships.js';
 
@@ -79,6 +81,7 @@ function makeState(rngValue = 0.42): GameState {
     uiFlags: { hudHealthBars: false },
     explosions: [],
     explosionPool: [],
+    explosionOverflowWarned: false,
     progressionEvents: new Map(),
   } as GameState;
 }
@@ -129,10 +132,6 @@ function makeProjectile(team: 'blue' | 'red'): ProjectileEntity {
     direction: new Vector3(0, 0, 1),
   } as ProjectileEntity;
 }
-
-beforeEach(() => {
-  resetExplosionOverflowWarning();
-});
 
 describe('emitShipKillExplosion', () => {
   it('creates deterministic explosion event with faction palette and timing', () => {
@@ -269,5 +268,74 @@ describe('deterministic behavior', () => {
     expect(event1.fireball.duration).toBe(event2.fireball.duration);
     expect(event1.debris.speed).toEqual(event2.debris.speed);
     expect(event1.seed).toBe(event2.seed);
+  });
+});
+
+describe('explosion overflow warning isolation', () => {
+  let reportSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    reportSpy = vi.spyOn(errors, 'reportRecoverableGameError').mockImplementation(() => {});
+    return () => reportSpy.mockRestore();
+  });
+
+  function overflowReportCount(): number {
+    return reportSpy.mock.calls.filter(
+      (call: unknown[]) =>
+        (call[2] as { code?: string } | undefined)?.code === 'explosion-pool-exhausted',
+    ).length;
+  }
+
+  function triggerOverflow(state: GameState, totalEmissions = 50): void {
+    const ship = makeShip('blue', 'fighter', 1.0);
+    for (let i = 0; i < totalEmissions; i += 1) {
+      state.time = i * 0.01;
+      emitShipKillExplosion(state, ship);
+    }
+  }
+
+  it('isolates overflow warnings per GameState instance', () => {
+    const stateA = makeState();
+    const stateB = makeState();
+
+    triggerOverflow(stateA);
+    expect(overflowReportCount()).toBe(1);
+    expect(stateA.explosionOverflowWarned).toBe(true);
+    expect(stateB.explosionOverflowWarned).toBe(false);
+
+    triggerOverflow(stateB);
+    expect(overflowReportCount()).toBe(2);
+    expect(stateB.explosionOverflowWarned).toBe(true);
+  });
+
+  it('re-enables overflow warning on resetExplosionOverflowWarning and resetGame across matches', async () => {
+    const state = makeState();
+    triggerOverflow(state);
+    expect(overflowReportCount()).toBe(1);
+
+    // Subsequent overflow in the same match does not re-warn.
+    emitShipKillExplosion(state, makeShip('red', 'fighter', 1.0));
+    expect(overflowReportCount()).toBe(1);
+
+    resetExplosionOverflowWarning(state);
+    expect(state.explosionOverflowWarned).toBe(false);
+    emitShipKillExplosion(state, makeShip('red', 'fighter', 1.0));
+    expect(overflowReportCount()).toBe(2);
+
+    // Full GameState lifecycle via resetGame clears the warning for the next match.
+    const fullState = await createGameState();
+    try {
+      triggerOverflow(fullState);
+      expect(overflowReportCount()).toBe(3);
+      expect(fullState.explosionOverflowWarned).toBe(true);
+
+      resetGame(fullState);
+      expect(fullState.explosionOverflowWarned).toBe(false);
+
+      triggerOverflow(fullState);
+      expect(overflowReportCount()).toBe(4);
+    } finally {
+      disposeGameState(fullState);
+    }
   });
 });

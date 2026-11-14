@@ -4,13 +4,7 @@ import { AI_CONFIG, getEffectiveAIConfig } from '../../config.js';
 import { computeVerticalClamp } from '../../utils/ai-vertical.js';
 import { hashToInt } from './utils.js';
 import { dampVerticalAmplitude } from './hysteresis.js';
-import { TEMP_RNG } from './sharedRng.js';
-
-// Re-export for backward compatibility
-// This symbol is provided for backward compatibility and may be unused within
-// this module; disable the unused-var lint warning for this line.
-
-export { resetTempRng } from './sharedRng.js';
+import { seededNormal } from './sharedRng.js';
 
 /**
  * Applies vertical perturbations to the ship's heading for evasion and 3D movement.
@@ -41,8 +35,7 @@ export function applyVerticalPerturbation(
   }
   if (heading.lengthSq() < 1e-6) return;
   const seed = Math.abs(hashToInt(ai.traitSeed ^ ship.id ^ (state.ai.tickIndex * 1229))) + 1;
-  TEMP_RNG.reset(seed);
-  let perturb = TEMP_RNG.normal(amplitude * 0.3, 0.05);
+  let perturb = seededNormal(seed, amplitude * 0.3, 0.05);
   // When smoothing is enabled, attenuate the raw vertical perturbation so
   // the smoothing filter can more effectively reduce jitter. This avoids
   // pathological cases where perturbations are large enough to increase

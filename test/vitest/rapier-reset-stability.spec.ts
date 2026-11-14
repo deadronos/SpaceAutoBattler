@@ -147,6 +147,7 @@ describe('Rapier Reset Stability', () => {
     state.turretsByShip?.set(300, new Set());
     state.progressionEvents.set(400, []);
     state.explosions.push({ id: 1 } as any);
+    state.explosionOverflowWarned = true;
 
     resetGame(state);
 
@@ -157,5 +158,6 @@ describe('Rapier Reset Stability', () => {
     expect(state.turretsByShip?.size).toBe(0);
     expect(state.progressionEvents.size).toBe(0);
     expect(state.explosions).toHaveLength(0);
+    expect(state.explosionOverflowWarned).toBe(false);
   });
 });

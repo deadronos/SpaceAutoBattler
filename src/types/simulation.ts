@@ -164,6 +164,8 @@ export interface GameState {
   explosions: ExplosionEvent[];
   /** Recycled explosion events available for reuse to maintain determinism. */
   explosionPool: ExplosionEvent[];
+  /** Whether an explosion pool overflow warning has already been reported for this game. */
+  explosionOverflowWarned?: boolean;
   /** Progression events by ship ID for UI consumption. */
   progressionEvents: Map<number, ProgressionEvent[]>;
 }

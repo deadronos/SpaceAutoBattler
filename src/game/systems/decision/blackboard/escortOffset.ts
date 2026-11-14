@@ -1,14 +1,8 @@
 import { Vector3 } from 'three';
 import { hashToInt } from '../utils.js';
-import { TEMP_RNG } from '../sharedRng.js';
+import { seededRange } from '../sharedRng.js';
 
 const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
-
-// Re-export for backward compatibility
-// Tell eslint this exported symbol may be unused locally (it's provided for
-// backward-compat consumers) so the no-unused-vars rule doesn't complain.
-
-export { resetTempRng } from '../sharedRng.js';
 
 /**
  * Computes a formation offset for an escort ship relative to its VIP.
@@ -36,10 +30,9 @@ export const computeEscortShellOffset = (
     Math.cos(inclination),
     Math.sin(azimuth) * sinInclination,
   );
-  const jitterSeed = hashToInt(vipId ^ ((slotIndex + 1) * 8191));
-  TEMP_RNG.reset(Math.abs(jitterSeed) + 1);
-  const radialJitter = 1 + TEMP_RNG.range(-0.08, 0.08);
-  const verticalJitter = TEMP_RNG.range(-0.12, 0.12);
+  const jitterSeed = Math.abs(hashToInt(vipId ^ ((slotIndex + 1) * 8191))) + 1;
+  const radialJitter = 1 + seededRange(jitterSeed, -0.08, 0.08, 0);
+  const verticalJitter = seededRange(jitterSeed, -0.12, 0.12, 1);
   base.y += verticalJitter;
   if (base.lengthSq() < 1e-5) base.set(0, 1, 0);
   base.normalize().multiplyScalar(Math.max(20, radius * radialJitter));

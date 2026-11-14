@@ -51,6 +51,7 @@ export function createMockGameState(overrides: Partial<GameState> = {}): GameSta
     },
     explosions: [],
     explosionPool: [],
+    explosionOverflowWarned: false,
     progressionEvents: new Map(),
     simulation: createTestSimulationState(),
     ai: {
