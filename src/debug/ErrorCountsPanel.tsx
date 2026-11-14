@@ -5,14 +5,8 @@
  * use to provide visibility into suppressed errors without cluttering the UI.
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
-import {
-  getErrorCounts,
-  getTotalErrorCount,
-  getRecentErrors,
-  ErrorCategory,
-  type ErrorReport,
-} from '../utils/errorReporting.js';
+import React, { useState } from 'react';
+import { getErrorCounts, getTotalErrorCount, getRecentErrors } from '../utils/errorReporting.js';
 import { useInterval } from '../hooks/useInterval.js';
 import './debugPanel.css';
 
@@ -27,27 +21,16 @@ export function ErrorCountsPanel({
   refreshInterval = 2000,
   showDetails = true,
 }: ErrorCountsPanelProps): React.ReactElement | null {
-  const [counts, setCounts] = useState<Record<ErrorCategory, number>>(() => getErrorCounts());
-  const [total, setTotal] = useState<number>(() => getTotalErrorCount());
+  const [, setRefreshTick] = useState(0);
   const [expanded, setExpanded] = useState(false);
-  const [recentErrors, setRecentErrors] = useState<ErrorReport[]>([]);
 
-  const update = useCallback(() => {
-    setCounts(getErrorCounts());
-    setTotal(getTotalErrorCount());
-    if (expanded && showDetails) {
-      setRecentErrors(getRecentErrors(10));
-    }
-  }, [expanded, showDetails]);
+  useInterval(() => setRefreshTick((v) => v + 1), refreshInterval);
 
-  useEffect(() => {
-    update();
-  }, [update, refreshInterval]);
-
-  useInterval(update, refreshInterval);
-
+  const total = getTotalErrorCount();
   if (total === 0) return null;
 
+  const counts = getErrorCounts();
+  const recentErrors = expanded && showDetails ? getRecentErrors(10) : [];
   const nonZeroCounts = Object.entries(counts).filter(([, v]) => v > 0);
 
   return (
