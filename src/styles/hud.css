@@ -71,7 +71,7 @@
 .ship-hud-overlay__fill {
   height: 100%;
   border-radius: 999px;
-  transition: width 150ms ease-out;
+  /* Bar widths are smoothed deterministically in JS (ShipHudOverlay); avoid CSS width transitions */
   /* allow JS to tune the fill opacity via --hud-fill-opacity */
   opacity: var(--hud-fill-opacity, 1);
 }

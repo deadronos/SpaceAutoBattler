@@ -43,9 +43,9 @@ export const DEFAULT_HUD_HEALTH_OVERLAY_CONFIG: HudHealthOverlayConfig = {
   barBgOpacity: 0.6,
   fillOpacity: 0.6,
   statusBadgeOpacity: 0.65,
-  // Default to no offset; consumers can change these to nudge the HUD relative to the ship
+  // Negative vertical offset raises the HUD above the ship center (coupled with translate(-50%, -100%)).
   hudOffsetX: 0,
-  hudOffsetY: 50,
+  hudOffsetY: -24,
 };
 
 /**
