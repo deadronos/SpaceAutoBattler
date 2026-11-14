@@ -8,12 +8,18 @@ import { useBloomRegistration } from '../../renderer/bloom/index.js';
 import { getInstanceFriendlyMaterial } from '../../renderer/materialRegistry.js';
 import { createSaturationWarningState, warnOnSaturation } from '../layers/saturationWarning.js';
 import { InstancedLayerManager } from '../layers/instancedLayer.js';
+import {
+  useGltfEngineMeshHulls,
+  type GltfEngineHullMap,
+} from '../../renderer/particles/useThrusterAnchors.js';
 
 interface ThrusterInstancedManagerProps {
   ships: readonly ShipEntity[];
   capacity?: number;
   intensityBase?: number;
   intensityRange?: number;
+  /** Optional override map indicating which hulls provide GLTF engine meshes. */
+  gltfEngineHulls?: GltfEngineHullMap;
 }
 
 const DEFAULT_CAPACITY = 512;
@@ -74,10 +80,13 @@ export function ThrusterInstancedManager({
   capacity = DEFAULT_CAPACITY,
   intensityBase = DEFAULT_INTENSITY_BASE,
   intensityRange = DEFAULT_INTENSITY_RANGE,
+  gltfEngineHulls,
 }: ThrusterInstancedManagerProps): React.ReactElement {
   const meshRef = useRef<InstancedMesh>(null);
   const warningStateRef = useRef(createSaturationWarningState());
   const frameRef = useRef(0);
+  const detectedGltfEngineHulls = useGltfEngineMeshHulls();
+  const engineHulls = gltfEngineHulls ?? detectedGltfEngineHulls;
 
   const materialInfo = useMemo(
     () =>
@@ -143,6 +152,13 @@ export function ThrusterInstancedManager({
     let saturated = false;
 
     for (const ship of ships) {
+      // Skip fallback thruster spheres when the ship's GLTF model already
+      // provides dedicated engine/thruster/exhaust meshes.
+      const modelHull = (ship.model as ShipHull | undefined) ?? ship.ship.hull;
+      if (engineHulls.get(modelHull) ?? engineHulls.get(ship.ship.hull) ?? false) {
+        continue;
+      }
+
       const throttle = clamp01(ship.ai?.command?.thrust ?? 0);
       const anchors = getAnchors(ship.ship.hull);
       const hullScale = Math.max(ship.transform.scale, 0.1);

@@ -84,6 +84,15 @@ export function useOptionalGameState(): GameState | null {
   return context.state;
 }
 
+/**
+ * Returns `GameState` when inside a `GameProvider`, or `null` when mounted
+ * standalone (e.g., isolated component/hook tests without a provider).
+ */
+export function useNullableGameState(): GameState | null {
+  const context = useContext(GameContext);
+  return context?.state ?? null;
+}
+
 export function useOptionalSimulationBridge(): SimulationBridge | null {
   return useContext(SimulationBridgeContext);
 }

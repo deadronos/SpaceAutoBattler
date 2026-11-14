@@ -38,6 +38,14 @@ const mountCounts = vi.hoisted(() => ({
   celestialEnvironment: 0,
   particleTrails: 0,
 }));
+const suspendShipsState = vi.hoisted(() => ({ suspend: false }));
+const pendingPromise = new Promise<void>(() => {});
+const mountedLayerCalls = vi.hoisted(() => ({
+  turrets: 0,
+  muzzles: 0,
+  projectiles: 0,
+  explosions: 0,
+}));
 
 vi.mock('@react-three/fiber', () => ({
   Canvas: ({
@@ -99,7 +107,10 @@ vi.mock('../../src/components/ParticleTrails.js', () => ({
 }));
 vi.mock('../../src/components/HudOverlayCollector.js', () => ({ HudOverlayCollector: () => null }));
 vi.mock('../../src/components/explosions/ExplosionRendererCore.js', () => ({
-  ExplosionsLayer: () => null,
+  ExplosionsLayer: () => {
+    mountedLayerCalls.explosions += 1;
+    return null;
+  },
 }));
 vi.mock('../../src/components/PerfMonitorOverlay.js', () => ({ PerfMonitorOverlay: () => null }));
 vi.mock('../../src/components/DynamicResScaler.js', () => ({ default: () => null }));
@@ -112,14 +123,32 @@ vi.mock('../../src/components/environment/CelestialEnvironment.js', () => ({
   },
 }));
 vi.mock('../../src/components/BattlefieldSystems.js', () => ({ BattlefieldSystems: () => null }));
-vi.mock('../../src/components/layers/ShipsLayer.js', () => ({ ShipsLayer: () => null }));
+vi.mock('../../src/components/layers/ShipsLayer.js', () => ({
+  ShipsLayer: () => {
+    if (suspendShipsState.suspend) {
+      throw pendingPromise;
+    }
+    return null;
+  },
+}));
 vi.mock('../../src/components/layers/ProjectilesLayer.js', () => ({
-  ProjectilesLayer: () => null,
+  ProjectilesLayer: () => {
+    mountedLayerCalls.projectiles += 1;
+    return null;
+  },
 }));
 vi.mock('../../src/components/layers/MuzzleFlashInstancedLayer.js', () => ({
-  MuzzleFlashInstancedLayer: () => null,
+  MuzzleFlashInstancedLayer: () => {
+    mountedLayerCalls.muzzles += 1;
+    return null;
+  },
 }));
-vi.mock('../../src/components/layers/TurretsLayer.js', () => ({ TurretsLayer: () => null }));
+vi.mock('../../src/components/layers/TurretsLayer.js', () => ({
+  TurretsLayer: () => {
+    mountedLayerCalls.turrets += 1;
+    return null;
+  },
+}));
 vi.mock('../../src/components/layers/StarsField.js', () => ({ StarsField: () => null }));
 vi.mock('../../src/components/layers/WorkerShipsLayer.js', () => ({
   WorkerShipsLayer: () => null,
@@ -177,6 +206,11 @@ beforeEach(() => {
   uiStoreState.detectedQualityTier = 'high';
   mountCounts.celestialEnvironment = 0;
   mountCounts.particleTrails = 0;
+  suspendShipsState.suspend = false;
+  mountedLayerCalls.turrets = 0;
+  mountedLayerCalls.muzzles = 0;
+  mountedLayerCalls.projectiles = 0;
+  mountedLayerCalls.explosions = 0;
   resetErrorCounts();
   setErrorReportingEnabled(true);
   originalLocation = window.location;
@@ -319,5 +353,16 @@ describe('Battlefield', () => {
 
     expect(mountCounts.celestialEnvironment).toBe(1);
     expect(mountCounts.particleTrails).toBe(1);
+  });
+
+  it('isolates ShipsLayer Suspense so sibling combat layers render while ships load', async () => {
+    suspendShipsState.suspend = true;
+    const { Battlefield } = await import('../../src/components/Battlefield.js');
+    render(<Battlefield />);
+
+    expect(mountedLayerCalls.turrets).toBeGreaterThan(0);
+    expect(mountedLayerCalls.muzzles).toBeGreaterThan(0);
+    expect(mountedLayerCalls.projectiles).toBeGreaterThan(0);
+    expect(mountedLayerCalls.explosions).toBeGreaterThan(0);
   });
 });

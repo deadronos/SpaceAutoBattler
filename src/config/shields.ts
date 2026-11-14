@@ -11,7 +11,7 @@ export interface ShieldVisualSettings {
   edgeWidth?: number;
   /** Maximum final alpha for shield material (0..1). */
   maxAlpha?: number;
-  /** Number of segments for the shield sphere geometry (width and height). Default 128. */
+  /** Number of segments for the shield sphere geometry (width and height). Default 48. */
   geometrySegments?: number;
   /**
    * Per-axis non-uniform scale applied to the shield mesh. This enables
@@ -52,7 +52,7 @@ export const SHIELD_VISUAL_DEFAULTS: Required<ShieldVisualSettings> = {
   hexScale: 12,
   edgeWidth: 0.1,
   maxAlpha: 0.5,
-  geometrySegments: 128,
+  geometrySegments: 48,
   shieldScale: { x: 1, y: 0.65, z: 1 },
   materialKind: 'hex',
   meshtransmission: {

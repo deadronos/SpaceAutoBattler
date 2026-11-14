@@ -3,7 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { cleanup, render } from '@testing-library/react';
 import { Euler, Vector3 } from 'three';
 import type { ShipEntity } from '../../src/types/index.js';
-import { CameraRig } from '../../src/components/CameraRig.js';
+import { CameraRig, FOLLOW_LEAD } from '../../src/components/CameraRig.js';
+import { TRAUMA_DISTANCE_FAR } from '../../src/renderer/cameraRig/shake.js';
 
 type FrameCallback = (state: { camera: MockCamera }, delta: number) => void;
 
@@ -98,9 +99,11 @@ beforeEach(() => {
   uiState.selectShip.mockReset();
   reducedMotionState.value = false;
   gameState.shipById = new Map();
+  gameState.explosions = [];
   gameState.time = 0;
   mockCamera.position.set(0, 0, 50);
   mockCamera.rotation.set(0, 0, 0);
+  mockCamera.fov = 60;
   mockControls.target.set(0, 0, 0);
 });
 
@@ -209,5 +212,53 @@ describe('CameraRig ship follow', () => {
     expect(uiState.selectShip).toHaveBeenCalledWith(null);
     expect(mockCamera.position.toArray()).toEqual([0, 0, 50]);
     expect(mockControls.target.toArray()).toEqual([0, 0, 0]);
+  });
+
+  it('applies positive FOLLOW_LEAD look-ahead along ship velocity', () => {
+    expect(FOLLOW_LEAD).toBeGreaterThan(0);
+    uiState.cameraFollowEnabled = true;
+    uiState.selectedShipId = 7;
+    const ship = createShip(7, 100, 0, 0);
+    ship.ship.velocity.set(40, 0, 0);
+    gameState.shipById.set(7, ship);
+    render(<CameraRig />);
+
+    runLatestFrame();
+
+    const alpha = 1 - Math.exp(-6 * DT);
+    const expectedX = (100 + 40 * FOLLOW_LEAD) * alpha;
+    expect(mockControls.target.x).toBeCloseTo(expectedX, 6);
+    expect(mockControls.target.x).toBeGreaterThan(100 * alpha);
+  });
+
+  it('attenuates explosion camera trauma by distance from camera', () => {
+    uiState.cameraShakeEnabled = true;
+    gameState.explosions = [
+      {
+        id: 1,
+        radius: 30,
+        position: new Vector3(0, 0, 50 + TRAUMA_DISTANCE_FAR + 500),
+      },
+    ];
+    render(<CameraRig />);
+
+    gameState.time = 0.05;
+    runLatestFrame();
+    expect(mockCamera.rotation.x).toBe(0);
+    expect(mockCamera.rotation.y).toBe(0);
+    expect(mockCamera.rotation.z).toBe(0);
+
+    gameState.explosions.push({
+      id: 2,
+      radius: 30,
+      position: new Vector3(0, 0, 60),
+    });
+    gameState.time = 0.1;
+    runLatestFrame();
+    const rotMag =
+      Math.abs(mockCamera.rotation.x) +
+      Math.abs(mockCamera.rotation.y) +
+      Math.abs(mockCamera.rotation.z);
+    expect(rotMag).toBeGreaterThan(0);
   });
 });

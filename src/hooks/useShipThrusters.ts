@@ -23,6 +23,31 @@ export interface ThrusterMaterialEntry {
 }
 
 /**
+ * Checks whether a scene node name identifies a dedicated GLTF engine/thruster mesh.
+ */
+export function isEngineMeshName(value: string | undefined): boolean {
+  if (!value) return false;
+  const n = value.toLowerCase();
+  return n.includes('engine') || n.includes('thruster') || n.includes('exhaust');
+}
+
+/**
+ * Returns true if the given GLTF scene contains at least one named engine/thruster mesh.
+ */
+export function sceneHasEngineMeshes(scene: Object3D | null | undefined): boolean {
+  if (!scene || typeof scene.traverse !== 'function') return false;
+  let found = false;
+  scene.traverse((object) => {
+    if (found) return;
+    const isMesh = object instanceof Mesh || (object as { isMesh?: boolean }).isMesh === true;
+    if (isMesh && isEngineMeshName(object.name)) {
+      found = true;
+    }
+  });
+  return found;
+}
+
+/**
  * Hook to manage ship thruster effects.
  * Finds or creates engine meshes, registers them for bloom, and updates intensity based on throttle.
  *
@@ -47,11 +72,7 @@ export function useShipThrusters(
     const engines: Mesh[] = [];
     const thrusters: ThrusterMaterialEntry[] = [];
 
-    const nameMatch = (value: string | undefined): boolean => {
-      if (!value) return false;
-      const n = value.toLowerCase();
-      return n.includes('engine') || n.includes('thruster') || n.includes('exhaust');
-    };
+    const nameMatch = isEngineMeshName;
 
     scene.traverse((object) => {
       if (!(object instanceof Mesh)) {

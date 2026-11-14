@@ -1,6 +1,6 @@
 import type React from 'react';
 import { useRef, useMemo } from 'react';
-import { Color, type Mesh, type ShaderMaterial } from 'three';
+import { Color, SphereGeometry, type Mesh, type ShaderMaterial } from 'three';
 import { useFrame } from '@react-three/fiber';
 import type { ShipEntity, ShieldRipple } from '../../types/index.js';
 import {
@@ -14,7 +14,7 @@ import { useOptionalGameState } from '../../app/context.js';
 import { useBloomRegistration, type BloomRegistrationOptions } from '../../renderer/bloom/index.js';
 import type { HullMaterial } from './ShipModel.js';
 import { applyHullTint } from './ShipModel.js';
-import { normalizedShieldFraction } from './shieldUtils.js';
+import { normalizedShieldFraction, resolveShieldGeometrySegments } from './shieldUtils.js';
 import { processRipplesForRendering } from './rippleUtils.js';
 import type {
   ShieldHexMaterialProps,
@@ -27,6 +27,18 @@ const SHIELD_BLOOM_OPTIONS: BloomRegistrationOptions = { group: 'shields' };
 const EMPTY_RIPPLES: readonly ShieldRipple[] = [];
 const TEAM_TINTS = { blue: new Color(TEAM_COLORS.blue), red: new Color(TEAM_COLORS.red) };
 const minShieldThreshold = 0.01;
+const SHARED_SHIELD_GEOMETRIES = new Map<number, SphereGeometry>();
+
+/** Returns a shared unit `SphereGeometry` for the requested segment tier. */
+export function getSharedShieldGeometry(segments: number): SphereGeometry {
+  const key = Math.max(8, Math.floor(segments));
+  let geometry = SHARED_SHIELD_GEOMETRIES.get(key);
+  if (!geometry) {
+    geometry = new SphereGeometry(1, key, key);
+    SHARED_SHIELD_GEOMETRIES.set(key, geometry);
+  }
+  return geometry;
+}
 
 function clampScaleMultiplier(value: number): number {
   return Math.max(0.05, Math.min(Number.isFinite(value) ? value : 0.05, 8));
@@ -77,12 +89,14 @@ export function ShieldBubble({
   const sx = clampScaleMultiplier(x) * r;
   const sy = clampScaleMultiplier(y) * r;
   const sz = clampScaleMultiplier(z) * r;
-  const sphereArgs = useMemo(
-    () => [1, visuals.geometrySegments, visuals.geometrySegments] as const,
-    [visuals.geometrySegments],
+  const initialSegments = resolveShieldGeometrySegments(0, visuals.geometrySegments);
+  const segmentsRef = useRef(initialSegments);
+  const initialGeometry = useMemo(
+    () => getSharedShieldGeometry(initialSegments),
+    [initialSegments],
   );
 
-  useFrame(() => {
+  useFrame(({ camera }) => {
     const { shield, maxShield, team } = entity.ship;
     const materials = hullMaterialsRef?.current;
     if (materials?.length) {
@@ -103,6 +117,20 @@ export function ShieldBubble({
     mesh.position.set(0, 0, 0);
     mesh.quaternion.identity();
     mesh.scale.set(sx, sy, sz);
+
+    const dist =
+      camera?.position && entity.transform?.position
+        ? camera.position.distanceTo(entity.transform.position)
+        : 0;
+    const targetSegments = resolveShieldGeometrySegments(
+      dist,
+      visuals.geometrySegments,
+      segmentsRef.current,
+    );
+    if (targetSegments !== segmentsRef.current) {
+      segmentsRef.current = targetSegments;
+      mesh.geometry = getSharedShieldGeometry(targetSegments);
+    }
 
     const material = mesh.material;
     if (Array.isArray(material)) return;
@@ -149,8 +177,13 @@ export function ShieldBubble({
   const visible = opacity >= minShieldThreshold;
 
   return (
-    <mesh ref={meshRef} visible={visible} renderOrder={SHIELD_RENDER_ORDER} frustumCulled={false}>
-      <sphereGeometry args={sphereArgs} />
+    <mesh
+      ref={meshRef}
+      geometry={initialGeometry}
+      visible={visible}
+      renderOrder={SHIELD_RENDER_ORDER}
+      frustumCulled={false}
+    >
       <Mat hull={entity.ship.hull} team={entity.ship.team} opacity={opacity} visible={visible} />
     </mesh>
   );

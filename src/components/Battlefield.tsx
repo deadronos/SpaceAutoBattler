@@ -62,15 +62,25 @@ function BattleSceneContent({ ppEnabled }: BattleSceneContentProps): React.React
     <>
       <fog attach="fog" args={FOG_DEFAULTS} />
       <CelestialEnvironment />
-      <Suspense fallback={null}>
-        {renderWorkerShips && <WorkerShipsLayer />}
-        {!renderWorkerShipsOnly && <ShipsLayer archetype={state.queries.ships} />}
-        {!renderWorkerShipsOnly && <TurretsLayer archetype={state.queries.turrets} />}
-        {!renderWorkerShipsOnly && <MuzzleFlashInstancedLayer archetype={state.queries.turrets} />}
-        {!renderWorkerShipsOnly && <ProjectilesLayer archetype={state.queries.projectiles} />}
-        {!renderWorkerShipsOnly && <ExplosionsLayer />}
-        {!renderWorkerShipsOnly && <ParticleTrails ships={ships} />}
-      </Suspense>
+      {renderWorkerShips && (
+        <Suspense fallback={null}>
+          <WorkerShipsLayer />
+        </Suspense>
+      )}
+      {!renderWorkerShipsOnly && (
+        <Suspense fallback={null}>
+          <ShipsLayer archetype={state.queries.ships} />
+        </Suspense>
+      )}
+      {!renderWorkerShipsOnly && <TurretsLayer archetype={state.queries.turrets} />}
+      {!renderWorkerShipsOnly && <MuzzleFlashInstancedLayer archetype={state.queries.turrets} />}
+      {!renderWorkerShipsOnly && <ProjectilesLayer archetype={state.queries.projectiles} />}
+      {!renderWorkerShipsOnly && <ExplosionsLayer />}
+      {!renderWorkerShipsOnly && (
+        <Suspense fallback={null}>
+          <ParticleTrails ships={ships} />
+        </Suspense>
+      )}
       {ppEnabled && <PostprocessingLazy />}
       <BattlefieldSystems />
       <HudOverlayCollector />

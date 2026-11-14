@@ -75,6 +75,48 @@ export function shouldDisplayShield(fraction: number, threshold: number): boolea
   return fraction >= threshold;
 }
 
+export const SHIELD_LOD_MID_DISTANCE = 450;
+export const SHIELD_LOD_FAR_DISTANCE = 1200;
+export const SHIELD_LOD_HYSTERESIS = 40;
+export const SHIELD_MID_SEGMENTS = 24;
+export const SHIELD_FAR_SEGMENTS = 12;
+
+/**
+ * Resolves shield sphere segment count from camera distance with hysteresis
+ * so shields avoid geometry swapping flicker near LOD thresholds.
+ */
+export function resolveShieldGeometrySegments(
+  distance: number,
+  maxSegments: number,
+  previousSegments?: number,
+): number {
+  const nearSegments = Math.max(8, Math.floor(maxSegments));
+  const midSegments = Math.min(nearSegments, SHIELD_MID_SEGMENTS);
+  const farSegments = Math.min(midSegments, SHIELD_FAR_SEGMENTS);
+
+  if (!Number.isFinite(distance) || distance < 0) {
+    return nearSegments;
+  }
+
+  const midEnter = SHIELD_LOD_MID_DISTANCE;
+  const midExit = SHIELD_LOD_MID_DISTANCE - SHIELD_LOD_HYSTERESIS;
+  const farEnter = SHIELD_LOD_FAR_DISTANCE;
+  const farExit = SHIELD_LOD_FAR_DISTANCE - SHIELD_LOD_HYSTERESIS;
+
+  if (previousSegments === farSegments) {
+    if (distance >= farExit) return farSegments;
+    return distance >= midEnter ? midSegments : nearSegments;
+  }
+  if (previousSegments === midSegments) {
+    if (distance >= farEnter) return farSegments;
+    if (distance < midExit) return nearSegments;
+    return midSegments;
+  }
+  if (distance >= farEnter) return farSegments;
+  if (distance >= midEnter) return midSegments;
+  return nearSegments;
+}
+
 /**
  * Validates that the shield visibility matches expectations (debug helper).
  *
