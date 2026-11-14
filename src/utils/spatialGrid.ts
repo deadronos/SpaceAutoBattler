@@ -88,9 +88,10 @@ export class SpatialGrid<T> {
   }
 
   /**
-   * Clears and repopulates the grid from a list of items.
+   * Clears and repopulates the grid from a list of items, optionally resizing its cells.
    */
-  repopulate(items: readonly T[]): void {
+  repopulate(items: readonly T[], cellSize = this.cellSize): void {
+    this.cellSize = cellSize;
     this.cells.clear();
     for (const item of items) {
       this.insert(item);

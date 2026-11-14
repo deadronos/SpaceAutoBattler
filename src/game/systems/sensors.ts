@@ -19,7 +19,6 @@ import {
 const DEFAULT_SPATIAL_GRID_CELL_SIZE = 300;
 const MIN_SPATIAL_GRID_CELL_SIZE = 40;
 const MAX_SPATIAL_GRID_CELL_SIZE = 300;
-const GRID_CELL_SIZE_STEP = 10;
 const TARGET_SHIPS_PER_CELL = 8;
 
 // Per-state spatial grid for broad-phase culling. Keyed off GameState so two
@@ -143,11 +142,7 @@ function computeAdaptiveGridCellSize(ships: ShipEntity[]): number {
   const targetCellVolume = (battlefieldVolume * TARGET_SHIPS_PER_CELL) / ships.length;
   const rawCellSize = Math.cbrt(Math.max(1, targetCellVolume));
 
-  return clamp(
-    Math.round(rawCellSize / GRID_CELL_SIZE_STEP) * GRID_CELL_SIZE_STEP,
-    MIN_SPATIAL_GRID_CELL_SIZE,
-    MAX_SPATIAL_GRID_CELL_SIZE,
-  );
+  return clamp(rawCellSize, MIN_SPATIAL_GRID_CELL_SIZE, MAX_SPATIAL_GRID_CELL_SIZE);
 }
 
 function decayContacts(
@@ -183,14 +178,14 @@ export function updateSensorSystem(state: GameState, ships: ShipEntity[]): void 
 
   const broadphase = getSensorBroadphase(state);
   const nextCellSize = computeAdaptiveGridCellSize(ships);
-  let grid = broadphase.grid;
-  if (!grid || nextCellSize !== broadphase.cellSize) {
-    grid = new SpatialGrid<ShipEntity>(nextCellSize, (ship) => ship.transform.position);
-    broadphase.grid = grid;
+  if (!broadphase.grid || Math.abs(nextCellSize - broadphase.cellSize) > 1e-3) {
     broadphase.cellSize = nextCellSize;
   }
-
-  grid.repopulate(ships);
+  const grid = (broadphase.grid ??= new SpatialGrid<ShipEntity>(
+    broadphase.cellSize,
+    (ship) => ship.transform.position,
+  ));
+  grid.repopulate(ships, broadphase.cellSize);
 
   const detectionMultiplier: Record<Team, number> = {
     blue: getDoctrineSensorModifiers(manager, 'blue')?.detectionMultiplier ?? 1,
