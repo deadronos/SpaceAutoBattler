@@ -75,12 +75,12 @@ export function reportError(
     state.reports.shift();
   }
 
-  if (typeof process !== 'undefined' && process.env?.NODE_ENV === 'development') {
-    try {
+  try {
+    if (typeof process !== 'undefined' && process.env?.NODE_ENV === 'development') {
       console.warn(`[${category}] ${message}`, context ?? '', error ?? '');
-    } catch {
-      // Logging must never interfere with the caller's recovery path.
     }
+  } catch {
+    // Logging must never interfere with the caller's recovery path.
   }
 }
 

@@ -107,6 +107,7 @@ export type { ExplosionEvent, ExplosionConfigEntry } from './renderer.js';
 export type {
   DeferredMutation,
   RapierDiagnostics,
+  SubsystemTimings,
   SimulationClock,
   HudUiFlags,
   GameState,
