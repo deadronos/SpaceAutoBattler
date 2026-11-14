@@ -30,6 +30,7 @@
   - `?sim_worker_render` — Enables worker simulation and worker-driven ship rendering.
   - `?sim_worker_render_only` — Renders worker ships only (disables local simulation).
   - `?sim_worker_debug` — Enables worker debug logging.
+  - In shared mode, the worker publishes one of two transform pages with an atomic ownership flag. The bridge holds that page until the next snapshot arrives, and the worker skips publication when both pages are held. In transfer mode, staging buffers carry only updated occupied slots and are recycled when replaced. The worker ship layer updates matrices once per snapshot tick and defaults to the bridge capacity of 4096.
 - Keep simulation state and rendering decoupled via ECS (Miniplex) and `GameState`.
 - Shield bubbles stay mounted and update visibility, opacity, ripple uniforms, and hull tint directly from simulation data. Ripple uniforms are repacked when the queue or shader material changes.
 - The HUD health collector projects ships and publishes DOM overlay snapshots at up to 30 Hz while enabled. Individual overlays skip React renders when their displayed inputs match.
@@ -40,6 +41,7 @@
 
 - **glTF & decoders**: Models are cached via `@react-three/drei`’s `useGLTF`. Draco/Meshopt/KTX2 decoding is configured in `src/renderer/loaders/gltfDecoders.ts`; self-hosted decoder assets are emitted under `dist/decoders/` by `vite.config.ts`, and hull GLTFs are shipped compressed.
 - **Instanced effects**: Explosion, thruster glow, and ship impostor layers update mesh bounds while writing live transforms so Three.js can cull offscreen batches. Explosion lights use a pool of eight, ranked by intensity and camera distance. Turret gizmos mount only when their debug flag is enabled.
+- **Planet and star textures**: Full-resolution Ice and Gas Giant maps ship as WebP, with existing low-resolution PNG maps for fallback. Regenerate the lossless star organic WebP and RGBA noise PNG with `node scripts/generate_star_disk_textures.mjs` and `cwebp` installed on PATH.
 - **Disposal & pooling**: Dispose Three.js resources you create; reuse/pool objects in per-frame hot paths (`src/utils/tempVectors.ts`, `src/game/explosions.ts`).
 - **Quality & postprocessing**: Quality presets live in `src/config/quality.ts`. Postprocessing lives in `src/config/postprocessing.ts` (`colorPipeline` + `N8AO`).
 - **Camera rig**: Pure trauma/shake math lives in `src/renderer/cameraRig/`, consumed by `src/components/CameraRig.tsx`.

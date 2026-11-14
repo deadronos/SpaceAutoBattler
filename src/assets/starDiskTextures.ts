@@ -1,4 +1,4 @@
-import starOrganicUrl from './textures/star/star-organic.png';
+import starOrganicUrl from './textures/star/star-organic.webp';
 import starNoiseRgbaUrl from './textures/star/star-noise-rgba.png';
 
 export const STAR_DISK_TEXTURE_PATHS = {

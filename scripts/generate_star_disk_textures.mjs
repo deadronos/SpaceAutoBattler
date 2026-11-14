@@ -1,5 +1,7 @@
+import { execFileSync } from 'node:child_process';
 import fs from 'fs';
 import path from 'path';
+import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'url';
 import { PNG } from 'pngjs';
 
@@ -141,7 +143,21 @@ async function main() {
 
   console.log('[textures] Generating Organic texture...');
   const organic = generateOrganicTexture({ width: 1024, height: 1024 });
-  await writePng(organic, 'star-organic.png');
+  const tempDir = fs.mkdtempSync(path.join(tmpdir(), 'star-disk-'));
+  try {
+    const source = path.join(tempDir, 'organic.png');
+    fs.writeFileSync(source, PNG.sync.write(organic));
+    execFileSync('cwebp', [
+      '-quiet',
+      '-lossless',
+      '-exact',
+      source,
+      '-o',
+      path.join(OUTPUT_DIR, 'star-organic.webp'),
+    ]);
+  } finally {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  }
 
   console.log('[textures] Generating RGBA noise texture...');
   const noise = generateNoiseTexture({ width: 64, height: 64 });

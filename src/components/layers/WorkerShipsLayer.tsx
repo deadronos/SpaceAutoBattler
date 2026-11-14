@@ -12,16 +12,20 @@ import {
   Vector3,
 } from 'three';
 import { useOptionalSimulationBridge } from '../../app/context.js';
-
-const DEFAULT_CAPACITY = 2048;
+import { DEFAULT_TRANSFORM_CAPACITY } from '../../worker/transformsLayout.js';
 
 export function WorkerShipsLayer({
-  capacity = DEFAULT_CAPACITY,
+  capacity = DEFAULT_TRANSFORM_CAPACITY,
 }: {
   capacity?: number;
 }): ReactElement {
   const bridge = useOptionalSimulationBridge();
   const meshRef = useRef<InstancedMesh>(null);
+  const renderedSnapshot = useRef<{
+    mesh: InstancedMesh;
+    bridge: typeof bridge;
+    tick: number;
+  } | null>(null);
 
   const geometry = useMemo(() => new ConeGeometry(0.6, 1.6, 6), []);
   const material = useMemo(
@@ -68,6 +72,16 @@ export function WorkerShipsLayer({
   useFrame(() => {
     const mesh = meshRef.current;
     if (!mesh || !bridge) return;
+
+    const tick = bridge.getLatestTick();
+    const rendered = renderedSnapshot.current;
+    if (
+      tick === null ||
+      (rendered?.mesh === mesh && rendered.bridge === bridge && rendered.tick === tick)
+    ) {
+      return;
+    }
+    renderedSnapshot.current = { mesh, bridge, tick };
 
     const views = bridge.getLatestViews();
     const slots = bridge.getShipSlots();

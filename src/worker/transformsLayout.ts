@@ -79,3 +79,15 @@ export function createTransformSoAViews(
     shipThrust: new Float32Array(buffer, layout.shipThrustOffset, capacity),
   };
 }
+
+export const DEFAULT_TRANSFORM_CAPACITY = 4096;
+export const SHARED_TRANSFORM_PAGE_COUNT = 2;
+export const SHARED_TRANSFORM_PAGE_OWNERSHIP_BYTES = Int32Array.BYTES_PER_ELEMENT;
+
+export function createSharedTransformPage(layout: TransformSoALayout, buffer: SharedArrayBuffer) {
+  return {
+    views: createTransformSoAViews(layout, buffer),
+    // Only the worker publishes (1). Only the main thread releases (0).
+    ownership: new Int32Array(buffer, layout.totalBytes, 1),
+  };
+}

@@ -1,6 +1,6 @@
 import type { AiOverrideSlice, TransformSoALayout } from './protocol.js';
 import type { SlotAllocator } from './slotAllocator.js';
-import type { createTransformSoAViews } from './transformsLayout.js';
+import type { createSharedTransformPage, createTransformSoAViews } from './transformsLayout.js';
 import type { GameState } from '../types/index.js';
 
 export interface WorkerState {
@@ -11,15 +11,14 @@ export interface WorkerState {
   state: GameState | null;
   paused: boolean;
   layout: TransformSoALayout | null;
-  usingShared: boolean;
-  sharedBuffer: SharedArrayBuffer | null;
+  sharedPages: ReturnType<typeof createSharedTransformPage>[];
   liveBuffer: ArrayBuffer | null;
   /** Idle staging buffers for transfer-mode snapshots (refilled by the main thread). */
   transferBuffers: ArrayBuffer[];
   views: ReturnType<typeof createTransformSoAViews> | null;
   slots: SlotAllocator | null;
   slotByEntityId: Map<number, number>;
-  lastShipIds: Set<number>;
+  currentShipIds: Set<number>;
 }
 
 export function createWorkerState(): WorkerState {
@@ -39,13 +38,12 @@ export function createWorkerState(): WorkerState {
     state: null,
     paused: false,
     layout: null,
-    usingShared: false,
-    sharedBuffer: null,
+    sharedPages: [],
     liveBuffer: null,
     transferBuffers: [],
     views: null,
     slots: null,
     slotByEntityId: new Map<number, number>(),
-    lastShipIds: new Set<number>(),
+    currentShipIds: new Set<number>(),
   };
 }

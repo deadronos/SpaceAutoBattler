@@ -19,7 +19,7 @@ export type MainToWorkerMessage =
       aiOverrides: AiOverrideSlice;
       transforms: {
         layout: TransformSoALayout;
-        buffer?: SharedArrayBuffer;
+        sharedPages?: SharedArrayBuffer[];
       };
       startPaused?: boolean;
       debug?: boolean;
@@ -66,6 +66,7 @@ export type WorkerToMainMessage =
       created: CreatedEntity[];
       destroyed: number[];
       buffer?: ArrayBuffer;
+      sharedPage?: number;
     }
   | {
       type: 'error';

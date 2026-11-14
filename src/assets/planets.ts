@@ -1,6 +1,6 @@
-import gasGiant12Url from '../assets/textures/gasgiant/Gas Giant-EQUIRECTANGULAR-12-2048x1024.png';
+import gasGiant12Url from '../assets/textures/gasgiant/Gas Giant-EQUIRECTANGULAR-12-2048x1024.webp';
 import gasGiant12LoResUrl from '../assets/textures/gasgiant/Gas Giant-EQUIRECTANGULAR-12-512x256.png';
-import icePlanet1Url from '../assets/textures/planet/Ice-EQUIRECTANGULAR-1-2048x1024.png';
+import icePlanet1Url from '../assets/textures/planet/Ice-EQUIRECTANGULAR-1-2048x1024.webp';
 import icePlanet1LoResUrl from '../assets/textures/planet/Ice-EQUIRECTANGULAR-1-512x256.png';
 
 export const PLANET_TEXTURE_PATHS = {
