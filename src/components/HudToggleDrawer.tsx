@@ -1,8 +1,36 @@
-import { useId, useState, useCallback } from 'react';
+import { useId, useCallback, useEffect, useRef, useSyncExternalStore } from 'react';
 import type React from 'react';
 import { useUiStore } from '../app/uiStore.js';
 import type { QualityPreset } from '../config/quality.js';
 import { DEBUG_TOGGLES, SETTINGS_TOGGLES, type HudToggleDefinition } from './hudToggleConfig.js';
+
+type DrawerListener = () => void;
+
+let activeDrawerId: string | null = null;
+const drawerListeners = new Set<DrawerListener>();
+
+function subscribeActiveDrawer(listener: DrawerListener): () => void {
+  drawerListeners.add(listener);
+  return () => {
+    drawerListeners.delete(listener);
+  };
+}
+
+function getActiveDrawerId(): string | null {
+  return activeDrawerId;
+}
+
+function getServerActiveDrawerId(): string | null {
+  return null;
+}
+
+function setActiveDrawerId(nextId: string | null): void {
+  if (activeDrawerId === nextId) return;
+  activeDrawerId = nextId;
+  for (const listener of drawerListeners) {
+    listener();
+  }
+}
 
 export function SettingsDrawer(): React.ReactElement {
   return (
@@ -43,23 +71,68 @@ function HudToggleDrawer({
   triggerClassName,
   extra,
 }: HudToggleDrawerProps): React.ReactElement {
-  const [open, setOpen] = useState(false);
   const panelId = useId();
+  const currentOpenId = useSyncExternalStore(
+    subscribeActiveDrawer,
+    getActiveDrawerId,
+    getServerActiveDrawerId,
+  );
+  const open = currentOpenId === panelId;
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
 
   const handleToggleDrawer = useCallback(() => {
-    setOpen((value) => !value);
-  }, []);
+    setActiveDrawerId(getActiveDrawerId() === panelId ? null : panelId);
+  }, [panelId]);
 
-  const handleKeyDown = useCallback((event: React.KeyboardEvent<HTMLDivElement>) => {
-    if (event.key === 'Escape') {
-      event.stopPropagation();
-      setOpen(false);
-    }
-  }, []);
+  useEffect(() => {
+    return () => {
+      if (getActiveDrawerId() === panelId) {
+        setActiveDrawerId(null);
+      }
+    };
+  }, [panelId]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const handleDocumentKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      if (getActiveDrawerId() !== panelId) return;
+      event.preventDefault();
+      setActiveDrawerId(null);
+      triggerRef.current?.focus();
+    };
+
+    const handleDocumentPointerOutside = (event: Event) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (containerRef.current?.contains(target)) return;
+      if (getActiveDrawerId() === panelId) {
+        setActiveDrawerId(null);
+      }
+    };
+
+    document.addEventListener('keydown', handleDocumentKeyDown);
+    document.addEventListener('pointerdown', handleDocumentPointerOutside);
+    document.addEventListener('mousedown', handleDocumentPointerOutside);
+    document.addEventListener('click', handleDocumentPointerOutside);
+
+    return () => {
+      document.removeEventListener('keydown', handleDocumentKeyDown);
+      document.removeEventListener('pointerdown', handleDocumentPointerOutside);
+      document.removeEventListener('mousedown', handleDocumentPointerOutside);
+      document.removeEventListener('click', handleDocumentPointerOutside);
+    };
+  }, [open, panelId]);
 
   return (
-    <div className={`hud-toggle-drawer${open ? ' hud-toggle-drawer--open' : ''}`}>
+    <div
+      ref={containerRef}
+      className={`hud-toggle-drawer${open ? ' hud-toggle-drawer--open' : ''}`}
+    >
       <button
+        ref={triggerRef}
         type="button"
         className={`hud-toggle-drawer__trigger ${triggerClassName ?? ''}`.trim()}
         aria-label={label}
@@ -75,7 +148,6 @@ function HudToggleDrawer({
         className="hud-toggle-drawer__panel"
         hidden={!open}
         aria-hidden={open ? 'false' : 'true'}
-        onKeyDown={handleKeyDown}
       >
         <p className="hud-toggle-drawer__title">{label}</p>
         <ul className="hud-toggle-drawer__list">
@@ -183,7 +255,11 @@ function SimulationDebugSettings(): React.ReactElement {
   return (
     <div className="hud-toggle-drawer__simulation-settings">
       <p className="hud-toggle-drawer__simulation-settings-title">Profiling sample rate</p>
-      <div className="hud-toggle-drawer__simulation-settings-grid">
+      <div
+        className="hud-toggle-drawer__simulation-settings-grid"
+        role="group"
+        aria-label="Profiling sample rate"
+      >
         {SIMULATION_SAMPLE_RATES.map((value) => (
           <button
             key={value}
@@ -191,6 +267,7 @@ function SimulationDebugSettings(): React.ReactElement {
             className={`hud-toggle-drawer__rate-button${
               value === sampleRate ? ' hud-toggle-drawer__rate-button--active' : ''
             }`}
+            aria-pressed={value === sampleRate}
             onClick={() => setSampleRate(value)}
           >
             {value === 1 ? 'Every tick' : `Every ${value}th tick`}

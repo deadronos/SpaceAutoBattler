@@ -1,9 +1,40 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type React from 'react';
 import { useOptionalGameState } from '../app/context.js';
 import { useUiStore } from '../app/uiStore.js';
 import { requestReset, spawnRandomShip } from '../game/state.js';
 import { useTimeout } from '../hooks/useTimeout.js';
+
+const TIME_SCALE_OPTIONS = [0.25, 0.5, 1, 1.5, 2, 3, 4] as const;
+
+const EDITABLE_TARGET_SELECTOR = 'input, textarea, select, [contenteditable]';
+const INTERACTIVE_SPACE_TARGET_SELECTOR =
+  'button, a[href], summary, [role="button"], [role="switch"], [role="menuitem"], [role="checkbox"], [role="radio"], [role="tab"], [role="slider"], [role="combobox"]';
+
+function isEditableEventTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof Element)) return false;
+  if (target instanceof HTMLElement && target.isContentEditable) return true;
+  return target.closest(EDITABLE_TARGET_SELECTOR) !== null;
+}
+
+function isInteractiveSpaceTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof Element)) return false;
+  return target.closest(INTERACTIVE_SPACE_TARGET_SELECTOR) !== null;
+}
+
+function stepTimeScale(current: number, direction: -1 | 1): number {
+  if (direction < 0) {
+    for (let i = TIME_SCALE_OPTIONS.length - 1; i >= 0; i--) {
+      const candidate = TIME_SCALE_OPTIONS[i];
+      if (candidate !== undefined && candidate < current) return candidate;
+    }
+    return TIME_SCALE_OPTIONS[0];
+  }
+  for (const candidate of TIME_SCALE_OPTIONS) {
+    if (candidate > current) return candidate;
+  }
+  return TIME_SCALE_OPTIONS[TIME_SCALE_OPTIONS.length - 1] ?? current;
+}
 
 /**
  * UI component rendering the top-level controls bar (Pause, Reset, Spawn).
@@ -25,7 +56,7 @@ export function Controls(): React.ReactElement {
     spawnRandomShip(state, team);
   };
 
-  const handleReset = () => {
+  const handleReset = useCallback(() => {
     if (!state) return;
     if (resetConfirm) {
       requestReset(state);
@@ -33,24 +64,77 @@ export function Controls(): React.ReactElement {
     } else {
       setResetConfirm(true);
     }
-  };
+  }, [state, resetConfirm]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.repeat) return;
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
+      if (isEditableEventTarget(event.target)) return;
+
+      if (event.code === 'Space' || event.key === ' ') {
+        if (event.shiftKey || isInteractiveSpaceTarget(event.target)) return;
+        event.preventDefault();
+        togglePause();
+        return;
+      }
+
+      if (event.key === 'r' || event.key === 'R') {
+        event.preventDefault();
+        handleReset();
+        return;
+      }
+
+      if (event.key === '[' || event.key === ']') {
+        const direction = event.key === '[' ? -1 : 1;
+        const nextScale = stepTimeScale(timeScale, direction);
+        event.preventDefault();
+        if (nextScale !== timeScale) {
+          setTimeScale(nextScale);
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [togglePause, handleReset, setTimeScale, timeScale]);
 
   return (
-    <div className="controls-bar">
+    <div className="controls-bar" role="toolbar" aria-label="Simulation controls">
       <button
+        type="button"
         onClick={togglePause}
         aria-label={paused ? 'Resume simulation' : 'Pause simulation'}
-        title={paused ? 'Resume simulation' : 'Pause simulation'}
+        title={paused ? 'Resume simulation (Space)' : 'Pause simulation (Space)'}
+        aria-keyshortcuts="Space"
       >
         {paused ? 'Resume' : 'Pause'}
       </button>
-      <button onClick={handleReset} aria-label="Reset simulation" title="Reset simulation">
+      <button
+        type="button"
+        onClick={handleReset}
+        aria-label="Reset simulation"
+        title={resetConfirm ? 'Confirm reset simulation (R)' : 'Reset simulation (R)'}
+        aria-keyshortcuts="R"
+      >
         {resetConfirm ? 'Confirm?' : 'Reset'}
       </button>
-      <button onClick={() => addShip('red')} aria-label="Spawn Red ship" title="Spawn Red ship">
+      <button
+        type="button"
+        onClick={() => addShip('red')}
+        aria-label="Spawn Red ship"
+        title="Spawn Red ship"
+      >
         + Red
       </button>
-      <button onClick={() => addShip('blue')} aria-label="Spawn Blue ship" title="Spawn Blue ship">
+      <button
+        type="button"
+        onClick={() => addShip('blue')}
+        aria-label="Spawn Blue ship"
+        title="Spawn Blue ship"
+      >
         + Blue
       </button>
       {/* Simulation modifiers moved to HUD settings */}
@@ -59,16 +143,16 @@ export function Controls(): React.ReactElement {
         <select
           id="speedSelect"
           aria-label="Simulation speed"
+          title="Simulation speed ([ slower, ] faster)"
+          aria-keyshortcuts="[ ]"
           value={String(timeScale)}
           onChange={(e) => setTimeScale(parseFloat(e.target.value))}
         >
-          <option value="0.25">0.25x</option>
-          <option value="0.5">0.5x</option>
-          <option value="1">1x</option>
-          <option value="1.5">1.5x</option>
-          <option value="2">2x</option>
-          <option value="3">3x</option>
-          <option value="4">4x</option>
+          {TIME_SCALE_OPTIONS.map((option) => (
+            <option key={option} value={String(option)}>
+              {option}x
+            </option>
+          ))}
         </select>
       </div>
       {/* PP tuning sliders removed per request; toggles live in HUD drawers */}
