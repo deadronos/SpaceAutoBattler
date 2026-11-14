@@ -4,10 +4,10 @@ Components for rendering the space environment: planets, moons, the central star
 
 ## Star Components
 
-| File               | Purpose                                                                             |
-| ------------------ | ----------------------------------------------------------------------------------- |
-| **StarSphere.tsx** | Central star billboard (replaces the old star disk); depth + additive shader passes |
-| **StarLight.tsx**  | Provides dynamic lighting from star source                                          |
+| File               | Purpose                                                                                     |
+| ------------------ | ------------------------------------------------------------------------------------------- |
+| **StarSphere.tsx** | Central star billboard (replaces the old star disk); depth + additive shader passes         |
+| **StarLight.tsx**  | Provides key directional lighting, opposite cool fill light, and procedural IBL environment |
 
 `StarSphere.tsx` renders the central star using `starSphere.vertex.glsl`,
 `mainsequencestar.glsl`, `starDiskDepthMaterial`, and `starDiskOrientation`. The

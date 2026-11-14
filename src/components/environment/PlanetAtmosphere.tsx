@@ -50,6 +50,7 @@ export function PlanetAtmosphere({
       depthWrite: false,
       depthTest: true,
       side: DoubleSide,
+      fog: false,
     });
   }, [color, strength, falloff, lightX, lightY, lightZ]);
 

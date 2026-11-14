@@ -96,6 +96,7 @@ export function createPlanetRingMaterial(opts: PlanetRingMaterialOptions): Shade
     depthTest: true,
     side: DoubleSide,
     blending: AdditiveBlending,
+    fog: false,
   });
 
   try {
@@ -141,6 +142,7 @@ export function createPlanetRingBasicMaterial(opts: {
     depthWrite: false,
     side: DoubleSide,
     blending: NormalBlending,
+    fog: false,
   });
   try {
     if (!bm.userData) bm.userData = {};
