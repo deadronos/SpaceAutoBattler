@@ -1,3 +1,3 @@
 # Project: SpaceAutoBattler
 
-Refer to `.github/copilot-instructions.md` and `AGENTS.md` for detailed instructions on how to contribute to this project using AI-assisted development.
+Read and follow [AGENTS.md](AGENTS.md) as the canonical entrypoint for this repository.

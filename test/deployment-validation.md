@@ -78,7 +78,7 @@ locally with `pnpm run version:check <tag>` (or by setting `GITHUB_REF_TYPE` /
 
 ### Common Issues
 
-- **404 on assets**: Check if paths are correctly relative (they should be with `publicPath: './'`)
+- **404 on assets**: Check if paths are correctly relative (they should be with Vite `base: './'`)
 - **Build failures**: Review the Actions logs for typecheck or test failures
 - **Deploy failures**: Ensure GitHub Pages is enabled and set to "GitHub Actions"
 
@@ -96,5 +96,5 @@ The deployed `dist/` folder should contain:
 
 - `index.html` (copied from `spaceautobattler.html`)
 - `spaceautobattler.html` (application entry point)
-- Asset folders: `assets/`, `models/`, `styles/`, `workers/`
+- Asset folders: `assets/`, `decoders/`, `models/`, `styles/`, `wasm/`, `workers/`
 - JavaScript bundles with content hashes
