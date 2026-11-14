@@ -35,7 +35,7 @@
 - Shield bubbles stay mounted and update visibility, opacity, ripple uniforms, and hull tint directly from simulation data. Ripple uniforms are repacked when the queue or shader material changes.
 - The HUD health collector projects ships and publishes DOM overlay snapshots at up to 30 Hz while enabled. Individual overlays skip React renders when their displayed inputs match.
 - Ship and turret kinematic transforms are snapshotted into a per-state numeric batch and applied in enqueue order before Rapier steps. Collision queries reuse per-state buffers while preserving cell traversal order.
-- The sensor broadphase rounds adaptive cell sizes to 10-unit steps. Turret targeting indexes ships and interceptable projectiles, and resolves ties in ECS query order. Projectile damage builds the reverse AI target index at the first kill in each collision pass.
+- The sensor broadphase repopulates the same grid instance each tick and updates its adaptive cell size in place when it changes by more than 0.001 units. Turret targeting indexes ships and interceptable projectiles, and resolves ties in ECS query order. Projectile damage builds the reverse AI target index at the first kill in each collision pass.
 
 ## Assets, Decoders & Rendering Subsystems
 

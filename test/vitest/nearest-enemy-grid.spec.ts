@@ -275,7 +275,7 @@ describe('nearest-enemy via sensor broad-phase grid', () => {
   });
 });
 
-it('reuses the sensor grid when ship positions shift slightly', () => {
+it('reuses the sensor grid when its adaptive cell size changes', () => {
   const ships = [
     makeShip({ id: 1, team: 'blue', pos: [0, 0, 0] }),
     makeShip({ id: 2, team: 'red', pos: [100, 100, 100] }),
@@ -283,7 +283,32 @@ it('reuses the sensor grid when ship positions shift slightly', () => {
   const state = makeState(ships);
   updateSensorSystem(state, ships);
   const grid = getSensorBroadphaseGrid(state);
-  ships[1]!.transform.position.x += 0.01;
+  ships[1]!.transform.position.x += 20;
   updateSensorSystem(state, ships);
   expect(getSensorBroadphaseGrid(state)).toBe(grid);
+});
+
+it('preserves exact adaptive cell boundaries for sensor occlusion', () => {
+  const source = makeShip({ id: 1, team: 'blue', pos: [209, 127, -100] });
+  const target = makeShip({ id: 2, team: 'red', pos: [-126, 119, 183] });
+  const occluder = makeShip({ id: 3, team: 'blue', pos: [145, 125, -38] });
+  const ships = [source, target, occluder];
+  const state = makeState(ships);
+  updateSensorSystem(state, ships);
+
+  const start = source.transform.position;
+  const end = target.transform.position;
+  const direction = end.clone().sub(start).normalize();
+  const grid = getSensorBroadphaseGrid(state)!;
+  expect(
+    grid.hasOccluderOnSegment(
+      start,
+      end,
+      direction,
+      start.distanceTo(end),
+      source,
+      target,
+      Math.cos(0.14),
+    ),
+  ).toBe(false);
 });

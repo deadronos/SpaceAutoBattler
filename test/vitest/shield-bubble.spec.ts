@@ -24,4 +24,18 @@ describe('ShieldBubble anchoring (static check)', () => {
     expect(txt).toContain('mesh.visible =');
     expect(txt).not.toContain('useState');
   });
+
+  it('sets transmission material visibility initially and on frame updates', () => {
+    const component = fs.readFileSync(
+      path.resolve(__dirname, '../../src/components/ship/ShipShield.tsx'),
+      'utf-8',
+    );
+    const transmission = fs.readFileSync(
+      path.resolve(__dirname, '../../src/renderer/shields/shieldMaterials.tsx'),
+      'utf-8',
+    );
+    expect(component).toContain('material.visible = mesh.visible');
+    expect(component).toContain('visible={visible}');
+    expect(transmission).toContain('visible={visible}');
+  });
 });
