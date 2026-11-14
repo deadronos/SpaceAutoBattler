@@ -52,7 +52,7 @@
  * All randomness is seeded via SeededRng. To ensure reproducible test runs:
  * 1. Set the same `seed` in AIScenarioConfig (default: 1337).
  * 2. Per-ship trait seeds are derived deterministically from the scenario seed.
- * 3. Module-level temp RNGs (intent-utils, vertical-maneuvers, blackboard) are reset before each run.
+ * 3. Decision utilities use pure stateless deterministic helpers with no shared mutable RNG state.
  *
  * ## Diagnostics
  *
@@ -84,9 +84,6 @@ import type {
 } from './aiScenarioHarness/types.js';
 import { createHarnessShip } from './aiScenarioHarness/shipFactory.js';
 import { createHarnessState } from './aiScenarioHarness/stateFactory.js';
-import { resetTempRng as resetIntentTempRng } from '../../src/game/systems/decision/intent-utils.js';
-import { resetTempRng as resetVerticalTempRng } from '../../src/game/systems/decision/vertical-maneuvers.js';
-import { resetTempRng as resetBlackboardTempRng } from '../../src/game/systems/decision/blackboard.js';
 import { getEffectiveAIConfig } from '../../src/game/config.js';
 import { useUiStore } from '../../src/app/uiStore.js';
 import { applyHarnessIntegration } from './aiScenarioHarness/integration.js';
@@ -150,24 +147,6 @@ export function runAIScenario(config: AIScenarioConfig): AIScenarioLog {
     rng,
     aiEnabled: config.aiEnabled ?? true,
   });
-
-  // Ensure any module-level temporary RNGs are reset so harness runs are
-  // deterministic and independent of test ordering.
-  try {
-    resetIntentTempRng(1);
-  } catch {
-    // ignore: module may not export reset in some builds
-  }
-  try {
-    resetVerticalTempRng(1);
-  } catch {
-    // ignore: module may not export reset in some builds
-  }
-  try {
-    resetBlackboardTempRng(1);
-  } catch {
-    // ignore: module may not export reset in some builds
-  }
 
   const entries: AIScenarioLogEntry[] = [];
   for (let i = 0; i < config.ticks; i += 1) {

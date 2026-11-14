@@ -64,6 +64,7 @@ export async function createGameState(options: CreateGameStateOptions = {}): Pro
     },
     explosions: [],
     explosionPool: [],
+    explosionOverflowWarned: false,
     progressionEvents: new Map(),
     simulation: {
       step: 1 / 20,

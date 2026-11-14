@@ -24,12 +24,6 @@ import {
 // consumers importing from this module keep working.
 export { TEMP_DIR, TEMP_POS, TEMP_REL_POS, TEMP_TARGET_VEL, TEMP_SHIP_VEL, TEMP_REL_VEL };
 
-// Re-export for backward compatibility
-// The re-exported symbols are intended for backward compatibility and may not
-// be referenced locally in this module — silence the unused-var lint rule.
-
-export { TEMP_RNG, resetTempRng } from './sharedRng.js';
-
 /**
  * Helper function to get effective desired range, applying hysteresis if enabled.
  * Returns [desiredMin, desiredMax] tuple.
