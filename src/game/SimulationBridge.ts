@@ -4,7 +4,14 @@ import type {
   TransformSoALayout,
   WorkerToMainMessage,
 } from '../worker/protocol.js';
-import { createTransformSoALayout, createTransformSoAViews } from '../worker/transformsLayout.js';
+import {
+  createSharedTransformPage,
+  createTransformSoALayout,
+  createTransformSoAViews,
+  DEFAULT_TRANSFORM_CAPACITY,
+  SHARED_TRANSFORM_PAGE_COUNT,
+  SHARED_TRANSFORM_PAGE_OWNERSHIP_BYTES,
+} from '../worker/transformsLayout.js';
 import { reportLifecycleError } from '../utils/errorReporting.js';
 import { sampleShipMotion } from './workerSnapshotSampler.js';
 
@@ -24,8 +31,8 @@ export class SimulationBridge {
   private readonly debugEnabled: boolean;
   private readonly layout: TransformSoALayout;
   private readonly usingShared: boolean;
-  private readonly sharedBuffer: SharedArrayBuffer | null;
-  private sharedViews: ReturnType<typeof createTransformSoAViews> | null = null;
+  private readonly sharedPages: ReturnType<typeof createSharedTransformPage>[];
+  private latestSharedPage: ReturnType<typeof createSharedTransformPage> | null = null;
   private latestTransferBuffer: ArrayBuffer | null = null;
   private latestTransferViews: ReturnType<typeof createTransformSoAViews> | null = null;
   private latestTick: number | null = null;
@@ -42,18 +49,22 @@ export class SimulationBridge {
     debug?: boolean;
   }) {
     this.debugEnabled = Boolean(options.debug);
-    const capacity = options.capacity ?? 4096;
+    const capacity = options.capacity ?? DEFAULT_TRANSFORM_CAPACITY;
     this.layout = createTransformSoALayout(capacity);
 
     const canUseShared =
       typeof SharedArrayBuffer !== 'undefined' &&
       (globalThis as unknown as { crossOriginIsolated?: boolean }).crossOriginIsolated === true;
     this.usingShared = canUseShared;
-    const buffer = canUseShared ? new SharedArrayBuffer(this.layout.totalBytes) : undefined;
-    this.sharedBuffer = buffer ?? null;
-    if (this.sharedBuffer) {
-      this.sharedViews = createTransformSoAViews(this.layout, this.sharedBuffer);
-    }
+    const sharedPages = canUseShared
+      ? Array.from(
+          { length: SHARED_TRANSFORM_PAGE_COUNT },
+          () =>
+            new SharedArrayBuffer(this.layout.totalBytes + SHARED_TRANSFORM_PAGE_OWNERSHIP_BYTES),
+        )
+      : undefined;
+    this.sharedPages =
+      sharedPages?.map((buffer) => createSharedTransformPage(this.layout, buffer)) ?? [];
 
     this.worker = new Worker(new URL('../worker/simulation.worker.ts', import.meta.url), {
       type: 'module',
@@ -108,6 +119,16 @@ export class SimulationBridge {
       }
 
       if (message.type === 'snapshot') {
+        if (message.sharedPage !== undefined) {
+          const page = this.sharedPages[message.sharedPage];
+          if (!page || Atomics.load(page.ownership, 0) !== 1) return;
+
+          const previous = this.latestSharedPage;
+          this.latestSharedPage = page;
+          // No main-thread consumer can still be reading the previous page in this callback.
+          if (previous !== null) Atomics.store(previous.ownership, 0, 0);
+        }
+
         this.latestTick = message.tick;
         this.latestShipCount = message.shipCount;
 
@@ -186,7 +207,7 @@ export class SimulationBridge {
       aiOverrides: options.aiOverrides,
       transforms: {
         layout: this.layout,
-        buffer,
+        sharedPages,
       },
       startPaused: options.startPaused,
       debug: options.debug,
@@ -225,8 +246,13 @@ export class SimulationBridge {
     this.post({ type: 'setPaused', paused });
   }
 
+  getLatestTick(): number | null {
+    return this.latestTick;
+  }
+
+  /** Borrow the latest views for synchronous use. The next snapshot can recycle them. */
   getLatestViews(): ReturnType<typeof createTransformSoAViews> | null {
-    return this.latestTransferViews ?? this.sharedViews;
+    return this.latestSharedPage?.views ?? this.latestTransferViews;
   }
 
   getShipSlots(): ReadonlyMap<number, number> {
@@ -250,8 +276,7 @@ export class SimulationBridge {
       thrust: number;
     }>;
   } {
-    const buffer = this.latestTransferBuffer;
-    const views = buffer ? createTransformSoAViews(this.layout, buffer) : this.sharedViews;
+    const views = this.getLatestViews();
     if (!views) {
       return { tick: this.latestTick, shipCount: this.latestShipCount, ships: [] };
     }

@@ -3,9 +3,8 @@ import { createGameState, spawnInitialFleets } from '../game/state.js';
 import { updateGame } from '../game/systems.js';
 import { SeededRng } from '../utils/rng.js';
 import { SlotAllocator } from './slotAllocator.js';
-import { createTransformSoAViews } from './transformsLayout.js';
+import { createSharedTransformPage, createTransformSoAViews } from './transformsLayout.js';
 import { createWorkerState } from './workerState.js';
-import { writeShipTransforms } from './shipTransformWriter.js';
 import { emitSnapshot, returnTransferBuffer } from './snapshotEmitter.js';
 import { setAiOverrideProvider } from '../game/config.js';
 
@@ -42,18 +41,17 @@ function log(...args: unknown[]): void {
 function startLoop(): void {
   if (ws.loopId !== null) return;
 
-  if (!ws.state || !ws.layout || !ws.views || !ws.slots) {
+  if (!ws.state || !ws.layout || !ws.slots) {
     throw new Error('Worker loop started before init completed');
   }
 
   const dt = ws.state.simulation.step;
   const stepMs = Math.max(1, Math.round(dt * 1000));
   ws.loopId = workerScope.setInterval(() => {
-    if (!ws.state || !ws.layout || !ws.views || !ws.slots) return;
+    if (!ws.state || !ws.layout || !ws.slots) return;
     if (ws.paused) return;
 
     updateGame(ws.state, dt);
-    writeShipTransforms(ws, ws.state);
     emitSnapshot(ws, ws.state, post, postWithTransfer);
   }, stepMs);
 }
@@ -76,8 +74,10 @@ workerScope.onmessage = (event: MessageEvent) => {
 
           const initLayout = message.transforms.layout;
           ws.layout = initLayout;
-          ws.usingShared = Boolean(message.transforms.buffer);
-          ws.sharedBuffer = message.transforms.buffer ?? null;
+          ws.sharedPages =
+            message.transforms.sharedPages?.map((buffer) =>
+              createSharedTransformPage(initLayout, buffer),
+            ) ?? [];
 
           ws.slots = new SlotAllocator(initLayout.capacity);
 
@@ -88,9 +88,7 @@ workerScope.onmessage = (event: MessageEvent) => {
 
           ws.paused = Boolean(message.startPaused);
 
-          if (ws.sharedBuffer) {
-            ws.views = createTransformSoAViews(initLayout, ws.sharedBuffer);
-          } else {
+          if (ws.sharedPages.length === 0) {
             ws.liveBuffer = new ArrayBuffer(initLayout.totalBytes);
             ws.views = createTransformSoAViews(initLayout, ws.liveBuffer);
             ws.transferBuffers = [
@@ -99,15 +97,12 @@ workerScope.onmessage = (event: MessageEvent) => {
             ];
           }
 
-          // Initialize the ship ID set before the first snapshot.
-          ws.lastShipIds = new Set<number>();
-
           startLoop();
           post({
             type: 'ready',
             sabSupported: typeof SharedArrayBuffer !== 'undefined',
             rapierLoaded: ws.rapierLoaded,
-            usingShared: ws.usingShared,
+            usingShared: ws.sharedPages.length > 0,
             layout: ws.layout,
           });
           log('ready');

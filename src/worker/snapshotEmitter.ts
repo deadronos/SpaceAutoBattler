@@ -1,5 +1,6 @@
 import type { CreatedEntity, WorkerToMainMessage } from './protocol.js';
 import { createTransformSoAViews } from './transformsLayout.js';
+import { writeShipTransforms } from './shipTransformWriter.js';
 import { copyTransformViews } from './transformViews.js';
 import { coerceHull, coerceTeam } from './entityCoercion.js';
 import { freeSlot, getOrAllocateSlot } from './shipSlotTable.js';
@@ -14,13 +15,20 @@ export function computeShipDiffs(
   game: GameState,
 ): { created: CreatedEntity[]; destroyed: number[] } {
   const ships = game.queries.ships.entities as GameEntity[];
-  const currentIds = new Set<number>();
+  const currentIds = ws.currentShipIds;
+  currentIds.clear();
+  for (const entity of ships) currentIds.add(entity.id);
   const created: CreatedEntity[] = [];
   const destroyed: number[] = [];
 
+  for (const id of ws.slotByEntityId.keys()) {
+    if (currentIds.has(id)) continue;
+    destroyed.push(id);
+    freeSlot(ws, id);
+  }
+
   for (const entity of ships) {
-    currentIds.add(entity.id);
-    if (ws.lastShipIds.has(entity.id)) continue;
+    if (ws.slotByEntityId.has(entity.id)) continue;
 
     const slot = getOrAllocateSlot(ws, entity.id);
     if (slot === null) continue;
@@ -35,13 +43,6 @@ export function computeShipDiffs(
     });
   }
 
-  for (const id of ws.lastShipIds) {
-    if (currentIds.has(id)) continue;
-    destroyed.push(id);
-    freeSlot(ws, id);
-  }
-
-  ws.lastShipIds = currentIds;
   return { created, destroyed };
 }
 
@@ -52,10 +53,16 @@ export function emitSnapshot(
   postWithTransfer: PostWithTransfer,
 ): void {
   if (!ws.layout) return;
+  const sharedPage = ws.sharedPages.findIndex((page) => Atomics.load(page.ownership, 0) === 0);
+  const page = ws.sharedPages[sharedPage];
+  if (ws.sharedPages.length > 0 && !page) return;
+
   const ships = game.queries.ships.entities as GameEntity[];
   const { created, destroyed } = computeShipDiffs(ws, game);
 
-  if (ws.usingShared) {
+  if (page) {
+    writeShipTransforms(ws, game, page.views);
+    Atomics.store(page.ownership, 0, 1);
     post({
       type: 'snapshot',
       tick: game.simulation.lastTickIndex,
@@ -63,6 +70,7 @@ export function emitSnapshot(
       shipCount: ships.length,
       created,
       destroyed,
+      sharedPage,
     });
     return;
   }
@@ -73,7 +81,8 @@ export function emitSnapshot(
   const buffer = ws.transferBuffers.pop() ?? new ArrayBuffer(ws.layout.totalBytes);
   const stagingViews = createTransformSoAViews(ws.layout, buffer);
   if (ws.views) {
-    copyTransformViews(ws.views, stagingViews);
+    writeShipTransforms(ws, game, ws.views);
+    copyTransformViews(ws.views, stagingViews, ws.slotByEntityId.values());
   }
 
   postWithTransfer(
