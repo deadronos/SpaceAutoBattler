@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import type React from 'react';
 import type { HudHealthOverlayConfig } from '../config/hudHealth.js';
 import { lerpBySeed } from '../utils/deterministicLerp.js';
@@ -17,32 +17,38 @@ export function ShipHudOverlay({
 }: ShipHudOverlayProps): React.ReactElement | null {
   const reducedMotion = usePrefersReducedMotion();
   const hasShield = Number.isFinite(overlay.ratios.shield);
-  const [healthDisplay, setHealthDisplay] = useState(() => clampRatio(overlay.ratios.health));
-  const [shieldDisplay, setShieldDisplay] = useState(() =>
-    hasShield ? clampRatio(overlay.ratios.shield) : 0,
-  );
+  const targetHealth = clampRatio(overlay.ratios.health);
+  const targetShield = hasShield ? clampRatio(overlay.ratios.shield) : 0;
+  const [healthState, setHealthState] = useState(() => ({
+    target: targetHealth,
+    display: targetHealth,
+  }));
+  const [shieldState, setShieldState] = useState(() => ({
+    target: targetShield,
+    display: targetShield,
+  }));
 
-  useEffect(() => {
-    if (reducedMotion) {
-      setHealthDisplay(clampRatio(overlay.ratios.health));
-      return;
+  let effectiveHealth = targetHealth;
+  if (!reducedMotion) {
+    if (healthState.target !== targetHealth) {
+      const nextDisplay = lerpBySeed(overlay.seed, healthState.display, targetHealth);
+      setHealthState({ target: targetHealth, display: nextDisplay });
+      effectiveHealth = nextDisplay;
+    } else {
+      effectiveHealth = healthState.display;
     }
-    setHealthDisplay((prev) => lerpBySeed(overlay.seed, prev, clampRatio(overlay.ratios.health)));
-  }, [overlay.ratios.health, overlay.seed, reducedMotion]);
+  }
 
-  useEffect(() => {
-    if (!hasShield) {
-      setShieldDisplay(0);
-      return;
+  let effectiveShield = hasShield ? targetShield : 0;
+  if (hasShield && !reducedMotion) {
+    if (shieldState.target !== targetShield) {
+      const nextDisplay = lerpBySeed(overlay.seed ^ 0x517cc1b7, shieldState.display, targetShield);
+      setShieldState({ target: targetShield, display: nextDisplay });
+      effectiveShield = nextDisplay;
+    } else {
+      effectiveShield = shieldState.display;
     }
-    if (reducedMotion) {
-      setShieldDisplay(clampRatio(overlay.ratios.shield));
-      return;
-    }
-    setShieldDisplay((prev) =>
-      lerpBySeed(overlay.seed ^ 0x517cc1b7, prev, clampRatio(overlay.ratios.shield)),
-    );
-  }, [overlay.ratios.shield, overlay.seed, reducedMotion, hasShield]);
+  }
 
   const effects = overlay.effects;
   const containerStyle = useMemo(
@@ -72,8 +78,8 @@ export function ShipHudOverlay({
     return null;
   }
 
-  const healthPercent = Math.round(healthDisplay * 100);
-  const shieldPercent = Math.round(shieldDisplay * 100);
+  const healthPercent = Math.round(effectiveHealth * 100);
+  const shieldPercent = Math.round(effectiveShield * 100);
 
   return (
     <div
@@ -91,7 +97,7 @@ export function ShipHudOverlay({
             <div
               className="ship-hud-overlay__fill"
               style={{
-                width: `${Math.round(shieldDisplay * config.barWidth)}px`,
+                width: `${Math.round(effectiveShield * config.barWidth)}px`,
                 backgroundColor: config.shieldColor,
               }}
             />
@@ -100,7 +106,7 @@ export function ShipHudOverlay({
             <div
               className="ship-hud-overlay__fill"
               style={{
-                width: `${Math.round(healthDisplay * config.barWidth)}px`,
+                width: `${Math.round(effectiveHealth * config.barWidth)}px`,
                 backgroundColor: config.healthColor,
               }}
             />

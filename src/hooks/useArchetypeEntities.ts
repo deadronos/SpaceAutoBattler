@@ -24,6 +24,8 @@ function scheduleFrame(callback: () => void): () => void {
   return () => clearTimeout(id);
 }
 
+const EMPTY_ENTITIES: readonly never[] = [];
+
 // Accept a nullable archetype so callers can use this hook unconditionally
 // (avoids violating React's rules of hooks). When `archetype` is null the hook
 // returns an empty array and does not subscribe to events.
@@ -36,8 +38,6 @@ export function useArchetypeEntities<T extends GameEntity>(
 
   useEffect(() => {
     if (!archetype) {
-      // If archetype becomes null, ensure we clear the list.
-      setEntities([]);
       return;
     }
 
@@ -74,5 +74,5 @@ export function useArchetypeEntities<T extends GameEntity>(
     };
   }, [archetype]);
 
-  return entities;
+  return archetype ? entities : (EMPTY_ENTITIES as unknown as T[]);
 }

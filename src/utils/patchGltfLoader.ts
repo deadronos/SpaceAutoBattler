@@ -1,6 +1,7 @@
 // Runtime patch to guard GLTFLoader.load against invalid URLs for both
 // three/examples and three-stdlib implementations used by @react-three/drei.
 import { GLTFLoader as ExamplesGLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { reportWebGLError } from './errorReporting.js';
 // Import from three-stdlib root; some versions do not expose loader subpaths in package exports.
 
 type LoaderProto = {
@@ -32,14 +33,14 @@ function patchPrototype(ctor: LoaderCtor, tag: string): void {
     if (!isString && !isURLObject) {
       try {
         console.warn(`[patchGltfLoader:${tag}] GLTFLoader.load invalid url:`, url);
-      } catch (e) {
-        void e;
+      } catch (error) {
+        reportWebGLError(`patchGltfLoader:${tag}.warn`, error);
       }
       if (typeof onError === 'function') {
         try {
           onError(new Error('GLTFLoader.load: invalid url argument'));
-        } catch (e) {
-          void e;
+        } catch (error) {
+          reportWebGLError(`patchGltfLoader:${tag}.onError`, error);
         }
       }
       return undefined as unknown as void;
@@ -66,6 +67,8 @@ async function patchStdlib(): Promise<void> {
     'three-stdlib/loaders/GLTFLoader.js',
     'three-stdlib',
   ];
+  let patched = false;
+  let lastError: unknown;
   for (const spec of candidates) {
     try {
       const mod: unknown = await import(/* @vite-ignore */ spec);
@@ -73,11 +76,15 @@ async function patchStdlib(): Promise<void> {
       const ctor = maybeCtor as LoaderCtor;
       if (ctor) {
         patchPrototype(ctor, `stdlib:${spec}`);
+        patched = true;
         break;
       }
-    } catch {
-      // try next
+    } catch (error) {
+      lastError = error;
     }
+  }
+  if (!patched && lastError !== undefined) {
+    reportWebGLError('patchGltfLoader.stdlib', lastError);
   }
 }
 

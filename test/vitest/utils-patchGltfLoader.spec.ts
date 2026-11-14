@@ -1,4 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vite-plus/test';
+import { ErrorCategory, getErrorCounts, resetErrorCounts } from '../../src/utils/errorReporting.js';
 
 // Mock three.js GLTFLoader before importing the patch
 const mockLoad = vi.fn();
@@ -126,6 +127,7 @@ describe('patchGltfLoader', () => {
 
   it('handles onError callback that throws', async () => {
     await import('../../src/utils/patchGltfLoader.js');
+    resetErrorCounts();
 
     const loader = Object.create(mockGLTFLoader.prototype);
     const throwingOnError = vi.fn(() => {
@@ -139,5 +141,6 @@ describe('patchGltfLoader', () => {
 
     expect(throwingOnError).toHaveBeenCalled();
     expect(mockLoad).not.toHaveBeenCalled();
+    expect(getErrorCounts()[ErrorCategory.WebGL]).toBe(1);
   });
 });

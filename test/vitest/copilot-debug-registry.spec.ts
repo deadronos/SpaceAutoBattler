@@ -1,4 +1,6 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vite-plus/test';
+import { isCopilotDebugEnabled } from '../../src/utils/copilotDebug.js';
+import { ErrorCategory, getErrorCounts, resetErrorCounts } from '../../src/utils/errorReporting.js';
 import {
   registerDebugHook,
   hasDebugHook,
@@ -73,5 +75,27 @@ describe('copilotDebugRegistry', () => {
     expect(getRegisteredDebugKeys()).not.toContain(KEY_A);
     expect(hasDebugHook(KEY_A)).toBe(true);
     expect(getDebugHook<string>(KEY_A)).toBe('value');
+  });
+
+  it('reports config errors when reading copilot debug flags throws', () => {
+    resetErrorCounts();
+    const originalDescriptor = Object.getOwnPropertyDescriptor(window, '__copilotDebugForce');
+    Object.defineProperty(window, '__copilotDebugForce', {
+      configurable: true,
+      get() {
+        throw new Error('blocked property');
+      },
+    });
+
+    try {
+      expect(isCopilotDebugEnabled()).toBe(false);
+      expect(getErrorCounts()[ErrorCategory.Config]).toBe(1);
+    } finally {
+      if (originalDescriptor) {
+        Object.defineProperty(window, '__copilotDebugForce', originalDescriptor);
+      } else {
+        deleteWindowKey('__copilotDebugForce');
+      }
+    }
   });
 });

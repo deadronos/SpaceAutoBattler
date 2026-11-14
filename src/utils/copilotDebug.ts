@@ -4,6 +4,8 @@
  * Shared utilities for checking debug mode and exposing diagnostics.
  */
 
+import { reportConfigError } from './errorReporting.js';
+
 /**
  * Check if Copilot debug mode is enabled via query parameter or window flag.
  *
@@ -20,7 +22,8 @@ export function isCopilotDebugEnabled(): boolean {
     }
     const search = typeof win.location?.search === 'string' ? win.location.search : '';
     return /[?&]copilot_debug=1/.test(search);
-  } catch {
+  } catch (error) {
+    reportConfigError('copilot_debug', error);
     return false;
   }
 }

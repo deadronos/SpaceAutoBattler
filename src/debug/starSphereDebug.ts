@@ -13,6 +13,7 @@ import type { Camera, Material, Mesh, ShaderMaterial } from 'three';
 import type { StarLightConfig } from '../config/environment.js';
 import { registerDebugHook, hasDebugHook } from './copilotDebugRegistry.js';
 import { getStarDebugWindow } from './starDebugWindow.js';
+import { reportE2EError, reportMaterialError } from '../utils/errorReporting.js';
 
 interface CopilotUserData {
   __copilot_origMaterial?: Material;
@@ -95,14 +96,14 @@ export function runStarSphereDebug({
       camera.updateMatrixWorld();
       try {
         registerDebugHook('__copilot_rotateAppliedAt', Date.now(), 'star');
-      } catch {
-        /* ignore */
+      } catch (error) {
+        reportE2EError('starSphereDebug.rotateAppliedAt', error);
       }
     }
     try {
       registerDebugHook('__copilot_rotateCameraDeltaDeg', null, 'star');
-    } catch {
-      /* ignore */
+    } catch (error) {
+      reportE2EError('starSphereDebug.rotateCameraDeltaDeg', error);
     }
   }
 
@@ -281,8 +282,8 @@ export function runStarSphereDebug({
         debugWin.__copilot_forceBasicMaterialApplied || Date.now(),
         'star',
       );
-    } catch {
-      /* ignore */
+    } catch (error) {
+      reportMaterialError('debug.forceBasicMaterial', 'starMesh', error);
     }
   }
 
@@ -322,8 +323,8 @@ export function runStarSphereDebug({
       el.style.left = pxX + 'px';
       el.style.top = pxY + 'px';
       el.setAttribute('data-copilot-screen-pos', `${pxX},${pxY}`);
-    } catch {
-      // ignore
+    } catch (error) {
+      reportE2EError('starSphereDebug.screenIndicator', error);
     }
   }
 }

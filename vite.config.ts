@@ -270,8 +270,14 @@ const stagedConfig: UserConfig['staged'] = {
   '**/*.md': ['vp fmt'],
 };
 
+const normalizeSlashes = (value: string): string => value.replace(/\\/g, '/');
+const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const isWithinPath = (filePath: string, targetPath: string): boolean =>
+  filePath === targetPath || filePath.startsWith(`${targetPath}/`);
+
 const projectRoot = process.cwd();
-const srcDir = path.resolve(projectRoot, 'src');
+const srcDir = normalizeSlashes(path.resolve(projectRoot, 'src'));
+const hooksDir = `${srcDir}/hooks`;
 const isBuildCommand = process.argv.includes('build');
 const isDevelopmentBuild = process.argv.some(
   (value, index, values) => value === '--mode' && values[index + 1] === 'development',
@@ -279,37 +285,58 @@ const isDevelopmentBuild = process.argv.some(
 const isProdBuild = isBuildCommand && !isDevelopmentBuild;
 
 const defaultExcluded = [
-  path.resolve(srcDir, 'renderer'),
-  path.resolve(srcDir, 'components', 'ship'),
+  normalizeSlashes(path.resolve(srcDir, 'renderer')),
+  normalizeSlashes(path.resolve(srcDir, 'components', 'ship')),
 ];
 
 const envExcludes = (process.env.REACT_COMPILER_EXCLUDE ?? '')
   .split(',')
   .map((value) => value.trim())
   .filter(Boolean)
-  .map((relative) => path.resolve(projectRoot, relative));
+  .map((relative) => normalizeSlashes(path.resolve(projectRoot, relative)));
 
 const envIncludes = (process.env.REACT_COMPILER_INCLUDE ?? '')
   .split(',')
   .map((value) => value.trim())
   .filter(Boolean)
-  .map((relative) => path.resolve(projectRoot, relative));
+  .map((relative) => normalizeSlashes(path.resolve(projectRoot, relative)));
 
 const excludedPaths = envExcludes.length > 0 ? envExcludes : defaultExcluded;
 const includedPaths = envIncludes.length > 0 ? envIncludes : null;
 
 const shouldApplyReactCompiler = (id: string): boolean => {
-  const cleanId = id.split('?')[0];
+  const cleanId = normalizeSlashes(id.split('?')[0] ?? '');
   if (!cleanId) return false;
-  if (!cleanId.startsWith(srcDir)) return false;
+  if (!isWithinPath(cleanId, srcDir)) return false;
   if (!cleanId.endsWith('.ts') && !cleanId.endsWith('.tsx')) return false;
 
   if (includedPaths) {
-    return includedPaths.some((includedPath) => cleanId.startsWith(includedPath));
+    return includedPaths.some((includedPath) => isWithinPath(cleanId, includedPath));
   }
 
-  return !excludedPaths.some((excludedPath) => cleanId.startsWith(excludedPath));
+  if (excludedPaths.some((excludedPath) => isWithinPath(cleanId, excludedPath))) {
+    return false;
+  }
+
+  // Only React TSX components and React hook `.ts` modules under `src/hooks/` use
+  // React Compiler; skip pure-TS simulation, worker, data, config, and utility files.
+  if (cleanId.endsWith('.tsx')) return true;
+  return isWithinPath(cleanId, hooksDir) && path.posix.basename(cleanId).startsWith('use');
 };
+
+const babelInclude = includedPaths
+  ? new RegExp(`^${escapeRegExp(srcDir)}/.*\\.(?:ts|tsx)(?:$|\\?)`)
+  : [
+      new RegExp(`^${escapeRegExp(srcDir)}/.*\\.tsx(?:$|\\?)`),
+      new RegExp(`^${escapeRegExp(hooksDir)}/use[^/]*\\.ts(?:$|\\?)`),
+    ];
+
+const babelExclude = includedPaths
+  ? [/[/\\]node_modules[/\\]/]
+  : [
+      /[/\\]node_modules[/\\]/,
+      ...excludedPaths.map((excludedPath) => new RegExp(`^${escapeRegExp(excludedPath)}(?:/|$)`)),
+    ];
 
 const vitestDebugBench = Boolean(process.env.VITEST_DEBUG_BENCH);
 
@@ -333,7 +360,8 @@ export default defineConfig({
     createGlslRawPlugin(),
     react(),
     babel({
-      include: /\.(?:ts|tsx)$/,
+      include: babelInclude,
+      exclude: babelExclude,
       plugins: [
         [reactCompiler, { compilationMode: 'annotation', sources: shouldApplyReactCompiler }],
       ],

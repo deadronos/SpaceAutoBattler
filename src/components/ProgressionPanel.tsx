@@ -83,7 +83,10 @@ export function ProgressionPanel(): React.ReactElement | null {
   const enabled = useUiStore((s) => s.progressionPanelEnabled);
   const position = useUiStore((s) => s.progressionPanelPosition);
   const setPosition = useUiStore((s) => s.setProgressionPanelPosition);
-  const [, setRefreshTick] = useState(0);
+  const [refreshState, setRefreshState] = useState(() => ({
+    tick: 0,
+    nowBucket: Math.floor(Date.now() / 1000),
+  }));
   const [dragging, setDragging] = useState(false);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const posRef = useRef(position);
@@ -93,7 +96,14 @@ export function ProgressionPanel(): React.ReactElement | null {
     posRef.current = position;
   }, [position]);
 
-  useInterval(() => setRefreshTick((v) => v + 1), enabled ? REFRESH_INTERVAL_MS : null);
+  useInterval(
+    () =>
+      setRefreshState((prev) => ({
+        tick: prev.tick + 1,
+        nowBucket: Math.floor(Date.now() / 1000),
+      })),
+    enabled ? REFRESH_INTERVAL_MS : null,
+  );
 
   // Drag behavior (attach to header for better UX). Placed before early returns to keep hook order stable.
   useEffect(() => {
@@ -161,10 +171,10 @@ export function ProgressionPanel(): React.ReactElement | null {
     return reconcileProgressionPanelShips(progressionCacheRef.current, built);
   })();
 
-  // Wall-clock bucket (1s resolution) used only to re-render cards so their
-  // relative timestamps refresh. Memoized cards re-render at most once per
-  // second instead of on every 250 ms tick.
-  const nowBucket = Math.floor(Date.now() / 1000);
+  // Wall-clock bucket (1s resolution) updated on each refresh interval so
+  // relative timestamps refresh at most once per second without calling Date.now()
+  // directly during render.
+  const nowBucket = refreshState.nowBucket;
 
   // NOTE: This effect was intentionally placed before the component's early returns
   // so the hook is executed on every render. Moving it after conditional returns
