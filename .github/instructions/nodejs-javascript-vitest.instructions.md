@@ -17,6 +17,6 @@ Checklist:
 
 Repo notes (SpaceAutoBattler):
 
-- Run `npm run typecheck` and `npm test` after edits; CI enforces these gates. Avoid changing files outside `src/` (no edits to `dist/`).
+- Run `pnpm run typecheck` and `pnpm test` after edits; CI enforces these gates. Avoid changing files outside `src/` (no edits to `dist/`).
 
 End.
