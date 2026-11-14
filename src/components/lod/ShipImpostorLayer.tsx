@@ -6,7 +6,7 @@ import type { ShipEntity } from '../../types/index.js';
 import { getInstanceFriendlyMaterial } from '../../renderer/materialRegistry.js';
 import { TEAM_COLORS } from '../../config/renderer.js';
 import { createSaturationWarningState, warnOnSaturation } from '../layers/saturationWarning.js';
-import { createInstancedLayerManager } from '../layers/instancedLayer.js';
+import { InstancedLayerManager } from '../layers/instancedLayer.js';
 
 export interface PopulateImpostorParams {
   ships: readonly ShipEntity[];
@@ -73,12 +73,15 @@ interface ShipImpostorLayerProps {
 
 export function ShipImpostorLayer({ ships, capacity }: ShipImpostorLayerProps): ReactElement {
   const meshRef = useRef<InstancedMesh>(null);
-  const managerRef = useRef(
-    createInstancedLayerManager<number>(meshRef, {
-      capacity,
-      supportsInstanceColor: true,
-      baseColor: new Color('#a0a0a0'),
-    }),
+  const manager = useMemo(
+    () =>
+      new InstancedLayerManager<number>(meshRef, {
+        capacity,
+        supportsInstanceColor: true,
+        baseColor: new Color('#a0a0a0'),
+        trackBounds: true,
+      }),
+    [capacity],
   );
   const warningStateRef = useRef(createSaturationWarningState());
   const frameRef = useRef(0);
@@ -103,12 +106,11 @@ export function ShipImpostorLayer({ ships, capacity }: ShipImpostorLayerProps): 
   );
 
   useEffect(() => {
-    const manager = managerRef.current;
     manager.initMesh();
     return () => {
       manager.dispose();
     };
-  }, []);
+  }, [manager]);
 
   useEffect(
     () => () => {
@@ -128,7 +130,6 @@ export function ShipImpostorLayer({ ships, capacity }: ShipImpostorLayerProps): 
     frameRef.current += 1;
     const frameId = frameRef.current;
 
-    const manager = managerRef.current;
     manager.beginFrame();
 
     for (const ship of ships) {
@@ -162,7 +163,6 @@ export function ShipImpostorLayer({ ships, capacity }: ShipImpostorLayerProps): 
       ref={meshRef}
       args={[geometry, materialInfo.material, capacity]}
       matrixAutoUpdate={false}
-      frustumCulled={false}
       visible={false}
     />
   );

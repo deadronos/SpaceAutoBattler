@@ -37,6 +37,7 @@
 ## Assets, Decoders & Rendering Subsystems
 
 - **glTF & decoders**: Models are cached via `@react-three/drei`’s `useGLTF`. Draco/Meshopt/KTX2 decoding is configured in `src/renderer/loaders/gltfDecoders.ts`; self-hosted decoder assets are emitted under `dist/decoders/` by `vite.config.ts`, and hull GLTFs are shipped compressed.
+- **Instanced effects**: Explosion, thruster glow, and ship impostor layers update mesh bounds while writing live transforms so Three.js can cull offscreen batches. Explosion lights use a pool of eight, ranked by intensity and camera distance. Turret gizmos mount only when their debug flag is enabled.
 - **Disposal & pooling**: Dispose Three.js resources you create; reuse/pool objects in per-frame hot paths (`src/utils/tempVectors.ts`, `src/game/explosions.ts`).
 - **Quality & postprocessing**: Quality presets live in `src/config/quality.ts`. Postprocessing lives in `src/config/postprocessing.ts` (`colorPipeline` + `N8AO`).
 - **Camera rig**: Pure trauma/shake math lives in `src/renderer/cameraRig/`, consumed by `src/components/CameraRig.tsx`.

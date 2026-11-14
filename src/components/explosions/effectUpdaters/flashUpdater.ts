@@ -1,5 +1,5 @@
 import { FLASH_DURATION } from '../constants.js';
-import { easeOutQuad, getCachedColor } from '../derived.js';
+import { easeOutQuad } from '../derived.js';
 import { clamp01 } from '../../../utils/math.js';
 import {
   EMPTY_EFFECT_RESULT,
@@ -32,7 +32,7 @@ export const updateFlash: EffectUpdater = (
   dummy.quaternion.copy(camera.quaternion);
   dummy.updateMatrix();
 
-  color.copy(getCachedColor(event.palette.flash)).multiplyScalar(Math.max(0.3, intensity));
+  color.set(event.palette.flash).multiplyScalar(Math.max(0.3, intensity));
 
   return emitSingleInstance(manager, eventId, dummy, color);
 };

@@ -1,5 +1,4 @@
 import { SMOKE_DELAY } from '../constants.js';
-import { getCachedColor } from '../derived.js';
 import { clamp01 } from '../../../utils/math.js';
 import { type EffectUpdateContext, type EffectUpdater, type EffectUpdateResult } from './types.js';
 import { processParticleArray } from './particleLoopHelper.js';
@@ -16,6 +15,8 @@ export const updateSmoke: EffectUpdater = (
   const { event, time, camera, derived, dummy, tmpVec, color } = ctx;
 
   const smokeT = time - SMOKE_DELAY;
+
+  const { r, g, b } = color.set(event.palette.smoke);
 
   return processParticleArray(
     derived.smoke,
@@ -37,9 +38,7 @@ export const updateSmoke: EffectUpdater = (
 
       manager.setMatrixAt(idx, dummy.matrix);
 
-      color
-        .copy(getCachedColor(event.palette.smoke))
-        .multiplyScalar(Math.max(0.2, 0.7 - wispProgress * 0.5));
+      color.setRGB(r, g, b).multiplyScalar(Math.max(0.2, 0.7 - wispProgress * 0.5));
       manager.setColorAt(idx, color);
 
       return true;

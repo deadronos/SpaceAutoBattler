@@ -1,4 +1,4 @@
-import { easeOutQuad, getCachedColor } from '../derived.js';
+import { easeOutQuad } from '../derived.js';
 import { clamp01 } from '../../../utils/math.js';
 import {
   EMPTY_EFFECT_RESULT,
@@ -32,9 +32,7 @@ export const updateShockwave: EffectUpdater = (
   dummy.quaternion.copy(camera.quaternion);
   dummy.updateMatrix();
 
-  color
-    .copy(getCachedColor(event.palette.shockwave))
-    .multiplyScalar(Math.max(0.2, 1 - phase * 0.9));
+  color.set(event.palette.shockwave).multiplyScalar(Math.max(0.2, 1 - phase * 0.9));
 
   return emitSingleInstance(manager, eventId, dummy, color);
 };

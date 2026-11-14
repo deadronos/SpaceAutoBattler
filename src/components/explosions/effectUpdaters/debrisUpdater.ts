@@ -1,6 +1,5 @@
 import type { EffectUpdateContext, EffectUpdater, EffectUpdateResult } from './types.js';
 import { DEBRIS_DELAY } from '../constants.js';
-import { getCachedColor } from '../derived.js';
 import { clamp01 } from '../../../utils/math.js';
 import { processParticleArray } from './particleLoopHelper.js';
 
@@ -17,6 +16,8 @@ export const updateDebris: EffectUpdater = (
   const { event, time, derived, dummy, tmpQuat, tmpVec, color } = ctx;
 
   const debrisT = time - DEBRIS_DELAY;
+
+  const { r, g, b } = color.set(event.palette.fireballHot);
 
   return processParticleArray(
     derived.debris,
@@ -40,9 +41,7 @@ export const updateDebris: EffectUpdater = (
 
       manager.setMatrixAt(idx, dummy.matrix);
 
-      color
-        .copy(getCachedColor(event.palette.fireballHot))
-        .multiplyScalar(Math.max(0.2, 1 - shardProgress * 0.8));
+      color.setRGB(r, g, b).multiplyScalar(Math.max(0.2, 1 - shardProgress * 0.8));
       manager.setColorAt(idx, color);
 
       return true;

@@ -1,5 +1,13 @@
 import { describe, it, expect, beforeEach } from 'vite-plus/test';
-import { BufferGeometry, InstancedMesh, MeshBasicMaterial, Matrix4, Color } from 'three';
+import {
+  BufferGeometry,
+  InstancedMesh,
+  MeshBasicMaterial,
+  Matrix4,
+  Color,
+  SphereGeometry,
+  Vector3,
+} from 'three';
 import { createInstancedLayerManager } from '../../../src/components/layers/instancedLayer.js';
 
 function createMesh(capacity: number): InstancedMesh {
@@ -55,6 +63,34 @@ describe('InstancedLayerManager edge cases', () => {
     // Since 'a' was not re-allocated in frame2, it should be released
     expect(summary2.released.length).toBeGreaterThanOrEqual(1);
     expect(summary2.count).toBeGreaterThanOrEqual(1);
+  });
+
+  it('updates tracked bounds as instances move and ignores released slots', () => {
+    const geometry = new SphereGeometry(1);
+    const material = new MeshBasicMaterial();
+    const mesh = new InstancedMesh(geometry, material, 2);
+    const manager = createInstancedLayerManager(
+      { current: mesh },
+      { capacity: 2, trackBounds: true },
+    );
+
+    manager.beginFrame();
+    manager.setMatrixAt(manager.allocate('old')!, new Matrix4().makeTranslation(-100, 0, 0));
+    manager.setMatrixAt(manager.allocate('live')!, new Matrix4().makeTranslation(100, 0, 0));
+    manager.endFrame();
+
+    expect(mesh.boundingSphere?.containsPoint(new Vector3(-100, 0, 0))).toBe(true);
+    expect(mesh.boundingSphere?.containsPoint(new Vector3(100, 0, 0))).toBe(true);
+
+    manager.beginFrame();
+    manager.setMatrixAt(manager.allocate('live')!, new Matrix4().makeTranslation(200, 0, 0));
+    manager.endFrame();
+
+    expect(mesh.boundingSphere?.containsPoint(new Vector3(100, 0, 0))).toBe(false);
+    expect(mesh.boundingSphere?.containsPoint(new Vector3(200, 0, 0))).toBe(true);
+    mesh.dispose();
+    geometry.dispose();
+    material.dispose();
   });
 
   it('saturates when capacity reached', () => {

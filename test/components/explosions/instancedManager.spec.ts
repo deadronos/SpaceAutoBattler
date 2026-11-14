@@ -46,6 +46,28 @@ describe('ExplosionsInstancedManager', () => {
     expect(refs.flash?.visible).toBe(true);
   });
 
+  it('initializes only newly attached meshes', () => {
+    const flash = refs.flash!;
+    const shockwave = refs.shockwave!;
+    manager.attach(refs);
+    flash.count = 2;
+    shockwave.count = 3;
+    const version = flash.instanceMatrix.version;
+
+    expect(manager.attach(refs)).toBe(true);
+    expect(flash.count).toBe(2);
+    expect(flash.instanceMatrix.version).toBe(version);
+
+    const replacement = createMesh(4);
+    expect(manager.attach({ ...refs, shockwave: replacement })).toBe(true);
+    expect(replacement.count).toBe(0);
+    expect(flash.count).toBe(2);
+    expect(shockwave.count).toBe(3);
+    replacement.dispose();
+    replacement.geometry.dispose();
+    (replacement.material as MeshBasicMaterial).dispose();
+  });
+
   it('handles saturation gracefully', () => {
     manager.attach(refs);
     manager.beginFrame();

@@ -7,7 +7,7 @@ import { THRUSTER_GLOW_CONFIG } from '../../config/renderer.js';
 import { useBloomRegistration } from '../../renderer/bloom/index.js';
 import { getInstanceFriendlyMaterial } from '../../renderer/materialRegistry.js';
 import { createSaturationWarningState, warnOnSaturation } from '../layers/saturationWarning.js';
-import { createInstancedLayerManager } from '../layers/instancedLayer.js';
+import { InstancedLayerManager } from '../layers/instancedLayer.js';
 
 interface ThrusterInstancedManagerProps {
   ships: readonly ShipEntity[];
@@ -60,6 +60,11 @@ const HULL_ANCHOR_CACHE = new Map<ShipHull, Vector3[]>([
   ['carrier', createAnchorPattern('carrier')],
 ]);
 
+// A ship owns one numeric key per possible anchor slot.
+const ANCHOR_KEY_STRIDE = Math.max(
+  ...Array.from(HULL_ANCHOR_CACHE.values(), (pattern) => pattern.length),
+);
+
 function getAnchors(hull: ShipHull): readonly Vector3[] {
   return HULL_ANCHOR_CACHE.get(hull) ?? HULL_ANCHOR_CACHE.get('fighter')!;
 }
@@ -89,24 +94,26 @@ export function ThrusterInstancedManager({
   const tempQuat = useMemo(() => new Quaternion(), []);
   const tempColor = useMemo(() => new Color(THRUSTER_GLOW_CONFIG.defaultEmissiveColor), []);
   const baseColor = useMemo(() => new Color(THRUSTER_GLOW_CONFIG.defaultEmissiveColor), []);
-  const managerRef = useRef(
-    createInstancedLayerManager<string>(meshRef, {
-      capacity,
-      supportsInstanceColor: true,
-      baseColor: baseColor,
-    }),
+  const manager = useMemo(
+    () =>
+      new InstancedLayerManager<number>(meshRef, {
+        capacity,
+        supportsInstanceColor: true,
+        baseColor,
+        trackBounds: true,
+      }),
+    [capacity, baseColor],
   );
 
   useBloomRegistration(meshRef, { group: 'engines' });
 
   useEffect(() => {
     // initialize attributes once mesh mounted
-    const manager = managerRef.current;
     manager.initMesh();
     return () => {
       manager.dispose();
     };
-  }, []);
+  }, [manager]);
 
   useEffect(
     () => () => {
@@ -132,7 +139,7 @@ export function ThrusterInstancedManager({
       return;
     }
 
-    managerRef.current.beginFrame();
+    manager.beginFrame();
     let saturated = false;
 
     for (const ship of ships) {
@@ -141,13 +148,14 @@ export function ThrusterInstancedManager({
       const hullScale = Math.max(ship.transform.scale, 0.1);
       const baseScale = hullScale * (THRUSTER_GLOW_CONFIG.glowMeshSize * 50);
 
+      const firstKey = ship.id * ANCHOR_KEY_STRIDE;
       tempQuat.copy(ship.transform.rotation);
 
       for (let ai = 0; ai < anchors.length; ai += 1) {
         const local = anchors[ai];
         if (!local) continue;
-        const key = `${ship.id}:${ai}`;
-        const idx = managerRef.current.allocate(key);
+        const key = firstKey + ai;
+        const idx = manager.allocate(key);
         if (idx == null) {
           saturated = true;
           break;
@@ -162,15 +170,15 @@ export function ThrusterInstancedManager({
         const scaleValue = baseScale * (1 + throttle * 1.8);
         tempScale.setScalar(scaleValue);
         tempMatrix.compose(tempPos, tempQuat, tempScale);
-        managerRef.current.setMatrixAt(idx, tempMatrix);
+        manager.setMatrixAt(idx, tempMatrix);
 
         tempColor.copy(baseColor).multiplyScalar(intensityBase + intensityRange * throttle);
-        managerRef.current.setColorAt(idx, tempColor);
+        manager.setColorAt(idx, tempColor);
       }
       if (saturated) break;
     }
 
-    const summary = managerRef.current.endFrame();
+    const summary = manager.endFrame();
     if (summary.saturated) saturated = true;
 
     warnOnSaturation({
@@ -186,7 +194,6 @@ export function ThrusterInstancedManager({
       ref={meshRef}
       args={[geometry, materialInfo.material, capacity]}
       matrixAutoUpdate={false}
-      frustumCulled={false}
       visible={false}
     />
   );
