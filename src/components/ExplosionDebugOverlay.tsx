@@ -17,8 +17,8 @@ export function ExplosionDebugOverlay(): React.ReactElement | null {
       className="explosion-debug-overlay"
       style={{
         position: 'absolute',
-        top: '80px',
-        right: '10px',
+        bottom: '16px',
+        right: '16px',
         backgroundColor: 'rgba(0, 0, 0, 0.8)',
         color: 'white',
         padding: '10px',
@@ -26,6 +26,8 @@ export function ExplosionDebugOverlay(): React.ReactElement | null {
         fontSize: '12px',
         fontFamily: 'monospace',
         maxWidth: '300px',
+        maxHeight: '45vh',
+        overflowY: 'auto',
         zIndex: 1000,
       }}
     >

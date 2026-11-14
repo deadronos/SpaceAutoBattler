@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vite-plus/test';
 import { ProgressionPanel } from '../../src/components/ProgressionPanel';
 import * as GameContext from '../../src/app/context';
@@ -24,11 +24,15 @@ describe('ProgressionPanel', () => {
     (UiStore.useUiStore as any).mockImplementation((selector: any) => {
       const state = {
         progressionPanelEnabled: true,
-        progressionPanelPosition: { x: 0, y: 0 },
+        progressionPanelPosition: { x: 436, y: 272 },
         setProgressionPanelPosition: mockSetPosition,
       };
       return selector(state);
     });
+  });
+
+  afterEach(() => {
+    cleanup();
   });
 
   it('displays XP with decimal precision', () => {
@@ -105,5 +109,39 @@ describe('ProgressionPanel', () => {
     // The current implementation uses toFixed(0), so this test should fail initially
     const deltaText = await screen.findByText(/\+0\.5 XP/);
     expect(deltaText).toBeTruthy();
+  });
+
+  it('renders a helpful empty state when enabled with zero ships and omits aria-live', () => {
+    (GameContext.useOptionalGameState as any).mockReturnValue({
+      queries: {
+        ships: {
+          entities: [],
+        },
+      },
+      progressionEvents: new Map(),
+    });
+
+    render(<ProgressionPanel />);
+
+    const region = screen.getByRole('region', { name: 'Ship progression' });
+    expect(region).toBeTruthy();
+    expect(region.getAttribute('aria-live')).toBeNull();
+    expect(screen.getByText('0 ships tracked')).toBeTruthy();
+    expect(screen.getByText(/No active ships to track yet/i)).toBeTruthy();
+  });
+
+  it('renders nothing when disabled', () => {
+    (UiStore.useUiStore as any).mockImplementation((selector: any) => {
+      const state = {
+        progressionPanelEnabled: false,
+        progressionPanelPosition: { x: 436, y: 272 },
+        setProgressionPanelPosition: mockSetPosition,
+      };
+      return selector(state);
+    });
+    (GameContext.useOptionalGameState as any).mockReturnValue(null);
+
+    const { container } = render(<ProgressionPanel />);
+    expect(container.firstChild).toBeNull();
   });
 });

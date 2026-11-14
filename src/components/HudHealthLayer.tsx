@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useState } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type React from 'react';
 import { useUiStore } from '../app/uiStore.js';
 import {
@@ -47,12 +47,20 @@ type RectLike = ReservedRect;
 
 const EDGE_MARGIN = 16;
 const MAX_BADGES = 2;
+const RESERVED_PANEL_SELECTORS = [
+  '.controls-bar',
+  '.hud-panel',
+  '.ai-debug-overlay',
+  '.progression-panel',
+  '.explosion-debug-overlay',
+  '.hud-perf-monitor',
+] as const;
 
 export function HudHealthLayer(): React.ReactElement | null {
   const enabled = useUiStore((s) => s.hudHealthBarsEnabled);
   const overlays = useHudOverlayStore((s) => s.overlays);
   const viewport = useHudOverlayStore((s) => s.viewport);
-  const reservedRects = useReservedRects();
+  const reservedRects = useReservedRects(enabled);
 
   const layout = useMemo(() => {
     if (!enabled) return [];
@@ -66,11 +74,11 @@ export function HudHealthLayer(): React.ReactElement | null {
   if (!enabled) return null;
 
   if (!layout.length) {
-    return <div className="hud-health-layer" aria-live="polite" aria-label="HUD health overlays" />;
+    return <div className="hud-health-layer" aria-label="HUD health overlays" />;
   }
 
   return (
-    <div className="hud-health-layer" aria-live="polite" aria-label="HUD health overlays">
+    <div className="hud-health-layer" aria-label="HUD health overlays">
       {layout.map((overlay) => (
         <ShipHudOverlay
           key={overlay.id}
@@ -82,17 +90,59 @@ export function HudHealthLayer(): React.ReactElement | null {
   );
 }
 
-function useReservedRects(): ReservedRect[] {
+function rectsEqual(a: readonly ReservedRect[], b: readonly ReservedRect[]): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    const prev = a[i]!;
+    const next = b[i]!;
+    if (
+      prev.left !== next.left ||
+      prev.right !== next.right ||
+      prev.top !== next.top ||
+      prev.bottom !== next.bottom ||
+      prev.width !== next.width ||
+      prev.height !== next.height
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function useReservedRects(enabled: boolean): ReservedRect[] {
   const [rects, setRects] = useState<ReservedRect[]>([]);
+  const aiDebugEnabled = useUiStore((s) => s.aiDebugEnabled);
+  const explosionDebugEnabled = useUiStore((s) => s.explosionDebugEnabled);
+  const perfMonitorEnabled = useUiStore((s) => s.perfMonitorEnabled);
+  const perfMonitorPosition = useUiStore((s) => s.perfMonitorPosition);
+  const progressionPanelEnabled = useUiStore((s) => s.progressionPanelEnabled);
+  const progressionPanelPosition = useUiStore((s) => s.progressionPanelPosition);
+  const syncAndMeasureRef = useRef<(() => void) | null>(null);
+
   useLayoutEffect(() => {
-    if (typeof window === 'undefined' || typeof document === 'undefined') return;
-    const selectors = ['.controls-bar', '.hud-panel'];
+    if (!enabled || typeof window === 'undefined' || typeof document === 'undefined') {
+      syncAndMeasureRef.current = null;
+      return;
+    }
+
+    const observed = new Set<Element>();
+
+    const collectElements = (): Element[] => {
+      const elements: Element[] = [];
+      for (const selector of RESERVED_PANEL_SELECTORS) {
+        const matches = document.querySelectorAll(selector);
+        for (const el of matches) {
+          elements.push(el);
+        }
+      }
+      return elements;
+    };
+
     const measure = () => {
       const next: ReservedRect[] = [];
-      for (const selector of selectors) {
-        const el = document.querySelector(selector);
-        if (!el) continue;
+      for (const el of collectElements()) {
         const rect = el.getBoundingClientRect();
+        if (rect.width <= 0 && rect.height <= 0) continue;
         next.push({
           left: rect.left,
           right: rect.right,
@@ -102,15 +152,78 @@ function useReservedRects(): ReservedRect[] {
           height: rect.height,
         });
       }
-      setRects(next);
+      setRects((prev) => (rectsEqual(prev, next) ? prev : next));
     };
-    measure();
+
+    const resizeObserver =
+      typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => measure()) : null;
+
+    const syncObserved = (): boolean => {
+      const current = new Set(collectElements());
+      let changed = false;
+
+      for (const el of observed) {
+        if (!current.has(el)) {
+          resizeObserver?.unobserve(el);
+          observed.delete(el);
+          changed = true;
+        }
+      }
+
+      for (const el of current) {
+        if (!observed.has(el)) {
+          resizeObserver?.observe(el);
+          observed.add(el);
+          changed = true;
+        }
+      }
+
+      return changed;
+    };
+
+    const syncAndMeasure = () => {
+      syncObserved();
+      measure();
+    };
+
+    syncAndMeasureRef.current = syncAndMeasure;
+    syncAndMeasure();
+
+    // Re-sync ResizeObserver targets when overlay panels mount or unmount dynamically.
+    const mutationObserver =
+      typeof MutationObserver !== 'undefined' && document.body
+        ? new MutationObserver(() => {
+            if (syncObserved()) {
+              measure();
+            }
+          })
+        : null;
+    mutationObserver?.observe(document.body, { childList: true, subtree: true });
+
     window.addEventListener('resize', measure);
     return () => {
+      syncAndMeasureRef.current = null;
+      resizeObserver?.disconnect();
+      mutationObserver?.disconnect();
+      observed.clear();
       window.removeEventListener('resize', measure);
     };
-  }, []);
-  return rects;
+  }, [enabled]);
+
+  useLayoutEffect(() => {
+    if (!enabled) return;
+    syncAndMeasureRef.current?.();
+  }, [
+    enabled,
+    aiDebugEnabled,
+    explosionDebugEnabled,
+    perfMonitorEnabled,
+    perfMonitorPosition,
+    progressionPanelEnabled,
+    progressionPanelPosition,
+  ]);
+
+  return enabled ? rects : [];
 }
 
 export function layoutOverlays(

@@ -175,10 +175,10 @@ export const useUiStore = create<UiState>((set) => ({
   perfMonitorEnabled: false,
   togglePerfMonitor: () => set((s) => ({ perfMonitorEnabled: !s.perfMonitorEnabled })),
   setPerfMonitorEnabled: (v: boolean) => set({ perfMonitorEnabled: v }),
-  perfMonitorPosition: { x: 16, y: 16 },
+  perfMonitorPosition: { x: 536, y: 16 },
   setPerfMonitorPosition: (position: { x: number; y: number }) =>
     set({ perfMonitorPosition: { x: position.x, y: position.y } }),
-  progressionPanelPosition: { x: 16, y: 120 },
+  progressionPanelPosition: { x: 436, y: 272 },
   setProgressionPanelPosition: (position: { x: number; y: number }) =>
     set({ progressionPanelPosition: { x: position.x, y: position.y } }),
   progressionPanelEnabled: false,

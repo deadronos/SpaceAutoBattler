@@ -136,32 +136,37 @@ const DOCUMENTED_PAIRS: readonly ContrastPair[] = [
     bg: 'rgba(12, 21, 38, 0.86)',
   },
 
-  // src/components/progression-panel.css — .progression-panel
-  { label: '.progression-panel body text (#eaeaea)', fg: '#eaeaea', bg: 'rgba(12, 12, 16, 0.9)' },
+  // src/styles/progression.css — .progression-panel (uses --panel-bg)
+  { label: '.progression-panel body text (#e3f1ff)', fg: '#e3f1ff', bg: 'rgba(7, 15, 32, 0.78)' },
   {
-    label: '.progression-panel__meta (0.85)',
-    fg: 'rgba(234, 234, 234, 0.85)',
-    bg: 'rgba(12, 12, 16, 0.9)',
+    label: '.progression-panel__meta (0.78)',
+    fg: 'rgba(227, 241, 255, 0.78)',
+    bg: 'rgba(7, 15, 32, 0.78)',
+  },
+  {
+    label: '.progression-panel__empty (0.78)',
+    fg: 'rgba(227, 241, 255, 0.78)',
+    bg: 'rgba(7, 15, 32, 0.78)',
   },
   {
     label: '.ship-progression-card__level (0.9)',
-    fg: 'rgba(234, 234, 234, 0.9)',
-    bg: 'rgba(12, 12, 16, 0.9)',
+    fg: 'rgba(90, 184, 255, 0.9)',
+    bg: 'rgba(7, 15, 32, 0.78)',
   },
   {
-    label: '.progression-event__time (0.8)',
-    fg: 'rgba(234, 234, 234, 0.8)',
-    bg: 'rgba(12, 12, 16, 0.9)',
+    label: '.progression-event__time (0.78)',
+    fg: 'rgba(227, 241, 255, 0.78)',
+    bg: 'rgba(7, 15, 32, 0.78)',
   },
   {
-    label: '.progression-event__details (0.9)',
-    fg: 'rgba(234, 234, 234, 0.9)',
-    bg: 'rgba(12, 12, 16, 0.9)',
+    label: '.progression-event__details (0.85)',
+    fg: 'rgba(227, 241, 255, 0.85)',
+    bg: 'rgba(7, 15, 32, 0.78)',
   },
   {
-    label: '.progression-events--empty (0.8)',
-    fg: 'rgba(234, 234, 234, 0.8)',
-    bg: 'rgba(12, 12, 16, 0.9)',
+    label: '.progression-events--empty (0.78)',
+    fg: 'rgba(227, 241, 255, 0.78)',
+    bg: 'rgba(7, 15, 32, 0.78)',
   },
 ];
 

@@ -18,7 +18,8 @@
 
 .hud-panel__actions {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  align-items: center;
   gap: 10px;
 }
 
@@ -26,7 +27,12 @@
   position: relative;
 }
 
+.hud-toggle-drawer--open {
+  z-index: 30;
+}
+
 .hud-toggle-drawer__trigger {
+  position: relative;
   appearance: none;
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 999px;
@@ -67,7 +73,7 @@
 
 .hud-toggle-drawer__panel {
   position: absolute;
-  top: 46px;
+  top: calc(100% + 8px);
   right: 0;
   min-width: 220px;
   background: var(--panel-bg);

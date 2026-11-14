@@ -6,7 +6,6 @@ import { useOptionalGameState } from '../app/context.js';
 import { useUiStore } from '../app/uiStore.js';
 import { useInterval } from '../hooks/useInterval.js';
 import { clamp } from '../utils/math.js';
-import './progression-panel.css';
 
 const REFRESH_INTERVAL_MS = 250;
 
@@ -193,19 +192,28 @@ export function ProgressionPanel(): React.ReactElement | null {
   }, [position, dragging, enabled]);
 
   if (!enabled) return null;
-  if (!progressionData || progressionData.length === 0) return null;
+
+  const ships = progressionData ?? [];
 
   return (
-    <div ref={panelRef} className="progression-panel" role="region" aria-live="polite">
+    <div ref={panelRef} className="progression-panel" role="region" aria-label="Ship progression">
       <div className="progression-panel__header">
         <div className="progression-panel__title">Progression</div>
-        <div className="progression-panel__meta">{progressionData.length} ships tracked</div>
+        <div className="progression-panel__meta">
+          {ships.length} {ships.length === 1 ? 'ship' : 'ships'} tracked
+        </div>
       </div>
-      <div className="progression-panel__ships">
-        {progressionData.map((ship) => (
-          <ShipProgressionCard key={ship.id} ship={ship} nowBucket={nowBucket} />
-        ))}
-      </div>
+      {ships.length > 0 ? (
+        <div className="progression-panel__ships">
+          {ships.map((ship) => (
+            <ShipProgressionCard key={ship.id} ship={ship} nowBucket={nowBucket} />
+          ))}
+        </div>
+      ) : (
+        <p className="progression-panel__empty">
+          No active ships to track yet. Spawn ships or start a battle to monitor XP and levels.
+        </p>
+      )}
     </div>
   );
 }
