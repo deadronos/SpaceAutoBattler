@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vite-plus/test';
 import React from 'react';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { SettingsDrawer } from '../../src/components/HudToggleDrawer.js';
+import { DebugDrawer, SettingsDrawer } from '../../src/components/HudToggleDrawer.js';
 import { useUiStore } from '../../src/app/uiStore.js';
 
 const DEFAULT_FLAGS = (() => {
@@ -59,5 +59,67 @@ describe('SettingsDrawer', () => {
     expect(cameraShakeSwitch.getAttribute('aria-checked')).toBe('true');
     fireEvent.click(cameraShakeSwitch);
     expect(useUiStore.getState().cameraShakeEnabled).toBe(false);
+  });
+
+  it('keeps only one drawer open at a time across SettingsDrawer and DebugDrawer', () => {
+    render(
+      <>
+        <SettingsDrawer />
+        <DebugDrawer />
+      </>,
+    );
+
+    const settingsTrigger = screen.getByRole('button', { name: 'Simulation settings' });
+    const debugTrigger = screen.getByRole('button', { name: 'Debug overlays' });
+
+    fireEvent.click(settingsTrigger);
+    expect(settingsTrigger.getAttribute('aria-expanded')).toBe('true');
+    expect(debugTrigger.getAttribute('aria-expanded')).toBe('false');
+    expect(screen.getByRole('switch', { name: 'Postprocessing' })).toBeDefined();
+
+    fireEvent.click(debugTrigger);
+    expect(settingsTrigger.getAttribute('aria-expanded')).toBe('false');
+    expect(debugTrigger.getAttribute('aria-expanded')).toBe('true');
+    expect(screen.queryByRole('switch', { name: 'Postprocessing' })).toBeNull();
+    expect(screen.getByRole('switch', { name: 'AI Debug' })).toBeDefined();
+  });
+
+  it('closes an open drawer on click outside', () => {
+    render(
+      <div>
+        <div data-testid="outside-area">Outside</div>
+        <SettingsDrawer />
+      </div>,
+    );
+
+    const settingsTrigger = screen.getByRole('button', { name: 'Simulation settings' });
+    fireEvent.click(settingsTrigger);
+    expect(settingsTrigger.getAttribute('aria-expanded')).toBe('true');
+
+    fireEvent.pointerDown(screen.getByTestId('outside-area'));
+    expect(settingsTrigger.getAttribute('aria-expanded')).toBe('false');
+    expect(screen.queryByRole('switch', { name: 'Postprocessing' })).toBeNull();
+  });
+
+  it('closes an open drawer on Escape from document and returns focus to its toggle button', () => {
+    render(<SettingsDrawer />);
+
+    const settingsTrigger = screen.getByRole('button', { name: 'Simulation settings' });
+    fireEvent.click(settingsTrigger);
+    expect(settingsTrigger.getAttribute('aria-expanded')).toBe('true');
+
+    const outsideButton = document.createElement('button');
+    document.body.appendChild(outsideButton);
+    outsideButton.focus();
+    expect(document.activeElement).toBe(outsideButton);
+
+    try {
+      fireEvent.keyDown(document, { key: 'Escape' });
+      expect(settingsTrigger.getAttribute('aria-expanded')).toBe('false');
+      expect(screen.queryByRole('switch', { name: 'Postprocessing' })).toBeNull();
+      expect(document.activeElement).toBe(settingsTrigger);
+    } finally {
+      outsideButton.remove();
+    }
   });
 });

@@ -99,7 +99,7 @@ export function AiDebugOverlay(): React.ReactElement | null {
   const kpis = snapshot.metrics.kpis;
 
   return (
-    <div className="ai-debug-overlay" role="region" aria-live="polite">
+    <div className="ai-debug-overlay" role="region" aria-label="AI Debug">
       <div className="ai-debug-header">
         <div className="ai-debug-title">AI Debug</div>
         <div className="ai-debug-meta">
