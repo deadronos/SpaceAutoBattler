@@ -16,7 +16,10 @@ import type { HullMaterial } from './ShipModel.js';
 import { applyHullTint } from './ShipModel.js';
 import { normalizedShieldFraction } from './shieldUtils.js';
 import { processRipplesForRendering } from './rippleUtils.js';
-import type { ShieldHexMaterialProps } from '../../renderer/shields/index.js';
+import type {
+  ShieldHexMaterialProps,
+  ShieldTransmissionMaterialProps,
+} from '../../renderer/shields/index.js';
 import type { ShieldHexUniforms } from '../../types/renderer.js';
 import { updateShieldHexRipples } from '../../renderer/shields/useShieldHexUniforms.js';
 
@@ -106,6 +109,8 @@ export function ShieldBubble({
 
     const shader = material as ShaderMaterial;
     if (!shader.isShaderMaterial) {
+      // Drei checks material visibility before rendering its transmission buffer.
+      material.visible = mesh.visible;
       material.opacity = Math.min(1, shieldFraction * visuals.maxAlpha);
       return;
     }
@@ -134,20 +139,19 @@ export function ShieldBubble({
     }
   });
 
+  type ShieldMaterialProps = ShieldHexMaterialProps &
+    Pick<ShieldTransmissionMaterialProps, 'visible'>;
   const Mat =
-    getMaterial<ShieldHexMaterialProps>(`shield:${visuals.materialKind}`) ??
-    getMaterial<ShieldHexMaterialProps>('shield:hex')!;
+    getMaterial<ShieldMaterialProps>(`shield:${visuals.materialKind}`) ??
+    getMaterial<ShieldMaterialProps>('shield:hex')!;
   const opacity = normalizedShieldFraction(entity.ship.shield, entity.ship.maxShield);
 
+  const visible = opacity >= minShieldThreshold;
+
   return (
-    <mesh
-      ref={meshRef}
-      visible={opacity >= minShieldThreshold}
-      renderOrder={SHIELD_RENDER_ORDER}
-      frustumCulled={false}
-    >
+    <mesh ref={meshRef} visible={visible} renderOrder={SHIELD_RENDER_ORDER} frustumCulled={false}>
       <sphereGeometry args={sphereArgs} />
-      <Mat hull={entity.ship.hull} team={entity.ship.team} opacity={opacity} />
+      <Mat hull={entity.ship.hull} team={entity.ship.team} opacity={opacity} visible={visible} />
     </mesh>
   );
 }
