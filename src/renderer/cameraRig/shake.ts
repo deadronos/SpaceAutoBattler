@@ -66,13 +66,48 @@ export function createTraumaState(): TraumaState {
  * @param {number} radius - Explosion radius in world units.
  * @param {number} [flashIntensity] - Optional flash intensity from the event.
  */
-export function addExplosionTrauma(s: TraumaState, radius: number, flashIntensity?: number): void {
+/** Distance (world units) within which explosions apply full unattenuated trauma. */
+export const TRAUMA_DISTANCE_NEAR = 200;
+/** Distance (world units) beyond which explosions impart zero camera trauma. */
+export const TRAUMA_DISTANCE_FAR = 2500;
+
+export interface PositionLike {
+  readonly x: number;
+  readonly y: number;
+  readonly z: number;
+}
+
+/**
+ * Compute linear-to-smooth distance attenuation factor in `[0, 1]` for an
+ * explosion at `distance` world units from the active camera.
+ */
+export function explosionDistanceAttenuation(distance?: number): number {
+  if (distance === undefined || !Number.isFinite(distance)) return 1;
+  if (distance <= TRAUMA_DISTANCE_NEAR) return 1;
+  if (distance >= TRAUMA_DISTANCE_FAR) return 0;
+  const t = (distance - TRAUMA_DISTANCE_NEAR) / (TRAUMA_DISTANCE_FAR - TRAUMA_DISTANCE_NEAR);
+  const smooth = t * t * (3 - 2 * t);
+  return 1 - smooth;
+}
+
+/**
+ * Add explosion-induced trauma proportional to blast radius, flash intensity,
+ * and optional distance from the active camera.
+ */
+export function addExplosionTrauma(
+  s: TraumaState,
+  radius: number,
+  flashIntensity?: number,
+  distance?: number,
+): void {
+  const distanceFactor = explosionDistanceAttenuation(distance);
+  if (distanceFactor <= 0) return;
   const radiusFactor = clamp01(radius / TRAUMA_RADIUS_REF);
   const flashFactor =
     flashIntensity === undefined
       ? 1
       : clamp(flashIntensity / FLASH_INTENSITY_REF, FLASH_FACTOR_MIN, FLASH_FACTOR_MAX);
-  s.trauma = clamp01(s.trauma + radiusFactor * flashFactor);
+  s.trauma = clamp01(s.trauma + radiusFactor * flashFactor * distanceFactor);
 }
 
 /**
@@ -128,6 +163,8 @@ export interface ExplosionLike {
   radius: number;
   /** Optional flash intensity from the event. */
   flashIntensity?: number;
+  /** Optional world-space blast position used for distance attenuation. */
+  position?: PositionLike;
 }
 
 /** Highest explosion id at/after `cursor` (never lowers the cursor). */
@@ -165,10 +202,22 @@ function listMaxExplosionId(events: readonly ExplosionLike[]): number {
  * @param {TraumaState} s - Trauma state to mutate.
  * @returns {number} The updated explosion cursor.
  */
+function distanceBetween(a: PositionLike, b: PositionLike): number {
+  const dx = a.x - b.x;
+  const dy = a.y - b.y;
+  const dz = a.z - b.z;
+  return Math.hypot(dx, dy, dz);
+}
+
+/**
+ * Consume newly-emitted explosions after `cursor`, adding distance-attenuated
+ * trauma and FOV kick to `s`, and return the updated cursor id.
+ */
 export function advanceExplosionCursor(
   events: readonly ExplosionLike[],
   cursor: number,
   s: TraumaState,
+  cameraPosition?: PositionLike,
 ): number {
   if (events.length === 0) return 0;
 
@@ -181,9 +230,14 @@ export function advanceExplosionCursor(
 
   for (const event of events) {
     if (event.id <= next) continue;
-    addExplosionTrauma(s, event.radius, event.flashIntensity);
-    if (isFovKickBlast(event.radius)) {
-      addFovKick(s, FOV_KICK_MAX_DEG);
+    const distance =
+      cameraPosition !== undefined && event.position !== undefined
+        ? distanceBetween(cameraPosition, event.position)
+        : undefined;
+    const distanceFactor = explosionDistanceAttenuation(distance);
+    addExplosionTrauma(s, event.radius, event.flashIntensity, distance);
+    if (distanceFactor > 0 && isFovKickBlast(event.radius)) {
+      addFovKick(s, FOV_KICK_MAX_DEG * distanceFactor);
     }
     next = event.id;
   }

@@ -52,16 +52,15 @@ export interface QualitySettings {
 /**
  * Concrete renderer knobs per tier.
  *
- * `high` reproduces the shipped values exactly (DPR 0.5/2/0.5 — matching the
- * `<DynamicResScaler>` default `initialDpr`, shadows on, map 2048, AO
+ * `high` reproduces the shipped feature/shader baseline (shadows on, map 2048, AO
  * Medium/half-res, bloom on, 5000 particles at 12/s per anchor, 7 star octaves,
- * shield chromatic aberration on) so selecting `high` is a no-op relative to the
- * previous build.
+ * shield chromatic aberration on) while booting at DPR 1.0 (min 0.5, max 2.0)
+ * so the initial frame renders at full CSS resolution before scaling.
  */
 export const QUALITY_PRESETS: Record<QualityTier, QualitySettings> = {
   high: {
     tier: 'high',
-    dpr: { min: 0.5, max: 2, initial: 0.5 },
+    dpr: { min: 0.5, max: 2, initial: 1.0 },
     shadows: true,
     shadowMapSize: 2048,
     ao: { enabled: true, halfRes: true, quality: 'Medium' },
@@ -123,6 +122,18 @@ export function resolveQualitySettings(
   autoTier: QualityTier | undefined,
 ): QualitySettings {
   return QUALITY_PRESETS[resolveQualityTier(preset, autoTier)] ?? QUALITY_PRESETS.high;
+}
+
+/**
+ * Resolve whether postprocessing is active given the UI toggle, quality-tier
+ * bloom ceiling, and optional debug override (`__copilot_forcePostprocessingMount`).
+ */
+export function resolvePostprocessingEnabled(
+  uiEnabled: boolean,
+  bloomEnabled: boolean,
+  forceMount = false,
+): boolean {
+  return forceMount ? true : uiEnabled && bloomEnabled;
 }
 
 export interface QualityDetectionInput {

@@ -177,14 +177,45 @@ export function buildShieldHexFragmentShader(): string {
         return total;
       }
 
-      void main(){
-        vec3 N = normalize(vWorldPos - vCenter);
-        vec2 uv = vec2(atan(N.z, N.x)/6.2831853 + 0.5, acos(N.y)/3.1415926);
-        uv *= uHexScale;
+      void evalHexFace(vec2 faceAngles, out float faceBorder, out float faceSparkle) {
+        vec2 uv = (faceAngles / 3.14159265) * uHexScale;
         vec2 cell = hexLocal(uv);
         float d = sdHexagon(cell, 0.5);
         float w = max(0.0001, uEdgeWidth);
-        float border = 1.0 - smoothstep(0.0, w, abs(d));
+        faceBorder = 1.0 - smoothstep(0.0, w, abs(d));
+        faceSparkle = hash(floor(uv));
+      }
+
+      void main(){
+        vec3 N = normalize(vWorldPos - vCenter);
+        // Triplanar equal-angle cube projection avoids polar pinching and -X atan seams.
+        vec3 triW = pow(abs(N), vec3(8.0));
+        triW /= max(dot(triW, vec3(1.0)), 1e-5);
+
+        float border = 0.0;
+        float edgeGlow = 0.0;
+
+        if (triW.x > 0.005) {
+          float b;
+          float s;
+          evalHexFace(vec2(atan(N.z, abs(N.x)), atan(N.y, abs(N.x))), b, s);
+          border += triW.x * b;
+          edgeGlow += triW.x * b * (0.7 + 0.3 * s);
+        }
+        if (triW.y > 0.005) {
+          float b;
+          float s;
+          evalHexFace(vec2(atan(N.x, abs(N.y)), atan(N.z, abs(N.y))), b, s);
+          border += triW.y * b;
+          edgeGlow += triW.y * b * (0.7 + 0.3 * s);
+        }
+        if (triW.z > 0.005) {
+          float b;
+          float s;
+          evalHexFace(vec2(atan(N.x, abs(N.z)), atan(N.y, abs(N.z))), b, s);
+          border += triW.z * b;
+          edgeGlow += triW.z * b * (0.7 + 0.3 * s);
+        }
 
         // Chromatic aberration for ripples. LOW_QUALITY collapses the three
         // chromatic evaluations into one (reuse the green channel for R/B)
@@ -202,9 +233,6 @@ export function buildShieldHexFragmentShader(): string {
         float rippleMax = max(rippleR, max(rippleG, rippleB));
         vec3 rippleColor = vec3(rippleR, rippleG, rippleB);
 
-        float sparkle = hash(floor(uv));
-        float edgeGlow = border * (0.7 + 0.3 * sparkle);
-        
         // Use the max intensity for the glow alpha contribution
         float rippleGlow = rippleMax * (1.0 + 0.5 * border) * uRippleColorMul;
         

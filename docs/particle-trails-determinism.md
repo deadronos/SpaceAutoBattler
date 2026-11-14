@@ -8,43 +8,48 @@ The particle-trail simulation (owned by the `useParticleTrailSimulation` hook an
 
 ### Seeded Random Number Generator
 
-- **Location**: `src/hooks/useParticleTrailSimulation.ts:16` (`TRAIL_RNG_SEED`) and `:36` (the `SeededRng` ref)
+- **Location**: `src/hooks/useParticleTrailSimulation.ts` (`TRAIL_RNG_SEED` and the `SeededRng` ref)
 - **Seed**: `TRAIL_RNG_SEED = 0x54524149` ('TRAI' in ASCII)
 - **Instance**: `rngRef = useRef(new SeededRng(TRAIL_RNG_SEED))`
 
 The simulation uses a dedicated `SeededRng` instance that ensures all random behavior is deterministic and reproducible across multiple runs.
 
+### Simulation-Time Sync & LOD Alignment
+
+- **Simulation clock**: When rendered inside `GameProvider`, `uTime` and particle spawn accumulation follow `gameState.time + simAlpha * sim.step`, honoring `timeScale`, `paused`, and simulation resets (falling back to Three.js clock elapsed time only when mounted standalone without `GameProvider`).
+- **LOD fade**: Camera-distance attenuation (`computeTrailLodFactor` + `uLodFadeStart` / `uLodFadeEnd` in `src/renderer/particles/trailResources.ts`) aligns with `DEFAULT_DISTANCE_THRESHOLD` (4000 units), fading smoothly from `TRAIL_LOD_FADE_START` (2800) to `TRAIL_LOD_FADE_END` (4000) instead of popping out at a short cutoff.
+
 ### Deterministic Properties
 
-All particle properties that use randomness are generated using the seeded RNG (`src/hooks/useParticleTrailSimulation.ts`):
+All particle properties that use randomness are generated using the seeded RNG in `src/hooks/useParticleTrailSimulation.ts`:
 
-1. **Backward Speed** (`useParticleTrailSimulation.ts:183`)
+1. **Backward Speed**
 
    ```typescript
    const speed = backwardMin + rngRef.current.next() * (backwardMax - backwardMin);
    ```
 
-2. **Lateral Jitter** (`useParticleTrailSimulation.ts:184-185`)
+2. **Lateral Jitter**
 
    ```typescript
    const jitterX = (rngRef.current.next() - 0.5) * 2 * lateralJitter;
    const jitterY = (rngRef.current.next() - 0.5) * 2 * lateralJitter;
    ```
 
-3. **Longitudinal Jitter** (`useParticleTrailSimulation.ts:186`)
+3. **Longitudinal Jitter**
 
    ```typescript
    const jitterZ = (rngRef.current.next() - 0.5) * 2 * longitudinalJitter;
    ```
 
-4. **Lifetime Variation** (`useParticleTrailSimulation.ts:192-193`)
+4. **Lifetime Variation**
 
    ```typescript
    const lifetimeJitter = 1 - scaleJitter + rngRef.current.next() * 2 * scaleJitter;
    trailResources.arrays.lifetime[idx] = lifetimeBase * lifetimeJitter;
    ```
 
-5. **Scale Variation** (`useParticleTrailSimulation.ts:195-196`)
+5. **Scale Variation**
    ```typescript
    trailResources.arrays.scale[idx] = 1 - scaleJitter + rngRef.current.next() * 2 * scaleJitter;
    // Produces values in range [1 - scaleJitter, 1 + scaleJitter]
@@ -56,9 +61,9 @@ All particle properties that use randomness are generated using the seeded RNG (
 The simulation follows performance best practices:
 
 1. **Preallocated Temp Vectors**
-   - `backward` vector (`useParticleTrailSimulation.ts:40`) is created once and reused
+   - Preallocated scratch vectors (`backward` ref, `cameraPos` ref, shared ship `Matrix4`/`Vector3` temp objects) are reused across frames
    - No `clone()` calls in hot paths
-   - Anchor cache reuses Vector3 instances
+   - Anchor cache reuses `Vector3` instances
 
 2. **Ring Buffer Pattern**
    - Particles stored in fixed-size arrays

@@ -76,6 +76,12 @@ export interface StarLightConfig {
   ambientColor?: string;
   /** Optional ambient intensity multiplier. */
   ambientIntensity?: number;
+  /** Optional cool fill/rim directional light color from the opposite side. */
+  fillColor?: string;
+  /** Optional cool fill/rim directional light intensity. */
+  fillIntensity?: number;
+  /** Optional IBL environment intensity for metallic/PBR reflections. */
+  environmentIntensity?: number;
 }
 
 export interface SkysphereConfig {
@@ -155,6 +161,9 @@ export const CELESTIAL_ENVIRONMENT: CelestialEnvironmentConfig = {
     distance: 30000,
     ambientColor: '#1b2240',
     ambientIntensity: 0.55,
+    fillColor: '#5c82cc',
+    fillIntensity: 0.3,
+    environmentIntensity: 0.45,
   },
   skysphere: {
     textureKey: 'richBlueNebulae',

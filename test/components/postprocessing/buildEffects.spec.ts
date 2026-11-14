@@ -99,6 +99,7 @@ vi.mock('postprocessing', async (importOriginal) => {
 });
 
 import { buildEffects } from '../../../src/components/postprocessing/buildEffects.js';
+import { POSTPROCESSING_CONFIG } from '../../../src/config/postprocessing.js';
 
 const baseConfig: PostprocessingConfig = {
   ao: {
@@ -384,5 +385,29 @@ describe('buildEffects', () => {
     expect(vignette).toBeNull();
     expect(effects).toHaveLength(1);
     expect(effects[0]).toBeInstanceOf(hoisted.MockFXAAEffect);
+  });
+
+  it('does not configure or build an unused star SelectiveBloomEffect pass', () => {
+    expect(Object.keys(POSTPROCESSING_CONFIG.bloomGroups)).not.toContain('star');
+
+    const selections = new Map(
+      Object.keys(POSTPROCESSING_CONFIG.bloomGroups).map((group) => [
+        group,
+        new hoisted.MockSelection(1),
+      ]),
+    );
+
+    const { bloomEffects } = buildEffects({
+      scene: {} as Scene,
+      camera: {} as Camera,
+      bloomContext: {
+        defaultGroup: POSTPROCESSING_CONFIG.bloomDefaultGroup,
+        selections,
+      } as unknown as BloomContextLike,
+      config: POSTPROCESSING_CONFIG,
+      colorPipeline: POSTPROCESSING_CONFIG.colorPipeline,
+    });
+
+    expect(bloomEffects).toHaveLength(Object.keys(POSTPROCESSING_CONFIG.bloomGroups).length);
   });
 });

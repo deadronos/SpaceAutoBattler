@@ -3,10 +3,15 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { Frustum, InstancedBufferGeometry, Matrix4, Mesh, ShaderMaterial, Vector3 } from 'three';
 import type { ShipEntity } from '../types/index.js';
 import { PARTICLE_TRAILS_CONFIG, THRUSTER_GLOW_CONFIG } from '../config/effects.js';
+import { useNullableGameState } from '../app/context.js';
 import { useUiStore } from '../app/uiStore.js';
 import { usePrefersReducedMotion } from './usePrefersReducedMotion.js';
 import { SeededRng } from '../utils/rng.js';
-import type { ParticleTrailResources } from '../renderer/particles/trailResources.js';
+import {
+  TRAIL_LOD_FADE_END,
+  TRAIL_LOD_FADE_START,
+  type ParticleTrailResources,
+} from '../renderer/particles/trailResources.js';
 import {
   useThrusterAnchors,
   computeThrusterAnchorsWorld as computeAnchorsWorld,
@@ -14,6 +19,22 @@ import {
 import { markAttributeUpdateRange } from '../renderer/particles/trailUpdateRanges.js';
 
 const TRAIL_RNG_SEED = 0x54524149; // 'TRAI'
+
+/**
+ * Computes the smoothstep LOD factor (1 near camera, 0 at/beyond `fadeEnd`)
+ * matching the GPU vertex shader's `1.0 - smoothstep(uLodFadeStart, uLodFadeEnd, camDist)`.
+ */
+export function computeTrailLodFactor(
+  distSq: number,
+  fadeStart: number = TRAIL_LOD_FADE_START,
+  fadeEnd: number = TRAIL_LOD_FADE_END,
+): number {
+  if (!Number.isFinite(distSq) || distSq >= fadeEnd * fadeEnd) return 0;
+  if (distSq <= fadeStart * fadeStart || fadeEnd <= fadeStart) return 1;
+  const dist = Math.sqrt(distSq);
+  const t = (dist - fadeStart) / (fadeEnd - fadeStart);
+  return 1 - t * t * (3 - 2 * t);
+}
 
 /**
  * Per-frame particle trail simulation for ship thrusters.
@@ -45,16 +66,20 @@ export function useParticleTrailSimulation(
   const projScreenMatrix = useMemo(() => new Matrix4(), []);
   const camera = useThree((s) => s.camera);
 
+  const gameState = useNullableGameState();
   const paused = useUiStore((s) => s.paused);
   const reducedMotion = usePrefersReducedMotion();
-  const lastTimeRef = useRef(0);
+  const lastTimeRef = useRef<number | null>(null);
   const accumulatedTimeRef = useRef(0);
 
   useEffect(() => {
+    nextParticleIndex.current = 0;
+    filledCount.current = 0;
+    trailResources.geometry.instanceCount = 0;
     if (meshRef.current) {
       meshRef.current.visible = false;
     }
-  }, []);
+  }, [trailResources]);
 
   const resolveThrusterAnchorsWorld = (ship: ShipEntity): Vector3[] => {
     const locals = anchorLocalsByHull.get(ship.ship.hull);
@@ -82,19 +107,45 @@ export function useParticleTrailSimulation(
     const mesh = meshRef.current;
     if (!mesh) return;
 
-    const elapsed = state.clock.getElapsedTime();
-    if (lastTimeRef.current === 0) {
-      lastTimeRef.current = elapsed;
-      accumulatedTimeRef.current = elapsed;
+    const sim = gameState?.simulation;
+    const simAlpha = sim && sim.step > 0 ? Math.min(Math.max(sim.alpha, 0), 1) : 0;
+    const simTime =
+      gameState !== null
+        ? gameState.time + (sim ? simAlpha * sim.step : 0)
+        : state.clock.getElapsedTime();
+    const isPaused = paused || Boolean(gameState?.paused);
+    const timeScale = Math.max(gameState?.timeScale ?? 1, 0);
+
+    const isFirstFrame = lastTimeRef.current === null;
+    if (isFirstFrame) {
+      lastTimeRef.current = simTime;
+      accumulatedTimeRef.current = simTime;
     }
-    const d = elapsed - lastTimeRef.current;
-    lastTimeRef.current = elapsed;
-    if (!paused && !reducedMotion) {
-      accumulatedTimeRef.current += d;
+
+    let simDt = simTime - (lastTimeRef.current ?? simTime);
+    if (simDt < 0) {
+      // Match reset: simulation time jumped backwards, so re-sync trail clock and pool.
+      lastTimeRef.current = simTime;
+      accumulatedTimeRef.current = simTime;
+      nextParticleIndex.current = 0;
+      filledCount.current = 0;
+      spawnRemainders.current.clear();
+      simDt = 0;
+    } else {
+      lastTimeRef.current = simTime;
+      if (!isPaused && !reducedMotion) {
+        accumulatedTimeRef.current += simDt;
+      }
     }
 
     if (trailResources.material.uniforms.uTime) {
       trailResources.material.uniforms.uTime.value = accumulatedTimeRef.current;
+    }
+    if (trailResources.material.uniforms.uLodFadeStart) {
+      trailResources.material.uniforms.uLodFadeStart.value = TRAIL_LOD_FADE_START;
+    }
+    if (trailResources.material.uniforms.uLodFadeEnd) {
+      trailResources.material.uniforms.uLodFadeEnd.value = TRAIL_LOD_FADE_END;
     }
 
     // Update Frustum
@@ -111,8 +162,18 @@ export function useParticleTrailSimulation(
     const lifetimeBase = PARTICLE_TRAILS_CONFIG.lifetime;
     const maxParticles = trailResources.arrays.spawnTime.length;
 
-    // LOD Settings
-    const LOD_DISTANCE_SQ = 500 * 500; // Distance squared for LOD culling (500 units)
+    // WCAG 2.3.3: with reduced motion or pause requested, feed a zero delta so
+    // the spawn loop emits nothing while frustum/LOD and remainder bookkeeping
+    // continue to run and instanceCount stays stable.
+    const actualDelta =
+      isPaused || reducedMotion
+        ? 0
+        : gameState !== null
+          ? isFirstFrame
+            ? Math.max(0, delta) * timeScale
+            : simDt
+          : Math.max(0, delta);
+
     const cameraPos = camera.position;
 
     const activeShipIds = activeShipIdsRef.current;
@@ -127,9 +188,10 @@ export function useParticleTrailSimulation(
 
       const shipPos = ship.transform.position;
 
-      // 1. Distance LOD
+      // 1. Distance LOD (aligned with ship LOD threshold with smooth fade)
       const distSq = cameraPos.distanceToSquared(shipPos);
-      if (distSq > LOD_DISTANCE_SQ) {
+      const lodFactor = computeTrailLodFactor(distSq);
+      if (lodFactor <= 0) {
         continue;
       }
 
@@ -157,12 +219,8 @@ export function useParticleTrailSimulation(
       for (let i = 0; i < anchors.length; i++) {
         const anchor = anchors[i];
         if (!anchor) continue;
-        const rate = throttle * spawnRatePerAnchor;
+        const rate = throttle * spawnRatePerAnchor * lodFactor;
         const remainder = remainderForShip[i] ?? 0;
-        // WCAG 2.3.3: with reduced motion requested, feed a zero delta so the
-        // spawn loop emits nothing while the frustum/LOD and remainder
-        // bookkeeping continue to run and instanceCount stays stable.
-        const actualDelta = paused || reducedMotion ? 0 : delta;
         const desired = rate * actualDelta + remainder;
         const spawnCount = Math.floor(desired);
         remainderForShip[i] = desired - spawnCount;
@@ -193,7 +251,7 @@ export function useParticleTrailSimulation(
           trailResources.arrays.lifetime[idx] = lifetimeBase * lifetimeJitter;
           trailResources.arrays.spawnTime[idx] = accumulatedTimeRef.current;
           trailResources.arrays.scale[idx] =
-            1 - scaleJitter + rngRef.current.next() * 2 * scaleJitter;
+            (1 - scaleJitter + rngRef.current.next() * 2 * scaleJitter) * (0.35 + 0.65 * lodFactor);
 
           nextParticleIndex.current = (nextParticleIndex.current + 1) % maxParticles;
           if (filledCount.current < maxParticles) {

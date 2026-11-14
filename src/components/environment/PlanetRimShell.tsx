@@ -29,6 +29,7 @@ export function PlanetRimShell({
       blending: AdditiveBlending,
       depthWrite: false,
       side: DoubleSide,
+      fog: false,
     });
   }, [rimStrength, rimColor]);
 

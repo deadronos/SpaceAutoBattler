@@ -29,6 +29,15 @@ type DebugWindow = Window & {
   __copilot_forceHdrPipeline?: boolean;
 };
 
+function getRendererPixelRatio(renderer: WebGLRenderer): number {
+  const ratio = typeof renderer.getPixelRatio === 'function' ? renderer.getPixelRatio() : 1;
+  return Number.isFinite(ratio) && ratio > 0 ? ratio : 1;
+}
+
+function toPhysicalPixels(cssLength: number, pixelRatio: number): number {
+  return Math.max(1, Math.floor(cssLength * pixelRatio));
+}
+
 /**
  * Manages the post-processing effect composer and passes.
  * Handles Bloom, FXAA, and other screen-space effects.
@@ -50,6 +59,11 @@ export function Postprocessing({ enabled = false }: Props): null {
   // resolution without recreating the composer on every resize (the composer's
   // `setSize` path resizes passes afterwards).
   const sizeRef = useRef(size);
+  const lastSyncedViewportRef = useRef<{
+    width: number;
+    height: number;
+    pixelRatio: number;
+  } | null>(null);
   const bloomCtx = useBloomContext();
   const activeBloomCtx = bloomCtx ?? null;
   const enableCameraLayers = activeBloomCtx?.enableCameraLayers;
@@ -121,6 +135,18 @@ export function Postprocessing({ enabled = false }: Props): null {
     fxaaRef.current = null;
     bloomEffectsRef.current = [];
     renderTargetRef.current = null;
+    lastSyncedViewportRef.current = null;
+  }, []);
+
+  const syncComposerSize = useCallback((width: number, height: number, pixelRatio: number) => {
+    const composer = composerRef.current;
+    if (!composer) return;
+    composer.setSize(width, height);
+    renderTargetRef.current?.setSize(
+      toPhysicalPixels(width, pixelRatio),
+      toPhysicalPixels(height, pixelRatio),
+    );
+    lastSyncedViewportRef.current = { width, height, pixelRatio };
   }, []);
 
   useEffect(() => {
@@ -157,12 +183,14 @@ export function Postprocessing({ enabled = false }: Props): null {
           : undefined;
       const aoEnabled = forcedAo === undefined ? aoConfig.enabled : forcedAo;
 
+      const pixelRatio = getRendererPixelRatio(renderer);
+
       aoPass = aoEnabled
         ? buildAmbientOcclusion({
             scene: scene as unknown as Scene,
             camera: camera as unknown as Camera,
-            width: sizeRef.current.width,
-            height: sizeRef.current.height,
+            width: toPhysicalPixels(sizeRef.current.width, pixelRatio),
+            height: toPhysicalPixels(sizeRef.current.height, pixelRatio),
             config: aoConfig,
           })
         : null;
@@ -217,16 +245,26 @@ export function Postprocessing({ enabled = false }: Props): null {
 
   useEffect(() => {
     sizeRef.current = size;
-    const composer = composerRef.current;
-    if (!composer) return;
-    composer.setSize(size.width, size.height);
-    renderTargetRef.current?.setSize(size.width, size.height);
-  }, [size]);
+    const renderer = gl as unknown as WebGLRenderer;
+    syncComposerSize(size.width, size.height, getRendererPixelRatio(renderer));
+  }, [size, gl, syncComposerSize]);
 
   useFrame((_, delta) => {
     const composer = composerRef.current;
     if (!composer) return;
     if (effectiveEnabled) {
+      const renderer = gl as unknown as WebGLRenderer;
+      const currentPixelRatio = getRendererPixelRatio(renderer);
+      const currentSize = sizeRef.current;
+      const lastSynced = lastSyncedViewportRef.current;
+      if (
+        !lastSynced ||
+        lastSynced.width !== currentSize.width ||
+        lastSynced.height !== currentSize.height ||
+        lastSynced.pixelRatio !== currentPixelRatio
+      ) {
+        syncComposerSize(currentSize.width, currentSize.height, currentPixelRatio);
+      }
       if (bloomEffectsRef.current.length > 0) {
         for (const effect of bloomEffectsRef.current) {
           effect.blendMode.opacity.value = effect.selection.size > 0 ? 1 : 0;

@@ -6,8 +6,10 @@ import { SHIP_MODEL_PATHS } from '../../assets/ships.js';
 import { extendShipGltfLoader } from '../loaders/gltfDecoders.js';
 import type { ShipEntity, ShipHull } from '../../types/index.js';
 import { THRUSTER_GLOW_CONFIG } from '../../config/effects.js';
+import { sceneHasEngineMeshes } from '../../hooks/useShipThrusters.js';
 
 export type ThrusterAnchorLocals = Map<ShipHull, readonly Vector3[]>;
+export type GltfEngineHullMap = ReadonlyMap<ShipHull, boolean>;
 
 function extractAnchorsFromGltf(gltf: GLTF | null, hull: ShipHull): Vector3[] {
   if (!gltf?.scene) return [];
@@ -34,28 +36,52 @@ function extractAnchorsFromGltf(gltf: GLTF | null, hull: ShipHull): Vector3[] {
   return anchors;
 }
 
+function useHullGltfs(): Record<ShipHull, GLTF> {
+  const fighter = useGLTF(SHIP_MODEL_PATHS.fighter, true, true, extendShipGltfLoader) as GLTF;
+  const corvette = useGLTF(SHIP_MODEL_PATHS.corvette, true, true, extendShipGltfLoader) as GLTF;
+  const frigate = useGLTF(SHIP_MODEL_PATHS.frigate, true, true, extendShipGltfLoader) as GLTF;
+  const destroyer = useGLTF(SHIP_MODEL_PATHS.destroyer, true, true, extendShipGltfLoader) as GLTF;
+  const carrier = useGLTF(SHIP_MODEL_PATHS.carrier, true, true, extendShipGltfLoader) as GLTF;
+
+  return useMemo(
+    () => ({ fighter, corvette, frigate, destroyer, carrier }),
+    [fighter, corvette, frigate, destroyer, carrier],
+  );
+}
+
 export function useThrusterAnchors(): ThrusterAnchorLocals {
-  const gltfFighter = useGLTF(SHIP_MODEL_PATHS.fighter, true, true, extendShipGltfLoader) as GLTF;
-  const gltfCorvette = useGLTF(SHIP_MODEL_PATHS.corvette, true, true, extendShipGltfLoader) as GLTF;
-  const gltfFrigate = useGLTF(SHIP_MODEL_PATHS.frigate, true, true, extendShipGltfLoader) as GLTF;
-  const gltfDestroyer = useGLTF(
-    SHIP_MODEL_PATHS.destroyer,
-    true,
-    true,
-    extendShipGltfLoader,
-  ) as GLTF;
-  const gltfCarrier = useGLTF(SHIP_MODEL_PATHS.carrier, true, true, extendShipGltfLoader) as GLTF;
+  const gltfs = useHullGltfs();
 
   return useMemo(
     () =>
       new Map<ShipHull, Vector3[]>([
-        ['fighter', extractAnchorsFromGltf(gltfFighter, 'fighter')],
-        ['corvette', extractAnchorsFromGltf(gltfCorvette, 'corvette')],
-        ['frigate', extractAnchorsFromGltf(gltfFrigate, 'frigate')],
-        ['destroyer', extractAnchorsFromGltf(gltfDestroyer, 'destroyer')],
-        ['carrier', extractAnchorsFromGltf(gltfCarrier, 'carrier')],
+        ['fighter', extractAnchorsFromGltf(gltfs.fighter, 'fighter')],
+        ['corvette', extractAnchorsFromGltf(gltfs.corvette, 'corvette')],
+        ['frigate', extractAnchorsFromGltf(gltfs.frigate, 'frigate')],
+        ['destroyer', extractAnchorsFromGltf(gltfs.destroyer, 'destroyer')],
+        ['carrier', extractAnchorsFromGltf(gltfs.carrier, 'carrier')],
       ]),
-    [gltfFighter, gltfCorvette, gltfFrigate, gltfDestroyer, gltfCarrier],
+    [gltfs],
+  );
+}
+
+/**
+ * Maps each ship hull to whether its loaded GLTF model already contains
+ * dedicated engine/thruster/exhaust meshes.
+ */
+export function useGltfEngineMeshHulls(): GltfEngineHullMap {
+  const gltfs = useHullGltfs();
+
+  return useMemo(
+    () =>
+      new Map<ShipHull, boolean>([
+        ['fighter', sceneHasEngineMeshes(gltfs.fighter?.scene)],
+        ['corvette', sceneHasEngineMeshes(gltfs.corvette?.scene)],
+        ['frigate', sceneHasEngineMeshes(gltfs.frigate?.scene)],
+        ['destroyer', sceneHasEngineMeshes(gltfs.destroyer?.scene)],
+        ['carrier', sceneHasEngineMeshes(gltfs.carrier?.scene)],
+      ]),
+    [gltfs],
   );
 }
 

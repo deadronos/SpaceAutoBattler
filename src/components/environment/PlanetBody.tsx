@@ -76,14 +76,14 @@ export const PlanetBody = memo(function PlanetBody({
     [fallbackColor],
   );
   const emissiveIntensity = config.emissiveBoost ?? 0.05;
-  const useRimGlow = (config.rimStrength ?? 0) > 0;
+  const useRimGlow =
+    CELESTIAL_ENVIRONMENT.features?.planetRims !== false && (config.rimStrength ?? 0) > 0;
   // Atmosphere shell is gated by the global feature flag and the per-planet
   // strength; strength 0 disables it for that planet only.
   const useAtmosphere =
     CELESTIAL_ENVIRONMENT.features?.planetAtmosphere !== false &&
     (config.atmosphereStrength ?? 0) > 0;
-
-  const hideRingsParam = false;
+  const useRings = CELESTIAL_ENVIRONMENT.features?.planetRings !== false && Boolean(config.rings);
 
   if (error) {
     console.warn(
@@ -95,7 +95,7 @@ export const PlanetBody = memo(function PlanetBody({
 
   return (
     <group ref={groupRef} position={[config.position.x, config.position.y, config.position.z]}>
-      <mesh castShadow receiveShadow>
+      <mesh>
         <sphereGeometry
           args={[config.radius, PLANET_GEOMETRY_SEGMENTS.width, PLANET_GEOMETRY_SEGMENTS.height]}
         />
@@ -107,6 +107,8 @@ export const PlanetBody = memo(function PlanetBody({
           roughness={0.85}
           emissive={emissiveColor}
           emissiveIntensity={texture ? emissiveIntensity : emissiveIntensity * 0.5}
+          envMapIntensity={0.15}
+          fog={false}
         />
       </mesh>
       {useRimGlow && (
@@ -142,7 +144,7 @@ export const PlanetBody = memo(function PlanetBody({
           />
         </mesh>
       )}
-      {config.rings && (
+      {useRings && config.rings && (
         <PlanetRings
           innerRadius={config.rings.innerRadius}
           outerRadius={config.rings.outerRadius}
@@ -167,7 +169,7 @@ export const PlanetBody = memo(function PlanetBody({
           penumbra={config.rings.penumbra}
           // Pass the global star direction so the ring shadow faces away from the star
           lightDir={CELESTIAL_ENVIRONMENT.starLight.direction}
-          enabled={!hideRingsParam}
+          enabled={true}
         />
       )}
     </group>

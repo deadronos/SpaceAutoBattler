@@ -1,5 +1,24 @@
-import { describe, expect, it } from 'vite-plus/test';
-import { computeNextDpr } from '../../src/components/DynamicResScaler.js';
+import { describe, expect, it, vi, afterEach } from 'vite-plus/test';
+import React from 'react';
+import { cleanup, render } from '@testing-library/react';
+
+const glStub = {
+  setPixelRatio: vi.fn(),
+  setSize: vi.fn(),
+};
+
+vi.mock('@react-three/fiber', () => ({
+  useThree: () => ({ gl: glStub, size: { width: 1280, height: 720 } }),
+  useFrame: vi.fn(),
+}));
+
+import DynamicResScaler, { computeNextDpr } from '../../src/components/DynamicResScaler.js';
+
+afterEach(() => {
+  cleanup();
+  glStub.setPixelRatio.mockClear();
+  glStub.setSize.mockClear();
+});
 
 const defaults = {
   minDpr: 0.5,
@@ -55,5 +74,17 @@ describe('computeNextDpr', () => {
   it('never drops below minDpr', () => {
     const next = computeNextDpr(0.5, 28, defaults);
     expect(next).toBeGreaterThanOrEqual(defaults.minDpr);
+  });
+});
+
+describe('DynamicResScaler initial DPR clamping', () => {
+  it('applies initialDpr clamped to [minDpr, maxDpr] on mount', () => {
+    render(React.createElement(DynamicResScaler, { minDpr: 0.5, maxDpr: 0.75, initialDpr: 1.0 }));
+    expect(glStub.setPixelRatio).toHaveBeenCalledWith(0.75);
+    expect(glStub.setSize).toHaveBeenCalledWith(1280, 720, false);
+
+    glStub.setPixelRatio.mockClear();
+    render(React.createElement(DynamicResScaler, { minDpr: 0.5, maxDpr: 2, initialDpr: 1.0 }));
+    expect(glStub.setPixelRatio).toHaveBeenCalledWith(1.0);
   });
 });

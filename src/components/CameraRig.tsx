@@ -33,11 +33,11 @@ const SHAKE_ROLL_FREQ = 9;
  */
 const FOLLOW_SMOOTHING_K = 6;
 /**
- * Follow look-ahead distance along the ship's velocity direction (world
- * units). Zero tracks the hull centre exactly; a small positive value frames
- * the ship slightly ahead of its motion. Flagged for human tuning.
+ * Follow look-ahead time horizon along the ship's velocity vector (seconds).
+ * Zero tracks the hull centre exactly; a positive value frames the ship
+ * slightly ahead of its motion.
  */
-const FOLLOW_LEAD = 0;
+export const FOLLOW_LEAD: number = 0.25;
 
 interface BasePose {
   x: number;
@@ -299,6 +299,7 @@ export function CameraRig(): null {
         state.explosions,
         lastSeenExplosionIdRef.current,
         s,
+        frameCamera.position,
       );
       updateTrauma(s, simDt);
     } else {

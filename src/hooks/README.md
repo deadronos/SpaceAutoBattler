@@ -13,13 +13,13 @@ Custom React hooks for game logic integration with React Three Fiber components.
 | **useParticleTrailSimulation.ts**   | Per-frame thruster trail particle simulation and buffers          |
 | **usePlanetRingUniforms.ts**        | Keeps `PlanetRings` shader uniforms in sync                       |
 | **usePlanetTexture.ts**             | Hook for loading and caching planet textures                      |
+| **usePostprocessingEnabled.ts**     | Resolves effective postprocessing state across UI + quality tier  |
 | **usePrefersReducedMotion.ts**      | Hook for respecting reduced motion user preferences               |
 | **useProgressiveTexture.ts**        | Loads a low-res texture, then upgrades to high-res in background  |
 | **useProjectileInstancedGroups.ts** | Per-frame instanced projectile grouping and matrix updates        |
 | **useShipInterpolation.ts**         | Hook for smooth interpolation between physics frames              |
 | **useShipThrusters.ts**             | Hook for managing thruster attachment points and animations       |
 | **useSimulationBridge.ts**          | Owns the worker `SimulationBridge` lifecycle                      |
-| **useStarBloom.ts**                 | Hook for managing bloom effects on stars                          |
 | **useStarDebug.ts**                 | Hook for star debug visualization                                 |
 | **useStarMaterial.ts**              | Hook for creating and managing star material instances            |
 | **useStarSphereUniforms.ts**        | `StarSphere` per-frame uniform updates (time, camera, textures)   |

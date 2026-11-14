@@ -3,12 +3,15 @@ import {
   FOV_KICK_MAX_DEG,
   FOV_KICK_RADIUS_THRESHOLD,
   TRAUMA_DECAY_PER_SEC,
+  TRAUMA_DISTANCE_FAR,
+  TRAUMA_DISTANCE_NEAR,
   TRAUMA_MAX,
   TRAUMA_RADIUS_REF,
   addExplosionTrauma,
   addFovKick,
   advanceExplosionCursor,
   createTraumaState,
+  explosionDistanceAttenuation,
   isFovKickBlast,
   maxExplosionId,
   traumaAmplitude,
@@ -193,5 +196,64 @@ describe('camera rig shake math', () => {
       s,
     );
     expect(s.trauma).toBeGreaterThan(0);
+  });
+
+  it('explosionDistanceAttenuation returns 1 inside near threshold, fades smoothly, and reaches 0 at far threshold', () => {
+    expect(explosionDistanceAttenuation(undefined)).toBe(1);
+    expect(explosionDistanceAttenuation(0)).toBe(1);
+    expect(explosionDistanceAttenuation(TRAUMA_DISTANCE_NEAR)).toBe(1);
+
+    const midDistance = (TRAUMA_DISTANCE_NEAR + TRAUMA_DISTANCE_FAR) / 2;
+    expect(explosionDistanceAttenuation(midDistance)).toBeCloseTo(0.5, 5);
+
+    expect(explosionDistanceAttenuation(TRAUMA_DISTANCE_FAR)).toBe(0);
+    expect(explosionDistanceAttenuation(TRAUMA_DISTANCE_FAR * 3)).toBe(0);
+  });
+
+  it('advanceExplosionCursor attenuates trauma and FOV kick by distance when positions are supplied', () => {
+    const camPos = { x: 0, y: 0, z: 0 };
+    const nearState = createTraumaState();
+    const midState = createTraumaState();
+    const farState = createTraumaState();
+
+    advanceExplosionCursor(
+      [{ id: 1, radius: FOV_KICK_RADIUS_THRESHOLD, position: { x: 0, y: 0, z: 50 } }],
+      0,
+      nearState,
+      camPos,
+    );
+    advanceExplosionCursor(
+      [
+        {
+          id: 1,
+          radius: FOV_KICK_RADIUS_THRESHOLD,
+          position: { x: 0, y: 0, z: (TRAUMA_DISTANCE_NEAR + TRAUMA_DISTANCE_FAR) / 2 },
+        },
+      ],
+      0,
+      midState,
+      camPos,
+    );
+    advanceExplosionCursor(
+      [
+        {
+          id: 1,
+          radius: FOV_KICK_RADIUS_THRESHOLD,
+          position: { x: 0, y: 0, z: TRAUMA_DISTANCE_FAR + 200 },
+        },
+      ],
+      0,
+      farState,
+      camPos,
+    );
+
+    expect(nearState.trauma).toBeCloseTo(FOV_KICK_RADIUS_THRESHOLD / TRAUMA_RADIUS_REF, 5);
+    expect(nearState.fovKick).toBeCloseTo(FOV_KICK_MAX_DEG, 5);
+    expect(midState.trauma).toBeGreaterThan(0);
+    expect(midState.trauma).toBeLessThan(nearState.trauma);
+    expect(midState.fovKick).toBeGreaterThan(0);
+    expect(midState.fovKick).toBeLessThan(nearState.fovKick);
+    expect(farState.trauma).toBe(0);
+    expect(farState.fovKick).toBe(0);
   });
 });

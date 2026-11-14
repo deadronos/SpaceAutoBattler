@@ -9,6 +9,12 @@ import {
 } from 'three';
 import type { ParticleTrailsConfig } from '../../config/effects.js';
 import { PARTICLE_TRAIL_DEFAULT_SOFTNESS, THRUSTER_GLOW_CONFIG } from '../../config/effects.js';
+import { DEFAULT_DISTANCE_THRESHOLD } from '../../components/lod/shipLodPartition.js';
+
+/** Distance where particle trails begin fading out smoothly (70% of ship LOD threshold). */
+export const TRAIL_LOD_FADE_START = DEFAULT_DISTANCE_THRESHOLD * 0.7;
+/** Distance where particle trails reach zero opacity and stop spawning (aligned with ship LOD). */
+export const TRAIL_LOD_FADE_END = DEFAULT_DISTANCE_THRESHOLD;
 
 export interface ParticleTrailResources {
   geometry: InstancedBufferGeometry;
@@ -43,6 +49,8 @@ function createTrailMaterial(
       uColor: { value: color },
       uOpacity: { value: config.opacity },
       uSoftness: { value: config.spriteSoftness ?? PARTICLE_TRAIL_DEFAULT_SOFTNESS },
+      uLodFadeStart: { value: TRAIL_LOD_FADE_START },
+      uLodFadeEnd: { value: TRAIL_LOD_FADE_END },
     },
     transparent: true,
     depthTest: config.depthTest,
@@ -55,6 +63,8 @@ function createTrailMaterial(
       attribute float instanceScale;
 
       uniform float uTime;
+      uniform float uLodFadeStart;
+      uniform float uLodFadeEnd;
 
       varying float vFade;
       varying vec3 vNormalView;
@@ -62,9 +72,11 @@ function createTrailMaterial(
       void main() {
         float age = max(uTime - instanceSpawnTime, 0.0);
         float lifeRatio = clamp(1.0 - age / max(instanceLifetime, 1e-6), 0.0, 1.0);
+        float camDist = distance(cameraPosition, instanceSpawnPosition);
+        float lodFade = 1.0 - smoothstep(uLodFadeStart, uLodFadeEnd, camDist);
         float scale = instanceScale * lifeRatio;
         vec3 worldPosition = instanceSpawnPosition + instanceVelocity * age + position * scale;
-        vFade = lifeRatio;
+        vFade = lifeRatio * lodFade;
         // View-space normal drives a radial falloff so the low-poly sphere
         // reads as a soft particle instead of a hard blob (avoids UV pinching).
         vNormalView = normalize(normalMatrix * normal);

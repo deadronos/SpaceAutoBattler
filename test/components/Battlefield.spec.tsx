@@ -1,7 +1,14 @@
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { cleanup, render } from '@testing-library/react';
-import { AxesHelper } from 'three';
+import {
+  ACESFilmicToneMapping,
+  AgXToneMapping,
+  AxesHelper,
+  NeutralToneMapping,
+  NoToneMapping,
+  SRGBColorSpace,
+} from 'three';
 import { Grid, OrbitControls } from '@react-three/drei';
 import { CameraRig } from '../../src/components/CameraRig.js';
 import {
@@ -21,15 +28,42 @@ const mockState = {
 
 const canvasPropsCalls = vi.hoisted(() => [] as Array<{ onPointerMissed?: () => void }>);
 const mockSelectShip = vi.hoisted(() => vi.fn());
+const canvasOnCreatedGl = vi.hoisted(() => ({ current: null as Record<string, unknown> | null }));
+const uiStoreState = vi.hoisted(() => ({
+  postprocessingEnabled: false,
+  qualityPreset: 'high' as 'low' | 'medium' | 'high' | 'auto',
+  detectedQualityTier: 'high' as 'low' | 'medium' | 'high',
+}));
+const mountCounts = vi.hoisted(() => ({
+  celestialEnvironment: 0,
+  particleTrails: 0,
+}));
+const suspendShipsState = vi.hoisted(() => ({ suspend: false }));
+const pendingPromise = new Promise<void>(() => {});
+const mountedLayerCalls = vi.hoisted(() => ({
+  turrets: 0,
+  muzzles: 0,
+  projectiles: 0,
+  explosions: 0,
+}));
 
 vi.mock('@react-three/fiber', () => ({
   Canvas: ({
     children,
     onPointerMissed,
+    onCreated,
   }: {
     children: React.ReactNode;
     onPointerMissed?: () => void;
+    onCreated?: (state: { gl: unknown }) => void;
   }) => {
+    const createdRef = React.useRef(false);
+    React.useEffect(() => {
+      if (!createdRef.current && canvasOnCreatedGl.current && onCreated) {
+        createdRef.current = true;
+        onCreated({ gl: canvasOnCreatedGl.current });
+      }
+    }, [onCreated]);
     canvasPropsCalls.push({ onPointerMissed });
     return <>{children}</>;
   },
@@ -51,8 +85,7 @@ vi.mock('../../src/app/context.js', () => ({
 
 vi.mock('../../src/app/uiStore.js', () => ({
   useUiStore: Object.assign(
-    (selector: (state: { postprocessingEnabled: boolean }) => boolean) =>
-      selector({ postprocessingEnabled: false }),
+    (selector: (state: typeof uiStoreState) => unknown) => selector(uiStoreState),
     {
       getState: () => ({ selectShip: mockSelectShip }),
     },
@@ -64,25 +97,58 @@ vi.mock('../../src/renderer/bloom/index.js', () => ({
 }));
 
 vi.mock('../../src/components/PostprocessingLazy.js', () => ({ default: () => null }));
-vi.mock('../../src/components/ParticleTrails.js', () => ({ ParticleTrails: () => null }));
+vi.mock('../../src/components/ParticleTrails.js', () => ({
+  ParticleTrails: () => {
+    React.useEffect(() => {
+      mountCounts.particleTrails += 1;
+    }, []);
+    return null;
+  },
+}));
 vi.mock('../../src/components/HudOverlayCollector.js', () => ({ HudOverlayCollector: () => null }));
 vi.mock('../../src/components/explosions/ExplosionRendererCore.js', () => ({
-  ExplosionsLayer: () => null,
+  ExplosionsLayer: () => {
+    mountedLayerCalls.explosions += 1;
+    return null;
+  },
 }));
 vi.mock('../../src/components/PerfMonitorOverlay.js', () => ({ PerfMonitorOverlay: () => null }));
 vi.mock('../../src/components/DynamicResScaler.js', () => ({ default: () => null }));
 vi.mock('../../src/components/environment/CelestialEnvironment.js', () => ({
-  CelestialEnvironment: () => null,
+  CelestialEnvironment: () => {
+    React.useEffect(() => {
+      mountCounts.celestialEnvironment += 1;
+    }, []);
+    return null;
+  },
 }));
 vi.mock('../../src/components/BattlefieldSystems.js', () => ({ BattlefieldSystems: () => null }));
-vi.mock('../../src/components/layers/ShipsLayer.js', () => ({ ShipsLayer: () => null }));
+vi.mock('../../src/components/layers/ShipsLayer.js', () => ({
+  ShipsLayer: () => {
+    if (suspendShipsState.suspend) {
+      throw pendingPromise;
+    }
+    return null;
+  },
+}));
 vi.mock('../../src/components/layers/ProjectilesLayer.js', () => ({
-  ProjectilesLayer: () => null,
+  ProjectilesLayer: () => {
+    mountedLayerCalls.projectiles += 1;
+    return null;
+  },
 }));
 vi.mock('../../src/components/layers/MuzzleFlashInstancedLayer.js', () => ({
-  MuzzleFlashInstancedLayer: () => null,
+  MuzzleFlashInstancedLayer: () => {
+    mountedLayerCalls.muzzles += 1;
+    return null;
+  },
 }));
-vi.mock('../../src/components/layers/TurretsLayer.js', () => ({ TurretsLayer: () => null }));
+vi.mock('../../src/components/layers/TurretsLayer.js', () => ({
+  TurretsLayer: () => {
+    mountedLayerCalls.turrets += 1;
+    return null;
+  },
+}));
 vi.mock('../../src/components/layers/StarsField.js', () => ({ StarsField: () => null }));
 vi.mock('../../src/components/layers/WorkerShipsLayer.js', () => ({
   WorkerShipsLayer: () => null,
@@ -134,6 +200,17 @@ afterEach(() => {
 beforeEach(() => {
   canvasPropsCalls.length = 0;
   mockSelectShip.mockReset();
+  canvasOnCreatedGl.current = null;
+  uiStoreState.postprocessingEnabled = false;
+  uiStoreState.qualityPreset = 'high';
+  uiStoreState.detectedQualityTier = 'high';
+  mountCounts.celestialEnvironment = 0;
+  mountCounts.particleTrails = 0;
+  suspendShipsState.suspend = false;
+  mountedLayerCalls.turrets = 0;
+  mountedLayerCalls.muzzles = 0;
+  mountedLayerCalls.projectiles = 0;
+  mountedLayerCalls.explosions = 0;
   resetErrorCounts();
   setErrorReportingEnabled(true);
   originalLocation = window.location;
@@ -224,5 +301,68 @@ describe('Battlefield', () => {
     expect(typeof lastCall?.onPointerMissed).toBe('function');
     lastCall?.onPointerMissed?.();
     expect(mockSelectShip).toHaveBeenCalledWith(null);
+  });
+
+  it('enables renderer tone mapping when configuring Battlefield and restores it when postprocessing becomes inactive', async () => {
+    const { Battlefield, configureBattlefieldRenderer, resolveFallbackToneMapping } =
+      await import('../../src/components/Battlefield.js');
+
+    expect(resolveFallbackToneMapping('agx')).toBe(AgXToneMapping);
+    expect(resolveFallbackToneMapping('aces')).toBe(ACESFilmicToneMapping);
+    expect(resolveFallbackToneMapping('neutral')).toBe(NeutralToneMapping);
+
+    const renderer = {
+      outputColorSpace: undefined,
+      toneMapping: NoToneMapping,
+      toneMappingExposure: 0,
+    } as any;
+    configureBattlefieldRenderer(renderer);
+    expect(renderer.outputColorSpace).toBe(SRGBColorSpace);
+    expect(renderer.toneMapping).toBe(AgXToneMapping);
+    expect(renderer.toneMappingExposure).toBe(1);
+
+    // Simulate composer clearing gl.toneMapping while active, then postprocessing turning off.
+    uiStoreState.postprocessingEnabled = true;
+    canvasOnCreatedGl.current = renderer;
+    const { rerender } = render(<Battlefield />);
+    expect(renderer.toneMapping).toBe(AgXToneMapping);
+
+    // Simulate active composer setting NoToneMapping before postprocessing is disabled.
+    renderer.toneMapping = NoToneMapping;
+    uiStoreState.postprocessingEnabled = false;
+    rerender(<Battlefield />);
+    expect(renderer.toneMapping).toBe(AgXToneMapping);
+    expect(renderer.toneMappingExposure).toBe(1);
+  });
+
+  it('does not remount CelestialEnvironment or ParticleTrails when quality tier changes under auto', async () => {
+    const { Battlefield } = await import('../../src/components/Battlefield.js');
+    uiStoreState.qualityPreset = 'auto';
+    uiStoreState.detectedQualityTier = 'high';
+
+    const { rerender } = render(<Battlefield />);
+    expect(mountCounts.celestialEnvironment).toBe(1);
+    expect(mountCounts.particleTrails).toBe(1);
+
+    uiStoreState.detectedQualityTier = 'medium';
+    rerender(<Battlefield />);
+    uiStoreState.detectedQualityTier = 'low';
+    rerender(<Battlefield />);
+    uiStoreState.detectedQualityTier = 'high';
+    rerender(<Battlefield />);
+
+    expect(mountCounts.celestialEnvironment).toBe(1);
+    expect(mountCounts.particleTrails).toBe(1);
+  });
+
+  it('isolates ShipsLayer Suspense so sibling combat layers render while ships load', async () => {
+    suspendShipsState.suspend = true;
+    const { Battlefield } = await import('../../src/components/Battlefield.js');
+    render(<Battlefield />);
+
+    expect(mountedLayerCalls.turrets).toBeGreaterThan(0);
+    expect(mountedLayerCalls.muzzles).toBeGreaterThan(0);
+    expect(mountedLayerCalls.projectiles).toBeGreaterThan(0);
+    expect(mountedLayerCalls.explosions).toBeGreaterThan(0);
   });
 });

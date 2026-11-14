@@ -3,7 +3,11 @@ import { describe, expect, it, beforeEach, vi, afterEach } from 'vite-plus/test'
 import { render, act, cleanup, waitFor } from '@testing-library/react';
 
 const frameCallbacks: Array<(state: unknown, delta: number) => void> = [];
-const rendererStub = { renderer: true };
+let currentPixelRatio = 1;
+const rendererStub = {
+  renderer: true,
+  getPixelRatio: () => currentPixelRatio,
+};
 const size = { width: 1024, height: 768 };
 const sceneStub = { id: 'scene' };
 const cameraStub = { id: 'camera' };
@@ -94,6 +98,7 @@ import { POSTPROCESSING_CONFIG } from '../../../src/config/renderer.js';
 
 describe('Postprocessing component', () => {
   beforeEach(() => {
+    currentPixelRatio = 1;
     frameCallbacks.length = 0;
     composerRender.mockClear();
     composerSetSize.mockClear();
@@ -230,5 +235,42 @@ describe('Postprocessing component', () => {
     expect(createComposerMock).toHaveBeenCalledWith(
       expect.objectContaining({ colorPipeline: expectedLegacy }),
     );
+  });
+
+  it('sizes renderTarget in physical pixels and resizes composer when renderer DPR changes', async () => {
+    currentPixelRatio = 1.5;
+    render(<Postprocessing enabled />);
+
+    await waitFor(() => {
+      expect(createComposerMock).toHaveBeenCalledTimes(1);
+    });
+
+    expect(buildAmbientOcclusionMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        width: 1536,
+        height: 1152,
+      }),
+    );
+    expect(composerSetSize).toHaveBeenCalledWith(1024, 768);
+    expect(renderTargetSetSize).toHaveBeenCalledWith(1536, 1152);
+
+    composerSetSize.mockClear();
+    renderTargetSetSize.mockClear();
+
+    // Steady-state frame with unchanged size/DPR should not re-trigger setSize.
+    await act(async () => {
+      frameCallbacks[0]({}, 0.016);
+    });
+    expect(composerSetSize).not.toHaveBeenCalled();
+    expect(renderTargetSetSize).not.toHaveBeenCalled();
+
+    // Simulate DynamicResScaler updating gl.setPixelRatio mid-battle.
+    currentPixelRatio = 0.75;
+    await act(async () => {
+      frameCallbacks[0]({}, 0.016);
+    });
+
+    expect(composerSetSize).toHaveBeenCalledWith(1024, 768);
+    expect(renderTargetSetSize).toHaveBeenCalledWith(768, 576);
   });
 });

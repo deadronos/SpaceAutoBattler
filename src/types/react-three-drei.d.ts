@@ -28,6 +28,8 @@ declare module '@react-three/drei' {
   // Common helpers used in this project
   export const OrbitControls: React.ComponentType<Record<string, unknown>>;
   export const Grid: React.ComponentType<Record<string, unknown>>;
+  export const Environment: React.ComponentType<Record<string, unknown>>;
+  export const Lightformer: React.ComponentType<Record<string, unknown>>;
   // FPS-driven quality monitor used by QualityController (auto quality preset).
   export interface PerformanceMonitorApi {
     fps: number;

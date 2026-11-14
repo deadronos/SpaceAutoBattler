@@ -6,6 +6,16 @@ import {
   SHIELD_VISUAL_DEFAULTS,
 } from '../../src/config/shields.js';
 import { createShieldHexShaderMaterial } from '../../src/renderer/materialRegistry.js';
+import { buildShieldHexFragmentShader } from '../../src/renderer/shields/shieldHexShaders.js';
+import {
+  resolveShieldGeometrySegments,
+  SHIELD_FAR_SEGMENTS,
+  SHIELD_LOD_FAR_DISTANCE,
+  SHIELD_LOD_HYSTERESIS,
+  SHIELD_LOD_MID_DISTANCE,
+  SHIELD_MID_SEGMENTS,
+} from '../../src/components/ship/shieldUtils.js';
+import { getSharedShieldGeometry } from '../../src/components/ship/ShipShield.js';
 
 const originalFighter = structuredClone(SHIELD_VISUALS.fighter);
 const originalDepthTest = SHIELD_TUNING.depthTest;
@@ -63,5 +73,57 @@ describe('SHIELD_TUNING.depthTest occlusion toggle', () => {
     expect(disabled.depthTest).toBe(false);
     expect(disabled.depthWrite).toBe(false);
     disabled.dispose();
+  });
+});
+
+describe('Shield geometry LOD and polar UV projection', () => {
+  it('reduces default sphere segment count below the legacy 128-segment tessellation', () => {
+    expect(SHIELD_VISUAL_DEFAULTS.geometrySegments).toBe(48);
+  });
+
+  it('selects near/mid/far shield segments with distance hysteresis', () => {
+    const maxSegments = 48;
+    expect(resolveShieldGeometrySegments(100, maxSegments)).toBe(maxSegments);
+    expect(resolveShieldGeometrySegments(SHIELD_LOD_MID_DISTANCE + 50, maxSegments)).toBe(
+      SHIELD_MID_SEGMENTS,
+    );
+    expect(resolveShieldGeometrySegments(SHIELD_LOD_FAR_DISTANCE + 50, maxSegments)).toBe(
+      SHIELD_FAR_SEGMENTS,
+    );
+
+    // Hysteresis prevents rapid toggling right at the mid-tier threshold.
+    expect(
+      resolveShieldGeometrySegments(
+        SHIELD_LOD_MID_DISTANCE - SHIELD_LOD_HYSTERESIS * 0.5,
+        maxSegments,
+        SHIELD_MID_SEGMENTS,
+      ),
+    ).toBe(SHIELD_MID_SEGMENTS);
+    expect(
+      resolveShieldGeometrySegments(
+        SHIELD_LOD_MID_DISTANCE - SHIELD_LOD_HYSTERESIS - 5,
+        maxSegments,
+        SHIELD_MID_SEGMENTS,
+      ),
+    ).toBe(maxSegments);
+  });
+
+  it('caches shared SphereGeometry instances per segment tier', () => {
+    const midA = getSharedShieldGeometry(SHIELD_MID_SEGMENTS);
+    const midB = getSharedShieldGeometry(SHIELD_MID_SEGMENTS);
+    const far = getSharedShieldGeometry(SHIELD_FAR_SEGMENTS);
+
+    expect(midA).toBe(midB);
+    expect(midA.parameters.widthSegments).toBe(SHIELD_MID_SEGMENTS);
+    expect(midA.parameters.heightSegments).toBe(SHIELD_MID_SEGMENTS);
+    expect(far).not.toBe(midA);
+    expect(far.parameters.widthSegments).toBe(SHIELD_FAR_SEGMENTS);
+  });
+
+  it('uses equal-angle triplanar cube-sphere projection instead of equirectangular polar pinching', () => {
+    const shader = buildShieldHexFragmentShader();
+    expect(shader).toContain('evalHexFace');
+    expect(shader).toContain('atan(');
+    expect(shader).not.toContain('acos(clamp(N.y');
   });
 });
