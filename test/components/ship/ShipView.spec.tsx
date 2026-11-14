@@ -5,6 +5,11 @@ import { BoxGeometry, Group, Mesh, MeshBasicMaterial, Quaternion, Vector3 } from
 import type { ShipEntity } from '../../../src/types/index.js';
 import type { HullMaterial } from '../../../src/components/ship/ShipModel.js';
 import { ShipView } from '../../../src/components/ship/ShipView.js';
+import { useUiStore } from '../../../src/app/uiStore.js';
+
+vi.mock('@react-three/fiber', () => ({
+  useFrame: vi.fn(),
+}));
 
 const shieldBubbleCalls: Array<{ radius?: number; hasHullMaterialsRef: boolean }> = [];
 
@@ -72,6 +77,7 @@ describe('ShipView conditional model vs fallback rendering', () => {
 
   afterEach(() => {
     cleanup();
+    useUiStore.setState({ selectedShipId: null });
     consoleErrorSpy.mockRestore();
   });
 
@@ -142,6 +148,57 @@ describe('ShipView conditional model vs fallback rendering', () => {
     );
     expect(container.querySelector('primitive')).not.toBeNull();
     expect(shieldBubbleCalls.at(-1)?.hasHullMaterialsRef).toBe(true);
+
+    const hookErrors = consoleErrorSpy.mock.calls.filter((call) =>
+      String(call[0]).toLowerCase().includes('hook'),
+    );
+    expect(hookErrors).toHaveLength(0);
+  });
+
+  it('renders a lightweight 3D selection ring only when the entity is selected', () => {
+    const groupRef = React.createRef<Group | null>();
+    const visualRef = React.createRef<Group | null>();
+    const hullMaterialsRef: React.RefObject<HullMaterial[]> = { current: [] };
+    const ship = createTestShip('blue');
+
+    useUiStore.setState({ selectedShipId: null });
+    const { rerender, container } = render(
+      <ShipView
+        entity={ship}
+        groupRef={groupRef}
+        visualRef={visualRef}
+        scene={null}
+        hasValidPath={false}
+        hullMaterialsRef={hullMaterialsRef}
+      />,
+    );
+    expect(container.querySelector('ringgeometry')).toBeNull();
+
+    useUiStore.setState({ selectedShipId: ship.id });
+    rerender(
+      <ShipView
+        entity={ship}
+        groupRef={groupRef}
+        visualRef={visualRef}
+        scene={null}
+        hasValidPath={false}
+        hullMaterialsRef={hullMaterialsRef}
+      />,
+    );
+    expect(container.querySelector('ringgeometry')).not.toBeNull();
+
+    useUiStore.setState({ selectedShipId: ship.id + 1 });
+    rerender(
+      <ShipView
+        entity={ship}
+        groupRef={groupRef}
+        visualRef={visualRef}
+        scene={null}
+        hasValidPath={false}
+        hullMaterialsRef={hullMaterialsRef}
+      />,
+    );
+    expect(container.querySelector('ringgeometry')).toBeNull();
 
     const hookErrors = consoleErrorSpy.mock.calls.filter((call) =>
       String(call[0]).toLowerCase().includes('hook'),

@@ -58,15 +58,6 @@ export const SETTINGS_TOGGLES: HudToggleDefinition[] = [
       useUiStore.getState().toggleProgressionPanel();
     },
   },
-  {
-    id: 'ai-v2',
-    label: 'AI V2',
-    description: 'Utility-based decision system',
-    select: (state) => state.aiV2Enabled,
-    toggle: () => {
-      useUiStore.getState().toggleAiV2();
-    },
-  },
 ];
 
 export const DEBUG_TOGGLES: HudToggleDefinition[] = [

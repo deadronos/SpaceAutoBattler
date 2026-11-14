@@ -3,13 +3,14 @@ import React from 'react';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { SettingsDrawer } from '../../src/components/HudToggleDrawer.js';
 import { useUiStore } from '../../src/app/uiStore.js';
-import { getGameErrors, resetGameErrorReporting } from '../../src/game/errors.js';
 
 const DEFAULT_FLAGS = (() => {
   const snapshot = useUiStore.getState();
   return {
     postprocessingEnabled: snapshot.postprocessingEnabled,
     hudHealthBarsEnabled: snapshot.hudHealthBarsEnabled,
+    cameraShakeEnabled: snapshot.cameraShakeEnabled,
+    progressionPanelEnabled: snapshot.progressionPanelEnabled,
     aiV2Enabled: snapshot.aiV2Enabled,
     aiDebugEnabled: snapshot.aiDebugEnabled,
     explosionDebugEnabled: snapshot.explosionDebugEnabled,
@@ -38,10 +39,12 @@ describe('SettingsDrawer', () => {
     expect(screen.getByRole('switch', { name: 'Postprocessing' })).toBeDefined();
   });
 
-  it('updates UI store flags when toggles are clicked', () => {
+  it('omits the dead AI V2 toggle and updates UI store flags when toggles are clicked', () => {
     render(<SettingsDrawer />);
     const trigger = screen.getByRole('button', { name: 'Simulation settings' });
     fireEvent.click(trigger);
+
+    expect(screen.queryByRole('switch', { name: 'AI V2' })).toBeNull();
 
     const postprocessingSwitch = screen.getByRole('switch', { name: 'Postprocessing' });
     expect(postprocessingSwitch.getAttribute('aria-checked')).toBe('true');
@@ -52,14 +55,9 @@ describe('SettingsDrawer', () => {
     fireEvent.click(hudBarsSwitch);
     expect(useUiStore.getState().hudHealthBarsEnabled).toBe(true);
 
-    const aiSwitch = screen.getByRole('switch', { name: 'AI V2' });
-    expect(aiSwitch.getAttribute('aria-checked')).toBe('true');
-    resetGameErrorReporting();
-    fireEvent.click(aiSwitch);
-    expect(useUiStore.getState().aiV2Enabled).toBe(true);
-    expect(aiSwitch.getAttribute('aria-checked')).toBe('true');
-    expect(getGameErrors().some((report) => report.context?.configKey === 'aiV2Disable')).toBe(
-      true,
-    );
+    const cameraShakeSwitch = screen.getByRole('switch', { name: 'Camera Shake' });
+    expect(cameraShakeSwitch.getAttribute('aria-checked')).toBe('true');
+    fireEvent.click(cameraShakeSwitch);
+    expect(useUiStore.getState().cameraShakeEnabled).toBe(false);
   });
 });

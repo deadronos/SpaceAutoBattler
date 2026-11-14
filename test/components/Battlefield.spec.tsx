@@ -19,8 +19,20 @@ const mockState = {
   },
 };
 
+const canvasPropsCalls = vi.hoisted(() => [] as Array<{ onPointerMissed?: () => void }>);
+const mockSelectShip = vi.hoisted(() => vi.fn());
+
 vi.mock('@react-three/fiber', () => ({
-  Canvas: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  Canvas: ({
+    children,
+    onPointerMissed,
+  }: {
+    children: React.ReactNode;
+    onPointerMissed?: () => void;
+  }) => {
+    canvasPropsCalls.push({ onPointerMissed });
+    return <>{children}</>;
+  },
 }));
 
 vi.mock('@react-three/drei', () => ({
@@ -38,8 +50,13 @@ vi.mock('../../src/app/context.js', () => ({
 }));
 
 vi.mock('../../src/app/uiStore.js', () => ({
-  useUiStore: (selector: (state: { postprocessingEnabled: boolean }) => boolean) =>
-    selector({ postprocessingEnabled: false }),
+  useUiStore: Object.assign(
+    (selector: (state: { postprocessingEnabled: boolean }) => boolean) =>
+      selector({ postprocessingEnabled: false }),
+    {
+      getState: () => ({ selectShip: mockSelectShip }),
+    },
+  ),
 }));
 
 vi.mock('../../src/renderer/bloom/index.js', () => ({
@@ -115,6 +132,8 @@ afterEach(() => {
 });
 
 beforeEach(() => {
+  canvasPropsCalls.length = 0;
+  mockSelectShip.mockReset();
   resetErrorCounts();
   setErrorReportingEnabled(true);
   originalLocation = window.location;
@@ -195,5 +214,15 @@ describe('Battlefield', () => {
     } as any);
 
     expect(getErrorCounts()[ErrorCategory.WebGL]).toBe(1);
+  });
+
+  it('clears the selected ship when clicking empty canvas space', async () => {
+    const { Battlefield } = await import('../../src/components/Battlefield.js');
+    render(<Battlefield />);
+
+    const lastCall = canvasPropsCalls.at(-1);
+    expect(typeof lastCall?.onPointerMissed).toBe('function');
+    lastCall?.onPointerMissed?.();
+    expect(mockSelectShip).toHaveBeenCalledWith(null);
   });
 });

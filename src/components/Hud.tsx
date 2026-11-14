@@ -36,7 +36,24 @@ export function Hud(): React.ReactElement {
   const [blue, red] = useMemo(() => summarize(ships), [ships]);
   const hudHealthBarsEnabled = useUiStore((s) => s.hudHealthBarsEnabled);
   const selectedShipId = useUiStore((s) => s.selectedShipId);
+  const cameraFollowEnabled = useUiStore((s) => s.cameraFollowEnabled);
+  const paused = useUiStore((s) => s.paused);
+  const timeScale = useUiStore((s) => s.timeScale);
+  const setCameraFollowEnabled = useUiStore((s) => s.setCameraFollowEnabled);
+  const selectShip = useUiStore((s) => s.selectShip);
   const showDevErrors = import.meta.env.DEV;
+
+  const selectedShip = useMemo(
+    () => (selectedShipId != null ? ships.find((ship) => ship.id === selectedShipId) : undefined),
+    [ships, selectedShipId],
+  );
+  const battleSubtitle = formatBattleSubtitle(
+    Boolean(state),
+    blue.ships,
+    red.ships,
+    paused,
+    timeScale,
+  );
 
   return (
     <div className="hud">
@@ -48,7 +65,7 @@ export function Hud(): React.ReactElement {
         <div className="hud-panel__header">
           <div>
             <h2>Space Auto Battler</h2>
-            <p className="subtitle">React Three Fiber · Miniplex · Rapier</p>
+            <p className="subtitle">{battleSubtitle}</p>
           </div>
           <div className="hud-panel__actions" role="group" aria-label="HUD controls">
             <SettingsDrawer />
@@ -69,9 +86,33 @@ export function Hud(): React.ReactElement {
           </p>
         )}
         {selectedShipId != null ? (
-          <p className="hud-selection-status">
-            Selected ship #{selectedShipId} — enable “Follow Selected Ship” to track it.
-          </p>
+          <div className="hud-selection-status" role="status">
+            <span className="hud-selection-status__label">
+              Selected ship #{selectedShipId}
+              {selectedShip
+                ? ` (${selectedShip.ship.team === 'blue' ? 'Alliance' : 'Reavers'} ${selectedShip.ship.hull})`
+                : ''}
+            </span>
+            <span className="hud-selection-status__actions">
+              <button
+                type="button"
+                className={`hud-selection-status__btn${
+                  cameraFollowEnabled ? ' hud-selection-status__btn--active' : ''
+                }`}
+                aria-pressed={cameraFollowEnabled}
+                onClick={() => setCameraFollowEnabled(!cameraFollowEnabled)}
+              >
+                {cameraFollowEnabled ? 'Unfollow' : 'Follow'}
+              </button>
+              <button
+                type="button"
+                className="hud-selection-status__btn"
+                onClick={() => selectShip(null)}
+              >
+                Clear
+              </button>
+            </span>
+          </div>
         ) : null}
       </div>
       {showDevErrors ? <ErrorCountsPanel /> : null}
@@ -130,4 +171,22 @@ function formatTeamPercent(summary: TeamSummary): string {
   if (summary.maxHp <= 0) return '0%';
   const ratio = clamp(summary.hp / summary.maxHp, 0, 1);
   return formatPercentRounded(ratio);
+}
+
+function formatBattleSubtitle(
+  hasState: boolean,
+  blueShips: number,
+  redShips: number,
+  paused: boolean,
+  timeScale: number,
+): string {
+  if (!hasState) return 'Preparing battle';
+  const totalShips = blueShips + redShips;
+  const shipLabel = `${totalShips} ${totalShips === 1 ? 'ship' : 'ships'}`;
+  if (totalShips === 0) return `${shipLabel} · Standby`;
+  if (blueShips > 0 && redShips === 0) return `${shipLabel} · Alliance victory`;
+  if (redShips > 0 && blueShips === 0) return `${shipLabel} · Reavers victory`;
+  if (paused) return `${shipLabel} · Paused`;
+  const speedSuffix = Number.isFinite(timeScale) && timeScale !== 1 ? ` · ${timeScale}x` : '';
+  return `${shipLabel} · Battle active${speedSuffix}`;
 }

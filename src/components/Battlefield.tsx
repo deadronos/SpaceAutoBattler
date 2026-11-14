@@ -167,6 +167,7 @@ export function Battlefield(): React.ReactElement {
       }}
       dpr={[quality.dpr.min, quality.dpr.max]}
       onCreated={({ gl }) => configureBattlefieldRenderer(gl as unknown as WebGLRenderer)}
+      onPointerMissed={() => useUiStore.getState().selectShip(null)}
     >
       <StarsField />
       <QualityController />
