@@ -45,6 +45,11 @@ export function ShipView({
     return sphere.radius * margin;
   }, [scene, entity.ship.hull]);
 
+  const fallbackColor = useMemo(
+    () => new Color(entity.ship.team === 'blue' ? TEAM_COLORS.blue : TEAM_COLORS.red),
+    [entity.ship.team],
+  );
+
   if (scene && hasValidPath) {
     return (
       <group
@@ -63,11 +68,6 @@ export function ShipView({
       </group>
     );
   }
-
-  const fallbackColor = useMemo(
-    () => new Color(entity.ship.team === 'blue' ? TEAM_COLORS.blue : TEAM_COLORS.red),
-    [entity.ship.team],
-  );
 
   return (
     <group

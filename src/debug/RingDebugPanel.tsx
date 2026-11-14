@@ -11,11 +11,7 @@ interface CopilotDebugWindow extends Window {
 
 // Minimal dev-only overlay for tweaking ring shadow and penumbra.
 // Automatically reads/writes values from `window.__copilot_ringMaterial` if available.
-export default function RingDebugPanel(): React.ReactElement | null {
-  // Only render when copilot_debug=1 is present or in non-production
-  const enabled = isCopilotDebugEnabled();
-  if (!enabled) return null;
-
+function RingDebugPanelInner(): React.ReactElement {
   const debugWindow = typeof window !== 'undefined' ? (window as CopilotDebugWindow) : null;
   const mat = debugWindow?.__copilot_ringMaterial ?? null;
 
@@ -71,4 +67,15 @@ export default function RingDebugPanel(): React.ReactElement | null {
       </div>
     </div>
   );
+}
+
+/**
+ * Guard wrapper that renders the ring debug overlay only when Copilot debug mode is enabled.
+ *
+ * @returns {React.ReactElement | null} The debug panel or null when disabled.
+ */
+export default function RingDebugPanel(): React.ReactElement | null {
+  // Only render when copilot_debug=1 is present or in non-production
+  if (!isCopilotDebugEnabled()) return null;
+  return <RingDebugPanelInner />;
 }
