@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vite-plus/test';
 import { updateTurrets } from '../../src/game/systems/turrets.js';
-import { GameState, TurretEntity, ShipEntity } from '../../src/types/index.js';
-import * as targetSelection from '../../src/game/utils/targetSelection.js';
+import { SpatialGrid } from '../../src/utils/spatialGrid.js';
 import { Vector3, Quaternion } from 'three';
 import * as progression from '../../src/game/progression.js';
 
@@ -10,10 +9,10 @@ describe('updateTurrets performance', () => {
   let turretEntity: any;
   let shipEntity: any;
   let enemyEntity: any;
-  let findNearestEnemySpy: any;
+  let queryNearestSpy: any;
 
   beforeEach(() => {
-    findNearestEnemySpy = vi.spyOn(targetSelection, 'findNearestEnemy');
+    queryNearestSpy = vi.spyOn(SpatialGrid.prototype, 'queryNearest');
 
     // Mock getSubsystemMultiplier to return 1.0
     vi.spyOn(progression, 'getSubsystemMultiplier').mockReturnValue(1.0);
@@ -75,21 +74,20 @@ describe('updateTurrets performance', () => {
     };
   });
 
-  it('calls findNearestEnemy when not on cooldown', () => {
+  it('queries the ship grid when not on cooldown', () => {
     turretEntity.turret.cooldown = 0;
-    findNearestEnemySpy.mockReturnValue(enemyEntity);
 
     updateTurrets(state, 0.1);
 
-    expect(findNearestEnemySpy).toHaveBeenCalled();
+    expect(queryNearestSpy).toHaveBeenCalledTimes(1);
   });
 
-  it('skips findNearestEnemy when on cooldown (optimized behavior)', () => {
+  it('skips the ship grid query when on cooldown', () => {
     turretEntity.turret.cooldown = 10; // High cooldown
-    findNearestEnemySpy.mockClear();
+    queryNearestSpy.mockClear();
 
     updateTurrets(state, 0.1);
 
-    expect(findNearestEnemySpy).not.toHaveBeenCalled();
+    expect(queryNearestSpy).not.toHaveBeenCalled();
   });
 });

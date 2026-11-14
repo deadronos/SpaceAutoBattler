@@ -1,3 +1,4 @@
+import { World } from 'miniplex';
 import type { GameEntity, GameState, ShipEntity, TurretEntity } from '../types/index.js';
 import { unregisterTurret } from './turretRegistry.js';
 import {
@@ -77,7 +78,9 @@ export function destroyEntity(state: GameState, entity: GameEntity): void {
     reportLifecycleError('destroy', 'TurretTypeCheck', entity.id, error);
   }
 
-  state.world.remove(entity as GameEntity);
+  state.world.remove(entity);
+  // Miniplex updates its connected queries during World.remove.
+  if (state.world instanceof World) return;
 
   try {
     const queries = state.queries as unknown as Record<string, { entities?: GameEntity[] }>;

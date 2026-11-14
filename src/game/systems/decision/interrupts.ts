@@ -2,7 +2,6 @@ import type {
   AIInterruptReason,
   AIInterruptState,
   AIManagerState,
-  GameState,
   IntentInterruptEvent,
   ShipEntity,
   EntityId,
@@ -90,22 +89,18 @@ export function accumulateInterruptDamage(
 /**
  * Queues interrupts for all ships that were targeting a specific ship that has been lost (destroyed).
  *
- * @param {GameState} state - The game state.
- * @param {ShipEntity[]} ships - The list of active ships.
+ * @param {AIManagerState} manager - The AI manager.
+ * @param {ShipEntity[] | undefined} targeters - Ships targeting the lost ship, in query order.
  * @param {EntityId} targetId - The ID of the lost target.
  */
 export function queueTargetLossInterrupts(
-  state: GameState,
-  ships: ShipEntity[],
+  manager: AIManagerState,
+  targeters: ShipEntity[] | undefined,
   targetId: EntityId,
 ): void {
-  const manager = state.ai;
-  if (!manager) return;
+  if (!targeters) return;
   const queueTick = manager.tickIndex;
-  for (const ship of ships) {
-    if (ship.id === targetId) continue;
-    const ai = ship.ai;
-    if (!ai || ai.targetId !== targetId) continue;
+  for (const ship of targeters) {
     queueInterrupt(manager, {
       shipId: ship.id,
       reason: 'target-lost',

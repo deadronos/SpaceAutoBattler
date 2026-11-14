@@ -12,6 +12,8 @@ import { resolvePosture } from './posture.js';
 
 interface NearestEnemyScratch {
   idToIndex: Map<number, number>;
+  shipById: Map<number, ShipEntity>;
+  vipThreatCounts: Map<number, number>;
 }
 
 // Per-state scratch for the nearest-enemy broad-phase query. Keyed off GameState
@@ -23,7 +25,7 @@ const nearestEnemyScratchByState = new WeakMap<GameState, NearestEnemyScratch>()
 function getNearestEnemyScratch(state: GameState): NearestEnemyScratch {
   let scratch = nearestEnemyScratchByState.get(state);
   if (!scratch) {
-    scratch = { idToIndex: new Map() };
+    scratch = { idToIndex: new Map(), shipById: new Map(), vipThreatCounts: new Map() };
     nearestEnemyScratchByState.set(state, scratch);
   }
   return scratch;
@@ -53,9 +55,10 @@ export const refreshBlackboard = (
   const teamCounts = blackboard.teamCounts ?? (blackboard.teamCounts = { blue: 0, red: 0 });
   teamCounts.blue = 0;
   teamCounts.red = 0;
-  let shipById = entityById;
-  if (!shipById) {
-    shipById = new Map<number, ShipEntity>();
+  const scratch = getNearestEnemyScratch(state);
+  const shipById = entityById ?? scratch.shipById;
+  if (!entityById) {
+    shipById.clear();
     for (const ship of ships) shipById.set(ship.id, ship);
   }
   const centroid =
@@ -108,7 +111,7 @@ export const refreshBlackboard = (
   if (redCount > 0) centroid.red.multiplyScalar(1 / redCount);
 
   const sensorGrid = getSensorBroadphaseGrid(state);
-  const { idToIndex } = getNearestEnemyScratch(state);
+  const { idToIndex, vipThreatCounts } = scratch;
   idToIndex.clear();
   for (let i = 0; i < shipsLength; i += 1) {
     const ship = ships[i];
@@ -212,7 +215,7 @@ export const refreshBlackboard = (
     const vipBonusValue = weights.vipBonus * (mods?.vipBonusMultiplier ?? 1);
     // Precompute this team's VIP-threat counts once instead of scanning
     // threatToVip for every enemy candidate.
-    const vipThreatCounts = new Map<number, number>();
+    vipThreatCounts.clear();
     for (const [vipId, threatId] of blackboard.threatToVip.entries()) {
       const vipEntity = shipById.get(vipId);
       if (vipEntity && vipEntity.ship.team === team) {

@@ -178,14 +178,14 @@ export function updateSensorSystem(state: GameState, ships: ShipEntity[]): void 
 
   const broadphase = getSensorBroadphase(state);
   const nextCellSize = computeAdaptiveGridCellSize(ships);
-  let grid = broadphase.grid;
-  if (!grid || Math.abs(nextCellSize - broadphase.cellSize) > 1e-3) {
-    grid = new SpatialGrid<ShipEntity>(nextCellSize, (ship) => ship.transform.position);
-    broadphase.grid = grid;
+  if (!broadphase.grid || Math.abs(nextCellSize - broadphase.cellSize) > 1e-3) {
     broadphase.cellSize = nextCellSize;
   }
-
-  grid.repopulate(ships);
+  const grid = (broadphase.grid ??= new SpatialGrid<ShipEntity>(
+    broadphase.cellSize,
+    (ship) => ship.transform.position,
+  ));
+  grid.repopulate(ships, broadphase.cellSize);
 
   const detectionMultiplier: Record<Team, number> = {
     blue: getDoctrineSensorModifiers(manager, 'blue')?.detectionMultiplier ?? 1,

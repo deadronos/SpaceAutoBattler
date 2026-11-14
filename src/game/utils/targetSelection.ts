@@ -47,16 +47,21 @@ const DEFAULT_PD_CATEGORIES: ProjectileCategory[] = ['missile', 'torpedo'];
 export function findPointDefenseTarget(
   state: GameState,
   options: PointDefenseTargetOptions,
+  candidates = state.queries.projectiles.entities as ProjectileEntity[],
+  rank?: ReadonlyMap<ProjectileEntity, number>,
 ): ProjectileEntity | null {
-  const projectiles = state.queries.projectiles.entities as ProjectileEntity[];
   const maxRangeSq = Math.max(0, options.maxRange) ** 2;
   const categories = options.categories ?? DEFAULT_PD_CATEGORIES;
   let best: ProjectileEntity | null = null;
   let bestSq = Number.POSITIVE_INFINITY;
+  let bestIndex = Infinity;
   let bestIncoming: ProjectileEntity | null = null;
   let bestIncomingSq = Number.POSITIVE_INFINITY;
+  let bestIncomingIndex = Infinity;
 
-  for (const projectile of projectiles) {
+  for (const projectile of candidates) {
+    const index = rank ? rank.get(projectile) : Infinity;
+    if (index === undefined) continue;
     if (projectile.projectile.team === options.team) continue;
     const category = projectile.projectile.category ?? 'bullet';
     const isThreat = projectile.projectile.homing || categories.includes(category);
@@ -69,16 +74,21 @@ export function findPointDefenseTarget(
       options.preferTargetId != null &&
       projectile.projectile.targetId === options.preferTargetId
     ) {
-      if (distanceSq < bestIncomingSq) {
+      if (
+        distanceSq < bestIncomingSq ||
+        (distanceSq === bestIncomingSq && index < bestIncomingIndex)
+      ) {
         bestIncomingSq = distanceSq;
         bestIncoming = projectile;
+        bestIncomingIndex = index;
       }
       continue;
     }
 
-    if (distanceSq < bestSq) {
+    if (distanceSq < bestSq || (distanceSq === bestSq && index < bestIndex)) {
       bestSq = distanceSq;
       best = projectile;
+      bestIndex = index;
     }
   }
 
