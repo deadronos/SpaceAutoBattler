@@ -1,15 +1,14 @@
-import type { GameEntity, GameState, ProjectileEntity, ShipEntity } from '../../types/index.js';
+import type { GameState, ProjectileEntity, ShipEntity } from '../../types/index.js';
 import type { ProjectileCategory } from '../../types/combat.js';
 import { resolveProjectileCategory, resolveProjectileInfo } from '../../utils/projectileInfo.js';
 import { destroyEntity } from '../state.js';
-import {
-  buildSpatialHash,
-  clearSpatialHash,
-  querySpatialHash,
-  type SpatialHash,
-} from '../utils/spatialHash.js';
+import { buildSpatialHash, clearSpatialHash, querySpatialHash } from '../utils/spatialHash.js';
 import { ensureInterruptState, getInterruptQueue } from './decision/interrupts.js';
-import { applyProjectileDamage, getDamageBuffers } from './projectileDamage.js';
+import {
+  applyProjectileDamage,
+  getDamageBuffers,
+  type ProjectileDamageBuffers,
+} from './projectileDamage.js';
 
 const SHIP_GRID_CELL_SIZE = 12;
 
@@ -25,10 +24,10 @@ function handleBeamProjectile(
   state: GameState,
   projectile: ProjectileEntity,
   ships: ShipEntity[],
-  shipsById: Map<number, ShipEntity>,
-  toRemove: Set<GameEntity>,
+  buffers: ProjectileDamageBuffers,
   delta: number,
 ): void {
+  const { shipsById, toRemove } = buffers;
   const beam = projectile.projectile.beam;
   projectile.projectile.ttl -= delta;
   if (!beam) {
@@ -39,7 +38,7 @@ function handleBeamProjectile(
   if (!beam.applied && projectile.projectile.targetId != null) {
     const target = shipsById.get(projectile.projectile.targetId);
     if (target && target.ship.hp > 0 && target.ship.team !== projectile.projectile.team) {
-      const outcome = applyProjectileDamage(state, projectile, target, ships, shipsById);
+      const outcome = applyProjectileDamage(state, projectile, target, ships, shipsById, buffers);
       if (outcome.destroyed) {
         toRemove.add(target);
       }
@@ -56,21 +55,21 @@ function applyAoeDamage(
   state: GameState,
   projectile: ProjectileEntity,
   ships: ShipEntity[],
-  shipsById: Map<number, ShipEntity>,
-  shipSpatialHash: SpatialHash<ShipEntity>,
-  toRemove: Set<GameEntity>,
+  buffers: ProjectileDamageBuffers,
   radius: number,
   primaryTarget: ShipEntity | null,
 ): void {
   const origin = projectile.transform.position;
-  const nearbyShips = querySpatialHash(shipSpatialHash, origin, radius);
+  const { shipHash, shipsById, toRemove, aoeTargets } = buffers;
+  if (!shipHash) return;
+  const nearbyShips = querySpatialHash(shipHash, origin, radius, aoeTargets);
   for (const ship of nearbyShips) {
     if (ship.ship.hp <= 0) continue;
     if (primaryTarget && ship === primaryTarget) continue;
     if (ship.ship.team === projectile.projectile.team) continue;
     const distance = ship.transform.position.distanceTo(origin);
     if (distance > radius) continue;
-    const outcome = applyProjectileDamage(state, projectile, ship, ships, shipsById);
+    const outcome = applyProjectileDamage(state, projectile, ship, ships, shipsById, buffers);
     if (outcome.destroyed) {
       toRemove.add(ship);
     }
@@ -111,7 +110,10 @@ export function resolveProjectiles(state: GameState, delta: number): void {
     0,
   );
   const projectiles = state.queries.projectiles.entities as ProjectileEntity[];
-  const toRemove = new Set<GameEntity>();
+  const { toRemove, targets } = buffers;
+  toRemove.clear();
+  buffers.targeters.clear();
+  buffers.targetersBuilt = false;
   const manager = state.ai;
   if (manager) {
     ensureInterruptState(manager);
@@ -123,7 +125,7 @@ export function resolveProjectiles(state: GameState, delta: number): void {
       projectile.projectile.category ?? resolveProjectileCategory(projectile.projectile.bulletType);
 
     if (category === 'beam') {
-      handleBeamProjectile(state, projectile, ships, shipsById, toRemove, delta);
+      handleBeamProjectile(state, projectile, ships, buffers, delta);
       continue;
     }
 
@@ -140,6 +142,7 @@ export function resolveProjectiles(state: GameState, delta: number): void {
         shipSpatialHash,
         projectile.transform.position,
         fuseRadius,
+        targets,
       );
 
       let triggered = false;
@@ -156,16 +159,7 @@ export function resolveProjectiles(state: GameState, delta: number): void {
       if (triggered) {
         toRemove.add(projectile);
         if (projectile.projectile.aoeRadius && projectile.projectile.aoeRadius > 0) {
-          applyAoeDamage(
-            state,
-            projectile,
-            ships,
-            shipsById,
-            shipSpatialHash,
-            toRemove,
-            projectile.projectile.aoeRadius,
-            null,
-          );
+          applyAoeDamage(state, projectile, ships, buffers, projectile.projectile.aoeRadius, null);
         }
         continue;
       }
@@ -180,6 +174,7 @@ export function resolveProjectiles(state: GameState, delta: number): void {
       shipSpatialHash,
       projectile.transform.position,
       searchRadius,
+      targets,
     );
 
     for (const ship of nearbyShips) {
@@ -193,7 +188,7 @@ export function resolveProjectiles(state: GameState, delta: number): void {
         continue;
       }
 
-      const outcome = applyProjectileDamage(state, projectile, ship, ships, shipsById);
+      const outcome = applyProjectileDamage(state, projectile, ship, ships, shipsById, buffers);
       toRemove.add(projectile);
 
       if (outcome.destroyed) {
@@ -201,16 +196,7 @@ export function resolveProjectiles(state: GameState, delta: number): void {
       }
 
       if (projectile.projectile.aoeRadius && projectile.projectile.aoeRadius > 0) {
-        applyAoeDamage(
-          state,
-          projectile,
-          ships,
-          shipsById,
-          shipSpatialHash,
-          toRemove,
-          projectile.projectile.aoeRadius,
-          ship,
-        );
+        applyAoeDamage(state, projectile, ships, buffers, projectile.projectile.aoeRadius, ship);
       }
       break;
     }
@@ -219,4 +205,9 @@ export function resolveProjectiles(state: GameState, delta: number): void {
   for (const entity of toRemove) {
     destroyEntity(state, entity);
   }
+  toRemove.clear();
+  targets.length = 0;
+  buffers.aoeTargets.length = 0;
+  buffers.targeters.clear();
+  buffers.targetersBuilt = false;
 }

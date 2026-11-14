@@ -136,7 +136,6 @@ export function fireProjectile(
   const range = opts?.override?.range ?? origin.ship.range;
   const lifetime = speed > 0 ? Math.min(range / speed, 30) : (info.beamConfig?.ttl ?? 0.4);
 
-  const spawnDirection = direction.clone();
   const targetId = opts?.override?.targetId ?? opts?.targetId;
   const damageType = opts?.override?.damageType ?? origin.ship.damageType;
 
@@ -165,7 +164,7 @@ export function fireProjectile(
       rotation,
       visualScale,
       colliderRadius,
-      direction: spawnDirection,
+      direction,
       projectile: projectileData,
     },
     (projectile) => {
@@ -175,7 +174,7 @@ export function fireProjectile(
           ttl: projectileData.ttl,
           maxLength: beamInfo.distance,
           width: info.beamConfig?.width,
-          hitPoint: beamInfo.hitPoint.clone(),
+          hitPoint: beamInfo.hitPoint,
           applied: false,
         };
       }

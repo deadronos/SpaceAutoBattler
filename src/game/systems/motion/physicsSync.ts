@@ -1,10 +1,7 @@
 import type { GameState, ShipEntity } from '../../../types/index.js';
 import { clampToWorld } from '../../config.js';
-import {
-  asKinematicBody,
-  deferSetNextKinematicRotation,
-  deferSetNextKinematicTranslation,
-} from '../../physics/safeKinematics.js';
+import { asKinematicBody } from '../../physics/safeKinematics.js';
+import { enqueueKinematicTransform } from '../../physics/kinematicBatch.js';
 import { TEMP_NEXT_POS } from './sharedTemps.js';
 
 /**
@@ -27,19 +24,10 @@ export function applyVelocityToPhysics(state: GameState, ship: ShipEntity, dt: n
 
   clampToWorld(TEMP_NEXT_POS);
 
-  deferSetNextKinematicTranslation(
+  enqueueKinematicTransform(
     state,
     asKinematicBody(ship.rigidBody),
-    TEMP_NEXT_POS.x,
-    TEMP_NEXT_POS.y,
-    TEMP_NEXT_POS.z,
-  );
-  deferSetNextKinematicRotation(
-    state,
-    asKinematicBody(ship.rigidBody),
-    ship.transform.rotation.x,
-    ship.transform.rotation.y,
-    ship.transform.rotation.z,
-    ship.transform.rotation.w,
+    TEMP_NEXT_POS,
+    ship.transform.rotation,
   );
 }

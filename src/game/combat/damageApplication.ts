@@ -90,24 +90,20 @@ export function applyDamageResultToShip(
     }
   }
 
-  const context: DamageApplicationContext = {
-    state,
-    ship,
-    source,
-    damageResult,
-    totalDamage,
-    hullDamage,
-  };
-
-  if (totalDamage > 0) {
-    callbacks?.onDamageApplied?.(context);
-  }
-
-  // Check if ship transitioned to dead state (was alive, now dead)
-  // This ensures onKill fires only once on the killing blow, not on subsequent hits
-  const destroyed = component.hp <= 0;
-  if (destroyed && wasAlive) {
-    callbacks?.onKill?.(context);
+  let destroyed = component.hp <= 0;
+  const onDamageApplied = totalDamage > 0 ? callbacks?.onDamageApplied : undefined;
+  if (onDamageApplied || (wasAlive && callbacks?.onKill)) {
+    const context: DamageApplicationContext = {
+      state,
+      ship,
+      source,
+      damageResult,
+      totalDamage,
+      hullDamage,
+    };
+    onDamageApplied?.call(callbacks, context);
+    destroyed = component.hp <= 0;
+    if (wasAlive && destroyed) callbacks?.onKill?.(context);
   }
 
   return {

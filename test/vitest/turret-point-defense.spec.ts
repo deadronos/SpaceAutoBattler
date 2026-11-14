@@ -279,6 +279,23 @@ describe('point defense turret targeting', () => {
     expect(projectiles).not.toContain(projectile);
   });
 
+  it('uses query order for equidistant threats and skips previously intercepted shots', () => {
+    const state = makeStateStub();
+    const ship = createShip(state, 1, 'blue', 'frigate', new Vector3());
+    createTurretEntity(state, ship, 'antiProjectile');
+    createTurretEntity(state, ship, 'antiProjectile');
+    const first = createProjectile(state, 1002, 'red', new Vector3(30, 0, 0), ship.id);
+    const second = createProjectile(state, 1001, 'red', new Vector3(-30, 0, 0), ship.id);
+    const third = createProjectile(state, 1000, 'red', new Vector3(0, 0, 30), ship.id);
+
+    updateTurrets(state, 0.016);
+
+    const projectiles = state.queries.projectiles.entities;
+    expect(projectiles).not.toContain(first);
+    expect(projectiles).not.toContain(second);
+    expect(projectiles).toEqual([third]);
+  });
+
   it('falls back to ship targeting when no projectile exists', () => {
     const state = makeStateStub();
     const blueShip = createShip(state, 1, 'blue', 'frigate', new Vector3(0, 0, 0));

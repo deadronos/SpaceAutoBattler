@@ -111,7 +111,9 @@ describe('Dual Movement System Regression', () => {
     // Run 5 ticks
     for (let i = 0; i < 5; i++) {
       updateGame(state, 0.05);
-      firstRunCalls.push([...translationSpy.mock.calls]);
+      firstRunCalls.push(
+        translationSpy.mock.calls.map(([value]: TranslationCall[number]) => [{ ...value }]),
+      );
       translationSpy.mockClear();
     }
 

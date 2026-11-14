@@ -1,5 +1,7 @@
 import type { GameState, GameEntity, RigidBody } from '../../types/index.js';
 
+const syncedByState = new WeakMap<GameState, Set<number>>();
+
 function syncEntityTransform(entity: GameEntity): void {
   const translation = entity.rigidBody.translation();
   const rotation = entity.rigidBody.rotation();
@@ -15,8 +17,14 @@ function syncEntityTransform(entity: GameEntity): void {
  * @param {GameState} state - The game state.
  */
 export function syncTransforms(state: GameState): void {
-  const synced = new Set<number>();
+  let synced = syncedByState.get(state);
+  if (!synced) {
+    synced = new Set();
+    syncedByState.set(state, synced);
+  }
+  synced.clear();
 
+  const syncedIds = synced;
   state.physicsWorld.forEachActiveRigidBody((body: RigidBody) => {
     if (!body.isEnabled()) return;
     const colliderCount = body.numColliders();
@@ -25,15 +33,15 @@ export function syncTransforms(state: GameState): void {
     const colliderHandle = body.collider(0)?.handle;
     if (colliderHandle == null) return;
     const entity = state.colliderLookup.get(colliderHandle) as GameEntity | undefined;
-    if (!entity || synced.has(entity.id)) return;
+    if (!entity || syncedIds.has(entity.id)) return;
 
     syncEntityTransform(entity);
-    synced.add(entity.id);
+    syncedIds.add(entity.id);
   });
 
   // Handle rare cases where kinematic bodies remain idle but still need to mirror their rigid body state.
   for (const entity of state.world.entities as GameEntity[]) {
-    if (synced.has(entity.id)) continue;
+    if (syncedIds.has(entity.id)) continue;
     const body = entity.rigidBody;
     if (body.isFixed() || body.isSleeping()) continue;
     syncEntityTransform(entity);

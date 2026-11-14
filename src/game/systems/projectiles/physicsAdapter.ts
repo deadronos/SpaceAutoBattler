@@ -1,4 +1,4 @@
-import { Quaternion, Vector3 } from 'three';
+import type { Quaternion, Vector3 } from 'three';
 import type { GameState, ProjectileEntity } from '../../../types/index.js';
 import type { ProjectileComponent } from '../../../types/combat.js';
 import { enqueuePostPhysicsMutation } from '../../simulationQueue.js';
@@ -32,8 +32,7 @@ export function spawnProjectileEntity(
 ): void {
   const { state, position, rotation, colliderRadius, visualScale, projectile, direction } = params;
 
-  const rotationComponents = { x: rotation.x, y: rotation.y, z: rotation.z, w: rotation.w };
-  const positionComponents = { x: position.x, y: position.y, z: position.z };
+  const spawnDirection = direction.clone();
 
   enqueuePostPhysicsMutation(state, () => {
     const { body, collider } = createKinematicBodyWithCollider(state, {
@@ -47,17 +46,12 @@ export function spawnProjectileEntity(
       rigidBody: body,
       collider,
       transform: {
-        position: new Vector3(positionComponents.x, positionComponents.y, positionComponents.z),
-        rotation: new Quaternion(
-          rotationComponents.x,
-          rotationComponents.y,
-          rotationComponents.z,
-          rotationComponents.w,
-        ),
+        position,
+        rotation,
         scale: visualScale,
       },
       projectile: { ...projectile },
-      direction: direction.clone(),
+      direction: spawnDirection,
     }) as ProjectileEntity;
 
     onSpawn?.(runtime);

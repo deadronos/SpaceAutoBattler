@@ -1,4 +1,10 @@
-import type { GameState, ProjectileEntity, ShipEntity, ShieldRipple } from '../../types/index.js';
+import type {
+  GameEntity,
+  GameState,
+  ProjectileEntity,
+  ShipEntity,
+  ShieldRipple,
+} from '../../types/index.js';
 import { resolveProjectileCategory } from '../../utils/projectileInfo.js';
 import { awardDamageXp, awardKillXp } from '../progression.js';
 import { applySubsystemDamage } from '../subsystems.js';
@@ -20,6 +26,11 @@ import { TEMP_PROJECTILE_DAMAGE_RIPPLE_DIR as TEMP_RIPPLE_DIR } from '../../util
 export interface ProjectileDamageBuffers {
   shipHash: SpatialHash<ShipEntity> | null;
   shipsById: Map<number, ShipEntity>;
+  targets: ShipEntity[];
+  aoeTargets: ShipEntity[];
+  toRemove: Set<GameEntity>;
+  targeters: Map<number, ShipEntity[]>;
+  targetersBuilt: boolean;
 }
 
 const damageBuffersByState = new WeakMap<GameState, ProjectileDamageBuffers>();
@@ -27,7 +38,15 @@ const damageBuffersByState = new WeakMap<GameState, ProjectileDamageBuffers>();
 export function getDamageBuffers(state: GameState): ProjectileDamageBuffers {
   let buffers = damageBuffersByState.get(state);
   if (!buffers) {
-    buffers = { shipHash: null, shipsById: new Map() };
+    buffers = {
+      shipHash: null,
+      shipsById: new Map(),
+      targets: [],
+      aoeTargets: [],
+      toRemove: new Set(),
+      targeters: new Map(),
+      targetersBuilt: false,
+    };
     damageBuffersByState.set(state, buffers);
   }
   return buffers;
@@ -58,6 +77,7 @@ export function applyProjectileDamage(
   ship: ShipEntity,
   ships: ShipEntity[],
   shipsById: Map<number, ShipEntity>,
+  buffers: ProjectileDamageBuffers,
 ): ProjectileDamageOutcome {
   const projectileCategory =
     projectile.projectile.category ?? resolveProjectileCategory(projectile.projectile.bulletType);
@@ -132,7 +152,17 @@ export function applyProjectileDamage(
       },
       onKill: () => {
         if (manager) {
-          queueTargetLossInterrupts(state, ships, ship.id);
+          if (!buffers.targetersBuilt) {
+            for (const candidate of ships) {
+              const targetId = candidate.ai?.targetId;
+              if (targetId == null || targetId === candidate.id) continue;
+              const targeters = buffers.targeters.get(targetId);
+              if (targeters) targeters.push(candidate);
+              else buffers.targeters.set(targetId, [candidate]);
+            }
+            buffers.targetersBuilt = true;
+          }
+          queueTargetLossInterrupts(manager, buffers.targeters.get(ship.id), ship.id);
         }
         if (attackerShip) {
           awardKillXp(attackerShip.ship, ship.ship.maxHp, state, attackerShip.id);

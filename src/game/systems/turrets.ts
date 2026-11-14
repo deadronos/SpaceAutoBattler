@@ -9,17 +9,84 @@ import type {
 import { recordShotHelper } from '../metrics.js';
 import { fireProjectile, TEMP_POS } from './projectiles.js';
 import { destroyEntity } from '../state.js';
-import { asKinematicBody, deferSetNextKinematicTranslation } from '../physics/safeKinematics.js';
-import { findNearestEnemy, findPointDefenseTarget } from '../utils/targetSelection.js';
+import { asKinematicBody } from '../physics/safeKinematics.js';
+import { enqueueKinematicTransform } from '../physics/kinematicBatch.js';
+import { findPointDefenseTarget } from '../utils/targetSelection.js';
 import {
   TEMP_TURRET_DIR,
   TEMP_QUAT as TURRET_TEMP_QUAT,
   TEMP_LOCAL_DIR,
 } from '../../utils/tempVectors.js';
 
+import { SpatialGrid } from '../../utils/spatialGrid.js';
+
 // Hull size classification for turret priority targeting
 const SMALL_HULLS = new Set(['fighter', 'corvette']);
 const LARGE_HULLS = new Set(['frigate', 'destroyer', 'carrier']);
+
+const TARGET_GRID_CELL_SIZE = 240;
+
+function hullClass(ship: ShipEntity): number {
+  if (SMALL_HULLS.has(ship.ship.hull)) return 0;
+  if (LARGE_HULLS.has(ship.ship.hull)) return 1;
+  return 2;
+}
+
+function createTurretTargetIndex() {
+  const shipRank = new Map<ShipEntity, number>();
+  return {
+    ships: new SpatialGrid<ShipEntity>(TARGET_GRID_CELL_SIZE, (ship) => ship.transform.position),
+    shipsByHull: Array.from(
+      { length: 3 },
+      () => new SpatialGrid<ShipEntity>(TARGET_GRID_CELL_SIZE, (ship) => ship.transform.position),
+    ),
+    shipRank,
+    rank: (ship: ShipEntity) => shipRank.get(ship)!,
+    threats: new SpatialGrid<ProjectileEntity>(
+      TARGET_GRID_CELL_SIZE,
+      (shot) => shot.transform.position,
+    ),
+    threatRank: new Map<ProjectileEntity, number>(),
+    threatCandidates: [] as ProjectileEntity[],
+  };
+}
+
+const targetIndexes = new WeakMap<GameState, ReturnType<typeof createTurretTargetIndex>>();
+
+function getTargetIndex(state: GameState) {
+  let index = targetIndexes.get(state);
+  if (!index) {
+    index = createTurretTargetIndex();
+    targetIndexes.set(state, index);
+  }
+  return index;
+}
+
+function findPriorityTarget(
+  index: ReturnType<typeof createTurretTargetIndex>,
+  ship: ShipEntity,
+  origin: Vector3,
+  preferSmall: boolean,
+): ShipEntity | null {
+  const enemy = (candidate: ShipEntity) => candidate.ship.team !== ship.ship.team;
+  let best: ShipEntity | null = null;
+  let bestScore = Infinity;
+  const preferredHull = preferSmall ? 0 : 1;
+  for (let hull = 0; hull < index.shipsByHull.length; hull++) {
+    const candidate = index.shipsByHull[hull]!.queryNearest(origin, enemy, index.rank);
+    if (!candidate) continue;
+    const bonus = hull === preferredHull ? -1000000 : hull === 2 ? 0 : 500000;
+    const score = candidate.transform.position.distanceToSquared(origin) + bonus;
+    if (
+      score < bestScore ||
+      (score === bestScore && best && index.rank(candidate) < index.rank(best))
+    ) {
+      best = candidate;
+      bestScore = score;
+    }
+  }
+  return best;
+}
 
 function getTurretWorldPosition(ship: ShipEntity, turret: TurretSpec): Vector3 {
   const world = TEMP_POS.copy(turret.offset).multiplyScalar(ship.transform.scale);
@@ -35,65 +102,76 @@ function getTurretWorldPosition(ship: ShipEntity, turret: TurretSpec): Vector3 {
  */
 export function updateTurrets(state: GameState, delta: number): void {
   const turrets = state.queries.turrets.entities as TurretEntity[];
+  let index: ReturnType<typeof createTurretTargetIndex> | undefined;
+  let threatsBuilt = false;
+  let hullsBuilt = false;
   for (const t of turrets) {
     const ship = t.turret.parent;
     const origin = getTurretWorldPosition(ship, t.turret);
-    deferSetNextKinematicTranslation(
-      state,
-      asKinematicBody(t.rigidBody),
-      origin.x,
-      origin.y,
-      origin.z,
-    );
+    enqueueKinematicTransform(state, asKinematicBody(t.rigidBody), origin);
 
     t.turret.cooldown = Math.max(0, t.turret.cooldown - delta);
     if (t.turret.cooldown > 0) continue;
 
+    if (!index) {
+      index = getTargetIndex(state);
+      index.shipRank.clear();
+      const ships = state.queries.ships.entities as ShipEntity[];
+      index.ships.repopulate(ships);
+      for (let i = 0; i < ships.length; i++) index.shipRank.set(ships[i]!, i);
+    }
+
     let target: ShipEntity | null = null;
     let projectileTarget: ProjectileEntity | null = null;
     if (t.turret.priority === 'antiProjectile') {
-      projectileTarget = findPointDefenseTarget(state, {
+      if (!threatsBuilt) {
+        index.threats.clear();
+        index.threatRank.clear();
+        const projectiles = state.queries.projectiles.entities as ProjectileEntity[];
+        for (let i = 0; i < projectiles.length; i++) {
+          const projectile = projectiles[i]!;
+          const { homing, category } = projectile.projectile;
+          if (!homing && category !== 'missile' && category !== 'torpedo') continue;
+          index.threats.insert(projectile);
+          index.threatRank.set(projectile, i);
+        }
+        threatsBuilt = true;
+      }
+      const threats = index.threats.queryBroad(
         origin,
-        team: ship.ship.team,
-        maxRange: t.turret.range,
-        preferTargetId: ship.id,
-      });
+        Math.max(0, t.turret.range),
+        index.threatCandidates,
+      );
+      projectileTarget = findPointDefenseTarget(
+        state,
+        {
+          origin,
+          team: ship.ship.team,
+          maxRange: t.turret.range,
+          preferTargetId: ship.id,
+        },
+        threats,
+        index.threatRank,
+      );
     }
 
     if (!projectileTarget && t.turret.priority && t.turret.priority !== 'any') {
-      const ships = state.queries.ships.entities as ShipEntity[];
-      const preferSmall = t.turret.priority === 'antiFighter';
-      let bestScore = Number.POSITIVE_INFINITY;
-      let best: ShipEntity | null = null;
-      // Avoid filter: iterate directly and skip same-team ships
-      for (const s of ships) {
-        if (s.ship.team === ship.ship.team) continue;
-        const dSq = s.transform.position.distanceToSquared(origin);
-        // Bonus scaling: multiply by typical distance magnitude to maintain
-        // relative weighting when using squared distances
-        const bonusScale = 100000;
-        const bonus = preferSmall
-          ? SMALL_HULLS.has(s.ship.hull)
-            ? -10 * bonusScale
-            : LARGE_HULLS.has(s.ship.hull)
-              ? +5 * bonusScale
-              : 0
-          : LARGE_HULLS.has(s.ship.hull)
-            ? -10 * bonusScale
-            : SMALL_HULLS.has(s.ship.hull)
-              ? +5 * bonusScale
-              : 0;
-        const score = dSq + bonus;
-        if (score < bestScore) {
-          bestScore = score;
-          best = s;
+      if (!hullsBuilt) {
+        for (const grid of index.shipsByHull) grid.clear();
+        for (const candidate of index.shipRank.keys()) {
+          index.shipsByHull[hullClass(candidate)]!.insert(candidate);
         }
+        hullsBuilt = true;
       }
-      target = best;
+      target = findPriorityTarget(index, ship, origin, t.turret.priority === 'antiFighter');
     }
 
     if (!projectileTarget && !target) {
-      target = findNearestEnemy(state, ship);
+      target = index.ships.queryNearest(
+        ship.transform.position,
+        (candidate) => candidate.ship.team !== ship.ship.team,
+        index.rank,
+      );
     }
     if (!projectileTarget && !target) continue;
     const targetPos = projectileTarget
@@ -127,7 +205,21 @@ export function updateTurrets(state: GameState, delta: number): void {
       targetId: projectileTarget ? undefined : target!.id,
     });
     if (projectileTarget) {
+      const projectiles = state.queries.projectiles.entities;
+      const last = projectiles[projectiles.length - 1];
+      const removedRank = index.threatRank.get(projectileTarget)!;
+      index.threatRank.delete(projectileTarget);
       destroyEntity(state, projectileTarget);
+      // Miniplex fills a removed slot with the tail. Preserve its updated
+      // query order for later turrets without rebuilding the projectile grid.
+      if (
+        last &&
+        last !== projectileTarget &&
+        projectiles[removedRank] === last &&
+        index.threatRank.has(last)
+      ) {
+        index.threatRank.set(last, removedRank);
+      }
     }
     t.turret.cooldown = t.turret.fireRate;
   }

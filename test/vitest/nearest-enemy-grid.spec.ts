@@ -274,3 +274,16 @@ describe('nearest-enemy via sensor broad-phase grid', () => {
     expect(grid.size).toBe(0);
   });
 });
+
+it('reuses the sensor grid when ship positions shift slightly', () => {
+  const ships = [
+    makeShip({ id: 1, team: 'blue', pos: [0, 0, 0] }),
+    makeShip({ id: 2, team: 'red', pos: [100, 100, 100] }),
+  ];
+  const state = makeState(ships);
+  updateSensorSystem(state, ships);
+  const grid = getSensorBroadphaseGrid(state);
+  ships[1]!.transform.position.x += 0.01;
+  updateSensorSystem(state, ships);
+  expect(getSensorBroadphaseGrid(state)).toBe(grid);
+});
