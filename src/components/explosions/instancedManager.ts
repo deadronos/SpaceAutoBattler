@@ -1,7 +1,7 @@
 import type { InstancedMesh } from 'three';
 import { clamp } from '../../utils/math.js';
 
-import { createInstancedLayerManager } from '../layers/instancedLayer.js';
+import { createInstancedLayerManager, HIDDEN_MATRIX } from '../layers/instancedLayer.js';
 import type { InstancedLayerManager } from '../layers/types.js';
 export interface InstancedMeshRefs {
   flash: InstancedMesh | null;
@@ -99,7 +99,10 @@ export class ExplosionsInstancedManager {
         // create manager with a null-ref placeholder; it will be initialized
         // lazily when attach() is called and the real mesh refs are provided.
         const placeholderRef = { current: null as InstancedMesh | null };
-        const mgr = createInstancedLayerManager<number>(placeholderRef, { capacity: cap });
+        const mgr = createInstancedLayerManager<number>(placeholderRef, {
+          capacity: cap,
+          trackBounds: true,
+        });
         acc[key] = { manager: mgr, capacity: cap };
         return acc;
       },
@@ -108,7 +111,7 @@ export class ExplosionsInstancedManager {
   }
 
   /**
-   * Binds the instanced mesh references for the current frame.
+   * Binds the instanced mesh references, initializing only replacements.
    * Returns false if any required mesh is missing.
    */
   attach(refs: InstancedMeshRefs): boolean {
@@ -117,12 +120,23 @@ export class ExplosionsInstancedManager {
       const mesh = refs[key];
       const pool = this.pools[key];
       if (!pool.manager) continue;
-      // bind the real mesh ref to the manager and initialize attributes
-      pool.manager.meshRef.current = mesh;
-      pool.manager.initMesh();
+      this.attachMesh(key, mesh);
       ready &&= Boolean(mesh);
     }
     return ready;
+  }
+
+  attachMesh(key: EffectKey, mesh: InstancedMesh | null): void {
+    const pool = this.pools[key];
+    const manager = pool.manager;
+    if (!manager || manager.meshRef.current === mesh) return;
+    manager.meshRef.current = mesh;
+    manager.initMesh();
+    if (!mesh) return;
+    // A replacement may inherit an allocator with holes between live slots.
+    for (let index = 0; index < pool.capacity; index += 1) {
+      mesh.setMatrixAt(index, HIDDEN_MATRIX);
+    }
   }
 
   beginFrame(): void {
@@ -176,6 +190,7 @@ export class ExplosionsInstancedManager {
       const count = clamp(summary.count, committed, capacity);
       mesh.count = count;
       mesh.visible = count > 0;
+      if (count > summary.count) mesh.computeBoundingSphere();
       markMatrixDirty(mesh);
       markColorDirty(mesh);
       if (summary.saturated) this.saturation[key] = true;

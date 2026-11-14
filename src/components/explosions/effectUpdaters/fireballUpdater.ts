@@ -1,4 +1,3 @@
-import { getCachedColor } from '../derived.js';
 import { clamp01 } from '../../../utils/math.js';
 import {
   EMPTY_EFFECT_RESULT,
@@ -32,9 +31,11 @@ export const updateFireball: EffectUpdater = (
   dummy.quaternion.identity();
   dummy.updateMatrix();
 
-  const hotColor = getCachedColor(event.palette.fireballHot);
-  const coolColor = getCachedColor(event.palette.smoke);
-  color.copy(hotColor).lerp(coolColor, firePhase * 0.65);
+  color.set(event.palette.fireballHot);
+  const { r, g, b } = color;
+  color.set(event.palette.smoke);
+  const blend = firePhase * 0.65;
+  color.setRGB(r + (color.r - r) * blend, g + (color.g - g) * blend, b + (color.b - b) * blend);
 
   return emitSingleInstance(manager, eventId, dummy, color);
 };

@@ -1,5 +1,4 @@
 import { SPARKS_DELAY } from '../constants.js';
-import { getCachedColor } from '../derived.js';
 import { clamp01 } from '../../../utils/math.js';
 import { type EffectUpdateContext, type EffectUpdater, type EffectUpdateResult } from './types.js';
 import { processParticleArray } from './particleLoopHelper.js';
@@ -16,6 +15,8 @@ export const updateSparks: EffectUpdater = (
   const { event, time, camera, derived, dummy, tmpVec, color } = ctx;
 
   const sparksT = time - SPARKS_DELAY;
+
+  const { r, g, b } = color.set(event.palette.flash);
 
   return processParticleArray(
     derived.sparks,
@@ -38,9 +39,7 @@ export const updateSparks: EffectUpdater = (
 
       manager.setMatrixAt(idx, dummy.matrix);
 
-      color
-        .copy(getCachedColor(event.palette.flash))
-        .multiplyScalar(Math.max(0.25, 1 - sparkProgress * 0.9));
+      color.setRGB(r, g, b).multiplyScalar(Math.max(0.25, 1 - sparkProgress * 0.9));
       manager.setColorAt(idx, color);
 
       return true;

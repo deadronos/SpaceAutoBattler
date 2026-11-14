@@ -1,4 +1,4 @@
-import React, { useMemo, useRef } from 'react';
+import React, { useCallback, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Color, InstancedMesh, Object3D, Quaternion, Vector3 } from 'three';
 import { useBloomRegistration } from '../../renderer/bloom/index.js';
@@ -16,7 +16,7 @@ import {
 import { getDerived } from './derived.js';
 import { useExplosionResources } from './materials.js';
 import { DynamicLightManager } from './DynamicLightManager.js';
-import { ExplosionsInstancedManager, type InstancedMeshRefs } from './instancedManager.js';
+import { ExplosionsInstancedManager } from './instancedManager.js';
 import {
   updateDebris,
   updateFireball,
@@ -33,20 +33,18 @@ export function ExplosionRendererCore(): React.ReactElement {
   const flashRef = useRef<InstancedMesh>(null);
   const shockwaveRef = useRef<InstancedMesh>(null);
   const fireballRef = useRef<InstancedMesh>(null);
-  const debrisRef = useRef<InstancedMesh>(null);
-  const sparksRef = useRef<InstancedMesh>(null);
-  const plasmaRef = useRef<InstancedMesh>(null);
-  const smokeRef = useRef<InstancedMesh>(null);
-  const managerRef = useRef(
-    new ExplosionsInstancedManager({
-      flash: FLASH_CAPACITY,
-      shockwave: SHOCKWAVE_CAPACITY,
-      fireball: FIREBALL_CAPACITY,
-      debris: DEBRIS_CAPACITY,
-      sparks: SPARKS_CAPACITY,
-      plasma: PLASMA_CAPACITY,
-      smoke: SMOKE_CAPACITY,
-    }),
+  const manager = useMemo(
+    () =>
+      new ExplosionsInstancedManager({
+        flash: FLASH_CAPACITY,
+        shockwave: SHOCKWAVE_CAPACITY,
+        fireball: FIREBALL_CAPACITY,
+        debris: DEBRIS_CAPACITY,
+        sparks: SPARKS_CAPACITY,
+        plasma: PLASMA_CAPACITY,
+        smoke: SMOKE_CAPACITY,
+      }),
+    [],
   );
 
   useBloomRegistration(flashRef, { group: 'explosions' });
@@ -61,36 +59,47 @@ export function ExplosionRendererCore(): React.ReactElement {
   const color = useMemo(() => new Color(), []);
   const warningStateRef = useRef(createSaturationWarningState());
   const frameRef = useRef(0);
-  // Reused across frames; mutated in place each frame to avoid a per-frame
-  // object allocation. The manager only reads it during attach().
-  const refsRef = useRef<InstancedMeshRefs>({
-    flash: null,
-    shockwave: null,
-    fireball: null,
-    debris: null,
-    sparks: null,
-    plasma: null,
-    smoke: null,
-  });
+  const bindFlash = useCallback(
+    (mesh: InstancedMesh | null) => {
+      flashRef.current = mesh;
+      manager.attachMesh('flash', mesh);
+    },
+    [manager],
+  );
+  const bindShockwave = useCallback(
+    (mesh: InstancedMesh | null) => {
+      shockwaveRef.current = mesh;
+      manager.attachMesh('shockwave', mesh);
+    },
+    [manager],
+  );
+  const bindFireball = useCallback(
+    (mesh: InstancedMesh | null) => {
+      fireballRef.current = mesh;
+      manager.attachMesh('fireball', mesh);
+    },
+    [manager],
+  );
+  const bindDebris = useCallback(
+    (mesh: InstancedMesh | null) => manager.attachMesh('debris', mesh),
+    [manager],
+  );
+  const bindSparks = useCallback(
+    (mesh: InstancedMesh | null) => manager.attachMesh('sparks', mesh),
+    [manager],
+  );
+  const bindPlasma = useCallback(
+    (mesh: InstancedMesh | null) => manager.attachMesh('plasma', mesh),
+    [manager],
+  );
+  const bindSmoke = useCallback(
+    (mesh: InstancedMesh | null) => manager.attachMesh('smoke', mesh),
+    [manager],
+  );
 
   useFrame(({ camera }) => {
     frameRef.current += 1;
     const frameId = frameRef.current;
-    const refs = refsRef.current;
-    refs.flash = flashRef.current;
-    refs.shockwave = shockwaveRef.current;
-    refs.fireball = fireballRef.current;
-    refs.debris = debrisRef.current;
-    refs.sparks = sparksRef.current;
-    refs.plasma = plasmaRef.current;
-    refs.smoke = smokeRef.current;
-
-    const manager = managerRef.current;
-
-    if (!manager.attach(refs)) {
-      return;
-    }
-
     manager.beginFrame();
 
     // Reuse a single context object across the frame instead of allocating
@@ -145,41 +154,28 @@ export function ExplosionRendererCore(): React.ReactElement {
 
   return (
     <group>
+      <instancedMesh ref={bindFlash} args={[geometries.flash, materials.flash, FLASH_CAPACITY]} />
       <instancedMesh
-        ref={flashRef}
-        args={[geometries.flash, materials.flash, FLASH_CAPACITY]}
-        frustumCulled={false}
-      />
-      <instancedMesh
-        ref={shockwaveRef}
+        ref={bindShockwave}
         args={[geometries.shockwave, materials.shockwave, SHOCKWAVE_CAPACITY]}
-        frustumCulled={false}
       />
       <instancedMesh
-        ref={fireballRef}
+        ref={bindFireball}
         args={[geometries.fireball, materials.fireball, FIREBALL_CAPACITY]}
-        frustumCulled={false}
       />
       <instancedMesh
-        ref={debrisRef}
+        ref={bindDebris}
         args={[geometries.debris, materials.debris, DEBRIS_CAPACITY]}
-        frustumCulled={false}
       />
       <instancedMesh
-        ref={sparksRef}
+        ref={bindSparks}
         args={[geometries.sparks, materials.sparks, SPARKS_CAPACITY]}
-        frustumCulled={false}
       />
       <instancedMesh
-        ref={plasmaRef}
+        ref={bindPlasma}
         args={[geometries.plasma, materials.plasma, PLASMA_CAPACITY]}
-        frustumCulled={false}
       />
-      <instancedMesh
-        ref={smokeRef}
-        args={[geometries.smoke, materials.smoke, SMOKE_CAPACITY]}
-        frustumCulled={false}
-      />
+      <instancedMesh ref={bindSmoke} args={[geometries.smoke, materials.smoke, SMOKE_CAPACITY]} />
     </group>
   );
 }

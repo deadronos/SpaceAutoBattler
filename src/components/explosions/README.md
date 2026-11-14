@@ -12,10 +12,15 @@ The explosion renderer system has been refactored into a modular architecture fo
 
 Top-level React component that:
 
-- Manages refs to all instanced meshes
+- Attaches each instanced mesh through a callback ref when the mesh mounts or changes
 - Orchestrates the frame loop via `useFrame`
 - Delegates per-effect updates to specialized updater functions
 - Finalizes mesh state each frame
+
+#### `DynamicLightManager.tsx`
+
+Pools eight point lights. Each frame, visible flashes are ranked by intensity
+weighted by squared camera distance. The highest scoring flashes receive lights.
 
 #### `instancedManager.ts`
 
@@ -61,7 +66,7 @@ number of instances used plus whether capacity was saturated.
 Pure helper module providing:
 
 - `getDerived()` - Cached deterministic particle generation using seeded RNG
-- `getCachedColor()` - Color instance caching
+- Effect updaters set palette colors on a reusable scratch color
 - `randomUnitVector()` - Unit vector generation
 - `easeOutQuad()` - Easing utility (`clamp01` comes from `src/utils/math.ts`)
 
@@ -132,7 +137,7 @@ pnpm exec vp test test/components/explosions
 - **Instanced Rendering**: All effects use InstancedMesh for efficient rendering
 - **Cached Derivations**: Particle properties cached per explosion event
 - **Bloom Groups**: Flash, shockwave, and fireball registered for selective bloom
-- **Frustum Culling**: Disabled for explosion meshes (short-lived, dynamic)
+- **Frustum Culling**: Each effect updates its bounding sphere as it writes live particle transforms
 
 ## Migration Guide
 

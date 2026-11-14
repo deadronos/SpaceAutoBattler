@@ -1,5 +1,4 @@
 import { PLASMA_DELAY } from '../constants.js';
-import { getCachedColor } from '../derived.js';
 import { clamp01 } from '../../../utils/math.js';
 import { type EffectUpdateContext, type EffectUpdater, type EffectUpdateResult } from './types.js';
 import { processParticleArray } from './particleLoopHelper.js';
@@ -16,6 +15,8 @@ export const updatePlasma: EffectUpdater = (
   const { event, time, derived, dummy, tmpQuat, tmpVec, color } = ctx;
 
   const plasmaT = time - PLASMA_DELAY;
+
+  const { r, g, b } = color.set(event.palette.shockwave);
 
   return processParticleArray(
     derived.plasma,
@@ -39,9 +40,7 @@ export const updatePlasma: EffectUpdater = (
 
       manager.setMatrixAt(idx, dummy.matrix);
 
-      color
-        .copy(getCachedColor(event.palette.shockwave))
-        .multiplyScalar(Math.max(0.15, 1 - plumeProgress));
+      color.setRGB(r, g, b).multiplyScalar(Math.max(0.15, 1 - plumeProgress));
       manager.setColorAt(idx, color);
 
       return true;

@@ -1,4 +1,4 @@
-import { InstancedBufferAttribute, DynamicDrawUsage, Matrix4, Color } from 'three';
+import { InstancedBufferAttribute, DynamicDrawUsage, Matrix4, Color, Sphere } from 'three';
 import type { InstancedMesh } from 'three';
 import { InstanceAllocator } from './instanceAllocator.js';
 
@@ -8,6 +8,7 @@ export interface InstancedLayerOptions {
   capacity: number;
   supportsInstanceColor?: boolean;
   baseColor?: Color;
+  trackBounds?: boolean;
 }
 
 /**
@@ -22,6 +23,7 @@ export class InstancedLayerManager<K> {
   private readonly capacity: number;
   private readonly supportsInstanceColor: boolean;
   private readonly baseColor?: Color;
+  private readonly instanceBounds: Sphere | null;
   private maxIndex = -1;
 
   constructor(meshRef: { current: InstancedMesh | null }, options: InstancedLayerOptions) {
@@ -30,6 +32,7 @@ export class InstancedLayerManager<K> {
     this.allocator = new InstanceAllocator<K>(this.capacity);
     this.supportsInstanceColor = !!options.supportsInstanceColor;
     this.baseColor = options.baseColor;
+    this.instanceBounds = options.trackBounds ? new Sphere() : null;
     // Note: mesh initialization is performed lazily when a mesh is attached.
   }
 
@@ -37,6 +40,7 @@ export class InstancedLayerManager<K> {
     const mesh = this.meshRef.current;
     if (!mesh) return;
     mesh.count = 0;
+    if (this.instanceBounds) mesh.boundingSphere ??= new Sphere();
     mesh.instanceMatrix.setUsage(DynamicDrawUsage);
     mesh.instanceMatrix.needsUpdate = true;
     if (this.supportsInstanceColor && !mesh.instanceColor) {
@@ -57,6 +61,7 @@ export class InstancedLayerManager<K> {
   beginFrame(): void {
     this.allocator.beginFrame();
     this.maxIndex = -1;
+    if (this.instanceBounds) this.meshRef.current?.boundingSphere?.makeEmpty();
   }
 
   allocate(key: K): number | null {
@@ -73,6 +78,13 @@ export class InstancedLayerManager<K> {
     const mesh = this.meshRef.current;
     if (!mesh) return;
     mesh.setMatrixAt(index, matrix);
+    if (this.instanceBounds && mesh.boundingSphere) {
+      if (!mesh.geometry.boundingSphere) mesh.geometry.computeBoundingSphere();
+      if (mesh.geometry.boundingSphere) {
+        this.instanceBounds.copy(mesh.geometry.boundingSphere).applyMatrix4(matrix);
+        mesh.boundingSphere.union(this.instanceBounds);
+      }
+    }
     mesh.instanceMatrix.needsUpdate = true;
     if (index > this.maxIndex) this.maxIndex = index;
   }
