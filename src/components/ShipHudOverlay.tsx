@@ -1,4 +1,4 @@
-import { memo, useMemo, useState } from 'react';
+import { memo, useEffect, useMemo, useState } from 'react';
 import type React from 'react';
 import type { HudHealthOverlayConfig } from '../config/hudHealth.js';
 import { lerpBySeed } from '../utils/deterministicLerp.js';
@@ -11,6 +11,35 @@ interface ShipHudOverlayProps {
   config: HudHealthOverlayConfig;
 }
 
+const CONVERGENCE_EPSILON = 0.002;
+
+function useSmoothedRatio(target: number, seed: number, reducedMotion: boolean): number {
+  const [display, setDisplay] = useState(target);
+
+  useEffect(() => {
+    if (reducedMotion || typeof requestAnimationFrame !== 'function') {
+      return;
+    }
+    if (Math.abs(display - target) <= CONVERGENCE_EPSILON) {
+      return;
+    }
+    const rafId = requestAnimationFrame(() => {
+      setDisplay((current) => {
+        const next = lerpBySeed(seed, current, target);
+        return Math.abs(next - target) <= CONVERGENCE_EPSILON ? target : next;
+      });
+    });
+    return () => {
+      cancelAnimationFrame(rafId);
+    };
+  }, [display, target, seed, reducedMotion]);
+
+  if (reducedMotion || Math.abs(display - target) <= CONVERGENCE_EPSILON) {
+    return target;
+  }
+  return display;
+}
+
 export const ShipHudOverlay = memo(ShipHudOverlayView, haveEqualOverlayProps);
 
 function ShipHudOverlayView({ overlay, config }: ShipHudOverlayProps): React.ReactElement | null {
@@ -18,36 +47,9 @@ function ShipHudOverlayView({ overlay, config }: ShipHudOverlayProps): React.Rea
   const hasShield = Number.isFinite(overlay.ratios.shield);
   const targetHealth = clampRatio(overlay.ratios.health);
   const targetShield = hasShield ? clampRatio(overlay.ratios.shield) : 0;
-  const [healthState, setHealthState] = useState(() => ({
-    target: targetHealth,
-    display: targetHealth,
-  }));
-  const [shieldState, setShieldState] = useState(() => ({
-    target: targetShield,
-    display: targetShield,
-  }));
-
-  let effectiveHealth = targetHealth;
-  if (!reducedMotion) {
-    if (healthState.target !== targetHealth) {
-      const nextDisplay = lerpBySeed(overlay.seed, healthState.display, targetHealth);
-      setHealthState({ target: targetHealth, display: nextDisplay });
-      effectiveHealth = nextDisplay;
-    } else {
-      effectiveHealth = healthState.display;
-    }
-  }
-
-  let effectiveShield = hasShield ? targetShield : 0;
-  if (hasShield && !reducedMotion) {
-    if (shieldState.target !== targetShield) {
-      const nextDisplay = lerpBySeed(overlay.seed ^ 0x517cc1b7, shieldState.display, targetShield);
-      setShieldState({ target: targetShield, display: nextDisplay });
-      effectiveShield = nextDisplay;
-    } else {
-      effectiveShield = shieldState.display;
-    }
-  }
+  const effectiveHealth = useSmoothedRatio(targetHealth, overlay.seed, reducedMotion);
+  const smoothedShield = useSmoothedRatio(targetShield, overlay.seed ^ 0x517cc1b7, reducedMotion);
+  const effectiveShield = hasShield ? smoothedShield : 0;
 
   const effects = overlay.effects;
   const containerStyle = useMemo(
