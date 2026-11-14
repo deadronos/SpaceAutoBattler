@@ -94,8 +94,7 @@ export function StarSphere({
   const qualityPreset = useUiStore((s) => s.qualityPreset);
   const detectedQualityTier = useUiStore((s) => s.detectedQualityTier);
   // Part of the material memo key: a preset change rebuilds the star material so
-  // it recompiles with the correct LOW_QUALITY define. (The tier-keyed
-  // CelestialEnvironment remount also covers this; kept explicit for safety.)
+  // it recompiles with the correct LOW_QUALITY define without remounting.
   const qualityTier = useMemo(
     () => resolveQualitySettings(qualityPreset, detectedQualityTier).tier,
     [qualityPreset, detectedQualityTier],

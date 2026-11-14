@@ -20,6 +20,37 @@ const DEFAULT_FILL_INTENSITY = 0.3;
 const DEFAULT_ENV_INTENSITY = 0.45;
 const LIGHTFORMER_RADIUS = 10;
 
+export function applyStarLightShadowSettings(
+  light: DirectionalLight,
+  target: Object3D,
+  distance: number,
+  shadowsEnabled: boolean,
+  shadowMapSize: number,
+): void {
+  target.position.set(0, 0, 0);
+  light.target = target;
+  light.castShadow = shadowsEnabled;
+  const shadow = light.shadow;
+  if (shadow.map && (shadow.map.width !== shadowMapSize || shadow.map.height !== shadowMapSize)) {
+    shadow.map.depthTexture?.dispose();
+    shadow.map.dispose();
+    shadow.map = null;
+  }
+  shadow.mapSize.set(shadowMapSize, shadowMapSize);
+  shadow.needsUpdate = true;
+  shadow.bias = -0.0002;
+  shadow.normalBias = 0.02;
+  const camera = shadow.camera;
+  const { near, far, halfSize } = computeShadowCameraParams(distance);
+  camera.near = near;
+  camera.far = far;
+  camera.left = -halfSize;
+  camera.right = halfSize;
+  camera.top = halfSize;
+  camera.bottom = -halfSize;
+  camera.updateProjectionMatrix();
+}
+
 export function StarLight({
   config,
   externalLightRef,
@@ -112,23 +143,7 @@ export function StarLight({
     if (!light || !light.shadow) {
       return;
     }
-    target.position.set(0, 0, 0);
-    light.target = target;
-    light.castShadow = shadowsEnabled;
-    const shadow = light.shadow;
-    shadow.mapSize.set(shadowMapSize, shadowMapSize);
-    shadow.needsUpdate = true;
-    shadow.bias = -0.0002;
-    shadow.normalBias = 0.02;
-    const camera = shadow.camera;
-    const { near, far, halfSize } = computeShadowCameraParams(config.distance);
-    camera.near = near;
-    camera.far = far;
-    camera.left = -halfSize;
-    camera.right = halfSize;
-    camera.top = halfSize;
-    camera.bottom = -halfSize;
-    camera.updateProjectionMatrix();
+    applyStarLightShadowSettings(light, target, config.distance, shadowsEnabled, shadowMapSize);
     // Mirror the internal ref into the optional external ref so parents can access it
     if (externalLightRef) {
       try {

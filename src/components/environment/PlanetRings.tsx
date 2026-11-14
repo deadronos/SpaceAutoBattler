@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef } from 'react';
 import type { Mesh } from 'three';
 import { useFrame } from '@react-three/fiber';
 import { RENDER_ORDER_TRANSLUCENT_ADDITIVE } from '../../renderer/sceneLayerOrder.js';
-import { useUiStore } from '../../app/uiStore.js';
 import { clearDebugHooks } from '../../debug/copilotDebugRegistry.js';
 import { createPlanetRingGeometry } from '../../renderer/environment/planetRingGeometry.js';
 import {
@@ -11,6 +10,7 @@ import {
 } from '../../renderer/environment/planetRingMaterial.js';
 import { installPlanetRingsDebug } from '../../debug/planetRingsDebug.js';
 import { usePlanetRingUniforms } from '../../hooks/usePlanetRingUniforms.js';
+import { usePostprocessingEnabled } from '../../hooks/usePostprocessingEnabled.js';
 import { usePrefersReducedMotion } from '../../hooks/usePrefersReducedMotion.js';
 
 interface PlanetRingsProps {
@@ -133,14 +133,14 @@ export function PlanetRings({
     [tintColor, opacity, bloomOnly],
   );
 
-  // Read global UI flag to detect when postprocessing is disabled.
-  const postprocessingEnabled = useUiStore((s) => s.postprocessingEnabled);
+  // Match Battlefield's resolved postprocessing state (UI toggle + quality tier + debug override).
+  const ppEnabled = usePostprocessingEnabled();
 
-  const materialToUse = postprocessingEnabled ? material : basicMaterial;
+  const materialToUse = ppEnabled ? material : basicMaterial;
 
   usePlanetRingUniforms({
     materialToUse,
-    postprocessingEnabled,
+    postprocessingEnabled: ppEnabled,
     opacity,
     brightness,
     innerRadius,

@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen, act } from '@testing-library/react'
 import {
   QUALITY_PRESETS,
   detectInitialQualityTier,
+  resolvePostprocessingEnabled,
   resolveQualitySettings,
   resolveQualityTier,
   type QualitySettings,
@@ -73,9 +74,10 @@ describe('quality presets', () => {
     expect(resolveQualitySettings('auto', 'low')).toEqual(QUALITY_PRESETS.low);
   });
 
-  it('keeps high as the shipped no-op baseline', () => {
+  it('keeps high as the shipped baseline with crisp 1.0 initial DPR', () => {
     const high = QUALITY_PRESETS.high;
-    expect(high.dpr).toEqual({ min: 0.5, max: 2, initial: 0.5 });
+    expect(high.dpr).toEqual({ min: 0.5, max: 2, initial: 1.0 });
+    expect(high.dpr.initial).toBeLessThanOrEqual(high.dpr.max);
     expect(high.shadows).toBe(true);
     expect(high.shadowMapSize).toBe(2048);
     expect(high.ao).toEqual({ enabled: true, halfRes: true, quality: 'Medium' });
@@ -83,6 +85,13 @@ describe('quality presets', () => {
     expect(high.particles).toEqual({ maxParticles: 5000, spawnRatePerAnchor: 12 });
     expect(high.starShaderOctaves).toBe(7);
     expect(high.shieldChromatic).toBe(true);
+  });
+
+  it('resolves postprocessing state from UI toggle, bloom ceiling, and force override', () => {
+    expect(resolvePostprocessingEnabled(true, true)).toBe(true);
+    expect(resolvePostprocessingEnabled(false, true)).toBe(false);
+    expect(resolvePostprocessingEnabled(true, false)).toBe(false);
+    expect(resolvePostprocessingEnabled(false, false, true)).toBe(true);
   });
 
   it('keeps the binary shader knobs equal for medium and high (only low differs)', () => {

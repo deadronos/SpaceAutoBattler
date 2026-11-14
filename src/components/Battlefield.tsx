@@ -1,12 +1,22 @@
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Grid } from '@react-three/drei';
-import { AxesHelper, NoToneMapping, SRGBColorSpace, type WebGLRenderer } from 'three';
-import { Suspense, useEffect, useMemo } from 'react';
+import {
+  ACESFilmicToneMapping,
+  AgXToneMapping,
+  AxesHelper,
+  NeutralToneMapping,
+  SRGBColorSpace,
+  type ToneMapping,
+  type WebGLRenderer,
+} from 'three';
+import { Suspense, useEffect, useMemo, useRef } from 'react';
 import type React from 'react';
 import { useOptionalGameState } from '../app/context.js';
 import { CAMERA_DEFAULTS, FOG_DEFAULTS, WORLD_SIZE } from '../game/config.js';
 import { useUiStore } from '../app/uiStore.js';
-import { resolveQualitySettings, type QualityTier } from '../config/quality.js';
+import { resolveQualitySettings } from '../config/quality.js';
+import { POSTPROCESSING_CONFIG, type ColorPipelineConfig } from '../config/renderer.js';
+import { usePostprocessingEnabled } from '../hooks/usePostprocessingEnabled.js';
 import { BloomProvider } from '../renderer/bloom/index.js';
 import PostprocessingLazy from './PostprocessingLazy.js';
 import { ParticleTrails } from './ParticleTrails.js';
@@ -32,17 +42,9 @@ import { isCopilotDebugEnabled } from '../utils/copilotDebug.js';
 
 interface BattleSceneContentProps {
   ppEnabled: boolean;
-  qualityTier: QualityTier;
 }
 
-type DebugWindow = Window & {
-  __copilot_forcePostprocessingMount?: boolean;
-};
-
-function BattleSceneContent({
-  ppEnabled,
-  qualityTier,
-}: BattleSceneContentProps): React.ReactElement {
+function BattleSceneContent({ ppEnabled }: BattleSceneContentProps): React.ReactElement {
   const state = useOptionalGameState();
 
   if (!state) return <></>;
@@ -59,8 +61,7 @@ function BattleSceneContent({
   const sceneContent = (
     <>
       <fog attach="fog" args={FOG_DEFAULTS} />
-      {/* Tier-keyed so star/shield materials rebuild when the preset changes. */}
-      <CelestialEnvironment key={`environment-${qualityTier}`} />
+      <CelestialEnvironment />
       <Suspense fallback={null}>
         {renderWorkerShips && <WorkerShipsLayer />}
         {!renderWorkerShipsOnly && <ShipsLayer archetype={state.queries.ships} />}
@@ -68,12 +69,7 @@ function BattleSceneContent({
         {!renderWorkerShipsOnly && <MuzzleFlashInstancedLayer archetype={state.queries.turrets} />}
         {!renderWorkerShipsOnly && <ProjectilesLayer archetype={state.queries.projectiles} />}
         {!renderWorkerShipsOnly && <ExplosionsLayer />}
-        {/* Tier-keyed group so the particle pool is re-sized when the preset changes. */}
-        {!renderWorkerShipsOnly && (
-          <group key={`trails-${qualityTier}`}>
-            <ParticleTrails ships={ships} />
-          </group>
-        )}
+        {!renderWorkerShipsOnly && <ParticleTrails ships={ships} />}
       </Suspense>
       {ppEnabled && <PostprocessingLazy />}
       <BattlefieldSystems />
@@ -138,17 +134,17 @@ export function Battlefield(): React.ReactElement {
   const qualityPreset = useUiStore((s) => s.qualityPreset);
   const detectedQualityTier = useUiStore((s) => s.detectedQualityTier);
   const quality = resolveQualitySettings(qualityPreset, detectedQualityTier);
-  // Respect UI toggle, but allow a debug override for automation tests so we
-  // can force the Postprocessing component to mount even when the UI
-  // setting is off. Tests can set `window.__copilot_forcePostprocessingMount = true`.
-  const uiPost = useUiStore((s) => s.postprocessingEnabled);
-  // The preset is a ceiling: bloom can still be turned off by the UI toggle,
-  // but the debug override keeps forcing a mount for automation.
-  const ppEnabled =
-    typeof window !== 'undefined' &&
-    (window as DebugWindow).__copilot_forcePostprocessingMount === true
-      ? true
-      : uiPost && quality.bloom;
+  const ppEnabled = usePostprocessingEnabled();
+  const glRef = useRef<WebGLRenderer | null>(null);
+
+  // Ensure direct-render tone mapping is active whenever postprocessing is
+  // inactive (the composer sets NoToneMapping while active and restores on teardown).
+  useEffect(() => {
+    const gl = glRef.current;
+    if (!gl || ppEnabled) return;
+    gl.toneMapping = resolveFallbackToneMapping();
+    gl.toneMappingExposure = POSTPROCESSING_CONFIG.colorPipeline.exposure;
+  }, [ppEnabled]);
 
   if (!state) {
     return <div className="loading-overlay">Preparing simulation…</div>;
@@ -166,12 +162,16 @@ export function Battlefield(): React.ReactElement {
         far: CAMERA_DEFAULTS.far,
       }}
       dpr={[quality.dpr.min, quality.dpr.max]}
-      onCreated={({ gl }) => configureBattlefieldRenderer(gl as unknown as WebGLRenderer)}
+      onCreated={({ gl }) => {
+        const renderer = gl as unknown as WebGLRenderer;
+        glRef.current = renderer;
+        configureBattlefieldRenderer(renderer);
+      }}
       onPointerMissed={() => useUiStore.getState().selectShip(null)}
     >
       <StarsField />
       <QualityController />
-      <BattleSceneContent ppEnabled={ppEnabled} qualityTier={quality.tier} />
+      <BattleSceneContent ppEnabled={ppEnabled} />
       <DynamicResScaler
         minDpr={quality.dpr.min}
         maxDpr={quality.dpr.max}
@@ -182,10 +182,26 @@ export function Battlefield(): React.ReactElement {
   );
 }
 
+const FALLBACK_TONE_MAPPINGS: Record<ColorPipelineConfig['toneMapping'], ToneMapping> = {
+  agx: AgXToneMapping,
+  aces: ACESFilmicToneMapping,
+  neutral: NeutralToneMapping,
+};
+
+/**
+ * Resolve the Three.js tone-mapping mode used when rendering directly without
+ * the postprocessing composer.
+ */
+export function resolveFallbackToneMapping(
+  mode: ColorPipelineConfig['toneMapping'] = POSTPROCESSING_CONFIG.colorPipeline.toneMapping,
+): ToneMapping {
+  return FALLBACK_TONE_MAPPINGS[mode] ?? AgXToneMapping;
+}
+
 export function configureBattlefieldRenderer(gl: WebGLRenderer): void {
   gl.outputColorSpace = SRGBColorSpace;
-  gl.toneMapping = NoToneMapping;
-  gl.toneMappingExposure = 1;
+  gl.toneMapping = resolveFallbackToneMapping();
+  gl.toneMappingExposure = POSTPROCESSING_CONFIG.colorPipeline.exposure;
   try {
     installWebGLDebugHooks(gl);
   } catch (error) {

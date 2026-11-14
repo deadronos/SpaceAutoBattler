@@ -13,6 +13,7 @@ Custom React hooks for game logic integration with React Three Fiber components.
 | **useParticleTrailSimulation.ts**   | Per-frame thruster trail particle simulation and buffers          |
 | **usePlanetRingUniforms.ts**        | Keeps `PlanetRings` shader uniforms in sync                       |
 | **usePlanetTexture.ts**             | Hook for loading and caching planet textures                      |
+| **usePostprocessingEnabled.ts**     | Resolves effective postprocessing state across UI + quality tier  |
 | **usePrefersReducedMotion.ts**      | Hook for respecting reduced motion user preferences               |
 | **useProgressiveTexture.ts**        | Loads a low-res texture, then upgrades to high-res in background  |
 | **useProjectileInstancedGroups.ts** | Per-frame instanced projectile grouping and matrix updates        |

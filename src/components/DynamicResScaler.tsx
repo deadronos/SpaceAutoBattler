@@ -57,12 +57,13 @@ export default function DynamicResScaler({
   const { gl, size } = useThree();
   const emaFpsRef = useRef<number | null>(null);
   const lastAdjustRef = useRef<number>(0);
-  const dprRef = useRef<number>(initialDpr);
+  const clampedInitialDpr = Math.min(maxDpr, Math.max(minDpr, initialDpr));
+  const dprRef = useRef<number>(clampedInitialDpr);
 
   useEffect(() => {
-    // Apply initial DPR
+    // Apply initial DPR (clamped to [minDpr, maxDpr])
     try {
-      gl.setPixelRatio(initialDpr);
+      gl.setPixelRatio(clampedInitialDpr);
       // ensure drawing buffer size is updated
       gl.setSize(size.width, size.height, false);
     } catch (error) {

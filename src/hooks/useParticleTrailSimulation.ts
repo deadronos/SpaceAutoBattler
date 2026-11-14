@@ -51,10 +51,13 @@ export function useParticleTrailSimulation(
   const accumulatedTimeRef = useRef(0);
 
   useEffect(() => {
+    nextParticleIndex.current = 0;
+    filledCount.current = 0;
+    trailResources.geometry.instanceCount = 0;
     if (meshRef.current) {
       meshRef.current.visible = false;
     }
-  }, []);
+  }, [trailResources]);
 
   const resolveThrusterAnchorsWorld = (ship: ShipEntity): Vector3[] => {
     const locals = anchorLocalsByHull.get(ship.ship.hull);
