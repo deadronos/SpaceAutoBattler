@@ -16,6 +16,11 @@ const mockCamera = {
   updateMatrixWorld: vi.fn(),
 };
 
+vi.mock('@react-three/drei', () => ({
+  Environment: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
+  Lightformer: () => null,
+}));
+
 vi.mock('@react-three/fiber', () => ({
   useThree: () => ({
     gl: { getContext: () => null, domElement: { width: 1280, height: 720 } },
