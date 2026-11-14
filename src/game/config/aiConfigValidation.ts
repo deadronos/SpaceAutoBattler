@@ -12,6 +12,13 @@
 import { reportConfigError } from '../../utils/errorReporting.js';
 import type { AI_CONFIG } from './aiConfig.js';
 import type { AiOverrideSlice } from './aiOverrides.js';
+import {
+  describe,
+  isFiniteNumber,
+  isInUnitInterval,
+  isNonNegativeFinite,
+  isPositiveFinite,
+} from './validationPrimitives.js';
 
 type AiConfig = typeof AI_CONFIG;
 
@@ -30,36 +37,12 @@ function isBoolean(value: unknown): value is boolean {
   return typeof value === 'boolean';
 }
 
-function isFiniteNumber(value: unknown): value is number {
-  return typeof value === 'number' && Number.isFinite(value);
-}
-
-function isPositiveFinite(value: unknown): value is number {
-  return isFiniteNumber(value) && value > 0;
-}
-
 function isIntegerAtLeast(value: unknown, min: number): value is number {
   return isFiniteNumber(value) && Number.isInteger(value) && value >= min;
 }
 
-function isInUnitInterval(value: unknown): value is number {
-  return isFiniteNumber(value) && value >= 0 && value <= 1;
-}
-
-function isNonNegativeFinite(value: unknown): value is number {
-  return isFiniteNumber(value) && value >= 0;
-}
-
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.length > 0;
-}
-
-function describe(value: unknown): string {
-  if (typeof value === 'number') return String(value);
-  if (typeof value === 'string') return JSON.stringify(value);
-  if (value === null) return 'null';
-  if (Array.isArray(value)) return 'array';
-  return typeof value;
 }
 
 function checkAll(

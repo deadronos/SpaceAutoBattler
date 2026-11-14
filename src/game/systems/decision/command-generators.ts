@@ -35,7 +35,7 @@ function setHeadingToward(
   shipRotation: { x: number; y: number; z: number; w: number },
 ): void {
   heading.copy(targetPos).sub(shipPos);
-  if (heading.lengthSq() < 1e-5) {
+  if (!(heading.lengthSq() >= 1e-5)) {
     getForwardFromQuaternion(shipRotation, heading);
   } else {
     heading.normalize();
@@ -235,7 +235,13 @@ export function computeKiteCommand(
   heading: Vector3,
 ): CommandResult {
   if (target) {
-    heading.copy(ship.transform.position).sub(target.transform.position).normalize();
+    // Kite moves away from target: heading points from target toward ship.
+    setHeadingToward(
+      heading,
+      ship.transform.position,
+      target.transform.position,
+      ship.transform.rotation,
+    );
     const distanceToTarget = getDistanceBetween(ship, target);
     return {
       thrust: 1,
@@ -297,7 +303,12 @@ export function computeAttackCommand(
   heading: Vector3,
 ): CommandResult {
   if (target) {
-    heading.copy(target.transform.position).sub(ship.transform.position).normalize();
+    setHeadingToward(
+      heading,
+      target.transform.position,
+      ship.transform.position,
+      ship.transform.rotation,
+    );
     const dist = getDistanceBetween(ship, target);
     const [desiredMin, desiredMax] = getEffectiveRange(ship, profile, dist, state.ai.tickIndex);
     let thrust: number;

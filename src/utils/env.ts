@@ -1,6 +1,5 @@
+import { parseBooleanFlag } from './booleanFlag.js';
 import { reportConfigError } from './errorReporting.js';
-
-const TRUE_VALUES = new Set(['1', 'true', 'on']);
 
 /**
  * True when running a production build. Prefers `import.meta.env.PROD`
@@ -13,14 +12,14 @@ export function isProductionEnv(): boolean {
     const env = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process
       ?.env;
     if (env?.NODE_ENV === 'production') return true;
-  } catch {
-    // ignore env resolution errors
-  }
 
-  if (typeof import.meta !== 'undefined') {
-    const meta = import.meta as { env?: { PROD?: boolean; NODE_ENV?: string } };
-    if (typeof meta.env?.PROD === 'boolean') return meta.env.PROD;
-    if (typeof meta.env?.NODE_ENV === 'string') return meta.env.NODE_ENV === 'production';
+    if (typeof import.meta !== 'undefined') {
+      const meta = import.meta as { env?: { PROD?: boolean; NODE_ENV?: string } };
+      if (typeof meta.env?.PROD === 'boolean') return meta.env.PROD;
+      if (typeof meta.env?.NODE_ENV === 'string') return meta.env.NODE_ENV === 'production';
+    }
+  } catch (error) {
+    reportConfigError('NODE_ENV', error);
   }
   return false;
 }
@@ -50,7 +49,7 @@ export function readEnv<T extends string | boolean>(
     if (parser) return parser(raw);
 
     if (typeof defaultValue === 'boolean') {
-      return TRUE_VALUES.has(raw.toLowerCase()) as T;
+      return parseBooleanFlag(raw) as T;
     }
 
     return raw as T;

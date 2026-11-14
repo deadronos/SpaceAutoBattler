@@ -10,6 +10,13 @@
 // mis-tuned constant warns (never crashes) at module load.
 
 import type { BehaviorProfile, DoctrineCard, DoctrineCardId } from '../../types/index.js';
+import {
+  describe,
+  isFiniteNumber,
+  isInUnitInterval,
+  isNonNegativeFinite,
+  isPositiveFinite,
+} from './validationPrimitives.js';
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -20,30 +27,6 @@ const TEAM_POSTURES: ReadonlySet<string> = new Set(['aggressive', 'hold', 'retre
 
 function isRecord(value: unknown): value is UnknownRecord {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function isFiniteNumber(value: unknown): value is number {
-  return typeof value === 'number' && Number.isFinite(value);
-}
-
-function isPositiveFinite(value: unknown): value is number {
-  return isFiniteNumber(value) && value > 0;
-}
-
-function isInUnitInterval(value: unknown): value is number {
-  return isFiniteNumber(value) && value >= 0 && value <= 1;
-}
-
-function isNonNegativeFinite(value: unknown): value is number {
-  return isFiniteNumber(value) && value >= 0;
-}
-
-function describe(value: unknown): string {
-  if (typeof value === 'number') return String(value);
-  if (typeof value === 'string') return JSON.stringify(value);
-  if (value === null) return 'null';
-  if (Array.isArray(value)) return 'array';
-  return typeof value;
 }
 
 function check(

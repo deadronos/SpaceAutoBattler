@@ -1,6 +1,5 @@
+import { parseBooleanFlag } from './booleanFlag.js';
 import { reportConfigError } from './errorReporting.js';
-
-const TRUE_VALUES = new Set(['1', 'true', 'on']);
 
 /**
  * Reads a raw URL query parameter, or null when unavailable/absent.
@@ -30,7 +29,7 @@ export function readQueryParam(name: string): string | null {
 export function readBooleanParam(name: string, defaultValue = false): boolean {
   const raw = readQueryParam(name);
   if (raw === null) return defaultValue;
-  return TRUE_VALUES.has(raw.toLowerCase());
+  return parseBooleanFlag(raw);
 }
 
 /**

@@ -1,7 +1,9 @@
-import type { GameState } from '../../types/index.js';
+import type { GameState, SubsystemTimings } from '../../types/index.js';
 import { recordRapierStepPanic, recordSubsystemFailure } from '../simulationQueue.js';
 import { safeSnapshot } from '../safeSnapshot.js';
 import { reportQueryError } from '../../utils/errorReporting.js';
+
+export type { SubsystemTimings };
 
 /**
  * A named subsystem function that can be run as part of the simulation pipeline.
@@ -14,15 +16,6 @@ export type SubsystemFn = (state: GameState, delta: number) => void;
 export interface SystemStep {
   name: string;
   fn: SubsystemFn;
-}
-
-/**
- * Optional per-tick timing context kept on the simulation state.
- */
-export interface SubsystemTimings {
-  durations: Record<string, number>;
-  lastTickIndex: number;
-  lastTickTime: number;
 }
 
 /**
