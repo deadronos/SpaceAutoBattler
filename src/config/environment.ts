@@ -260,8 +260,12 @@ export const CELESTIAL_ENVIRONMENT: CelestialEnvironmentConfig = {
     },
   ],
   // Default star disk settings — tune here to change size/opacity/position globally
+  // At starLight.distance = 30000 and CAMERA_DEFAULTS.fov = 55, radius 8500 makes the
+  // star clearly larger than the foreground gas giant while leaving the ships in dark
+  // space, keeping the near surface (21500) well beyond the planets/arena and far surface
+  // (38500) inside Skysphere (45000).
   starDisk: {
-    size: 30000,
+    size: 8500,
     opacity: 0.9,
     distanceMultiplier: 1.0,
     haze: {

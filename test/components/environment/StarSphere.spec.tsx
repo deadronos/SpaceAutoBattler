@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { cleanup, render } from '@testing-library/react';
 import { Matrix4, ShaderMaterial, Vector3 } from 'three';
 import { CELESTIAL_ENVIRONMENT } from '../../../src/config/environment.js';
-import { CAMERA_DEFAULTS } from '../../../src/game/config.js';
+import { CAMERA_DEFAULTS, WORLD_HALF } from '../../../src/game/config.js';
 import { BloomProvider, useBloomContext } from '../../../src/renderer/bloom/index.js';
 import { StarLight } from '../../../src/components/environment/StarLight.js';
 import { StarSphere } from '../../../src/components/environment/StarSphere.js';
@@ -123,11 +123,13 @@ describe('StarSphere placement and bloom registration', () => {
 
     expect(worldCenter.distanceTo(expectedWorldCenter)).toBeLessThan(1e-3);
 
-    // Center stays inside Skysphere and far edge stays within camera.far.
+    // Center and entire star sphere stay outside the combat arena, inside Skysphere, and within camera.far.
     const centerDistance = worldCenter.length();
+    const starRadius = starDisk?.size ?? 0;
     expect(centerDistance).toBeCloseTo(starLight.distance, 3);
-    expect(centerDistance).toBeLessThan(skysphere!.radius!);
-    expect(centerDistance + (starDisk?.size ?? 0)).toBeLessThan(CAMERA_DEFAULTS.far);
+    expect(centerDistance - starRadius).toBeGreaterThan(WORLD_HALF);
+    expect(centerDistance + starRadius).toBeLessThan(skysphere!.radius!);
+    expect(centerDistance + starRadius).toBeLessThan(CAMERA_DEFAULTS.far);
 
     stubMaterial.dispose();
   });
